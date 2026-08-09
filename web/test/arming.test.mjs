@@ -22,7 +22,6 @@ import {
 } from '../lib/arming.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = join(HERE, '..', '..');
 
 // ---- the fixture, from a settled payment -----------------------------------------------------
 
@@ -71,7 +70,13 @@ test('selectors are derived, not remembered', () => {
 });
 
 test('the user-operation pre-image is byte-identical to the Dart encoder', () => {
-  const onDisk = readFileSync(join(REPO, 'arming', 'out', 'preimage-v4.hex'), 'utf8');
+  // Read from a committed fixture, NOT from `arming/out/` — that directory is working output and
+  // is gitignored, so this test silently did not run from a fresh clone. It is the one check that
+  // stops the browser encoder from emitting a memo committing to a batch nobody intended, so it
+  // has to run everywhere. See test/fixtures/README.md.
+  const onDisk = readFileSync(
+    join(HERE, 'fixtures', 'settled-payment-384FE782.userop.hex'), 'utf8',
+  );
   const expected = fromHex(onDisk);
 
   const built = buildArmingPayment(FIXTURE);
