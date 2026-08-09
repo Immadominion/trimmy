@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trimmy — arm a rule with one XRPL payment</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --ink: #16150f;
+    --muted: #6b6862;
+    --line: #e3ded4;
+    --accent: #1c5e4a;
+    --accent-ink: #ffffff;
+    --warn-bg: #fdf3e3;
+    --warn-line: #e0b872;
+    --warn-ink: #6b4a12;
+    --bad-bg: #fdeceb;
+    --bad-line: #e0a09b;
+    --bad-ink: #7d2b23;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151a; --panel: #1c1e25; --ink: #ecebe6; --muted: #9a978f;
+      --line: #2e313a; --accent: #4bbf9a; --accent-ink: #0d1512;
+      --warn-bg: #2b2415; --warn-line: #6b5426; --warn-ink: #e6c583;
+      --bad-bg: #2c1a18; --bad-line: #6d3a34; --bad-ink: #f0a89f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem 5rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 47rem; margin: 0 auto; }
+  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 .4rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.05rem; margin: 2.2rem 0 .7rem; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 2rem; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 1.1rem 1.2rem;
+  }
+  label { display: block; font-size: .82rem; color: var(--muted); margin: 0 0 .3rem; }
+  input, select {
+    width: 100%; padding: .55rem .65rem; font: inherit;
+    background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  input[type=text] { font-family: var(--mono); font-size: .88rem; }
+  .row { display: grid; gap: .9rem; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 34rem) { .row { grid-template-columns: 1fr; } }
+  .field { margin-bottom: .9rem; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    padding: .6rem 1rem; border-radius: 8px; border: 1px solid transparent;
+    background: var(--accent); color: var(--accent-ink);
+  }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+  button:disabled { opacity: .5; cursor: default; }
+  .hidden { display: none !important; }
+  .note { font-size: .84rem; color: var(--muted); }
+  .mono { font-family: var(--mono); font-size: .82rem; word-break: break-all; }
+  .kv { display: grid; grid-template-columns: 8.5rem 1fr; gap: .35rem .8rem; align-items: baseline; }
+  .kv dt { color: var(--muted); font-size: .82rem; }
+  .kv dd { margin: 0; font-family: var(--mono); font-size: .84rem; word-break: break-all; }
+  .banner { border-radius: 10px; padding: .8rem 1rem; margin: 1rem 0; border: 1px solid; }
+  .banner.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+  .banner.bad  { background: var(--bad-bg);  border-color: var(--bad-line);  color: var(--bad-ink); }
+  .banner strong { display: block; margin-bottom: .2rem; }
+  ol.plain { margin: .4rem 0 0; padding-left: 1.15rem; }
+  ol.plain li { margin-bottom: .8rem; }
+  .copy { display: flex; gap: .5rem; align-items: flex-start; margin-bottom: .7rem; }
+  .copy .val {
+    flex: 1; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: .5rem .6rem; font-family: var(--mono);
+    font-size: .82rem; word-break: break-all;
+  }
+  .copy button { padding: .5rem .7rem; font-size: .8rem; }
+  footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Arm a rule with one XRPL payment</h1>
+  <p class="sub">
+    You keep your keys. There is no wallet to connect, nothing to install, and no FLR to hold.
+    This page builds the payment locally in your browser and then shows you, in plain English,
+    exactly what signing it will authorise.
+  </p>
+
+  <h2>1. Your XRPL account</h2>
+  <div class="panel">
+    <div class="field">
+      <label for="xrpl">XRPL testnet address</label>
+      <input id="xrpl" type="text" placeholder="rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB" spellcheck="false">
+    </div>
+    <button id="lookup">Look up my account</button>
+    <p class="note" id="lookupNote" style="margin-top:.7rem">
+      Read-only. This asks Flare which contract address your XRPL account controls.
+    </p>
+    <dl class="kv hidden" id="account" style="margin-top:.9rem"></dl>
+  </div>
+
+  <h2>2. The rule</h2>
+  <div class="panel">
+    <div class="field">
+      <label for="preset">What should happen</label>
+      <select id="preset">
+        <option value="vault">Put my XRP to work — deposit into the yield vault on a schedule</option>
+        <option value="swap">Sell XRP for FLR on a schedule</option>
+        <option value="below">Sell if the price falls to a level I choose</option>
+        <option value="private">Sell at a secret price only a secure enclave knows</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="amount">Amount each time (XRP)</label>
+        <input id="amount" type="number" min="0.01" step="0.01" value="1">
+      </div>
+      <div class="field">
+        <label for="every">How often</label>
+        <select id="every">
+          <option value="60">Every minute</option>
+          <option value="3600" selected>Every hour</option>
+          <option value="86400">Every day</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" id="priceRow" style="display:none">
+      <div class="field">
+        <label for="price" id="priceLabel">Sell if 1 XRP falls to (FLR)</label>
+        <input id="price" type="number" min="0" step="0.01" value="150">
+      </div>
+      <div class="field">
+        <label for="days">Rule expires after</label>
+        <select id="days">
+          <option value="7" selected>7 days</option>
+          <option value="30">30 days</option>
+        </select>
+      </div>
+    </div>
+    <button id="build" disabled>Build the payment</button>
+  </div>
+
+  <div id="out" class="hidden">
+    <h2>3. What you would be authorising</h2>
+    <div class="banner warn">
+      <strong>Read this before you send anything.</strong>
+      An XRPL payment cannot be recalled. The 42-byte memo below is the only thing that decides what
+      happens on Flare, and it is unreadable by eye — so this is it, decoded independently from the
+      bytes themselves rather than from what was typed above.
+    </div>
+    <div class="panel" id="decoded"></div>
+
+    <div id="privateStep" class="hidden">
+      <h2>4. Then tell the enclave your price</h2>
+      <div class="banner warn">
+        <strong>This payment does not carry your secret price, and it cannot.</strong>
+        Anything in the payment is on a public ledger forever. Arming creates the rule with no
+        threshold at all; the number is delivered separately, encrypted to the enclave's own key, so
+        that nobody — including us — can read it.
+      </div>
+      <div class="panel">
+        <p class="note" style="margin-top:0">
+          After the payment settles and your rule exists, run this once. It encrypts your price to
+          the enclave and commits only a hash of it on chain.
+        </p>
+        <div id="privateCmd"></div>
+      </div>
+    </div>
+
+    <h2 id="sendHeading">4. Send it</h2>
+    <div class="panel">
+      <p class="note" style="margin-top:0">
+        Make this payment from your XRPL wallet. All three fields matter, and the memo most of all.
+      </p>
+      <div id="payment"></div>
+      <div class="banner bad" style="margin-bottom:0">
+        <strong>Do not add a destination tag.</strong>
+        A registered tag overrides the memo entirely and credits the tag holder instead — the
+        payment would be silently donated to a stranger.
+      </div>
+    </div>
+  </div>
+
+  <div id="error" class="banner bad hidden"></div>
+
+  <footer>
+    <p class="note">
+      Built by this page in your browser — no server sees your rule. The encoder is
+      cross-checked byte-for-byte against the command-line builder in
+      <span class="mono">arming/bin/arm.dart</span> using a payment that settled on chain; if the two
+      ever disagreed, the test suite would fail rather than a payment going somewhere unintended.
+    </p>
+    <p class="note">
+      <strong>Not one-tap yet.</strong> Xaman's hex deep link carries TrustSet transactions only, so
+      a memo-bearing sign request needs their Platform API and a server-held key. That is the one
+      piece of this flow that cannot be done from a static page, and it is not built.
+    </p>
+  </footer>
+</main>
+
+<script type="module">
+import { buildArmingPayment, toHex, Refusal } from './lib/arming.js';
+import { decodeArmingPayment } from './lib/decode.js';
+import { lookupAccount, UnknownAccount } from './lib/chain.js';
+import { validateXrplAddress, InvalidAddress } from './lib/xrpl-address.js';
+
+const FXRP       = '0x0b6A3645c240605887a5532109323A3E12273dc7';
+const TRIMMY     = '0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C';
+const CORE_VAULT = 'rDhpmiPq4BVBDWMVdSrmkgt8thKyRzGV1p';
+const EXECUTOR_FEE_UBA = 100000n;   // 0.1 XRP — a zero fee is never executed
+const KEEPER_FEE_UBA   = 9400n;     // measured floor from execute() gas
+
+const $ = (id) => document.getElementById(id);
+const showError = (msg) => {
+  $('error').textContent = msg;
+  $('error').classList.remove('hidden');
+};
+const clearError = () => {
+  // Empty it as well as hiding it. A hidden element holding a stale error is one CSS mistake away
+  // from telling the user their address is mistyped when it is not.
+  $('error').textContent = '';
+  $('error').classList.add('hidden');
+};
+
+let account = null;   // { xrplAddress, personalAccount, nonce }
+
+$('lookup').addEventListener('click', async () => {
+  clearError();
+  $('build').disabled = true;
+  $('account').classList.add('hidden');
+  $('lookup').disabled = true;
+  $('lookup').textContent = 'Looking up…';
+  try {
+    // The checksum is verified BEFORE anything touches the chain. `getPersonalAccount` derives an
+    // address from whatever string it is given rather than looking one up, so a mistyped address
+    // does not fail — it quietly returns a different account, and a payment armed against it is
+    // not recoverable.
+    const xrpl = await validateXrplAddress($('xrpl').value);
+    account = await lookupAccount(xrpl);
+
+    $('account').innerHTML = `
+      <dt>Your account on Flare</dt><dd>${account.personalAccount}</dd>
+      <dt>Next instruction</dt><dd>#${account.nonce}</dd>`;
+    $('account').classList.remove('hidden');
+    $('build').disabled = false;
+  } catch (e) {
+    if (e instanceof InvalidAddress) showError(e.message);
+    else if (e instanceof UnknownAccount) showError('Flare has no account for this address yet.');
+    else showError('Could not read your account: ' + e.message);
+  } finally {
+    $('lookup').disabled = false;
+    $('lookup').textContent = 'Look up my account';
+  }
+});
+
+// A changed address invalidates everything derived from it.
+$('xrpl').addEventListener('input', () => {
+  account = null;
+  $('build').disabled = true;
+  $('account').classList.add('hidden');
+  $('out').classList.add('hidden');
+});
+
+// ---- rule shape -----------------------------------------------------------------------------
+
+$('preset').addEventListener('change', () => {
+  const p = $('preset').value;
+  const priced = p === 'below';
+  $('priceRow').style.display = (priced || p === 'private') ? '' : 'none';
+  $('priceLabel').textContent = p === 'private'
+    ? 'Secret price — never published on chain (FLR per XRP)'
+    : 'Sell if 1 XRP falls to (FLR)';
+  $('price').parentElement.style.display = (priced || p === 'private') ? '' : 'none';
+});
+
+function ruleFromForm() {
+  const preset = $('preset').value;
+  const xrp = Number($('amount').value);
+  if (!(xrp > 0)) throw new Refusal('Amount must be more than zero.');
+  const amount = BigInt(Math.round(xrp * 1e6));           // FXRP has 6 decimals
+  const expiry = BigInt(Math.floor(Date.now() / 1000) + Number($('days').value || 7) * 86400);
+
+  // verb: 0 SWAP, 1 DEPOSIT_VAULT.  trigger: 0 PRICE_BELOW, 2 SCHEDULE, 3 PRIVATE.
+  const shape = {
+    vault:   { verb: 1, venueId: 1, buyTokenId: 0, trigger: 2 },
+    swap:    { verb: 0, venueId: 0, buyTokenId: 1, trigger: 2 },
+    below:   { verb: 0, venueId: 0, buyTokenId: 1, trigger: 0 },
+    private: { verb: 0, venueId: 0, buyTokenId: 1, trigger: 3 },
+  }[preset];
+
+  let triggerValue;
+  if (shape.trigger === 2) {
+    triggerValue = BigInt($('every').value);              // seconds between runs
+  } else if (shape.trigger === 3) {
+    // A PRIVATE rule must publish nothing. The threshold goes to the enclave separately.
+    triggerValue = 0n;
+  } else {
+    const flrPerXrp = Number($('price').value);
+    if (!(flrPerXrp > 0)) throw new Refusal('Choose a price above zero.');
+    triggerValue = BigInt(Math.round(flrPerXrp * 1e18));  // WC2FLR base units per whole XRP
+  }
+
+  // A vault deposit is same-token, so the floor is the amount itself less a small allowance.
+  const minOut = shape.verb === 1 ? amount * 90n / 100n : 0n;
+
+  return {
+    sellTokenId: 0, buyTokenId: shape.buyTokenId,
+    verb: shape.verb, venueId: shape.venueId, trigger: shape.trigger,
+    totalSellAmount: amount, partSellAmount: amount,
+    minOutAbsolute: minOut, triggerValue, expiry,
+    slippageBips: shape.verb === 0 ? 50 : 0, protocolFeeBips: 0,
+    keeperFeeFlat: KEEPER_FEE_UBA, keeperFeeBudget: KEEPER_FEE_UBA,
+  };
+}
+
+// ---- build ----------------------------------------------------------------------------------
+
+$('build').addEventListener('click', () => {
+  clearError();
+  try {
+    const rule = ruleFromForm();
+    const built = buildArmingPayment({
+      personalAccount: account.personalAccount,
+      nonce: account.nonce,
+      fxrp: FXRP,
+      trimmy: TRIMMY,
+      allowance: rule.totalSellAmount + rule.keeperFeeBudget,
+      rule,
+      executorFeeUBA: EXECUTOR_FEE_UBA,
+    });
+
+    // Decode what was just built, from the bytes — not from the form. This is the only step that
+    // can catch an encoder that agreed with itself and with nothing else.
+    const plain = decodeArmingPayment(built.memo, built.userOp, {
+      knownTokens: { 0: 'XRP', 1: 'FLR' },
+      trimmy: TRIMMY, fxrp: FXRP,
+    });
+
+    $('decoded').innerHTML = plain.html;
+    $('payment').innerHTML = [
+      copyRow('Pay to', CORE_VAULT),
+      copyRow('Amount', amountXrp(rule) + ' XRP'),
+      copyRow('Memo (hex)', toHex(built.memo).toUpperCase()),
+    ].join('');
+    // A PRIVATE rule's threshold is deliberately absent from this payment. Saying nothing here
+    // would leave the user believing the price they typed was carried by it — it is not, and a
+    // rule armed without a provisioned secret simply never fires.
+    const isPrivate = rule.trigger === 3;
+    $('privateStep').classList.toggle('hidden', !isPrivate);
+    $('sendHeading').textContent = isPrivate ? '5. Send it' : '4. Send it';
+    if (isPrivate) {
+      const threshold = BigInt(Math.round(Number($('price').value) * 1e18));
+      $('privateCmd').innerHTML = copyRow(
+        'Run after the rule exists',
+        `go run ./cmd/trimmy-private -rule &lt;id&gt; -threshold ${threshold} ` +
+        `-direction 0 -account ${account.personalAccount}`,
+      );
+    }
+
+    $('out').classList.remove('hidden');
+    wireCopyButtons();
+    $('out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    showError(e instanceof Refusal ? 'Refused: ' + e.message : 'Could not build it: ' + e.message);
+  }
+});
+
+// Enough XRP to cover the amount being armed, the executor's fee and the minting fee, with room
+// to spare. Under-funding is the failure that passes every protocol check and delivers nothing.
+function amountXrp(rule) {
+  const needed = Number(rule.totalSellAmount + rule.keeperFeeBudget) / 1e6
+    + Number(EXECUTOR_FEE_UBA) / 1e6;
+  return (Math.ceil((needed + 1) * 100) / 100).toFixed(2);
+}
+
+function copyRow(label, value) {
+  return `<div class="copy">
+      <div style="flex:1">
+        <label>${label}</label>
+        <div class="val" data-copy>${value}</div>
+      </div>
+      <button class="ghost" type="button" style="margin-top:1.15rem">Copy</button>
+    </div>`;
+}
+
+function wireCopyButtons() {
+  for (const row of document.querySelectorAll('.copy')) {
+    const btn = row.querySelector('button');
+    const val = row.querySelector('[data-copy]');
+    btn.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(val.textContent.trim());
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
+    });
+  }
+}
+</script>
+</body>
+</html>

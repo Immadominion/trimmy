@@ -1,0 +1,7 @@
+{
+  "name": "trimmy-xrpl-sender",
+  "private": true,
+  "type": "module",
+  "description": "Signs and submits the XRPL arming payment. Kept separate from the Dart tooling because XRPL signing needs the reference JS library.",
+  "dependencies": { "xrpl": "5.0.0" }
+}

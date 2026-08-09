@@ -1,0 +1,36 @@
+# Secrets — never commit. Coston2 and XRPL testnet keys are still keys, and a leaked one
+# invalidates every claim in docs/GROUND-TRUTH.md that rests on "only we could have signed this".
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.key
+*.pem
+
+# Holds the commitment SALT for a confidential rule. With the salt, the public commitment is
+# brute-forceable — the plausible range of a stop price is small. That is the whole reason the
+# salt exists.
+fcc/extension/config/private-rule.json
+
+# Upstream Flare reference repositories, cloned locally while building `fcc/extension/`.
+# They are the Flare Foundation's code with their own history, not ours, and vendoring them here
+# would bloat this repo and blur who wrote what. `fcc/README.md` says where to get each one.
+# `fcc/extension/` IS ours — it began as the scaffold and is heavily modified.
+fcc/fce-extension-scaffold/
+fcc/fce-sign/
+fcc/fce-weather-insurance/
+fcc/scaffold/
+fcc/wi/
+
+# Build output
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+**/.dart_tool/
+**/build/
+node_modules/
+
+# Working artefacts from arming runs. These are pre-images of real payments; harmless, but noise.
+arming/out/

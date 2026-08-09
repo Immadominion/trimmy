@@ -1,0 +1,20 @@
+name: trimmy_keeper
+description: >-
+  Permissionless executor for Trimmy rules. Simulates every candidate before
+  spending gas, so it never pays for a revert.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  # The Flare SDK from this repository. It does everything either side of the
+  # signature and holds no keys — the signature itself is shelled out to
+  # Foundry's `cast`, matching the SDK's own broadcast-test pattern.
+  flare_network:
+    path: ../../sdk/packages/flare_network
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0

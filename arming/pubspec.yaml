@@ -1,0 +1,25 @@
+name: trimmy_arming
+description: >-
+  Builds and preflights the XRPL payment that arms a Trimmy rule. Refuses to
+  emit a payment that would fail or lose money.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flare_network:
+    path: ../../sdk/packages/flare_network
+  # Plimsoll owns the irreversible-payment safety layer: the measured
+  # PackedUserOperation wire format, memo encoding, and user-op validation.
+  # Trimmy depends on it as a library and never edits it.
+  plimsoll_core:
+    path: ../../plimsoll/packages/plimsoll_core
+  # SHA-256, for the XRPL address checksum. The Dart team's package; plimsoll_core stays
+  # dependency-light and hand-rolls keccak, but there is no reason to hand-roll this one too.
+  crypto: ^3.0.7
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0

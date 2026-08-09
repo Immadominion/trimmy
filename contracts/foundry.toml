@@ -1,0 +1,75 @@
+# Trimmy — Foundry configuration
+# Versions verified against upstream release feeds on 2026-08-07.
+#   solc      0.8.36  — binaries.soliditylang.org latestRelease
+#   forge-std v1.16.2 — released 2026-06-30
+#   OZ        v5.7.0  — GitHub latest release 2026-07-29 (npm still serves 5.6.1;
+#                       installed by git tag for that reason)
+
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+libs = ["lib"]
+solc = "0.8.36"
+evm_version = "cancun"
+via_ir = true
+optimizer = true
+# Deployed once, never upgraded: optimise runtime gas over deploy cost.
+optimizer_runs = 1_000_000
+bytecode_hash = "none"
+# Money math. A silent truncation here is a user losing funds.
+deny = "warnings"
+# Read-only, scoped to the differential fixtures. No write permission anywhere.
+# Must live in [profile.default] — a bare key after a [profile.*.*] header is absorbed into
+# that table and silently ignored.
+fs_permissions = [{access = "read", path = "test/fixtures"}]
+
+[lint]
+# `block-timestamp` is excluded deliberately, not silenced out of convenience.
+# Trimmy is a time-triggered system: scheduled execution, rule expiry and the vault's day-index
+# claim boundary are all comparisons against block.timestamp, and that IS the product. The
+# granularity that matters here is >= 60 s (MIN_SCHEDULE_INTERVAL) and, for claims, a UTC day
+# boundary — so the few seconds a validator can shift the clock cannot change an outcome.
+# Every other lint stays on, and `deny = "warnings"` makes them all fatal.
+# Adversarial artifacts produced during security review. They are kept as evidence — several
+# contain proof-of-concept exploits that fail against the fixed code — but they are research
+# output, not production code, so they are not held to the `deny = "warnings"` gate. Everything
+# in src/ and the core suites in test/ still is.
+ignore = ["test/research/**"]
+
+exclude_lints = [
+  "block-timestamp",
+  # `erc20-unchecked-transfer` fires only inside test mocks, which use MockERC20 — an OpenZeppelin
+  # ERC20 that REVERTS rather than returning false, so a return check there asserts nothing.
+  # Verified that production code cannot trip this: `grep -nE '\.transfer\(|\.transferFrom\('
+  # over src/ returns nothing outside SafeERC20, and Trimmy.sol has 7 SafeERC20/forceApprove call
+  # sites and no raw ones. If that ever stops being true, this exemption is wrong and must go.
+  "erc20-unchecked-transfer",
+]
+
+[profile.default.fuzz]
+runs = 10_000
+max_test_rejects = 500_000
+
+[profile.default.invariant]
+runs = 512
+depth = 64
+fail_on_revert = false
+
+# Deep run for pre-submission verification.
+[profile.deep.fuzz]
+runs = 500_000
+
+[profile.deep.invariant]
+runs = 4096
+depth = 256
+
+[rpc_endpoints]
+coston2 = "https://coston2-api.flare.network/ext/C/rpc"
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
