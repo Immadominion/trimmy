@@ -78,8 +78,24 @@ void _describeArm(Uint8List data) {
   stdout.writeln('     sell up to ${_fxrpAmount(bw(5))} (token #${w(0)})');
   stdout.writeln('     per run    ${_fxrpAmount(bw(6))}');
   stdout.writeln('     min out    ${_fxrpAmount(bw(7))}');
+
+  // Trimmy derives the run count itself as ceilDiv(totalSellAmount, partSellAmount) and refuses to
+  // execute once spent >= total. State it, rather than leaving a reader to divide two numbers
+  // several lines apart: a rule with total == part fires exactly ONCE, and printing only
+  // "every 60 seconds" against it describes a recurring rule that does not exist.
+  final total = bw(5);
+  final perRun = bw(6);
+  final runs = perRun > BigInt.zero
+      ? (total + perRun - BigInt.one) ~/ perRun
+      : BigInt.one;
+  stdout.writeln('     runs       $runs (ceilDiv of the two amounts above)');
+
   if (trigger == 2) {
-    stdout.writeln('     every      ${bw(8)} seconds');
+    if (runs == BigInt.one) {
+      stdout.writeln('     every      n/a — one run only, so the ${bw(8)}s interval never applies');
+    } else {
+      stdout.writeln('     every      ${bw(8)} seconds, after an immediate first run');
+    }
   } else {
     stdout.writeln('     threshold  ${bw(8)} (buy-token units per 1 whole sell token)');
   }

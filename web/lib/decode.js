@@ -153,20 +153,43 @@ function renderRule(data) {
   const total = at(5), part = at(6), minOut = at(7), triggerValue = at(8), expiry = at(9);
   const slippage = Number(at(10)), keeperFee = at(12);
 
-  let when;
-  if (trigger === 2) when = `every ${fmtDuration(triggerValue)}`;
-  else if (trigger === 0) when = `when 1 XRP falls to ${fmtUnits(triggerValue, 18)} FLR or below`;
-  else if (trigger === 1) when = `when 1 XRP rises to ${fmtUnits(triggerValue, 18)} FLR or above`;
-  else if (trigger === 3) when = 'at a secret price held only inside a secure enclave';
-  else when = `trigger #${trigger}`;
+  // The contract's own arithmetic, not an approximation of it: Trimmy computes
+  // `maxExecutions = ceilDiv(totalSellAmount, partSellAmount)` and refuses to execute once
+  // `spent >= totalSellAmount`. Dividing without the ceiling under-reports a rule whose total is
+  // not a whole multiple of its part.
+  const runs = part > 0n ? (total + part - 1n) / part : 1n;
+  const once = runs === 1n;
 
-  const runs = part > 0n ? total / part : 1n;
+  let when;
+  if (trigger === 2) {
+    // A rule is eligible the moment it is armed (`nextEligibleAt = block.timestamp`), so the
+    // interval governs the gap between runs, never the wait for the first one. Saying "every hour"
+    // about a rule that can only run once is the exact misreading this decoder exists to prevent.
+    when = once
+      ? 'once, as soon as somebody runs it for you'
+      : `${runs} times — the first straight away, then every ${fmtDuration(triggerValue)}`;
+  } else if (trigger === 0) {
+    when = `when 1 XRP falls to ${fmtUnits(triggerValue, 18)} FLR or below`;
+  } else if (trigger === 1) {
+    when = `when 1 XRP rises to ${fmtUnits(triggerValue, 18)} FLR or above`;
+  } else if (trigger === 3) {
+    when = 'at a secret price held only inside a secure enclave';
+  } else {
+    when = `trigger #${trigger}`;
+  }
+
   const expiryDate = new Date(Number(expiry) * 1000).toISOString().replace('T', ' ').slice(0, 16);
 
   let out = `<div style="margin-top:.4rem">`;
   out += `<div>Take <strong>${fmtUnits(part, 6)} XRP</strong> and
     <strong>${esc(VERBS[verb] ?? `verb #${verb}`)}</strong>, <strong>${esc(when)}</strong>.</div>`;
-  if (runs > 1n) out += `<div class="note">Repeats up to ${runs} times, ${fmtUnits(total, 6)} XRP in total.</div>`;
+  // State the count in every case. Gating this on `runs > 1` is what let a one-shot rule be
+  // described as a recurring one with nothing to correct the impression.
+  out += once
+    ? `<div class="note">This happens <strong>once</strong>, and then the rule is finished.
+       ${trigger === 2 ? 'The interval never applies, because there is no second run.' : ''}</div>`
+    : `<div class="note">Up to <strong>${runs}</strong> runs of ${fmtUnits(part, 6)} XRP —
+       <strong>${fmtUnits(total, 6)} XRP</strong> in all, if every one of them fires.</div>`;
   out += `<div class="note">Expires ${esc(expiryDate)} UTC. Anything unspent stays yours.</div>`;
 
   if (trigger === 3) {

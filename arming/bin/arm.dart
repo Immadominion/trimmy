@@ -266,8 +266,19 @@ Future<void> main(List<String> args) async {
     exit(2);
   }
 
-  final amount = BigInt.parse(arg('amount') ?? '1000000');
+  final part = BigInt.parse(arg('amount') ?? '1000000');
   final keeperFee = BigInt.parse(arg('keeper-fee') ?? '9400');
+
+  // How many times the rule may fire. Trimmy derives this itself as
+  // ceilDiv(totalSellAmount, partSellAmount) and reverts Exhausted() once spent >= total, so
+  // sending total == part produces a rule that runs EXACTLY ONCE — whatever interval it carries.
+  // This tool used to do that unconditionally while printing "every 60 seconds".
+  final runs = BigInt.parse(arg('runs') ?? '1');
+  if (runs <= BigInt.zero) {
+    stderr.writeln('REFUSING TO ARM: --runs must be at least 1');
+    exit(2);
+  }
+  final amount = part * runs;
   final executorFee = BigInt.parse(arg('executor-fee') ?? '0');
 
   const fxrp = '0x0b6A3645c240605887a5532109323A3E12273dc7';
@@ -298,8 +309,9 @@ Future<void> main(List<String> args) async {
       venueId: 1,
       trigger: 2, // SCHEDULE
       totalSellAmount: amount,
-      partSellAmount: amount,
-      minOutAbsolute: amount * BigInt.from(90) ~/ BigInt.from(100),
+      partSellAmount: part,
+      // A floor on ONE part: execute() sells partSellAmount and checks that part's proceeds.
+      minOutAbsolute: part * BigInt.from(90) ~/ BigInt.from(100),
       triggerValue: BigInt.from(60),
       expiry: BigInt.from(
         DateTime.now().toUtc().add(const Duration(days: 7)).millisecondsSinceEpoch ~/ 1000,
@@ -307,7 +319,8 @@ Future<void> main(List<String> args) async {
       slippageBips: 0,
       protocolFeeBips: 0,
       keeperFeeFlat: keeperFee,
-      keeperFeeBudget: keeperFee,
+      // L2: the budget must fund every execution or the contract refuses to arm at all.
+      keeperFeeBudget: keeperFee * runs,
     );
 
     final payment = buildArmingPayment(
@@ -315,7 +328,7 @@ Future<void> main(List<String> args) async {
       nonce: nonce,
       fxrp: fxrp,
       trimmy: trimmy,
-      allowance: amount + keeperFee,
+      allowance: amount + keeperFee * runs,
       armCalldata: armCalldata,
       executorFeeUBA: executorFee,
     );

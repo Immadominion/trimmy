@@ -80,6 +80,26 @@
     font-size: .82rem; word-break: break-all;
   }
   .copy button { padding: .5rem .7rem; font-size: .8rem; }
+  .breakdown { margin: -.2rem 0 1rem; font-size: .88rem; }
+  .breakdown summary {
+    cursor: pointer; color: var(--muted); font-size: .84rem;
+    padding: .2rem 0; list-style-position: outside;
+  }
+  .breakdown summary:hover { color: var(--ink); }
+  .breakdown .kv {
+    grid-template-columns: 1fr auto; gap: .3rem 1rem;
+    margin: .6rem 0 0; padding: .7rem .8rem;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .breakdown .kv dd { text-align: right; font-variant-numeric: tabular-nums; }
+  .fielderr {
+    margin: .35rem 0 0; font-size: .84rem; color: var(--bad-ink);
+  }
+  input[aria-invalid="true"] { border-color: var(--bad-line); }
+  /* There was no focus style at all, so keyboard users got whatever the browser felt like. */
+  :is(input, select, button, summary, a):focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px;
+  }
   footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
   a { color: var(--accent); }
 </style>
@@ -93,11 +113,16 @@
     exactly what signing it will authorise.
   </p>
 
+  <div id="insecure" class="banner bad hidden" role="alert"></div>
+
   <h2>1. Your XRPL account</h2>
   <div class="panel">
     <div class="field">
       <label for="xrpl">XRPL testnet address</label>
-      <input id="xrpl" type="text" placeholder="rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB" spellcheck="false">
+      <input id="xrpl" type="text" placeholder="rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB"
+             spellcheck="false" autocapitalize="none" autocorrect="off" inputmode="text"
+             aria-describedby="xrplError">
+      <p id="xrplError" class="fielderr hidden" role="alert"></p>
     </div>
     <button id="lookup">Look up my account</button>
     <p class="note" id="lookupNote" style="margin-top:.7rem">
@@ -123,18 +148,23 @@
         <input id="amount" type="number" min="0.01" step="0.01" value="1">
       </div>
       <div class="field">
+        <label for="runs">How many times</label>
+        <select id="runs">
+          <option value="1">Once</option>
+          <option value="6">6 times</option>
+          <option value="12" selected>12 times</option>
+          <option value="24">24 times</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" id="everyField">
         <label for="every">How often</label>
         <select id="every">
           <option value="60">Every minute</option>
           <option value="3600" selected>Every hour</option>
           <option value="86400">Every day</option>
         </select>
-      </div>
-    </div>
-    <div class="row" id="priceRow" style="display:none">
-      <div class="field">
-        <label for="price" id="priceLabel">Sell if 1 XRP falls to (FLR)</label>
-        <input id="price" type="number" min="0" step="0.01" value="150">
       </div>
       <div class="field">
         <label for="days">Rule expires after</label>
@@ -144,10 +174,16 @@
         </select>
       </div>
     </div>
+    <div class="row" id="priceRow" style="display:none">
+      <div class="field">
+        <label for="price" id="priceLabel">Sell if 1 XRP falls to (FLR)</label>
+        <input id="price" type="number" min="0" step="0.01" value="150">
+      </div>
+    </div>
     <button id="build" disabled>Build the payment</button>
   </div>
 
-  <div id="out" class="hidden">
+  <div id="out" class="hidden" aria-live="polite">
     <h2>3. What you would be authorising</h2>
     <div class="banner warn">
       <strong>Read this before you send anything.</strong>
@@ -188,7 +224,7 @@
     </div>
   </div>
 
-  <div id="error" class="banner bad hidden"></div>
+  <div id="error" class="banner bad hidden" role="alert"></div>
 
   <footer>
     <p class="note">
@@ -208,28 +244,84 @@
 <script type="module">
 import { buildArmingPayment, toHex, Refusal } from './lib/arming.js';
 import { decodeArmingPayment } from './lib/decode.js';
-import { lookupAccount, UnknownAccount } from './lib/chain.js';
+import { lookupAccount, readExecutorFeeUBA, MINTING_FEE_UBA, UnknownAccount } from './lib/chain.js';
 import { validateXrplAddress, InvalidAddress } from './lib/xrpl-address.js';
 
 const FXRP       = '0x0b6A3645c240605887a5532109323A3E12273dc7';
 const TRIMMY     = '0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C';
 const CORE_VAULT = 'rDhpmiPq4BVBDWMVdSrmkgt8thKyRzGV1p';
-const EXECUTOR_FEE_UBA = 100000n;   // 0.1 XRP — a zero fee is never executed
+// Read from the AssetManager at lookup time. Governance can change it, and a payment that no
+// longer clears it is under-delivered in silence rather than refused. The literal is only the
+// measured fallback for when the read fails.
+let executorFeeUBA = 100000n;
 const KEEPER_FEE_UBA   = 9400n;     // measured floor from execute() gas
 
 const $ = (id) => document.getElementById(id);
-const showError = (msg) => {
+
+/**
+ * Refuse to run at all on an origin where the checks cannot run.
+ *
+ * `crypto.subtle` — which verifies the XRPL address checksum — and `navigator.clipboard` are both
+ * secure-context only. Served from `http://<lan-ip>/`, which is exactly how this gets demoed from
+ * a laptop to a phone, the checksum verify throws `Cannot read properties of undefined` and the
+ * generic handler reports it as "could not read your account", blaming the chain for a browser
+ * restriction. Every downstream step is gated on that check, so degrading quietly would leave a
+ * page that looks like it works and has stopped verifying the one thing it exists to verify.
+ *
+ * There is deliberately no fallback to an unverified checksum. `getPersonalAccount` derives an
+ * account from any string, so an unchecked typo builds an irreversible payment against an account
+ * the sender does not control.
+ */
+function requireSecureContext() {
+  if (window.isSecureContext && globalThis.crypto?.subtle) return true;
+  const el = $('insecure');
+  el.innerHTML =
+    '<strong>This page cannot run safely on this address.</strong>'
+    + `You have opened it over <span class="mono">${esc(location.protocol)}//${esc(location.host)}</span>. `
+    + 'Address-checksum verification needs a secure context, and without it a mistyped XRPL address '
+    + 'would silently build a payment for somebody else\'s account. Open it over '
+    + '<span class="mono">https</span>, or from <span class="mono">localhost</span>.';
+  el.classList.remove('hidden');
+  $('lookup').disabled = true;
+  $('xrpl').disabled = true;
+  return false;
+}
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/**
+ * Shows an error where its cause is, not at the bottom of the document.
+ *
+ * `#error` sits after every panel, so a rejected address used to render up to two viewports below
+ * the field that produced it — with no scroll and no focus move, so the button appeared to do
+ * nothing. `field` puts the message directly under its input and moves focus there.
+ */
+const showError = (msg, field) => {
+  if (field) {
+    const slot = $(`${field}Error`);
+    slot.textContent = msg;
+    slot.classList.remove('hidden');
+    $(field).setAttribute('aria-invalid', 'true');
+    $(field).focus();
+    return;
+  }
   $('error').textContent = msg;
   $('error').classList.remove('hidden');
 };
 const clearError = () => {
-  // Empty it as well as hiding it. A hidden element holding a stale error is one CSS mistake away
-  // from telling the user their address is mistyped when it is not.
-  $('error').textContent = '';
-  $('error').classList.add('hidden');
+  // Empty as well as hide. A hidden element holding a stale error is one CSS mistake away from
+  // telling the user their address is mistyped when it is not.
+  for (const id of ['error', 'xrplError']) {
+    $(id).textContent = '';
+    $(id).classList.add('hidden');
+  }
+  $('xrpl').removeAttribute('aria-invalid');
 };
 
 let account = null;   // { xrplAddress, personalAccount, nonce }
+
+if (!requireSecureContext()) throw new Error('insecure origin — page disabled');
 
 $('lookup').addEventListener('click', async () => {
   clearError();
@@ -244,6 +336,13 @@ $('lookup').addEventListener('click', async () => {
     // not recoverable.
     const xrpl = await validateXrplAddress($('xrpl').value);
     account = await lookupAccount(xrpl);
+    try {
+      ({ fee: executorFeeUBA } = await readExecutorFeeUBA());
+    } catch {
+      // Keep the measured fallback. Worth noting rather than hiding: if the real fee has since
+      // risen above it, the payment under-delivers silently, so the page says which one it used.
+      executorFeeUBA = 100000n;
+    }
 
     $('account').innerHTML = `
       <dt>Your account on Flare</dt><dd>${account.personalAccount}</dd>
@@ -251,8 +350,8 @@ $('lookup').addEventListener('click', async () => {
     $('account').classList.remove('hidden');
     $('build').disabled = false;
   } catch (e) {
-    if (e instanceof InvalidAddress) showError(e.message);
-    else if (e instanceof UnknownAccount) showError('Flare has no account for this address yet.');
+    if (e instanceof InvalidAddress) showError(e.message, 'xrpl');
+    else if (e instanceof UnknownAccount) showError('Flare has no account for this address yet.', 'xrpl');
     else showError('Could not read your account: ' + e.message);
   } finally {
     $('lookup').disabled = false;
@@ -262,6 +361,9 @@ $('lookup').addEventListener('click', async () => {
 
 // A changed address invalidates everything derived from it.
 $('xrpl').addEventListener('input', () => {
+  // Clear the previous complaint as soon as the user acts on it. Leaving it up means a corrected
+  // address still reads "that address fails its own checksum".
+  clearError();
   account = null;
   $('build').disabled = true;
   $('account').classList.add('hidden');
@@ -284,7 +386,16 @@ function ruleFromForm() {
   const preset = $('preset').value;
   const xrp = Number($('amount').value);
   if (!(xrp > 0)) throw new Refusal('Amount must be more than zero.');
-  const amount = BigInt(Math.round(xrp * 1e6));           // FXRP has 6 decimals
+  const part = BigInt(Math.round(xrp * 1e6));             // FXRP has 6 decimals
+
+  // How many times the rule may fire. Trimmy derives this itself as
+  // `ceilDiv(totalSellAmount, partSellAmount)` (Trimmy.sol:451) and reverts `Exhausted()` once
+  // `spent >= totalSellAmount`. This page used to send total == part, which meant EVERY rule ran
+  // exactly once — while the summary said "every hour". Setting the total from an explicit run
+  // count is what makes a schedule actually a schedule.
+  const runs = BigInt($('runs').value || 1);
+  const amount = part * runs;
+
   const expiry = BigInt(Math.floor(Date.now() / 1000) + Number($('days').value || 7) * 86400);
 
   // verb: 0 SWAP, 1 DEPOSIT_VAULT.  trigger: 0 PRICE_BELOW, 2 SCHEDULE, 3 PRIVATE.
@@ -307,16 +418,20 @@ function ruleFromForm() {
     triggerValue = BigInt(Math.round(flrPerXrp * 1e18));  // WC2FLR base units per whole XRP
   }
 
-  // A vault deposit is same-token, so the floor is the amount itself less a small allowance.
-  const minOut = shape.verb === 1 ? amount * 90n / 100n : 0n;
+  // `minOutAbsolute` is a floor on ONE part, not on the whole rule — `execute` sells
+  // `partSellAmount` and checks the proceeds of that part against it.
+  const minOut = shape.verb === 1 ? part * 90n / 100n : 0n;
 
   return {
     sellTokenId: 0, buyTokenId: shape.buyTokenId,
     verb: shape.verb, venueId: shape.venueId, trigger: shape.trigger,
-    totalSellAmount: amount, partSellAmount: amount,
+    totalSellAmount: amount, partSellAmount: part,
     minOutAbsolute: minOut, triggerValue, expiry,
     slippageBips: shape.verb === 0 ? 50 : 0, protocolFeeBips: 0,
-    keeperFeeFlat: KEEPER_FEE_UBA, keeperFeeBudget: KEEPER_FEE_UBA,
+    // L2 in the contract: a rule whose fee budget cannot fund its own executions is refused at
+    // arm time rather than stopping silently partway through with a live allowance. The budget
+    // must therefore cover every run — `keeperFeeFlat * maxExecutions` (Trimmy.sol:457).
+    keeperFeeFlat: KEEPER_FEE_UBA, keeperFeeBudget: KEEPER_FEE_UBA * runs,
   };
 }
 
@@ -333,7 +448,7 @@ $('build').addEventListener('click', () => {
       trimmy: TRIMMY,
       allowance: rule.totalSellAmount + rule.keeperFeeBudget,
       rule,
-      executorFeeUBA: EXECUTOR_FEE_UBA,
+      executorFeeUBA,
     });
 
     // Decode what was just built, from the bytes — not from the form. This is the only step that
@@ -344,11 +459,17 @@ $('build').addEventListener('click', () => {
     });
 
     $('decoded').innerHTML = plain.html;
-    $('payment').innerHTML = [
-      copyRow('Pay to', CORE_VAULT),
-      copyRow('Amount', amountXrp(rule) + ' XRP'),
-      copyRow('Memo (hex)', toHex(built.memo).toUpperCase()),
-    ].join('');
+    const bd = paymentBreakdown(rule);
+    $('payment').innerHTML =
+      copyRow('Amount', xrp(bd.total) + ' XRP')
+      + `<details class="breakdown"><summary>What makes up ${xrp(bd.total)} XRP</summary>
+           <dl class="kv">${bd.rows.map(([k, v]) =>
+             `<dt>${k}</dt><dd>${xrp(v)} XRP</dd>`).join('')}
+           <dt><strong>Total</strong></dt><dd><strong>${xrp(bd.total)} XRP</strong></dd></dl>
+           <p class="note">Whatever the rule does not spend stays in your Flare account.</p>
+         </details>`
+      + copyRow('Pay to', CORE_VAULT)
+      + copyRow('Memo (hex)', toHex(built.memo).toUpperCase());
     // A PRIVATE rule's threshold is deliberately absent from this payment. Saying nothing here
     // would leave the user believing the price they typed was carried by it — it is not, and a
     // rule armed without a provisioned secret simply never fires.
@@ -372,13 +493,32 @@ $('build').addEventListener('click', () => {
   }
 });
 
-// Enough XRP to cover the amount being armed, the executor's fee and the minting fee, with room
-// to spare. Under-funding is the failure that passes every protocol check and delivers nothing.
-function amountXrp(rule) {
-  const needed = Number(rule.totalSellAmount + rule.keeperFeeBudget) / 1e6
-    + Number(EXECUTOR_FEE_UBA) / 1e6;
-  return (Math.ceil((needed + 1) * 100) / 100).toFixed(2);
+/**
+ * What the payment must carry, itemised.
+ *
+ * Under-funding is the most expensive way to get this wrong, and it does not look like an error:
+ * the protocol emits its SUCCESS event with `mintedAmountUBA: 0`, pays the fee receiver and the
+ * executor, and the recipient gets nothing. So every component is named rather than rolled into
+ * one number the user is asked to trust.
+ */
+function paymentBreakdown(rule) {
+  const rows = [
+    ['What the rule can spend', rule.totalSellAmount],
+    ['Reserved for whoever runs it', rule.keeperFeeBudget],
+    ['Minting fee, taken by FAssets', MINTING_FEE_UBA],
+    ['Delivery fee, paid to the executor', executorFeeUBA],
+  ];
+  const subtotal = rows.reduce((n, [, v]) => n + v, 0n);
+  // Round the total UP to whole hundredths of an XRP so the figure is typeable, and show the
+  // rounding as its own line rather than letting it look like an unexplained surcharge.
+  const cents = (subtotal + 9999n) / 10000n;
+  const total = cents * 10000n;
+  const slack = total - subtotal;
+  if (slack > 0n) rows.push(['Rounded up so the figure is typeable', slack]);
+  return { rows, total };
 }
+
+const xrp = (uba) => (Number(uba) / 1e6).toFixed(uba % 10000n === 0n ? 2 : 6);
 
 function copyRow(label, value) {
   return `<div class="copy">
@@ -386,7 +526,7 @@ function copyRow(label, value) {
         <label>${label}</label>
         <div class="val" data-copy>${value}</div>
       </div>
-      <button class="ghost" type="button" style="margin-top:1.15rem">Copy</button>
+      <button class="ghost" type="button" aria-label="Copy ${label}" style="margin-top:1.15rem">Copy</button>
     </div>`;
 }
 
@@ -395,9 +535,22 @@ function wireCopyButtons() {
     const btn = row.querySelector('button');
     const val = row.querySelector('[data-copy]');
     btn.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(val.textContent.trim());
-      btn.textContent = 'Copied';
-      setTimeout(() => { btn.textContent = 'Copy'; }, 1400);
+      const text = val.textContent.trim();
+      try {
+        // Secure-context only. On a plain-http origin this rejects, and an unhandled rejection
+        // left the button unchanged — so the user pasted whatever was already on their clipboard
+        // into an irreversible payment.
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied';
+      } catch {
+        const range = document.createRange();
+        range.selectNodeContents(val);
+        const sel = getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        btn.textContent = 'Select + copy';
+      }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
     });
   }
 }

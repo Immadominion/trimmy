@@ -17,12 +17,16 @@ const F = {
 
 test('recovers the settled payment from its bytes alone', () => {
   const b = buildArmingPayment(F);
-  const d = decodeArmingPayment(b.memo, b.userOp);
+  const d = decodeArmingPayment(b.memo, b.userOp, { trimmy: F.trimmy });
   assert.equal(d.problems.length, 0, JSON.stringify(d.problems));
   assert.equal(d.matches, true);
   assert.match(d.html, /1 XRP/);
   assert.match(d.html, /deposit it into the yield vault/);
-  assert.match(d.html, /every minute/);
+  // This fixture is a REAL settled payment with total == part, so ceilDiv gives exactly one run.
+  // This assertion used to demand "every minute" — it was pinning the bug in place: the rule can
+  // only ever fire once, and saying otherwise is the one thing this decoder exists to prevent.
+  assert.match(d.html, /once, as soon as somebody runs it/);
+  assert.doesNotMatch(d.html, /every minute/);
   assert.match(d.html, /1\.0094 XRP/);          // the allowance, decoded not restated
   assert.match(d.html, /0\.0094 XRP per run/);  // keeper fee
 });
@@ -78,4 +82,39 @@ test('a spender that is not Trimmy is called out, not labelled', async () => {
   const dg = decodeArmingPayment(good.memo, good.userOp, { trimmy: F.trimmy });
   assert.match(dg.html, /<strong>Trimmy<\/strong>/);
   assert.doesNotMatch(dg.html, /Do not send this/);
+});
+
+test('a one-shot rule is never described as recurring', async () => {
+  const { decodeArmingPayment } = await import('../lib/decode.js');
+  const { buildArmingPayment } = await import('../lib/arming.js');
+  // total == part is exactly what the page used to send for EVERY rule: ceilDiv(1,1) = 1 run.
+  const b = buildArmingPayment({ ...F, rule: { ...F.rule, totalSellAmount: 1000000n,
+    partSellAmount: 1000000n, trigger: 2, triggerValue: 3600n } });
+  const d = decodeArmingPayment(b.memo, b.userOp, { trimmy: F.trimmy });
+  assert.match(d.html, /once, as soon as somebody runs it/);
+  assert.match(d.html, /happens <strong>once<\/strong>/);
+  assert.doesNotMatch(d.html, /every hour/);
+});
+
+test('a repeating rule states its run count and its total', async () => {
+  const { decodeArmingPayment } = await import('../lib/decode.js');
+  const { buildArmingPayment } = await import('../lib/arming.js');
+  const b = buildArmingPayment({ ...F, rule: { ...F.rule, totalSellAmount: 12000000n,
+    partSellAmount: 1000000n, trigger: 2, triggerValue: 3600n },
+    allowance: 12000000n + 9400n * 12n });
+  const d = decodeArmingPayment(b.memo, b.userOp, { trimmy: F.trimmy });
+  assert.match(d.html, /12 times — the first straight away, then every hour/);
+  assert.match(d.html, /Up to <strong>12<\/strong> runs of 1 XRP/);
+  assert.match(d.html, /<strong>12 XRP<\/strong> in all/);
+});
+
+test('the run count uses the contract ceiling, not plain division', async () => {
+  const { decodeArmingPayment } = await import('../lib/decode.js');
+  const { buildArmingPayment } = await import('../lib/arming.js');
+  // ceilDiv(2_500_000, 1_000_000) = 3. Plain division says 2 and under-reports the commitment.
+  const b = buildArmingPayment({ ...F, rule: { ...F.rule, totalSellAmount: 2500000n,
+    partSellAmount: 1000000n, trigger: 2, triggerValue: 3600n },
+    allowance: 2500000n + 9400n * 3n });
+  const d = decodeArmingPayment(b.memo, b.userOp, { trimmy: F.trimmy });
+  assert.match(d.html, /Up to <strong>3<\/strong> runs/);
 });

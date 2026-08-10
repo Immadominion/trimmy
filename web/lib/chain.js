@@ -51,6 +51,47 @@ export async function ethCall(to, data, { rpc = RPC_COSTON2, fetchImpl = fetch }
 
 export class UnknownAccount extends Error {}
 
+export const REGISTRY = '0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019';
+
+/// Measured, and the reason this matters: a payment that does not clear the minting fee is not
+/// rejected. The protocol emits its SUCCESS event carrying `mintedAmountUBA: 0`, pays every party
+/// except the recipient, and the XRP is gone. Plimsoll caught this with a real 0.15 XRP payment
+/// whose logs show two Transfers, neither of them to the intended account.
+export const MINTING_FEE_UBA = 100000n;
+
+/**
+ * Reads the direct-minting executor fee from the live AssetManager.
+ *
+ * Governance can change it, and if it rises above what a payment carries, the payment is not
+ * refused — it is silently under-delivered. So it is read rather than assumed, with the measured
+ * value only as a fallback when the read fails.
+ */
+export async function readExecutorFeeUBA(opts = {}) {
+  const sel = (sig) => keccak256(new TextEncoder().encode(sig)).slice(0, 4);
+  const strArg = (s) => {
+    const b = new TextEncoder().encode(s);
+    const padded = new Uint8Array(Math.ceil(b.length / 32) * 32 || 32);
+    padded.set(b);
+    return concat([abiWord(32n), abiWord(BigInt(b.length)), padded]);
+  };
+
+  const controller = '0x' + toHex(
+    (await ethCall(REGISTRY, concat([
+      sel('getContractAddressByName(string)'), strArg('AssetManagerController'),
+    ]), opts)).slice(-20),
+  );
+
+  // getAssetManagers() returns address[]: offset word, length word, then the elements.
+  const managers = await ethCall(controller, sel('getAssetManagers()'), opts);
+  const first = '0x' + toHex(managers.slice(64 + 12, 64 + 32));
+
+  const raw = await ethCall(first, sel('getDirectMintingExecutorFeeUBA()'), opts);
+  let fee = 0n;
+  for (const b of raw) fee = (fee << 8n) | BigInt(b);
+  if (fee <= 0n) throw new Error('executor fee read as zero');
+  return { fee, assetManager: first };
+}
+
 /**
  * Resolves an XRPL address to the Flare account it controls, and that account's next instruction
  * number.
