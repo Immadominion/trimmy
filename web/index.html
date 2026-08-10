@@ -3,119 +3,283 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trimmy — arm a rule with one XRPL payment</title>
+<title>Trimmy — arm a rule with one XRPL payment (Coston2 testnet)</title>
+<meta name="description" content="One XRPL payment arms a rule on Flare. This page builds the payment in your browser and decodes it back from its own bytes so you can see what signing it authorises.">
+<meta name="theme-color" content="#2f3b8f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%232f3b8f'/%3E%3Crect y='5.5' width='16' height='1.6' fill='%23fff'/%3E%3Crect y='10' width='16' height='1.6' fill='%23fff'/%3E%3C/svg%3E">
 <style>
+  /* ---------------------------------------------------------------------------------------
+     A payment declaration that gets stamped.
+     The subject is an irreversible instruction written in bytes, so monospace is the interface
+     voice — eyebrows, labels, amounts, addresses — and prose is the only thing set in sans.
+     Ground is cool security-paper rather than cream; the accent is stamp ink; vermilion is
+     reserved for danger and never used decoratively.
+     --------------------------------------------------------------------------------------- */
   :root {
     color-scheme: light dark;
-    --bg: #fbfaf8;
-    --panel: #ffffff;
-    --ink: #16150f;
-    --muted: #6b6862;
-    --line: #e3ded4;
-    --accent: #1c5e4a;
-    --accent-ink: #ffffff;
-    --warn-bg: #fdf3e3;
-    --warn-line: #e0b872;
-    --warn-ink: #6b4a12;
-    --bad-bg: #fdeceb;
-    --bad-line: #e0a09b;
-    --bad-ink: #7d2b23;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+    --paper:      #eef0f3;
+    --card:       #ffffff;
+    --ink:        #14181f;
+    --ink-soft:   #5b6472;
+    --rule:       #d3d8e0;
+    --rule-soft:  #e6e9ee;
+
+    --stamp:      #2f3b8f;
+    --stamp-ink:  #ffffff;
+    --stamp-wash: #e9ebf7;
+
+    --alarm:      #b3261e;
+    --alarm-wash: #fbeceb;
+    --caution:    #7a5410;
+    --caution-wash:#fdf3e0;
+
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    --s1: .35rem; --s2: .7rem; --s3: 1.1rem; --s4: 1.7rem; --s5: 2.6rem;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14151a; --panel: #1c1e25; --ink: #ecebe6; --muted: #9a978f;
-      --line: #2e313a; --accent: #4bbf9a; --accent-ink: #0d1512;
-      --warn-bg: #2b2415; --warn-line: #6b5426; --warn-ink: #e6c583;
-      --bad-bg: #2c1a18; --bad-line: #6d3a34; --bad-ink: #f0a89f;
+      --paper:      #0f1216;
+      --card:       #171b22;
+      --ink:        #e6e9ef;
+      --ink-soft:   #98a1b0;
+      --rule:       #2a303a;
+      --rule-soft:  #21262e;
+
+      --stamp:      #93a4ff;
+      --stamp-ink:  #10131c;
+      --stamp-wash: #1b2140;
+
+      --alarm:      #ff9b91;
+      --alarm-wash: #2b1614;
+      --caution:    #e8c07a;
+      --caution-wash:#2a2113;
     }
   }
+
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 2rem 1.25rem 5rem;
-    background: var(--bg); color: var(--ink);
-    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 0; padding: var(--s4) var(--s3) var(--s5);
+    background: var(--paper); color: var(--ink);
+    font: 16px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 47rem; margin: 0 auto; }
-  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 .4rem; letter-spacing: -.02em; }
-  h2 { font-size: 1.05rem; margin: 2.2rem 0 .7rem; letter-spacing: -.01em; }
-  .sub { color: var(--muted); margin: 0 0 2rem; }
+  main { max-width: 44rem; margin: 0 auto; }
+
+  /* --- masthead ------------------------------------------------------------------------- */
+  .masthead {
+    display: flex; align-items: center; gap: var(--s2);
+    padding-bottom: var(--s2); margin-bottom: var(--s4);
+    border-bottom: 2px solid var(--ink);
+  }
+  .mark {
+    width: 1.15rem; height: 1.15rem; flex: none;
+    background: var(--stamp); position: relative; border-radius: 2px;
+  }
+  .mark::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(var(--card), var(--card)) 0 38% / 100% 2px no-repeat,
+      linear-gradient(var(--card), var(--card)) 0 68% / 100% 2px no-repeat;
+  }
+  .wordmark {
+    font: 600 .82rem/1 var(--mono); letter-spacing: .22em; text-transform: uppercase;
+  }
+  .chip {
+    margin-left: auto;
+    font: 500 .68rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft); border: 1px solid var(--rule);
+    padding: .35rem .55rem; border-radius: 2px; white-space: nowrap;
+  }
+
+  h1 {
+    font-size: clamp(1.45rem, 4vw, 1.85rem); line-height: 1.15;
+    margin: 0 0 var(--s2); letter-spacing: -.02em; text-wrap: balance;
+  }
+  .lede { display: flex; flex-direction: column; gap: var(--s2); max-width: 40em; }
+  .sub { color: var(--ink-soft); margin: 0; }
+  .lede .note { margin: 0; }
+
+  /* Steps are numbered because they are genuinely sequential: you cannot build before you
+     look up, and you cannot send before you build. */
+  .step { margin-top: var(--s5); }
+  .step > h2 {
+    font: 600 .72rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 var(--s2);
+    display: flex; align-items: baseline; gap: .6rem;
+  }
+  .step > h2::before {
+    content: counter(step, decimal-leading-zero); counter-increment: step;
+    color: var(--stamp); font-weight: 700;
+  }
+  main { counter-reset: step; }
+
   .panel {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 12px; padding: 1.1rem 1.2rem;
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: 3px; padding: var(--s3);
   }
-  label { display: block; font-size: .82rem; color: var(--muted); margin: 0 0 .3rem; }
+
+  /* --- form ---------------------------------------------------------------------------- */
+  label, .field-head {
+    display: block; margin: 0 0 var(--s1);
+    font: 500 .68rem/1.3 var(--mono); letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
   input, select {
-    width: 100%; padding: .55rem .65rem; font: inherit;
-    background: var(--bg); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 8px;
+    width: 100%; padding: .55rem .6rem; font: inherit;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 2px;
   }
-  input[type=text] { font-family: var(--mono); font-size: .88rem; }
-  .row { display: grid; gap: .9rem; grid-template-columns: 1fr 1fr; }
+  input[type=text] { font-family: var(--mono); font-size: .9rem; }
+  input[aria-invalid="true"] { border-color: var(--alarm); }
+  .row { display: grid; gap: var(--s2) var(--s3); grid-template-columns: 1fr 1fr; }
   @media (max-width: 34rem) { .row { grid-template-columns: 1fr; } }
-  .field { margin-bottom: .9rem; }
+  .field { margin-bottom: var(--s2); }
+
   button {
-    font: inherit; font-weight: 600; cursor: pointer;
-    padding: .6rem 1rem; border-radius: 8px; border: 1px solid transparent;
-    background: var(--accent); color: var(--accent-ink);
+    font: 600 .82rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    cursor: pointer; padding: .7rem 1.1rem; border-radius: 2px;
+    border: 1px solid var(--stamp); background: var(--stamp); color: var(--stamp-ink);
   }
-  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
-  button:disabled { opacity: .5; cursor: default; }
+  button.ghost {
+    background: transparent; color: var(--ink); border-color: var(--rule);
+    letter-spacing: .06em;
+  }
+  button:disabled { opacity: .4; cursor: default; }
+  :is(input, select, button, summary, a):focus-visible {
+    outline: 2px solid var(--stamp); outline-offset: 2px;
+  }
+
   .hidden { display: none !important; }
-  .note { font-size: .84rem; color: var(--muted); }
-  .mono { font-family: var(--mono); font-size: .82rem; word-break: break-all; }
-  .kv { display: grid; grid-template-columns: 8.5rem 1fr; gap: .35rem .8rem; align-items: baseline; }
-  .kv dt { color: var(--muted); font-size: .82rem; }
-  .kv dd { margin: 0; font-family: var(--mono); font-size: .84rem; word-break: break-all; }
-  .banner { border-radius: 10px; padding: .8rem 1rem; margin: 1rem 0; border: 1px solid; }
-  .banner.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
-  .banner.bad  { background: var(--bad-bg);  border-color: var(--bad-line);  color: var(--bad-ink); }
-  .banner strong { display: block; margin-bottom: .2rem; }
-  ol.plain { margin: .4rem 0 0; padding-left: 1.15rem; }
-  ol.plain li { margin-bottom: .8rem; }
-  .copy { display: flex; gap: .5rem; align-items: flex-start; margin-bottom: .7rem; }
-  .copy .val {
-    flex: 1; background: var(--bg); border: 1px solid var(--line);
-    border-radius: 8px; padding: .5rem .6rem; font-family: var(--mono);
-    font-size: .82rem; word-break: break-all;
+  .note { font-size: .86rem; color: var(--ink-soft); }
+  .mono { font-family: var(--mono); font-size: .84rem; word-break: break-all; }
+  .fielderr { margin: var(--s1) 0 0; font-size: .84rem; color: var(--alarm); }
+
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: var(--s1) var(--s3); align-items: baseline; }
+  .kv dt { color: var(--ink-soft); font: 500 .68rem/1.6 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .kv dd { margin: 0; font-family: var(--mono); font-size: .86rem; word-break: break-all; font-variant-numeric: tabular-nums; }
+
+  /* --- notices -------------------------------------------------------------------------- */
+  .banner {
+    border-radius: 2px; padding: var(--s2) var(--s3); margin: var(--s3) 0;
+    border: 1px solid; border-left-width: 3px; font-size: .92rem;
   }
-  .copy button { padding: .5rem .7rem; font-size: .8rem; }
-  .breakdown { margin: -.2rem 0 1rem; font-size: .88rem; }
+  .banner.warn { background: var(--caution-wash); border-color: var(--caution); color: var(--caution); }
+  .banner.bad  { background: var(--alarm-wash);   border-color: var(--alarm);   color: var(--alarm); }
+  .banner strong { display: block; margin-bottom: var(--s1); }
+  .banner ul { margin: var(--s1) 0 0; padding-left: 1.1rem; }
+
+  /* --- the verdict ---------------------------------------------------------------------- */
+  /* Not a .panel. This is the one object on the page that is a document rather than a form,
+     and it is the only thing here that casts a shadow. */
+  .verdict {
+    background: var(--card); border: 1px solid var(--rule);
+    border-top: 2px solid var(--ink); border-radius: 2px;
+    box-shadow: 0 18px 40px -30px rgb(20 24 31 / .55);
+  }
+  .verdict__head {
+    display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
+    padding: var(--s2) var(--s3);
+    border-bottom: 1px dashed var(--rule);
+  }
+  .verdict__title {
+    font: 600 .68rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .stamp {
+    margin-left: auto; display: inline-flex; align-items: center; gap: .45rem;
+    font: 700 .68rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    padding: .4rem .6rem; border-radius: 2px;
+    color: var(--stamp); background: var(--stamp-wash);
+    border: 1px solid currentColor;
+  }
+  .stamp::before {
+    content: ""; width: .42rem; height: .72rem; flex: none;
+    border: solid currentColor; border-width: 0 2px 2px 0;
+    transform: rotate(42deg) translateY(-.08rem);
+  }
+  .stamp--fail { color: var(--alarm); background: var(--alarm-wash); }
+  .stamp--fail::before {
+    width: .6rem; height: .6rem; border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(1,1);
+    clip-path: polygon(0 0,100% 100%,0 100%);
+  }
+  .verdict--fail { border-top-color: var(--alarm); }
+  .verdict__body { padding: var(--s3); }
+  .verdict__total {
+    padding: var(--s2) var(--s3);
+    border-top: 1px dashed var(--rule); background: var(--rule-soft);
+  }
+  ol.plain { margin: 0; padding-left: 1.2rem; }
+  ol.plain > li { margin-bottom: var(--s3); }
+  ol.plain > li:last-child { margin-bottom: 0; }
+  ol.plain > li::marker { font-family: var(--mono); color: var(--ink-soft); font-size: .85em; }
+
+  /* --- payment slip ---------------------------------------------------------------------- */
+  .copy { display: flex; gap: var(--s2); align-items: flex-end; margin-bottom: var(--s2); }
+  .copy > div { flex: 1; min-width: 0; }
+  .copy .val {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 2px;
+    padding: .5rem .6rem; font-family: var(--mono); font-size: .84rem;
+    word-break: break-all; font-variant-numeric: tabular-nums;
+  }
+  .copy button { padding: .55rem .7rem; font-size: .7rem; }
+  .amount-hero {
+    font: 600 1.6rem/1.1 var(--mono); font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .amount-hero span { font-size: .55em; color: var(--ink-soft); margin-left: .35em; }
+
+  .breakdown { margin: 0 0 var(--s3); font-size: .9rem; }
   .breakdown summary {
-    cursor: pointer; color: var(--muted); font-size: .84rem;
-    padding: .2rem 0; list-style-position: outside;
+    cursor: pointer; color: var(--ink-soft);
+    font: 500 .7rem/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+    padding: var(--s1) 0;
   }
   .breakdown summary:hover { color: var(--ink); }
   .breakdown .kv {
-    grid-template-columns: 1fr auto; gap: .3rem 1rem;
-    margin: .6rem 0 0; padding: .7rem .8rem;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    grid-template-columns: 1fr auto; gap: .3rem var(--s3);
+    margin: var(--s1) 0 0; padding: var(--s2);
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 2px;
   }
-  .breakdown .kv dd { text-align: right; font-variant-numeric: tabular-nums; }
-  .fielderr {
-    margin: .35rem 0 0; font-size: .84rem; color: var(--bad-ink);
+  .breakdown .kv dt { text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: .84rem; }
+  .breakdown .kv dd { text-align: right; }
+
+  footer {
+    margin-top: var(--s5); padding-top: var(--s3);
+    border-top: 1px solid var(--rule); color: var(--ink-soft);
   }
-  input[aria-invalid="true"] { border-color: var(--bad-line); }
-  /* There was no focus style at all, so keyboard users got whatever the browser felt like. */
-  :is(input, select, button, summary, a):focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px;
-  }
-  footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
-  a { color: var(--accent); }
+  a { color: var(--stamp); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
 <main>
+  <header class="masthead">
+    <span class="mark" aria-hidden="true"></span>
+    <span class="wordmark">Trimmy</span>
+    <span class="chip">Coston2 · testnet</span>
+  </header>
+
   <h1>Arm a rule with one XRPL payment</h1>
-  <p class="sub">
-    You keep your keys. There is no wallet to connect, nothing to install, and no FLR to hold.
-    This page builds the payment locally in your browser and then shows you, in plain English,
-    exactly what signing it will authorise.
-  </p>
+  <div class="lede">
+    <p class="sub">
+      You keep your keys. There is no wallet to connect, nothing to install, and no FLR to hold.
+      This page builds the payment locally in your browser and then shows you, in plain English,
+      exactly what signing it will authorise.
+    </p>
+    <p class="note">
+      The XRP here is testnet XRP and is not worth anything. Everything below behaves exactly as it
+      would with real money, which is the point of showing it to you.
+    </p>
+  </div>
 
   <div id="insecure" class="banner bad hidden" role="alert"></div>
 
-  <h2>1. Your XRPL account</h2>
+  <section class="step">
+  <h2>Your XRPL account</h2>
   <div class="panel">
     <div class="field">
       <label for="xrpl">XRPL testnet address</label>
@@ -131,7 +295,10 @@
     <dl class="kv hidden" id="account" style="margin-top:.9rem"></dl>
   </div>
 
-  <h2>2. The rule</h2>
+  </section>
+
+  <section class="step">
+  <h2>The rule</h2>
   <div class="panel">
     <div class="field">
       <label for="preset">What should happen</label>
@@ -184,17 +351,19 @@
   </div>
 
   <div id="out" class="hidden" aria-live="polite">
-    <h2>3. What you would be authorising</h2>
-    <div class="banner warn">
-      <strong>Read this before you send anything.</strong>
-      An XRPL payment cannot be recalled. The 42-byte memo below is the only thing that decides what
-      happens on Flare, and it is unreadable by eye — so this is it, decoded independently from the
-      bytes themselves rather than from what was typed above.
-    </div>
-    <div class="panel" id="decoded"></div>
+    <section class="step">
+      <h2 tabindex="-1" id="verdictHeading">What you would be authorising</h2>
+      <div class="banner warn">
+        <strong>Read this before you send anything.</strong>
+        An XRPL payment cannot be recalled. The 42-byte memo below is the only thing that decides
+        what happens on Flare, and it is unreadable by eye — so this is it, decoded independently
+        from the bytes themselves rather than from what was typed above.
+      </div>
+      <div id="decoded"></div>
+    </section>
 
-    <div id="privateStep" class="hidden">
-      <h2>4. Then tell the enclave your price</h2>
+    <section class="step hidden" id="privateStep">
+      <h2>Then tell the enclave your price</h2>
       <div class="banner warn">
         <strong>This payment does not carry your secret price, and it cannot.</strong>
         Anything in the payment is on a public ledger forever. Arming creates the rule with no
@@ -208,9 +377,10 @@
         </p>
         <div id="privateCmd"></div>
       </div>
-    </div>
+    </section>
 
-    <h2 id="sendHeading">4. Send it</h2>
+    <section class="step">
+    <h2 id="sendHeading">Send it</h2>
     <div class="panel">
       <p class="note" style="margin-top:0">
         Make this payment from your XRPL wallet. All three fields matter, and the memo most of all.
@@ -222,6 +392,9 @@
         payment would be silently donated to a stranger.
       </div>
     </div>
+  </div>
+
+    </section>
   </div>
 
   <div id="error" class="banner bad hidden" role="alert"></div>
@@ -461,7 +634,7 @@ $('build').addEventListener('click', () => {
     $('decoded').innerHTML = plain.html;
     const bd = paymentBreakdown(rule);
     $('payment').innerHTML =
-      copyRow('Amount', xrp(bd.total) + ' XRP')
+      copyRow('Amount', `<span class="amount-hero">${xrp(bd.total)}<span>XRP</span></span>`)
       + `<details class="breakdown"><summary>What makes up ${xrp(bd.total)} XRP</summary>
            <dl class="kv">${bd.rows.map(([k, v]) =>
              `<dt>${k}</dt><dd>${xrp(v)} XRP</dd>`).join('')}
@@ -475,7 +648,6 @@ $('build').addEventListener('click', () => {
     // rule armed without a provisioned secret simply never fires.
     const isPrivate = rule.trigger === 3;
     $('privateStep').classList.toggle('hidden', !isPrivate);
-    $('sendHeading').textContent = isPrivate ? '5. Send it' : '4. Send it';
     if (isPrivate) {
       const threshold = BigInt(Math.round(Number($('price').value) * 1e18));
       $('privateCmd').innerHTML = copyRow(
@@ -487,7 +659,10 @@ $('build').addEventListener('click', () => {
 
     $('out').classList.remove('hidden');
     wireCopyButtons();
-    $('out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Move focus to the verdict, not just the scroll position — otherwise "this payment is not
+    // safe to send" is delivered to sighted users only. Native focus scrolling already honours
+    // prefers-reduced-motion.
+    $('verdictHeading').focus();
   } catch (e) {
     showError(e instanceof Refusal ? 'Refused: ' + e.message : 'Could not build it: ' + e.message);
   }

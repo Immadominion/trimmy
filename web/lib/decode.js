@@ -99,9 +99,23 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
   }
 
   // ---- render ----------------------------------------------------------------------------------
-  let html = '';
+  //
+  // This is emitted as a `.verdict` — a document, not another form panel. The whole page turns on
+  // one fact, "did the memo really commit to this batch", and that fact used to render as the last
+  // row of a grey definition list in the same weight as the executor fee. A refusal was loud and a
+  // pass was a whisper; a verdict has to be equally legible in both directions.
+  const ok = matches && problems.length === 0;
+  let html = `<div class="verdict${ok ? '' : ' verdict--fail'}">
+    <div class="verdict__head">
+      <span class="verdict__title">Independent decode</span>
+      <span class="stamp${ok ? '' : ' stamp--fail'}">${
+        ok ? 'Memo verified' : 'Do not send'
+      }</span>
+    </div>
+    <div class="verdict__body">`;
+
   if (problems.length) {
-    html += `<div class="banner bad"><strong>This payment is not safe to send.</strong><ul>`
+    html += `<div class="banner bad" style="margin-top:0"><strong>This payment is not safe to send.</strong><ul>`
       + problems.map((p) => `<li>${esc(p)}</li>`).join('') + '</ul></div>';
   }
 
@@ -136,11 +150,27 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
   }
   html += '</ol>';
 
-  html += `<dl class="kv" style="margin-top:1.2rem">
-    <dt>Executor fee</dt><dd>${fmtUnits(fee, 6)} XRP</dd>
-    <dt>Commitment</dt><dd>0x${toHex(commitment)}</dd>
-    <dt>Memo matches</dt><dd>${matches ? 'yes — re-derived from the bytes above' : 'NO'}</dd>
-  </dl>`;
+  // The match result has been promoted into the stamp above, so it is deliberately not repeated
+  // here. The fingerprint goes in a <details> — it is the evidence, and it matters, but sixty-six
+  // hex characters should not be the last thing a reader's eye lands on.
+  html += `</ol></div>
+    <div class="verdict__total">
+      <dl class="kv">
+        <dt>Delivery fee</dt><dd>${fmtUnits(fee, 6)} XRP</dd>
+      </dl>
+      <details style="margin-top:.5rem">
+        <summary class="note" style="cursor:pointer">Fingerprint this page re-derived</summary>
+        <p class="mono" style="margin:.4rem 0 0">0x${toHex(commitment)}</p>
+        <p class="note" style="margin:.3rem 0 0">
+          ${ok
+            ? 'The memo carries this same value, so the payment really does commit to the two '
+              + 'actions above and to nothing else.'
+            : 'The memo carries a different value. Whatever this payment authorises, it is not '
+              + 'what is described above.'}
+        </p>
+      </details>
+    </div>
+  </div>`;
 
   return { html, problems, matches, commitment };
 }
