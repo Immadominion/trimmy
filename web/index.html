@@ -201,10 +201,12 @@
     transform: rotate(42deg) translateY(-.08rem);
   }
   .stamp--fail { color: var(--alarm); background: var(--alarm-wash); }
+  /* A proper X, not a rotated tick-fragment: two crossed bars from one box. */
   .stamp--fail::before {
-    width: .6rem; height: .6rem; border-width: 0 2px 2px 0;
-    transform: rotate(45deg) scale(1,1);
-    clip-path: polygon(0 0,100% 100%,0 100%);
+    width: .62rem; height: .62rem; border: 0; transform: rotate(45deg);
+    background:
+      linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
+      linear-gradient(currentColor, currentColor) center / 2px 100% no-repeat;
   }
   .verdict--fail { border-top-color: var(--alarm); }
   .verdict__body { padding: var(--s3); }
