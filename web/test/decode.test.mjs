@@ -28,7 +28,7 @@ test('recovers the settled payment from its bytes alone', () => {
   assert.match(d.html, /once, as soon as somebody runs it/);
   assert.doesNotMatch(d.html, /every minute/);
   assert.match(d.html, /1\.0094 XRP/);          // the allowance, decoded not restated
-  assert.match(d.html, /0\.0094 XRP per run/);  // keeper fee
+  assert.match(d.html, /0\.0094 yield-vault shares per run/);  // keeper fee result asset
 });
 
 test('a tampered pre-image is caught', () => {
@@ -54,6 +54,17 @@ test('a PRIVATE rule publishes no threshold and says so', () => {
   const d = decodeArmingPayment(b.memo, b.userOp);
   assert.match(d.html, /secret price held only inside a secure enclave/);
   assert.match(d.html, /Nothing on the public ledger reveals your price/);
+});
+
+test('a keeper fee is disclosed in the result asset, never mislabeled as XRP', () => {
+  const b = buildArmingPayment({ ...F, rule: { ...F.rule, verb:0, venueId:0, buyTokenId:1,
+    trigger:3, triggerValue:0n, slippageBips:50 } });
+  const d = decodeArmingPayment(b.memo, b.userOp, {
+    knownTokens: { 0: 'XRP', 1: 'FLR' },
+    tokenDecimals: { 0: 6, 1: 18 },
+  });
+  assert.match(d.html, /0\.0000000000000094 FLR per run/);
+  assert.doesNotMatch(d.html, /0\.0094 XRP per run/);
 });
 
 test('an unrecognised call is flagged rather than glossed over', () => {

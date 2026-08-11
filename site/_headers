@@ -1,0 +1,40 @@
+# Cloudflare Pages headers.
+#
+# The .md twins exist so an agent can fetch clean markdown instead of parsing
+# rendered HTML. Static hosts serve .md as application/octet-stream by default,
+# which makes a browser download the file and makes some fetchers skip it —
+# silently defeating the whole point while looking fine in local testing.
+
+/*.md
+  Content-Type: text/markdown; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/llms-full.txt
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+# Generated illustrations and brand marks change far less often than the live
+# interaction layer. Runtime CSS/JS are versioned in index.html on each release.
+/assets/art/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/assets/brands/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/assets/mark-*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# The arming page derives an address checksum with crypto.subtle and builds a
+# payment locally. It talks to one Flare RPC and loads nothing else, ever.
+/arm/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://coston2-api.flare.network; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

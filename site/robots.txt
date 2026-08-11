@@ -1,0 +1,10 @@
+# This site exists to be read, including by machines. Nothing here is private.
+Sitemap: https://trimmy.xyz/sitemap.xml
+
+User-agent: *
+Allow: /
+
+# Explicit permission rather than silence — the content is documentation of
+# public, on-chain facts and we would rather it were indexed correctly than
+# summarised from a stale copy.
+Content-Signal: ai-train=yes, search=yes, ai-input=yes

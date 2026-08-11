@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Trimmy social preview</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{width:2400px;height:1260px;margin:0;overflow:hidden}
+    body{position:relative;background:#191918 url('../../site/assets/art/texture-dark-grid.webp') 0 0/1248px 1248px repeat;color:#f6f3ec;font-family:Arial,Helvetica,sans-serif}
+    .brand{position:absolute;left:128px;top:80px;display:flex;align-items:center;gap:22px;font-size:42px;font-weight:800;letter-spacing:-.03em}.brand img{width:62px;height:62px}
+    .headline{position:absolute;z-index:5;left:122px;top:235px;width:1160px;font-family:Impact,'Arial Narrow',sans-serif;font-size:196px;line-height:.83;letter-spacing:-.015em;text-transform:uppercase}
+    .headline span{display:block;width:max-content;max-width:100%}
+    .headline__automation{margin-top:18px;padding:8px 28px 14px;background:#ffd34e;color:#191918;border:7px solid #191918;box-shadow:13px 15px 0 #0c0c0b;transform:rotate(-.6deg)}
+    .headline__last{display:flex!important;align-items:center;gap:28px;margin-top:15px}.headline__for{color:transparent;-webkit-text-stroke:5px #f6f3ec}.headline__xrp{position:relative;padding:5px 30px 10px;background:#6975f6;color:#191918;border:7px solid #191918;box-shadow:12px 14px 0 #0c0c0b}.headline__xrp::after{content:'';position:absolute;inset:-18px;border:4px dashed #6975f6}
+    .domain{position:absolute;left:132px;bottom:72px;font-size:36px;font-weight:800;letter-spacing:.02em}
+    .watcher{position:absolute;z-index:1;right:38px;top:-115px;width:610px;transform:rotate(10deg);filter:drop-shadow(18px 20px 0 rgba(0,0,0,.75))}
+    .rule{position:absolute;z-index:3;right:105px;top:215px;width:950px;min-height:895px;padding:50px;background:#f6f3ec;color:#191918;border:9px solid #191918;border-radius:28px;box-shadow:28px 31px 0 #6975f6,42px 47px 0 #191918;transform:rotate(1deg)}
+    .rule__head{display:flex;align-items:flex-start;justify-content:space-between;gap:30px;padding-bottom:28px;border-bottom:5px solid #191918}.eyebrow,.label{font-size:24px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.rule h1{margin:14px 0 0;font-size:62px;line-height:1}.status{display:flex;align-items:center;gap:12px;padding:14px 24px;background:#68d8a7;border:5px solid #191918;border-radius:999px;font-size:24px;font-weight:900;letter-spacing:.1em}.status i{width:16px;height:16px;background:#191918;border-radius:50%}
+    .logic{display:grid;gap:18px;padding:34px 0;border-bottom:5px solid #191918}.logic div{display:grid;grid-template-columns:125px 1fr;align-items:center;gap:24px}.logic .label{width:max-content;padding:12px 18px;background:#ffd34e;border:4px solid #191918}.logic div:last-child .label{background:#6975f6}.logic strong{font-size:34px;line-height:1.2}
+    .limits{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:28px 0}.limits div{min-height:115px;padding:19px;background:#e3dfd5;border:4px solid #191918;border-radius:12px}.limits span{display:block;font-size:19px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.limits strong{display:block;margin-top:13px;font-size:28px}
+    .trust{display:flex;align-items:center;gap:18px;margin-top:10px;padding:20px 23px;background:#68d8a7;border:5px solid #191918;font-size:25px;font-weight:900}.trust b{display:grid;place-items:center;width:42px;height:42px;background:#191918;color:#f6f3ec;border-radius:50%}
+    .seal{position:absolute;z-index:6;right:980px;bottom:56px;width:250px;aspect-ratio:1;transform:rotate(-11deg)}.seal img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(13px 15px 0 #191918)}.seal span{position:absolute;inset:0;display:grid;place-items:center;color:#191918;font-family:Impact,'Arial Narrow',sans-serif;font-size:29px;line-height:.9;text-align:center;text-transform:uppercase}
+  </style>
+</head>
+<body>
+  <div class="brand"><img src="../../site/assets/mark-64.png" alt=""><span>TRIMMY</span></div>
+  <div class="headline" aria-label="AI-friendly automation for XRP">
+    <span>AI-FRIENDLY</span>
+    <span class="headline__automation">AUTOMATION</span>
+    <span class="headline__last"><b class="headline__for">FOR</b><b class="headline__xrp">XRP</b></span>
+  </div>
+  <div class="domain">trimmy.xyz</div>
+
+  <img class="watcher" src="../../site/assets/art/hero-watcher-radar.webp" alt="">
+  <article class="rule">
+    <header class="rule__head">
+      <div><div class="eyebrow">Example rule</div><h1>Sell if XRP falls</h1></div>
+      <div class="status"><i></i>Watching</div>
+    </header>
+    <div class="logic">
+      <div><span class="label">When</span><strong>1 XRP reaches 150 FLR or less</strong></div>
+      <div><span class="label">Then</span><strong>Exchange 0.01 XRP for FLR</strong></div>
+    </div>
+    <div class="limits">
+      <div><span>Total limit</span><strong>0.12 XRP</strong></div>
+      <div><span>Each time</span><strong>0.01 XRP</strong></div>
+      <div><span>At most</span><strong>12 times</strong></div>
+      <div><span>Ends</span><strong>In 7 days</strong></div>
+    </div>
+    <div class="trust"><b>✓</b><span>Your keys stay with you. Anything unspent stays yours.</span></div>
+  </article>
+  <div class="seal" aria-hidden="true"><img src="../../site/assets/art/rule-seal.webp" alt=""><span>Set once<br>stays ready</span></div>
+</body>
+</html>
