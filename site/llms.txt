@@ -7,23 +7,42 @@
 The claim that is genuinely new is **persistence**, not wallet-lessness. Flare Smart Accounts and
 Axelar GMP already let an XRPL payment drive an EVM call with no EVM wallet and no gas token, and
 Trimmy is built on Smart Accounts. What Trimmy adds is a standing rule that outlives the payment:
-every other XRPL-to-Flare path is immediate dispatch — it fires once, now, and is gone.
+every other XRPL-to-Flare path is immediate dispatch. It fires once, now, and is gone.
 
 When fetching documentation, use explicit index.md paths for directories, e.g.
-https://trimmy.xyz/index.md — this returns clean markdown instead of rendered HTML.
+https://trimmy.xyz/index.md. This returns clean markdown instead of rendered HTML.
 For the whole site as a single file, see https://trimmy.xyz/llms-full.txt
 
 ## Product
 
-- [Trimmy](https://trimmy.xyz/index.md): the product page — rule types, how it works, private conditions, and the security model
+- [Trimmy](https://trimmy.xyz/index.md): the product page: rule types, how it works, private conditions, and the security model
 - [Arm a rule](https://trimmy.xyz/arm/): the arming page. Builds and explains the XRPL payment in the browser, and refuses a mistyped XRPL address offline before anything touches a chain
 
 ## How it works
 
-- [Rule types](https://trimmy.xyz/index.md#product): price-based, scheduled, private, and their user-defined limits
-- [The product journey](https://trimmy.xyz/index.md#how): choose the moment, set the boundaries, review, and let the rule keep watch
-- [Private rules](https://trimmy.xyz/index.md#private): what confidential compute protects and what the rule receives
-- [Security model](https://trimmy.xyz/index.md#security): no keys, no custody, and exact limits
+- [Documentation index](https://trimmy.xyz/docs/index.md): the product manual
+- [Start here](https://trimmy.xyz/docs/start-here/index.md): what Trimmy is and what you need before you begin
+- [Rule types](https://trimmy.xyz/docs/rule-types/index.md): the four triggers and three actions, and which are genuinely new
+- [Arming a rule](https://trimmy.xyz/docs/arming/index.md): step by step, including the address check that only works offline
+- [What happens after you arm](https://trimmy.xyz/docs/after-arming/index.md): attestation, execution, timings
+- [Managing and cancelling](https://trimmy.xyz/docs/managing/index.md): how a rule ends, and three ways to stop one early
+- [Private rules](https://trimmy.xyz/docs/private-rules/index.md): keeping the trigger price off chain, and the trust it costs
+- [Fees, limits and security](https://trimmy.xyz/docs/fees-limits-security/index.md): the exact allowance and what the contract cannot do
+- [Where Trimmy runs today](https://trimmy.xyz/docs/availability/index.md): the honest status
+
+## Developer reference
+
+- [Architecture](https://trimmy.xyz/developers/index.md): the system end to end and what is new about it
+- [Contracts](https://trimmy.xyz/developers/contracts/index.md): the public surface, the Rule struct, the errors
+- [The arming payment format](https://trimmy.xyz/developers/arming-format/index.md): the 42 byte memo and the nine-field pre-image, byte exact
+- [Running a keeper](https://trimmy.xyz/developers/keeper/index.md): what it polls, what it earns, what it cannot do
+- [Private triggers and the enclave](https://trimmy.xyz/developers/private-triggers/index.md): the Bounty 2 answer in four parts, and the two bypasses closed
+- [Deployments](https://trimmy.xyz/developers/deployments/index.md): every address, current and superseded, with what was wrong with each
+- [Evidence](https://trimmy.xyz/developers/evidence/index.md): the transaction ledger
+
+## Live
+
+- [Live rules](https://trimmy.xyz/rules/): every rule armed right now, read from Coston2 in the browser, no backend
 
 ## Evidence
 
@@ -36,7 +55,7 @@ For the whole site as a single file, see https://trimmy.xyz/llms-full.txt
 
 - [trimmy](https://github.com/Immadominion/trimmy): contracts (Foundry, 92 tests), the Go enclave handler, the Dart keeper, the arming builder and its independent decoder
 - [plimsoll](https://github.com/Immadominion/plimsoll): know what an XRPL payment will do on Flare before signing it. Trimmy's memo layout comes from Plimsoll's measured wire format, not the documented one
-- [flare-dart](https://github.com/Immadominion/flare-dart): the only Flare-specific Dart/Flutter SDK — 164 generated bindings. Trimmy's keeper runs on it
+- [flare-dart](https://github.com/Immadominion/flare-dart): the only Flare-specific Dart/Flutter SDK, 164 generated bindings. Trimmy's keeper runs on it
 
 ## On chain (Flare Coston2)
 
@@ -44,4 +63,4 @@ For the whole site as a single file, see https://trimmy.xyz/llms-full.txt
 - TrimmyConfidentialTrigger: 0x02EA709e2278EACDbA00D4A88caA604E3b35293b
 - TEE machine: 0xB33E5CF59e3ce1D58427B9F4E23d0444c128D3D7 (GCP_AMD_SEV, status ACTIVE)
 - FCC extension: 66052
-- FXRP/WC2FLR pool: 0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB — ours, and thin; Coston2 had no FXRP pool at all
+- FXRP/WC2FLR pool: 0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB, ours and thin; Coston2 had no FXRP pool at all

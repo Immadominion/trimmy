@@ -1,0 +1,163 @@
+<!doctype html>
+<!-- GENERATED from site/docs/private-rules/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Private rules | Trimmy</title>
+<meta name="description" content="How a PRIVATE rule keeps your trigger price off the chain, and the exact trust you take on in exchange.">
+<link rel="canonical" href="https://trimmy.xyz/docs/private-rules/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/private-rules/">
+<meta property="og:title" content="Private rules | Trimmy">
+<meta property="og:description" content="How a PRIVATE rule keeps your trigger price off the chain, and the exact trust you take on in exchange.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/" aria-current="page">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/" aria-current="page">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Private rules</h1>
+    <p class="doc-lede">How a PRIVATE rule keeps your trigger price off the chain, and the exact trust you take on in exchange.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<h2 id="the-number-you-do-not-want-to-publish">The number you do not want to publish</h2>
+<p>You want a rule that sells if XRP falls to a certain price. On a <code>PRICE_BELOW</code> rule that price is
+stored as <code>triggerValue</code>, where anyone can read it. It announces the exact price at which a large,
+price-insensitive sell will arrive. Centralised venues do not publish their stop books, and this is
+the reason.</p>
+<p>A <code>PRIVATE</code> rule is the same rule with the number withheld. Everything else stays public: the
+amount, the venue, the token pair, the budget, the expiry. The other three triggers are in
+<a href="/docs/rule-types/">Rule types</a>.</p>
+<h2 id="what-the-chain-holds-instead">What the chain holds instead</h2>
+<p>A commitment: a hash of your number that proves you fixed it in advance without revealing it. The
+rule stores <code>triggerValue = 0</code>, and the trigger contract stores
+<code>keccak256(threshold ‖ 0x1f ‖ salt ‖ 0x1f ‖ direction)</code>.</p>
+<p>The salt is a random string of at least 16 characters, and it is what makes the commitment worth
+anything: stop prices sit in a small, guessable range, so without one somebody could hash candidates
+until one matched.</p>
+<h2 id="where-your-number-actually-lives">Where your number actually lives</h2>
+<p>In the memory of one enclave: a Google Confidential Space virtual machine on AMD SEV hardware. You
+encrypt the threshold to that enclave's public key before it goes anywhere, so what crosses the
+chain is ciphertext and the only plaintext copy is inside the machine.</p>
+<p>Nothing is written to disk. Enclave memory is volatile, so a restart loses every secret and those
+rules stop firing until you provision again. A store that survived a restart would be one we could
+read.</p>
+<h2 id="what-the-enclave-answers">What the enclave answers</h2>
+<p>When a keeper wants to run your rule, the contract asks the enclave one question. The price in it is
+read from FTSO by the contract itself and is never supplied by the caller. An earlier version took
+it as an argument, which let a stranger fire another user's rule at an invented price and recover
+the secret in about twenty queries. That is fixed, with regression tests.</p>
+<p>A real reply:
+<code>{"ruleId":0,"fire":true,"commitment":"0xeca87739…","nonce":0,"issuedAt":1786297877}</code>. A yes or a
+no, the commitment it refers to, a replay-proof nonce, and the time it was formed. No threshold, no
+margin, no distance from firing. A distance would leak the number across repeated questions, so the
+enclave never computes one. The contract refuses a verdict older than 90 seconds.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>What an observer sees</th>
+<th>Public</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The rule, its amount, venue, pair, budget and expiry</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>The commitment, the verdict, and the trade after it</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Your threshold, and how close the price got</td>
+<td>no</td>
+</tr>
+</tbody>
+</table></div>
+<p>This hides the trigger, not the history. On Coston2, rule 0 was armed with a threshold of
+<code>1100000</code>, provisioned, evaluated and executed, and that value appears nowhere on chain.</p>
+<h2 id="what-you-are-trusting">What you are trusting</h2>
+<p>The trust model for <code>PRIVATE</code> is strictly weaker than the other three triggers. All of it:</p>
+<ul>
+<li><strong>One enclave, not a quorum. We run it.</strong></li>
+<li><strong>Its operator can censor you by declining to act.</strong> A private rule needs a fresh signed verdict,
+  so if we stop running the extension, your rule stops firing. <code>PRICE_BELOW</code>, <code>PRICE_ABOVE</code> and
+  <code>SCHEDULE</code> are permissionless: anyone can execute them, and every bound is re-derived on chain.</li>
+<li><strong>There is no on-chain heartbeat.</strong> A silent enclave and a price that never reached your number
+  look identical from outside. It is not built.</li>
+<li><strong>You are trusting AMD SEV and Google's attestation, which we did not build.</strong> The contract
+  accepts a verdict only from a live machine registered to this extension and reporting
+  <code>GCP_AMD_SEV</code>. It rejects <code>TEST_PLATFORM</code>, which matters: 254 of 268 active TEE machines on
+  Coston2 are simulated, hold the same live status on chain as real hardware, and share one code
+  hash constant, so a verdict from one proves nothing about what code ran.</li>
+<li><strong>The full code hash is not published,</strong> only its first four bytes, <code>0xe9ab7410…</code>. Until all 32
+  are out, nobody outside can rebuild the image and check the running code against it.</li>
+</ul>
+<p>A dishonest verdict is bounded: it only permits the rule to run. Execution re-derives the price
+from FTSO, applies the oracle floor and the slippage cap, respects the budget and the expiry, and
+pays proceeds to your own account. The worst a lying enclave achieves is firing your rule early, at
+a price inside the floor. Cancelling calls <code>forget</code>, which asks the enclave to drop your secret, and
+you are trusting that it did.</p>
+<h2 id="arming-one-today">Arming one today</h2>
+<p>Provisioning is a command-line step, on Coston2 only
+(<a href="/docs/availability/">where Trimmy runs today</a>).</p>
+<pre><code class="language-bash">go run ./cmd/trimmy-private \
+  -rule 0 -threshold 1100000 -direction 0 -account 0x07a76b5c…
+</code></pre>
+<p>A private execution costs 517,962 gas against 383,451 for the plain path.</p>
+<h2 id="if-software-is-composing-the-rule">If software is composing the rule</h2>
+<p>A Trimmy rule is a bounded mandate an agent can compose but cannot exceed: an exact allowance rather
+than an unlimited one, one verb, one venue, one token pair fixed at deploy time, a hard budget, an
+expiry, and an epoch counter that cancels everything at once. A compromised agent extracts nothing,
+because <code>PersonalAccount.executeUserOp</code> is <code>onlyController</code> and the agent is not the controller.</p>
+<p>A private rule adds one thing: the software composing it never learns your price. It handles a
+commitment and a ciphertext, and neither reveals the number, so it can pick the venue, size and
+schedule without knowing when your rule fires. That holds only if you do the encrypting.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/private-rules/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#the-number-you-do-not-want-to-publish">The number you do not want to publish</a></li><li><a href="#what-the-chain-holds-instead">What the chain holds instead</a></li><li><a href="#where-your-number-actually-lives">Where your number actually lives</a></li><li><a href="#what-the-enclave-answers">What the enclave answers</a></li><li><a href="#what-you-are-trusting">What you are trusting</a></li><li><a href="#arming-one-today">Arming one today</a></li><li><a href="#if-software-is-composing-the-rule">If software is composing the rule</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

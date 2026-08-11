@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- GENERATED from site/docs/managing/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Managing and cancelling rules | Trimmy</title>
+<meta name="description" content="How to find your rules, how one ends by itself, and the three ways to stop one early: cancel, an epoch bump, or a guardian.">
+<link rel="canonical" href="https://trimmy.xyz/docs/managing/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/managing/">
+<meta property="og:title" content="Managing and cancelling rules | Trimmy">
+<meta property="og:description" content="How to find your rules, how one ends by itself, and the three ways to stop one early: cancel, an epoch bump, or a guardian.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/" aria-current="page">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/" aria-current="page">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Managing and cancelling rules</h1>
+    <p class="doc-lede">How to find your rules, how one ends by itself, and the three ways to stop one early: cancel, an epoch bump, or a guardian.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>You armed a rule and closed the browser. It keeps working. Here is how to look at one, how it stops on its own, and how to stop it early.</p>
+<h2 id="find-your-account-then-your-rules">Find your account, then your rules</h2>
+<p>Rules are stored against your personal account, not your XRPL address. Derive the account from the canonical controller, then read the rules:</p>
+<pre><code class="language-bash">R=https://coston2-api.flare.network/ext/C/rpc
+CTRL=0x434936d47503353f06750Db1A444DBDC5F0AD37c
+TRIMMY=0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C
+
+cast call $CTRL &quot;getPersonalAccount(string)(address)&quot; &quot;rYourXRPLAddress&quot; --rpc-url $R
+cast call $TRIMMY &quot;ruleCount()(uint256)&quot; --rpc-url $R
+</code></pre>
+<p>Trimmy keeps every rule in one global array. <code>ruleCount()</code> gives its length and <code>ruleAt(id)</code> returns one rule. There is no per-account index, so finding yours means reading rules and comparing the first field, <code>account</code>, with your personal account. <code>ruleCount()</code> returned <code>4</code> when this page was written, so a scan is quick today. It will not stay quick.</p>
+<p>The fields worth reading are <code>active</code>, <code>spent</code> against <code>totalSellAmount</code>, <code>expiry</code> and <code>epoch</code>. <a href="/docs/fees-limits-security/">Fees, limits and security</a> explains the fee and slippage fields.</p>
+<h2 id="how-a-rule-ends-without-you">How a rule ends without you</h2>
+<p><strong>It spends its total.</strong> Each execution adds the amount actually pulled to <code>spent</code>. When <code>spent</code> reaches <code>totalSellAmount</code>, <code>active</code> flips to false in that same transaction and the rule can never run again.</p>
+<p><strong>Its expiry passes.</strong> Every execution path reverts <code>RuleExpired</code> once the block clock is past <code>expiry</code>. Expiry is fixed at arm time and can be at most 365 days out (<code>MAX_RULE_LIFETIME</code>, read live as 31,536,000 seconds).</p>
+<p>Rule 1 on the live deployment is the first kind. It reads back <code>totalSellAmount</code> 1,000,000, <code>spent</code> 1,000,000, <code>active</code> false, <code>keeperFeePaid</code> 9,400 of a 9,400 budget. It closed itself and paid the keeper what it owed. A finished rule is not deleted: it stays in the array as a permanent read-only record.</p>
+<h2 id="cancel-one-rule">Cancel one rule</h2>
+<p><code>cancel(ruleId)</code> sets <code>active</code> to false. Two addresses may call it: the rule's own account, and the guardian that account has appointed. Nobody else, including us.</p>
+<p>Cancelling does not touch the ERC-20 allowance your arming payment granted. That allowance is held by your personal account against the Trimmy contract, not against a rule, so it survives. A dead rule cannot draw on it, because <code>execute</code> refuses an inactive rule before it pulls anything, but another live rule on the same account can, capped by its own <code>totalSellAmount</code>. To take it back, set the allowance to zero in a call from the personal account.</p>
+<h2 id="cancel-everything-in-one-write">Cancel everything in one write</h2>
+<p><code>cancelAll(account)</code> adds one to <code>epochOf[account]</code>. Every rule records the epoch it was armed under, and every execution path rejects a rule whose stored epoch is not current. One storage write kills every rule on the account, whether that is one rule or fifty. Rules armed afterwards carry the new epoch and are unaffected.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>how a rule ends</th>
+<th>who acts</th>
+<th>scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spent</code> reaches <code>totalSellAmount</code></td>
+<td>nobody</td>
+<td>that rule</td>
+</tr>
+<tr>
+<td><code>expiry</code> passes</td>
+<td>nobody</td>
+<td>that rule</td>
+</tr>
+<tr>
+<td><code>cancel(ruleId)</code></td>
+<td>account or guardian</td>
+<td>that rule</td>
+</tr>
+<tr>
+<td><code>cancelAll(account)</code></td>
+<td>account or guardian</td>
+<td>every rule on the account</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="guardians-and-why-the-panic-button-needs-one">Guardians, and why the panic button needs one</h2>
+<p><code>setGuardian(address)</code> names one address that may cancel on your account's behalf. A guardian can call <code>cancel</code> and <code>cancelAll</code> and nothing else: it cannot arm, move your tokens or change your allowance.</p>
+<p>It matters because of how your account is driven. <code>PersonalAccount.executeUserOp</code> is <code>onlyController</code>, measured on chain, so a call from your account has to arrive as an XRPL payment plus an attestation round trip: minutes, not seconds. Plimsoll measured direct-mint settlement over 30 payments at p50 131 s and p95 170 s, on the branch the public executor does act on. Trimmy uses the <code>0xFE</code> Smart Accounts branch, which the public executor ignored even with a full fee offered, so we run our own executor for it. A guardian is an ordinary EVM address, so its cancel lands in one block.</p>
+<p>Neither the command-line arming tool nor the web page builds a <code>setGuardian</code>, <code>cancel</code> or <code>cancelAll</code> batch today. They build the approve-and-arm batch only. Both calls are live on the contract, but you compose them yourself.</p>
+<h2 id="claimableat-and-claimperiod">claimableAt and claimPeriod</h2>
+<p>These belong to vault-exit rules, which settle in two steps because no FXRP vault on Coston2 has a synchronous exit: <code>maxWithdraw</code> and <code>maxRedeem</code> read zero on all three measured. <code>execute</code> queues the redemption and writes <code>claimableAt</code> and <code>claimPeriod</code>; a separate permissionless <code>claim(ruleId)</code> collects the assets for <code>rule.account</code>.</p>
+<p>The wait is longer than the vault's <code>lagDuration</code> suggests. The vault files the request under a day-index bucket and its claim check requires the current day index to be strictly greater, so the earliest claim is the next UTC midnight: up to about 24 hours, and a further day if the request lands within <code>lagDuration</code> of midnight. <code>TESTearnXRP</code> reports a <code>lagDuration</code> of 300 seconds, which is not the number that gates the claim.</p>
+<p>Cancelling a rule with a redemption pending does not strand the money. <code>claim</code> deliberately skips the liveness check <code>execute</code> applies, so a cancelled or epoch-bumped rule still pays its assets to <code>rule.account</code>, with keeper and protocol fees zeroed.</p>
+<p>One limit, plainly: no vault-exit rule can be armed against the current deployment. The token allowlist holds FXRP and WC2FLR only, and a vault-exit rule must sell the vault's share token, so <code>arm</code> reverts <code>VaultAssetMismatch</code>. Simulated against the live contract on 2026-08-11.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/managing/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#find-your-account-then-your-rules">Find your account, then your rules</a></li><li><a href="#how-a-rule-ends-without-you">How a rule ends without you</a></li><li><a href="#cancel-one-rule">Cancel one rule</a></li><li><a href="#cancel-everything-in-one-write">Cancel everything in one write</a></li><li><a href="#guardians-and-why-the-panic-button-needs-one">Guardians, and why the panic button needs one</a></li><li><a href="#claimableat-and-claimperiod">claimableAt and claimPeriod</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

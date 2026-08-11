@@ -1,0 +1,190 @@
+<!doctype html>
+<!-- GENERATED from site/docs/after-arming/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What happens after you arm | Trimmy</title>
+<meta name="description" content="The timeline from a settled XRPL payment to a rule that executes itself, with measured times and who does each step.">
+<link rel="canonical" href="https://trimmy.xyz/docs/after-arming/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/after-arming/">
+<meta property="og:title" content="What happens after you arm | Trimmy">
+<meta property="og:description" content="The timeline from a settled XRPL payment to a rule that executes itself, with measured times and who does each step.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/" aria-current="page">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/" aria-current="page">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>What happens after you arm</h1>
+    <p class="doc-lede">The timeline from a settled XRPL payment to a rule that executes itself, with measured times and who does each step.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>Your payment is sent. From here nothing needs you: you can close the tab, and no support desk is
+waiting on you. Four things happen, and only the first is yours.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Who does it</th>
+<th>Measured on Coston2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The payment validates on XRPL</td>
+<td>your wallet</td>
+<td><code>tesSUCCESS</code>, ledger 19771685, 2026-08-09 run</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The Flare Data Connector attests it</td>
+<td>Flare's data providers, on request</td>
+<td>proof on the 5th poll in one run, the 8th in another, 20 s apart</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Smart Accounts runs the committed batch</td>
+<td>an executor</td>
+<td>one transaction, 742,307 and 747,096 gas in two runs</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The rule executes when its condition is met</td>
+<td>anyone</td>
+<td>383,451 gas per run, 517,962 for a private rule</td>
+</tr>
+</tbody>
+</table></div>
+<p>The numbers here come from two complete runs on chain, 2026-08-07 and 2026-08-09.</p>
+<h2 id="the-attestation">The attestation</h2>
+<p>Flare does not read the XRP Ledger directly. Someone requests an attestation of your transaction id
+from the Flare Data Connector, paying a small fee (1,000 wei in the first run). The request joins a
+voting round, and the proof can be fetched once that round finalises.</p>
+<p>Measured: the proof arrived on the fifth poll in one run and the eighth in another, 20 seconds
+apart. Rounds are usually under two minutes on Coston2, but one took over fifteen. Expect minutes,
+not seconds.</p>
+<h2 id="your-batch-runs-on-your-account">Your batch runs on your account</h2>
+<p>With the proof in hand the executor calls <code>executeDirectMintingWithData</code>, passing both the proof and
+the user operation your 42-byte memo commits to. FAssets mints FXRP into the personal account
+derived from your XRPL address, and that account runs the two calls you reviewed: the exact
+allowance, then the rule.</p>
+<p>State before and after, from the 2026-08-07 run:</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">before</th>
+<th style="text-align: right;">after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rules on the contract</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td>next instruction number</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr>
+<td>your account's FXRP</td>
+<td style="text-align: right;">3.6</td>
+<td style="text-align: right;">8.4</td>
+</tr>
+<tr>
+<td>allowance to Trimmy</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1,009,400, exact</td>
+</tr>
+</tbody>
+</table></div>
+<p>If the memo does not commit to that pre-image, the mint reverts. The executor is a courier: it can
+delay your payment, not change it.</p>
+<h2 id="somebody-has-to-execute-the-arming-and-today-it-is-us">Somebody has to execute the arming, and today it is us</h2>
+<p>The public Coston2 executor did not pick up either of our arming payments, at 600 seconds each. One
+offered it nothing, which explains itself. The other offered the full 100,000 UBA delivery fee and
+was still ignored, because the public executor does not act on the <code>0xFE</code> Smart Accounts branch that
+Trimmy uses. Measured, not assumed, so Trimmy runs its own executor for this step.</p>
+<p>The executor is run against your transaction id. Nothing in the repository watches the XRP Ledger
+for arming payments on its own.</p>
+<p>On the other branch the same executor minted 30 of 30 payments carrying a full fee, median 131
+seconds. That is the closest thing to a normal expectation, and it is not our branch.</p>
+<p>Until an executor acts, your payment sits at the Core Vault. It does not fail, and nothing happens.
+One of our early payments, which carried a zero fee, is still sitting there.</p>
+<h2 id="then-the-rule-waits-and-anyone-can-run-it">Then the rule waits, and anyone can run it</h2>
+<p>The rule is now on chain and <code>execute()</code> is permissionless. The contract re-derives every bound at
+execution time from the stored rule and a fresh oracle read, so the caller is trusted with nothing
+and appears once, as the recipient of the flat fee the rule carries: 9,400 units of the result asset
+per run by default, against a measured minimum viable fee of about 4,698 units at 383,451 gas. You
+never pay gas.</p>
+<p>Demonstrated with a keeper identity that is neither the user nor the deployer: it started with zero,
+found the rule, executed it, and ended with exactly the 9,400 it was owed. The proceeds went to the
+rule's account, not the caller's.</p>
+<p>Timing: our keeper sweeps every 15 seconds by default, and the floor is one block, 1 to 3 seconds
+measured. It reads the same feed the contract re-checks, so it has no information advantage. A price
+move shorter than one block cannot be caught, and near a threshold the feed oscillates across it, so
+failed attempts are ordinary. Call it one-block conditional execution against the FTSO with an
+oracle-enforced floor. It is not stop-loss protection.</p>
+<p>A scheduled rule is eligible the moment it is armed: the first run happens as soon as somebody runs
+it, and the interval governs the gap after that. A private rule needs its threshold provisioned to
+the enclave first, and the enclave's operator can decline to issue a verdict, which is why that
+trigger is the weakest of the four. See <a href="/docs/rule-types/">Rule types</a>.</p>
+<h2 id="nobody-is-on-call-including-you">Nobody is on call, including you</h2>
+<p>After the payment there is nothing to keep open. The rule ends on its own: when its budget is spent,
+when it expires, or when you cancel it. Cancelling one rule, or every rule at once with the epoch
+bump, is a Flare transaction; from XRPL it costs another payment and the same wait, so set the
+expiry you want when you <a href="/docs/arming/">arm</a>.</p>
+<p>All of this is Coston2 testnet. Nothing has run on Flare mainnet.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/after-arming/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#the-attestation">The attestation</a></li><li><a href="#your-batch-runs-on-your-account">Your batch runs on your account</a></li><li><a href="#somebody-has-to-execute-the-arming-and-today-it-is-us">Somebody has to execute the arming, and today it is us</a></li><li><a href="#then-the-rule-waits-and-anyone-can-run-it">Then the rule waits, and anyone can run it</a></li><li><a href="#nobody-is-on-call-including-you">Nobody is on call, including you</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

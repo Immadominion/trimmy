@@ -1,9 +1,15 @@
-# Trimmy — conditional execution for XRP
+# Trimmy: conditional execution for XRP
 
-**One XRPL payment arms a rule. The rule then executes itself.** No EVM wallet, no gas token, no
-browser extension, and nobody has to be online when the condition is met.
+**One XRPL payment leaves behind a rule that keeps watching the market after you stop.** When the
+condition is met, whoever runs it collects a fee the rule itself carries, so somebody will.
 
-Live on Coston2. Both halves below have run end to end on chain — every claim on this page has a
+Flare Smart Accounts already lets an XRPL payment drive an EVM call with no EVM wallet and no gas
+token, and Trimmy is built directly on it. What Trimmy adds is what the payment *leaves behind*.
+Every other path from XRPL to Flare (Smart Accounts, Axelar GMP, intent relayers) is immediate
+dispatch: the message fires once, now, and is gone. A Trimmy rule persists, re-evaluates for days,
+and carries its own execution bounty, so nobody has to be online when the condition is met.
+
+Live on Coston2. Both halves below have run end to end on chain. Every claim on this page has a
 transaction behind it in [`docs/GROUND-TRUTH.md`](docs/GROUND-TRUTH.md).
 
 | | address |
@@ -11,8 +17,8 @@ transaction behind it in [`docs/GROUND-TRUTH.md`](docs/GROUND-TRUTH.md).
 | `Trimmy` | [`0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C`](https://coston2-explorer.flare.network/address/0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C) |
 | `TrimmyConfidentialTrigger` | [`0x02EA709e2278EACDbA00D4A88caA604E3b35293b`](https://coston2-explorer.flare.network/address/0x02EA709e2278EACDbA00D4A88caA604E3b35293b) |
 | FCC extension | `66052` |
-| TEE machine | `0xB33E5CF59e3ce1D58427B9F4E23d0444c128D3D7` — `GCP_AMD_SEV`, real hardware |
-| FXRP/WC2FLR pool | [`0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB`](https://coston2-explorer.flare.network/address/0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB) — **ours**, see below |
+| TEE machine | `0xB33E5CF59e3ce1D58427B9F4E23d0444c128D3D7`, `GCP_AMD_SEV`, real hardware |
+| FXRP/WC2FLR pool | [`0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB`](https://coston2-explorer.flare.network/address/0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB), **ours**, see below |
 
 ---
 
@@ -22,7 +28,7 @@ An XRP holder who wants "sell into the vault every hour" or "get me out if it dr
 options today. Watch the chart themselves, or hand their keys to someone who will. The second is how
 most people lose money in this market, and the first does not work while you are asleep.
 
-Everything needed to fix that already exists on Flare — FTSO for prices, FDC for proving an XRPL
+Everything needed to fix that already exists on Flare: FTSO for prices, FDC for proving an XRPL
 payment happened, FAssets for the XRP itself, Smart Accounts so an XRPL payment can drive an EVM
 call. What did not exist is the thing that ties them together and needs nothing from the user
 afterwards.
@@ -51,6 +57,16 @@ whoever gets there first, because executing pays a fee that the rule itself carr
 | `SCHEDULE` | every N seconds | anyone |
 | `PRIVATE` | **a secret threshold held inside a TEE** is met | anyone, given a signed verdict |
 
+Two of these are worth placing against what the XRPL can already do on its own, so the new part is
+not overstated. **`SCHEDULE` is not a new capability**, XRPL Escrow has offered non-custodial
+time-locked release via `FinishAfter` for years. What Trimmy adds there is the action (a rule can
+*do* something with the money rather than merely release it) and the keeper economics. The price
+triggers are different: the XRPL's own documentation states the ledger "does not natively represent
+concepts such as market orders, stop orders, or trading on leverage," and a native `StopOrder`
+amendment is still only an open discussion. A non-custodial stop for XRP does not exist today, and
+that is the gap this fills. Note the clock on it: XLS-0100 Smart Escrows plus XLS-47 price oracles
+would let the XRPL do price-conditional release natively once both ship.
+
 `PRIVATE` exists because a published stop price is a target. The other three store `triggerValue` in
 the clear, so anybody reading `ruleAt(id)` knows exactly when a large, price-insensitive sell will
 arrive. That is why centralised venues do not publish stop books.
@@ -75,13 +91,13 @@ Two properties took real work and are worth naming, because both were bugs first
 
 - **The evaluation price comes from the chain, never the caller.** `requestEvaluation` used to take
   a caller-supplied price. That let any stranger ask "does this rule fire at a price of 1?", collect
-  the genuine signed verdict from the proxy's public endpoint, and fire someone else's rule — and,
-  by probing, binary-search the secret in about twenty queries.
+  the genuine signed verdict from the proxy's public endpoint, and fire someone else's rule. By probing, they could
+  binary-search the secret in about twenty queries.
 - **A verdict must answer a question this contract asked.** Otherwise a verdict minted by any other
   instruction satisfies `acceptVerdict` and every other check is decoration.
 
 Both are pinned by [`test/VerdictBinding.t.sol`](contracts/test/VerdictBinding.t.sol) and re-verified
-against the live contract — see [`docs/GROUND-TRUTH.md` §000](docs/GROUND-TRUTH.md).
+against the live contract. See [`docs/GROUND-TRUTH.md` §000](docs/GROUND-TRUTH.md).
 
 **The trust model here is strictly weaker than the other three triggers, and the code says so.** A
 `PRIVATE` rule needs one enclave to be running, so its operator can censor it by declining to act.
@@ -93,7 +109,7 @@ The two are never described as equally trustless.
 - **No owner, no admin, no proxy, no pause, no rescue.** The token and venue allowlists are written
   once in the constructor and no code path can change them. A mutable venue registry is a rug
   vector, and the security argument rests on the reachable external calls being fixed at deploy time.
-- **One oracle read is not a price.** Every quote is two-legged — sell feed against buy feed — so a
+- **One oracle read is not a price.** Every quote is two-legged, sell feed against buy feed, so a
   threshold keeps its meaning whatever the counter-token is worth. A single-leg comparison silently
   assumes a $1 peg.
 - **Refuse rather than guess.** A stale feed, a future-dated feed, a missing enclave secret and an
@@ -104,18 +120,18 @@ The two are never described as equally trustless.
 
 | path | what it is |
 | --- | --- |
-| [`contracts/`](contracts/) | `Trimmy.sol`, `Quote.sol`, `TrimmyConfidentialTrigger.sol` — Foundry, 92 tests |
+| [`contracts/`](contracts/) | `Trimmy.sol`, `Quote.sol`, `TrimmyConfidentialTrigger.sol`. Foundry, 92 tests |
 | [`fcc/extension/`](fcc/extension/) | the enclave handler (Go) and the tooling that attests and registers it |
-| [`keeper/`](keeper/) | permissionless executor, Dart, on our own [`../sdk`](../sdk) |
+| [`keeper/`](keeper/) | permissionless executor. Dart, on our own [`../sdk`](../sdk) |
 | [`arming/`](arming/) | builds the XRPL arming payment, and an **independent decoder** that refuses tampered ones |
-| [`web/`](web/) | the arming page — static, no dependencies, shows you what you are signing before you sign it |
+| [`web/`](web/) | the arming page. Static, no dependencies, and it shows you what you are signing before you sign it |
 | [`docs/GROUND-TRUTH.md`](docs/GROUND-TRUTH.md) | every measured fact, with the command that produced it |
 | [`research/`](research/) | architecture, and the adversarial reviews that changed it |
 
 Built on two of our own libraries: [`../sdk`](../sdk), a pure-Dart Flare SDK that never signs, and
 [`../plimsoll`](../plimsoll), which decodes XRPL→Flare payments so a user can see what they are
 authorising. Trimmy's arming payload is built on Plimsoll's **measured** memo layout, not the
-documented one — the TypeScript example in circulation lists ten fields where the wire format is the
+documented one, the TypeScript example in circulation lists ten fields where the wire format is the
 nine-field EIP-4337 v0.7 struct, and a wrong layout does not fail loudly, it produces a commitment
 that never matches.
 
@@ -135,10 +151,10 @@ that does not match its pre-image.
 
 Coston2 testnet. What is not done, stated plainly rather than omitted:
 
-- Coston2 had **no FXRP pool at all** — measured, all 80 combinations of 5 factories × 4
+- Coston2 had **no FXRP pool at all**, measured, all 80 combinations of 5 factories × 4
   counter-tokens × 4 fee tiers returned `address(0)`. So we deployed and seeded
   [`0xafcA1C5D…`](https://coston2-explorer.flare.network/address/0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB)
-  ourselves. **It is ours and it is thin** — 0.31 FXRP and 50 WC2FLR, concentrated ±5%. A 0.01 FXRP
+  ourselves. **It is ours and it is thin**, 0.31 FXRP and 50 WC2FLR, concentrated ±5%. A 0.01 FXRP
   sell executes at 38 bips of cost; a 0.05 FXRP sell is refused. Both are recorded in
   [§3a](docs/GROUND-TRUTH.md).
 - **One-tap signing is not built.** [`web/`](web/) builds and explains the payment entirely in the

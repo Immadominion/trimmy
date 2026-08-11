@@ -1,0 +1,429 @@
+<!doctype html>
+<!-- GENERATED from site/developers/arming-format/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The arming payment format | Trimmy</title>
+<meta name="description" content="Byte-exact wire spec for the 42 byte 0xFE memo, the nine-field PackedUserOperation pre-image it commits to, and the batch calldata inside it.">
+<link rel="canonical" href="https://trimmy.xyz/developers/arming-format/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/developers/arming-format/">
+<meta property="og:title" content="The arming payment format | Trimmy">
+<meta property="og:description" content="Byte-exact wire spec for the 42 byte 0xFE memo, the nine-field PackedUserOperation pre-image it commits to, and the batch calldata inside it.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/" aria-current="page">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/" aria-current="page">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Developer reference</p>
+    <h1>The arming payment format</h1>
+    <p class="doc-lede">Byte-exact wire spec for the 42 byte 0xFE memo, the nine-field PackedUserOperation pre-image it commits to, and the batch calldata inside it.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>One XRPL payment arms a Trimmy rule. Two artefacts decide what that payment does, and only one of them is on the ledger.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>artefact</th>
+<th>where it travels</th>
+<th>size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>memo</td>
+<td>XRPL <code>Payment.Memos[0].Memo.MemoData</code></td>
+<td>42 bytes</td>
+</tr>
+<tr>
+<td>user operation pre-image</td>
+<td>off chain, handed to an executor</td>
+<td>1,440 bytes for the reference batch below</td>
+</tr>
+<tr>
+<td>commitment</td>
+<td>inside the memo</td>
+<td>32 bytes</td>
+</tr>
+</tbody>
+</table></div>
+<p>The memo commits to the pre-image and to nothing else. A user signing in Xaman sees 42 bytes, 32 of which are a hash, so nothing visible at signing time describes where the money goes. Everything below is the measured layout, taken from <a href="https://github.com/Immadominion/trimmy/blob/main/web/lib/arming.js"><code>web/lib/arming.js</code></a>, <a href="https://github.com/Immadominion/trimmy/blob/main/arming/bin/arm.dart"><code>arming/bin/arm.dart</code></a>, and a committed fixture from a payment that settled: XRPL transaction <code>384FE782BE520662EA579AB67A2232DE5BD650A8A0E2ACB75C2B8C80514B778A</code>, ledger 19771685, which armed rule 1 on Trimmy <code>0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C</code>.</p>
+<p>Coston2 testnet only. Nothing here has been exercised on Flare mainnet.</p>
+<h2 id="the-42-byte-memo">The 42 byte memo</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th style="text-align: right;">offset</th>
+<th style="text-align: right;">length</th>
+<th>field</th>
+<th>encoding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td>opcode</td>
+<td><code>0xFE</code>, Smart Accounts custom instruction</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td><code>walletId</code></td>
+<td>single byte, <code>0</code> in every payment sent so far</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">8</td>
+<td><code>executorFeeUBA</code></td>
+<td><code>uint64</code> big endian, FXRP base units (6 decimals)</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">32</td>
+<td>commitment</td>
+<td><code>keccak256(abi.encode(PackedUserOperation))</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Any other length is not a short memo, it is a different instruction. The reference payment's memo is <code>FE0000000000000186A0EBBE0EE068F4BA0A9E39E41FDCA1DBF26864AADDB0AA42E59371EB67B7CE96CC</code>: opcode <code>FE</code>, walletId <code>00</code>, fee <code>00000000000186A0</code> (100,000 UBA = 0.1 XRP), then commitment <code>0xebbe0ee068f4ba0a9e39e41fdca1dbf26864aaddb0aa42e59371eb67b7ce96cc</code>.</p>
+<p>The fee lives in the memo header, not in the batch, so two payments differing only in fee share a pre-image and differ in memo. That is the one field you can change without re-deriving the commitment, and it is pinned by a test.</p>
+<p><strong>A zero <code>executorFeeUBA</code> does not fail.</strong> It produces a payment nobody executes, which sits at the Core Vault while the XRP has already left the sender's control. Both encoders refuse it rather than warning. <code>getDirectMintingExecutorFeeUBA</code> read 100,000 on Coston2.</p>
+<h2 id="the-xrpl-envelope">The XRPL envelope</h2>
+<p><a href="https://github.com/Immadominion/trimmy/blob/main/arming/xrpl/send.mjs"><code>arming/xrpl/send.mjs</code></a> sets <code>MemoData</code> only, with no <code>MemoType</code> and no <code>MemoFormat</code>, and refuses a memo that is not 84 hex characters starting <code>FE</code>.</p>
+<p>Two envelope facts matter as much as the bytes:</p>
+<ul>
+<li><strong>No <code>DestinationTag</code>.</strong> A registered tag takes precedence over the memo, the memo is not read at all, and the payment credits the tag holder.</li>
+<li><strong>Amount floor 200,001 drops.</strong> Measured against the Coston2 asset manager, <code>getDirectMintingMinimumFeeUBA</code> and <code>getDirectMintingExecutorFeeUBA</code> are 100,000 each. Anything from 0.1 to 0.2 XRP inclusive delivers the recipient exactly zero, with no event and no revert. The protocol's own <code>paymentTooSmall</code> flag compares against the first fee only, so it is false across that whole band. Destination is the Core Vault, <code>rDhpmiPq4BVBDWMVdSrmkgt8thKyRzGV1p</code>.</li>
+</ul>
+<h2 id="packeduseroperation-nine-fields-not-ten">PackedUserOperation: nine fields, not ten</h2>
+<p>The wire format is the nine-field EIP-4337 v0.7 <code>PackedUserOperation</code>. A widely-circulated TypeScript example lists ten. Getting this wrong does not fail loudly. It produces a commitment that never matches the batch, and the mint reverts with <code>CustomInstructionHashMismatch(bytes32,bytes32)</code>, selector <code>0xad79273d</code>.</p>
+<p><code>abi.encode</code> of a single dynamic tuple emits a <strong>leading <code>0x20</code> offset word</strong> before the struct. Omitting it shifts every subsequent offset and changes the hash. The 1,440 byte reference pre-image (<a href="https://github.com/Immadominion/trimmy/blob/main/web/test/fixtures/settled-payment-384FE782.userop.hex">fixture</a>) reads:</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th style="text-align: right;">offset</th>
+<th style="text-align: right;">length</th>
+<th>field</th>
+<th>value in the fixture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">32</td>
+<td>offset to the struct</td>
+<td><code>0x20</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">32</td>
+<td><code>sender</code></td>
+<td><code>0x07a76b5c3d03f5bff4cb3e043b1d17a1b40920bf</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">64</td>
+<td style="text-align: right;">32</td>
+<td><code>nonce</code></td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">96</td>
+<td style="text-align: right;">32</td>
+<td>offset to <code>initCode</code></td>
+<td><code>0x120</code> (288)</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">32</td>
+<td>offset to <code>callData</code></td>
+<td><code>0x140</code> (320)</td>
+</tr>
+<tr>
+<td style="text-align: right;">160</td>
+<td style="text-align: right;">32</td>
+<td><code>accountGasLimits</code></td>
+<td>zero word, a value, not a pointer</td>
+</tr>
+<tr>
+<td style="text-align: right;">192</td>
+<td style="text-align: right;">32</td>
+<td><code>preVerificationGas</code></td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">224</td>
+<td style="text-align: right;">32</td>
+<td><code>gasFees</code></td>
+<td>zero word, a value, not a pointer</td>
+</tr>
+<tr>
+<td style="text-align: right;">256</td>
+<td style="text-align: right;">32</td>
+<td>offset to <code>paymasterAndData</code></td>
+<td><code>0x540</code> (1344)</td>
+</tr>
+<tr>
+<td style="text-align: right;">288</td>
+<td style="text-align: right;">32</td>
+<td>offset to <code>signature</code></td>
+<td><code>0x560</code> (1376)</td>
+</tr>
+<tr>
+<td style="text-align: right;">320</td>
+<td style="text-align: right;">32</td>
+<td><code>initCode</code></td>
+<td>length <code>0</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">352</td>
+<td style="text-align: right;">1024</td>
+<td><code>callData</code></td>
+<td>length 964, padded to 992</td>
+</tr>
+<tr>
+<td style="text-align: right;">1376</td>
+<td style="text-align: right;">32</td>
+<td><code>paymasterAndData</code></td>
+<td>length <code>0</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">1408</td>
+<td style="text-align: right;">32</td>
+<td><code>signature</code></td>
+<td>length <code>0</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Tail offsets are relative to the start of the struct, so they are 32 lower than the file positions above. A decoder that reads <code>callData</code> from slot 4 gets the zero-filled <code>accountGasLimits</code>, resolves an offset of 0 and walks off the end. <a href="https://github.com/Immadominion/trimmy/blob/main/web/lib/decode.js"><code>web/lib/decode.js</code></a> names that trap in place.</p>
+<p><code>sender</code> and <code>nonce</code> are not free choices. <code>MasterAccountController.getPersonalAccount(string)</code> <strong>derives</strong> an address from whatever XRPL string it is handed and never fails, so a mistyped address resolves to a different account rather than erroring. <code>getNonce(address)</code> lives on the controller, not on the personal account. Two controllers are live on Coston2 with identical 18-function ABIs; the canonical one is <code>0x434936d47503353f06750Db1A444DBDC5F0AD37c</code>. Arming against the other sets an allowance on an empty account, permanently.</p>
+<h2 id="the-batch-calldata">The batch calldata</h2>
+<p><code>callData</code> is <code>executeUserOp((address,uint256,bytes)[])</code>, selector <code>0x2b2ee783</code>, derived in the JavaScript encoder and hardcoded in the Dart one so a typo in either shows up as a test failure.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th style="text-align: right;">offset in <code>callData</code></th>
+<th style="text-align: right;">length</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4</td>
+<td>selector <code>2b2ee783</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">32</td>
+<td>offset to the array, <code>0x20</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">32</td>
+<td>array length, <code>2</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">68</td>
+<td style="text-align: right;">32</td>
+<td>offset to element 0, <code>0x40</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">32</td>
+<td>offset to element 1, <code>0x120</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">132</td>
+<td style="text-align: right;">224</td>
+<td>element 0</td>
+</tr>
+<tr>
+<td style="text-align: right;">356</td>
+<td style="text-align: right;">608</td>
+<td>element 1</td>
+</tr>
+</tbody>
+</table></div>
+<p>Element offsets are relative to the start of the array body (the word after the length), not to the start of the calldata. Each element is a dynamic tuple: address word, <code>value</code> word, a fixed <code>0x60</code> offset to <code>data</code> within the tuple, then a length word and the padded bytes.</p>
+<p>The two calls in an arming batch are:</p>
+<ol>
+<li><code>approve(address,uint256)</code>, selector <code>095ea7b3</code>, 68 bytes of data. FXRP <code>0x0b6A3645c240605887a5532109323A3E12273dc7</code>, spender Trimmy, amount <code>1009400</code> in the fixture. Sized to the rule's whole life, never unlimited.</li>
+<li><code>arm(...)</code>, selector <code>cc0c55f4</code>, 452 bytes: one selector plus fourteen static words.</li>
+</ol>
+<h2 id="the-arm-struct">The <code>arm</code> struct</h2>
+<p><code>arm((uint8,uint8,uint8,uint8,uint8,uint128,uint128,uint128,uint128,uint64,uint16,uint16,uint128,uint128))</code>. All members are static, so each occupies one word in declaration order with no offset words.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th style="text-align: right;">word</th>
+<th>field</th>
+<th>notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td><code>sellTokenId</code></td>
+<td>index into the constructor-fixed token table</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>buyTokenId</code></td>
+<td></td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td><code>verb</code></td>
+<td>0 SWAP, 1 DEPOSIT_VAULT, 2 EXIT_VAULT</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td><code>venueId</code></td>
+<td>fixed at deploy time, no mutable registry</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><code>trigger</code></td>
+<td>0 PRICE_BELOW, 1 PRICE_ABOVE, 2 SCHEDULE, 3 PRIVATE</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><code>totalSellAmount</code></td>
+<td>the hard budget for the rule's whole life</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><code>partSellAmount</code></td>
+<td>runs = <code>ceilDiv(total, part)</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><code>minOutAbsolute</code></td>
+<td>floor on one part, not on the total</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><code>triggerValue</code></td>
+<td>buy-token base units per one whole sell token, or interval seconds for SCHEDULE, or <code>0</code> for PRIVATE</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td><code>expiry</code></td>
+<td>unix seconds</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>slippageBips</code></td>
+<td><code>MAX_SLIPPAGE_BIPS</code> is 50</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td><code>protocolFeeBips</code></td>
+<td><code>MAX_PROTOCOL_FEE_BIPS</code> is 50</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td><code>keeperFeeFlat</code></td>
+<td>per execution, in buy-token units</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td><code>keeperFeeBudget</code></td>
+<td>lifetime cap; <code>arm</code> refuses a budget that cannot fund the rule's own executions</td>
+</tr>
+</tbody>
+</table></div>
+<p>This is the shape of the bound. An exact allowance, one verb, one venue, one token pair fixed at deploy time, a budget, an expiry, and an epoch that <code>cancelAll</code> bumps to kill every rule at once. An agent can compose these fourteen words; it cannot exceed them.</p>
+<p><code>triggerValue</code> became <code>uint128</code> in the M-1 fix because a relative price for the FXRP/WC2FLR pair exceeds <code>uint64</code>. <strong>That widening changed the selector from <code>c33d4cc3</code> to <code>cc0c55f4</code>.</strong> The docstring above <code>_encodeArm</code> in <code>arm.dart</code> still shows the old <code>uint64</code> signature; the <code>sig</code> constant beneath it is the correct one.</p>
+<h2 id="verifying-a-memo-against-a-pre-image">Verifying a memo against a pre-image</h2>
+<p>The check is: hash the pre-image, compare bytes 10 to 41 of the memo, then decode the batch. Do it in a program that did not build the payment, because a compromised front end ships its own decoder and will describe a hostile batch in comforting language.</p>
+<pre><code class="language-bash">cd arming
+dart run bin/decode.dart --file out/userop-preimage.hex --memo-file out/memo.hex
+</code></pre>
+<p><a href="https://github.com/Immadominion/trimmy/blob/main/arming/bin/decode.dart"><code>arming/bin/decode.dart</code></a> takes no network access, re-derives the commitment, prints the calls in English, and calls <code>exit(1)</code> on a mismatch, a memo that is not 42 bytes, an opcode that is not <code>0xFE</code>, an undecodable batch, or a selector it does not recognise. It will do this for a payment produced by anyone, including an attacker. Its browser equivalent is <code>decodeArmingPayment</code> in <code>web/lib/decode.js</code>, which reads only the memo and the pre-image and never the form the user filled in.</p>
+<p>The two encoders are pinned against each other by <a href="https://github.com/Immadominion/trimmy/blob/main/web/test/arming.test.mjs"><code>web/test/arming.test.mjs</code></a>, 10 tests, all passing when run on 2026-08-11 with <code>node --test test/arming.test.mjs</code>. The fixture is the settled payment above, not a synthetic vector.</p>
+<h2 id="what-goes-wrong-in-order-of-cost">What goes wrong, in order of cost</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>mistake</th>
+<th>symptom</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ten-field struct, or no leading <code>0x20</code></td>
+<td>commitment never matches, <code>CustomInstructionHashMismatch</code></td>
+</tr>
+<tr>
+<td><code>executorFeeUBA = 0</code></td>
+<td>nothing reverts, nothing executes, XRP sits at the Core Vault</td>
+</tr>
+<tr>
+<td>amount in the 0.1 to 0.2 XRP band</td>
+<td>mint delivers exactly zero, silently</td>
+</tr>
+<tr>
+<td><code>DestinationTag</code> present</td>
+<td>memo ignored, funds credited to the tag holder</td>
+</tr>
+<tr>
+<td>wrong controller</td>
+<td>allowance set on an empty personal account</td>
+</tr>
+<tr>
+<td>one wrong character in the XRPL address</td>
+<td>a different personal account is derived, no error</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every one of these produces a valid, irreversible XRPL payment. That is why both builders refuse rather than warn.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/developers/arming-format/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#the-42-byte-memo">The 42 byte memo</a></li><li><a href="#the-xrpl-envelope">The XRPL envelope</a></li><li><a href="#packeduseroperation-nine-fields-not-ten">PackedUserOperation: nine fields, not ten</a></li><li><a href="#the-batch-calldata">The batch calldata</a></li><li><a href="#the-arm-struct">The arm struct</a></li><li><a href="#verifying-a-memo-against-a-pre-image">Verifying a memo against a pre-image</a></li><li><a href="#what-goes-wrong-in-order-of-cost">What goes wrong, in order of cost</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

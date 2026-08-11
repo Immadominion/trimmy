@@ -1,0 +1,180 @@
+<!doctype html>
+<!-- GENERATED from site/docs/rule-types/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rule types | Trimmy</title>
+<meta name="description" content="The four triggers and three actions a rule can be built from, what each one is for, and which of them are genuinely new.">
+<link rel="canonical" href="https://trimmy.xyz/docs/rule-types/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/rule-types/">
+<meta property="og:title" content="Rule types | Trimmy">
+<meta property="og:description" content="The four triggers and three actions a rule can be built from, what each one is for, and which of them are genuinely new.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/" aria-current="page">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/" aria-current="page">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Rule types</h1>
+    <p class="doc-lede">The four triggers and three actions a rule can be built from, what each one is for, and which of them are genuinely new.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>Every rule is two choices: what Trimmy watches (the trigger) and what it does when the condition is met (the action). Both are fixed for the life of the rule. If you have not armed anything yet, read <a href="/docs/start-here/">Start here</a> first.</p>
+<h2 id="the-four-triggers">The four triggers</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>What it does</th>
+<th>When you would want it</th>
+<th>Genuinely new?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Price below</td>
+<td>Fires when the price of the token you are selling, measured in the token you are buying, falls to your threshold</td>
+<td>A standing stop for XRP with nobody watching it and nobody holding your keys</td>
+<td>Yes. The XRPL's own documentation states that the ledger does not natively represent market orders or stop orders, and a native <code>StopOrder</code> amendment is still an open discussion</td>
+</tr>
+<tr>
+<td>Price above</td>
+<td>The same test, upward</td>
+<td>Taking profit at a level you set once, or laddering out</td>
+<td>Yes, for the same reason</td>
+</tr>
+<tr>
+<td>Schedule</td>
+<td>Fires every N seconds, minimum 60</td>
+<td>Buying or depositing a fixed amount on a cadence, without reopening anything</td>
+<td><strong>No.</strong> XRPL Escrow has done non-custodial time locks through <code>FinishAfter</code> for years</td>
+</tr>
+<tr>
+<td>Private</td>
+<td>Fires when a threshold held inside an enclave is met. The chain holds only a commitment to that number</td>
+<td>When publishing your stop price is itself the risk, because a visible stop tells every observer when a large sell arrives</td>
+<td>The privacy is new. The trust model is weaker: see below</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="schedule-is-not-a-new-capability">Schedule is not a new capability</h3>
+<p>An XRPL escrow with <code>FinishAfter</code> already releases funds non-custodially at a time you choose. What a scheduled rule adds is that the money then does something (a swap or a vault deposit), and whoever executes it is paid from the rule's own fee, so nobody has to be online when it comes due.</p>
+<h3 id="the-price-triggers-are-two-legged">The price triggers are two-legged</h3>
+<p>Trimmy never compares one oracle read against a dollar figure. Both legs are read fresh from FTSO, sell feed against buy feed, so your threshold keeps its meaning whatever the counter token is worth. A single-leg comparison would assume the other side is pegged to a dollar. This is why the arming page asks for a price in FLR per XRP.</p>
+<p>Both feeds are age checked on every execution. A stale feed, a future-dated feed and an unpriceable pair all revert. Nothing falls back to a guess.</p>
+<h3 id="private-rules-are-not-trustless">Private rules are not trustless</h3>
+<p>A private rule needs one enclave to be running, and its operator can censor it by declining to act. The other three triggers are permissionless: anyone can execute them, and every bound is re-derived on chain from the stored rule and a fresh oracle read. The two are not equally trustless. How it works and what is still unpublished are covered in <a href="/docs/private-rules/">Private rules</a>.</p>
+<h2 id="the-three-actions">The three actions</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>What happens</th>
+<th>Status on Coston2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Swap</td>
+<td>Sells one part into the allowlisted router. The route comes from the allowlisted pair and fee tier, so nobody can substitute one. The price floor comes from FTSO, not the venue</td>
+<td>Live. A 0.01 FXRP sell cost 38 bips, and a 0.05 FXRP sell cost 5.6 bips once the pool was re-centred</td>
+</tr>
+<tr>
+<td>Deposit to a vault</td>
+<td>Deposits one part into the allowlisted ERC-4626 vault, and the shares go to your account</td>
+<td>Live. Shares matched the vault's own <code>previewDeposit</code> exactly and landed with the rule's account, not the caller</td>
+</tr>
+<tr>
+<td>Withdraw from a vault</td>
+<td>Two phases. Executing queues the redemption, and a separate permissionless <code>claim</code> settles it</td>
+<td>Implemented and tested, not armable on the live deployment: see below</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-a-vault-exit-takes-two-steps">Why a vault exit takes two steps</h3>
+<p>All three FXRP vaults measured on Coston2 report <code>maxWithdraw</code> and <code>maxRedeem</code> of zero. They are request-and-claim queues, so no vault exit settles in one transaction. Trimmy uses one rule with two permissionless entry points instead of asking you to re-arm. The vault files the request under a day index, so the earliest claim is the UTC midnight after the vault's own lag.</p>
+<p>One limit, stated up front: an exit rule has to sell the vault's share token, and the live Coston2 deployment allowlists FXRP and WC2FLR only. On that deployment an exit rule cannot be armed.</p>
+<h3 id="the-swap-venue-is-ours-and-it-is-thin">The swap venue is ours and it is thin</h3>
+<p>Coston2 had no FXRP pool at all, measured across 80 combinations of factory, counter-token and fee tier. We deployed and seeded one with 0.305637 FXRP and 50 WC2FLR. A 0.05 FXRP sell was refused three times while the pool sat 36.6 bips below the oracle. That is the floor doing its job: a thin or stale venue produces a refusal, never a bad fill, and the refusal costs no gas.</p>
+<h2 id="bounds-that-apply-to-every-combination">Bounds that apply to every combination</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Bound</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Maximum slippage</td>
+<td>50 bips</td>
+</tr>
+<tr>
+<td>Maximum protocol fee</td>
+<td>50 bips</td>
+</tr>
+<tr>
+<td>Minimum schedule interval</td>
+<td>60 seconds</td>
+</tr>
+<tr>
+<td>Maximum rule lifetime</td>
+<td>365 days</td>
+</tr>
+<tr>
+<td>Price latch decay window</td>
+<td>1 hour</td>
+</tr>
+</tbody>
+</table></div>
+<p>The latch matters if your rule runs in parts. The first part to fire latches its price, and later parts are floored against it, so a partial exit does not chase the market down. It decays back to the live price over an hour, so a rule that latched at a local high is not stuck for the rest of its life.</p>
+<p>Any trigger can be paired with any action, as long as the token pair and venue are on the contract's allowlist. That pairing, the exact allowance, the budget and the expiry are the whole mandate. An agent can compose one and cannot exceed it.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/rule-types/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#the-four-triggers">The four triggers</a></li><li><a href="#the-three-actions">The three actions</a></li><li><a href="#bounds-that-apply-to-every-combination">Bounds that apply to every combination</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

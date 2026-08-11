@@ -1,4 +1,4 @@
-# Trimmy — roadmap
+# Trimmy: roadmap
 
 **Written 2026-08-07.** Closes critique finding **M8** ("there is no integrated critical path across
 the two bounties"), which was correct: `fcc-extension.md` had an 8-task plan, Bounty 1 had none, and
@@ -17,7 +17,7 @@ Status legend: **✅ done** · **▶ in progress** · **○ not started** · **�
 
 Two bounties, $6,000 each, from one codebase.
 
-| | Bounty 1 — Interoperable Asset Products | Bounty 2 — Confidential Compute Apps |
+| | Bounty 1: Interoperable Asset Products | Bounty 2: Confidential Compute Apps |
 |---|---|---|
 | What | XRPL payment arms a rule; rule executes itself | Rules that fire on data FDC structurally cannot reach |
 | Core artefact | `Trimmy.sol` + keeper + arming front end | FCC TEE extension + `PRIVATE` trigger |
@@ -25,12 +25,12 @@ Two bounties, $6,000 each, from one codebase.
 | Depends on | FTSO, FAssets, Smart Accounts, a swap venue | everything in Bounty 1, plus the extension |
 
 **Bounty 2 strictly depends on Bounty 1.** A private trigger is a trigger on a rule; without the rule
-engine there is nothing for the enclave to gate. So the order is not negotiable — Bounty 1's core
+engine there is nothing for the enclave to gate. So the order is not negotiable, Bounty 1's core
 must work before the extension is worth building.
 
 ---
 
-## 1. Foundations — ✅ complete
+## 1. Foundations, ✅ complete
 
 | | Item | Evidence |
 |---|---|---|
@@ -38,9 +38,9 @@ must work before the extension is worth building.
 | ✅ | Measured chain facts with reproducing commands | `docs/GROUND-TRUTH.md` |
 | ✅ | Normative architecture closing every red-team finding | `research/01-ARCHITECTURE.md` |
 | ✅ | Toolchain pinned to verified-latest | `contracts/foundry.toml` |
-| ✅ | `Quote.sol` — two-legged FTSO valuation | 16 tests, incl. 40k fuzz runs + 256-vector Python differential |
+| ✅ | `Quote.sol`, two-legged FTSO valuation | 16 tests, incl. 40k fuzz runs + 256-vector Python differential |
 | ✅ | Venue interfaces read off-chain, not assumed | GROUND-TRUTH §4a-bis, §4d |
-| ✅ | `Trimmy.sol` — arm / execute / claim / cancel | 25 tests, each naming the finding it defends |
+| ✅ | `Trimmy.sol`, arm / execute / claim / cancel | 25 tests, each naming the finding it defends |
 
 **41 tests green.** Four defects were caught by process rather than by luck: 12 unsafe money-math
 typecasts (`deny = "warnings"`), a silently-ignored `fs_permissions` key in the wrong TOML table,
@@ -53,27 +53,27 @@ a loop so `vm.warp` never advanced.
 
 Ordered by dependency. Each item states what it unblocks, so the cost of slipping one is visible.
 
-### 2.1 Contract completion — ▶
+### 2.1 Contract completion, ▶
 
 | | Item | Unblocks | Notes |
 |---|---|---|---|
 | ▶ | **Invariant suite** | deployment | `Σ paid ≤ Σ received`; no path loosens a bound; no rule ends neither executable nor cancellable; Trimmy never holds a balance across transactions |
-| ○ | **Adversarial workflow against the implementation** | deployment | Now that code exists, attack the code — not the design. Prior red-teaming attacked a spec |
+| ○ | **Adversarial workflow against the implementation** | deployment | Now that code exists, attack the code, not the design. Prior red-teaming attacked a spec |
 | ○ | **Deploy script** | everything on-chain | Immutable allowlists mean the constructor arguments *are* the security model; they get their own review |
 
-### 2.2 On-chain reality — ○
+### 2.2 On-chain reality, ○
 
 | | Item | Unblocks | Settles |
 |---|---|---|---|
-| ○ | **Deploy + seed FXRP/testUSDT V3 pool** | every swap rule | **O-1** — `createPool` was never attempted; 80/80 `getPool` calls return zero |
-| ○ | **Deploy Trimmy to Coston2** | keeper, front end, demo | — |
+| ○ | **Deploy + seed FXRP/testUSDT V3 pool** | every swap rule | **O-1**, `createPool` was never attempted; 80/80 `getPool` calls return zero |
+| ○ | **Deploy Trimmy to Coston2** | keeper, front end, demo |, |
 | ○ | **Measure `execute()` gas on Coston2** | fee model, refuse-to-arm threshold | **O-3** |
-| ○ | **Sample `maxFeedAge` across separated windows** | production parameter | **O-2** — one calm window's p99 refuses to execute during exactly the stalls that matter |
+| ○ | **Sample `maxFeedAge` across separated windows** | production parameter | **O-2**, one calm window's p99 refuses to execute during exactly the stalls that matter |
 
 We hold **96.88 C2FLR** and **13.15 FXRP** on `0x38d5…8E83`. The FXRP is enough to prove the
-mechanism, thin for a realistic pool — more gets minted via FAssets from the XRPL testnet account.
+mechanism, thin for a realistic pool, more gets minted via FAssets from the XRPL testnet account.
 
-### 2.3 The loop that makes it a product — ○
+### 2.3 The loop that makes it a product, ○
 
 | | Item | Unblocks | Notes |
 |---|---|---|---|
@@ -83,7 +83,7 @@ mechanism, thin for a realistic pool — more gets minted via FAssets from the X
 | ○ | **Arming front end** | real users | Xaman payload/deep-link. No install, no wallet-connect |
 | ○ | **XRPL → arm end to end** | the demo | The whole point: one payment, no EVM wallet, no FLR |
 
-### 2.4 Bounty 2 — ○
+### 2.4 Bounty 2, ○
 
 | | Item | Notes |
 |---|---|---|
@@ -92,13 +92,13 @@ mechanism, thin for a realistic pool — more gets minted via FAssets from the X
 | ○ | Build the private-trigger extension | `PRIVATE` trigger consumes a TEE-signed verdict |
 | ○ | Register on Coston2, simulated first | Free. 254 of 268 active machines are `TEST_PLATFORM` and `getRandomTeeIds` routes to them |
 | ○ | Signed on-chain heartbeat | Without it the enclave can censor silently and the front end cannot show *degraded* |
-| ○ | **Real attestation window** | ~$19.81 for 240 continuous hours, or $0 if Flare devops host the image. **Cannot stop/start** — `tee-node` regenerates its identity key on boot |
+| ○ | **Real attestation window** | ~$19.81 for 240 continuous hours, or $0 if Flare devops host the image. **Cannot stop/start**, `tee-node` regenerates its identity key on boot |
 
-### 2.5 Submission — ○
+### 2.5 Submission, ○
 
 | | Item |
 |---|---|
-| ○ | Demo video — leads with the honest two-payment first run, not "one payment" |
+| ○ | Demo video, leads with the honest two-payment first run, not "one payment" |
 | ○ | Two DoraHacks submissions, cross-referenced |
 | ○ | README with reproduce-it-yourself commands, in the house style |
 | ○ | Explicit statement of what pre-existed (SDK, Plimsoll) versus what was built during the program |
@@ -108,15 +108,15 @@ mechanism, thin for a realistic pool — more gets minted via FAssets from the X
 ## 3. Decisions already made, recorded so they are not relitigated
 
 - **Allowance-pull, not delegation.** `executeUserOp` is `onlyController`; there is no alternative.
-- **Demo leads with TESTearnXRP**, not stXRP — stXRP's share price is exactly `1.000000` and a judge
+- **Demo leads with TESTearnXRP**, not stXRP, stXRP's share price is exactly `1.000000` and a judge
   falsifies "live funded vault" in two `cast call`s.
 - **Never say "stop-loss protection."** Say *"one-block conditional execution against the FTSO with an
   oracle-enforced floor, 1–3 seconds measured."*
 - **Retire "a leaked keeper key does zero damage" as the headline.** True, but the wrong threat
-  model — the front end and any anonymous observer both sit above the keeper. Publish the ranked
+  model, the front end and any anonymous observer both sit above the keeper. Publish the ranked
   adversary table instead.
-- **`MAX_SLIPPAGE_BIPS = 50`.** The extractable band is linear in slippage. The residual — up to 50
-  bips per execution, taken with certainty by any observer — is stated as a number, not denied.
+- **`MAX_SLIPPAGE_BIPS = 50`.** The extractable band is linear in slippage. The residual, up to 50
+  bips per execution, taken with certainty by any observer, is stated as a number, not denied.
 
 ---
 
@@ -138,7 +138,7 @@ mechanism, thin for a realistic pool — more gets minted via FAssets from the X
 1. **The Telegram post** asking whether Flare devops will host our image, and whether `TEST_PLATFORM`
    is acceptable for judging. Either answer is useful; one of them saves $19.81 and real operational
    risk.
-2. **Whether to open the GCP account at all.** Not on the critical path — everything through §2.4's
+2. **Whether to open the GCP account at all.** Not on the critical path, everything through §2.4's
    simulated registration is free. The decision only has to be made before the real attestation
    window, and the thing to check early is the **N2D quota**, because a non-billable Free Trial
    account is forbidden from requesting an increase.

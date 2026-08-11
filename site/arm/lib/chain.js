@@ -2,7 +2,7 @@
 //
 // These live here rather than inside a <script> tag so they can be tested against the live chain.
 // The bug that made this file necessary was a hand-written ABI offset read from the wrong head
-// slot — it produced a plausible-looking number and walked off the end of the buffer. Encoding is
+// slot, it produced a plausible-looking number and walked off the end of the buffer. Encoding is
 // not the place for code that nothing exercises.
 
 import { keccak256 } from './keccak.js';
@@ -63,7 +63,7 @@ export const MINTING_FEE_UBA = 100000n;
  * Reads the direct-minting executor fee from the live AssetManager.
  *
  * Governance can change it, and if it rises above what a payment carries, the payment is not
- * refused — it is silently under-delivered. So it is read rather than assumed, with the measured
+ * refused, it is silently under-delivered. So it is read rather than assumed, with the measured
  * value only as a fallback when the read fails.
  */
 export async function readExecutorFeeUBA(opts = {}) {
@@ -97,7 +97,7 @@ export async function readExecutorFeeUBA(opts = {}) {
  * number.
  *
  * A zero address means Flare has never seen this XRPL account. Returning it as a valid answer
- * would build a payment whose allowance lands on an empty account — permanently, since the payment
+ * would build a payment whose allowance lands on an empty account, permanently, since the payment
  * cannot be recalled.
  */
 export async function lookupAccount(xrplAddress, opts = {}) {

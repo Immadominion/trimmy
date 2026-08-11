@@ -1,0 +1,206 @@
+<!doctype html>
+<!-- GENERATED from site/developers/keeper/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Running a keeper | Trimmy</title>
+<meta name="description" content="What the Trimmy executor polls, why it simulates before it signs, what it earns, the measured gas, and why running your own is required rather than optional.">
+<link rel="canonical" href="https://trimmy.xyz/developers/keeper/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/developers/keeper/">
+<meta property="og:title" content="Running a keeper | Trimmy">
+<meta property="og:description" content="What the Trimmy executor polls, why it simulates before it signs, what it earns, the measured gas, and why running your own is required rather than optional.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/" aria-current="page">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/" aria-current="page">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Developer reference</p>
+    <h1>Running a keeper</h1>
+    <p class="doc-lede">What the Trimmy executor polls, why it simulates before it signs, what it earns, the measured gas, and why running your own is required rather than optional.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>A Trimmy rule executes because somebody calls <code>execute(uint256)</code> and gets paid for it. That somebody is a keeper. This page documents the reference implementation, <a href="https://github.com/Immadominion/trimmy/blob/main/keeper/bin/keeper.dart"><code>keeper/bin/keeper.dart</code></a>, which is about 350 lines of Dart on our own Flare SDK.</p>
+<p>Coston2 testnet only. No part of this has run on Flare mainnet.</p>
+<h2 id="the-keeper-holds-no-authority">The keeper holds no authority</h2>
+<p><code>Trimmy.execute</code> re-derives every bound on chain from the stored rule and a fresh two-legged FTSO read. <code>msg.sender</code> appears in the function exactly once, as the recipient of the flat keeper fee. Nothing a caller supplies can loosen a bound.</p>
+<p>Below that sits the fact the whole architecture rests on: <code>PersonalAccount.executeUserOp</code> carries <code>onlyController</code>. Measured on a live personal account, a raw <code>eth_call</code> with the literal selector <code>0x2b2ee783</code> returns <code>0x</code> from the controller and reverts <code>OnlyController()</code>, error data <code>0x59907813</code>, from any other address. The modifier is present in both deployed implementations.</p>
+<p>So a leaked keeper key buys an attacker nothing the public does not already have, and the same is true of a compromised agent that composed the rule: the only durable authorization a rule holds is an exact-size ERC-20 allowance granted inside the arming batch. Maximum extraction from either is zero.</p>
+<p>A note on the trap: <code>cast call $PA "executeUserOp((address,uint256,bytes)[])"</code> computes a different selector and fails for an unrelated reason, which reads as confirmation if you are not careful. Use raw <code>eth_call</code> when a selector matters.</p>
+<p>Keeper liveness is therefore not a security property. Anyone can run one. We run one because someone has to.</p>
+<h2 id="what-it-polls">What it polls</h2>
+<p>One sweep is <code>ruleCount()</code>, then <code>ruleAt(uint256)</code> for every id, sequentially. Each rule is decoded <strong>by word index</strong> from the ABI-expanded struct:</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th style="text-align: right;">word</th>
+<th>field</th>
+<th style="text-align: right;">word</th>
+<th>field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td><code>account</code></td>
+<td style="text-align: right;">14</td>
+<td><code>nextEligibleAt</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>epoch</code></td>
+<td style="text-align: right;">15</td>
+<td><code>expiry</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><code>verb</code></td>
+<td style="text-align: right;">16</td>
+<td><code>claimableAt</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><code>trigger</code></td>
+<td style="text-align: right;">18</td>
+<td><code>keeperFeeFlat</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><code>active</code></td>
+<td style="text-align: right;">21</td>
+<td><code>pendingShares</code></td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><code>totalSellAmount</code></td>
+<td style="text-align: right;"></td>
+<td></td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>spent</code></td>
+<td style="text-align: right;"></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>These indices are load-bearing and they have moved. The M-1 fix widened <code>triggerValue</code> and <code>latchedPrice</code> to <code>uint128</code> and reordered slots, shifting <code>keeperFeeFlat</code> from 16 to 18, <code>pendingShares</code> from 19 to 21 and <code>claimableAt</code> from 22 to 16. An index one out makes the keeper read <code>trigger</code> where it expects <code>active</code>, with no error.</p>
+<p>The local filter is deliberately weak. A candidate is ruled out only on facts that are certain from stored state: <code>active</code>, <code>spent &gt;= totalSellAmount</code>, and a stale epoch (<code>rule.epoch != epochOf(rule.account)</code>, which is what <code>cancelAll</code> bumps). Anything needing a fresh oracle read, the price trigger, feed staleness, the execution floor, is left to the chain. Reimplementing that logic in the keeper would create a second implementation that can silently disagree with the contract.</p>
+<p>For <code>EXIT_VAULT</code> rules with <code>pendingShares &gt; 0</code> the keeper also tries <code>claim(uint256)</code>, because the yield venues have no synchronous exit.</p>
+<h2 id="it-simulates-before-it-signs">It simulates before it signs</h2>
+<p>Near a price threshold the feed oscillates across the trigger, so a reverting <code>execute</code> is the common case, not the exceptional one. Every candidate is simulated with <code>eth_call</code> at the current block, from the keeper address, and a transaction is signed only if that simulation succeeds. A revert costs an RPC round trip instead of gas.</p>
+<p>This is measurable rather than aspirational. During the swap work the contract refused three sells into a pool that had drifted 36.6 bips below the oracle, and <strong>the keeper signed none of the three</strong>. Each died in pre-simulation. The one execution against an honestly priced pool filled at 5.6 bips.</p>
+<p>Custom-error selectors are mapped back to names so the log reads as a reason rather than a 4 byte blob: <code>NotYetEligible</code>, <code>TriggerNotMet</code>, <code>RuleInactive</code>, <code>RuleExpired</code>, <code>StaleEpoch</code>, <code>Exhausted</code>, <code>FloorBreached</code>, <code>FeedStale</code>, <code>NotYetClaimable</code>, <code>NothingPending</code>.</p>
+<h2 id="signing">Signing</h2>
+<p>The SDK holds no private keys and never will. It builds the transaction, prices it, broadcasts the signed bytes, waits for the receipt and explains a revert. The signature itself is shelled out to Foundry's <code>cast mktx</code>, so <code>cast</code> must be on your PATH.</p>
+<p>The gas limit comes from <code>prepareTransaction</code>, which pads the estimate to the larger of estimate plus 5 percent and estimate plus 75,000. The node adds no buffer of its own.</p>
+<h2 id="measured-gas-and-what-a-keeper-earns">Measured gas and what a keeper earns</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>path</th>
+<th style="text-align: right;">gas</th>
+<th>source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>execute()</code>, plain</td>
+<td style="text-align: right;">383,451</td>
+<td>settles open question O-3</td>
+</tr>
+<tr>
+<td><code>execute()</code>, live keeper transaction <code>0xd88f7cac…</code></td>
+<td style="text-align: right;">476,842</td>
+<td>current deployment, 2026-08-09</td>
+</tr>
+<tr>
+<td><code>execute()</code>, PRIVATE trigger</td>
+<td style="text-align: right;">517,962</td>
+<td>confidential path</td>
+</tr>
+<tr>
+<td><code>executeDirectMintingWithData</code> (the arming leg, not the keeper's)</td>
+<td style="text-align: right;">747,096</td>
+<td>same run</td>
+</tr>
+</tbody>
+</table></div>
+<p>At Coston2's 2125 gwei, 383,451 gas is 0.8148 C2FLR, about $0.00484 at FLR/USD 0.00594005, which is 4,698 UBA of FXRP. So the minimum viable <code>keeperFeeFlat</code> is roughly 4,698 UBA and rules are armed at 9,400 (0.0094 FXRP) for 2x margin. Coston2's 2125 gwei is a testnet artefact and is not Flare mainnet's gas market; the mainnet figure needs its own measurement before anyone quotes it as a production fee.</p>
+<p>The fee is paid out of the proceeds, in the proceeds token. Measured on a rule executed by a keeper that started from zero: keeper vault shares 0 to 9,400, user vault shares +934,733, proceeds to <code>rule.account</code> and not to the caller. On the current deployment the same split showed as keeper shares 65,800 to 75,200, exactly the <code>keeperFeeFlat</code> of 9,400. The keeper identity used for that demonstration was <code>0xF0533D37F7ed8d1C45A87Bb35750DA4665bd6D9E</code>, funded with gas only.</p>
+<p>Run the keeper on a different address from the user's. With both on one address the split is visible in the event log but not in balances, which makes it unverifiable.</p>
+<h2 id="running-it">Running it</h2>
+<p>The Dart packages depend on two sibling repositories by path, so a clone of <code>trimmy</code> alone does not resolve. <a href="https://github.com/Immadominion/trimmy/blob/main/setup.sh"><code>setup.sh</code></a> clones them.</p>
+<pre><code class="language-bash">./setup.sh                       # puts sdk/ and plimsoll/ beside this repo, then verifies
+cd keeper
+source ~/.flare-dart/coston2-test.env
+
+export TRIMMY_ADDRESS=0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C
+export KEEPER_ADDRESS=0x...      # falls back to COSTON2_TEST_ADDRESS
+export KEEPER_KEY=0x...          # falls back to COSTON2_TEST_KEY
+
+dart run bin/keeper.dart --once             # one sweep, then exit
+dart run bin/keeper.dart --interval 15      # loop, 15 s between sweeps (the default)
+dart run bin/keeper.dart --once --dry-run   # simulate, never sign
+</code></pre>
+<p>With no key present the keeper runs dry regardless. <code>TRIMMY_ADDRESS</code> is required and the process exits 2 without it. Output is one line per decision, <code>HH:MM:SS  rule &lt;id&gt;  EXEC|CLAIM|skip  &lt;detail&gt;</code>, then a summary of rules scanned, executed and skipped. A skip always states why. A keeper that goes quiet is indistinguishable from a keeper that is broken.</p>
+<h2 id="why-you-have-to-run-an-executor-at-all">Why you have to run an executor at all</h2>
+<p>The keeper executes armed rules. A second, separate role executes the arming payment itself, and that one is not optional either.</p>
+<p>Two arming payments were sent, both <code>tesSUCCESS</code> on XRPL, and <strong>neither was picked up by the public Flare executor</strong> after 600 seconds each. The first offered <code>executorFeeUBA = 0</code>, which the fee argument already predicts. The second offered a full 100,000 UBA fee and was still ignored. The public executor was measured on the 48 byte <code>DIRECT_MINTING_EX</code> branch; on the 42 byte <code>0xFE</code> Smart Accounts branch it does not appear to act at all. That is the only branch Trimmy uses, so <a href="https://github.com/Immadominion/trimmy/blob/main/tools/execute_arming.py"><code>tools/execute_arming.py</code></a> does the job, reusing an existing attestation pipeline rather than reimplementing it.</p>
+<h2 id="limits-of-this-implementation">Limits of this implementation</h2>
+<ul>
+<li><strong>It does not drive PRIVATE rules.</strong> A PRIVATE rule's <code>execute</code> calls <code>consumeVerdict</code>, which needs a fresh enclave verdict accepted on chain first. The keeper's trigger handling covers 0, 1 and 2. Simulation will simply refuse a PRIVATE rule, so it costs nothing, but it also never fires from this process.</li>
+<li><strong>PRIVATE gas is not safe to estimate.</strong> One attempt ran out of gas after emitting <code>Executed</code>, so every transfer succeeded and the tail reverted. That path needs an explicit limit rather than <code>eth_estimateGas</code>.</li>
+<li><strong>It attaches no <code>msg.value</code>.</strong> <code>execute</code> is payable so a caller can cover an FTSO feed fee. <code>calculateFeeById</code> returned 0 on Coston2 (verified 2026-08-06). If governance ever sets a fee, this keeper reverts with <code>InsufficientFeeValue</code> until it is changed.</li>
+<li><strong>The scan is O(n) and sequential</strong>, one <code>ruleAt</code> round trip per rule per sweep, plus an <code>epochOf</code> call per active rule. Fine at current rule counts, not a design for thousands.</li>
+<li><strong>No mempool assumptions.</strong> Whether Flare has a propagating public mempool is an open question in the repo's own notes, and keeper latency from a tick crossing a trigger to <code>execute</code> landing has not been measured.</li>
+</ul>
+<p>Contracts: 92 Foundry tests, <code>cd contracts &amp;&amp; forge test --no-match-path "test/research/*"</code>.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/developers/keeper/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#the-keeper-holds-no-authority">The keeper holds no authority</a></li><li><a href="#what-it-polls">What it polls</a></li><li><a href="#it-simulates-before-it-signs">It simulates before it signs</a></li><li><a href="#signing">Signing</a></li><li><a href="#measured-gas-and-what-a-keeper-earns">Measured gas and what a keeper earns</a></li><li><a href="#running-it">Running it</a></li><li><a href="#why-you-have-to-run-an-executor-at-all">Why you have to run an executor at all</a></li><li><a href="#limits-of-this-implementation">Limits of this implementation</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

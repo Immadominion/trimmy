@@ -1,0 +1,84 @@
+/* ==========================================================================
+   The live rule list.
+
+   A work surface, so it follows the docs convention: light by default, the
+   reader's theme respected. Consumes tokens from trimmy.css only.
+   ========================================================================== */
+
+.rules{ padding-block:var(--sp-8) var(--sp-10); max-width:64rem; }
+.rules h1{
+  font:var(--fw-display) clamp(2rem,1.7rem + 1.2vw,2.75rem)/1.1 var(--font-display);
+  letter-spacing:-.015em; margin:0 0 var(--sp-4); text-wrap:balance;
+}
+
+.rules__status{
+  border:1px solid var(--line); border-radius:var(--r-md);
+  padding:var(--sp-3) var(--sp-4); margin:0 0 var(--sp-6);
+  font-size:var(--fs-sm); color:var(--ink-2); background:var(--ground-raised);
+}
+.rules__status--ok  { border-color:var(--positive-line); background:var(--positive-wash); color:var(--positive); }
+.rules__status--bad { border-color:var(--alarm-line);    background:var(--alarm-wash);    color:var(--alarm); }
+.rules__status a{ color:inherit; }
+
+.rules__list{ display:grid; gap:var(--sp-5); grid-template-columns:minmax(0,1fr); }
+@media (min-width:48rem){ .rules__list{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.rule{
+  border:1px solid var(--line); border-radius:var(--r-lg);
+  background:var(--ground-raised); padding:var(--sp-5);
+  display:flex; flex-direction:column; gap:var(--sp-4); min-width:0;
+}
+.rule__head{ display:flex; gap:var(--sp-4); justify-content:space-between; align-items:flex-start; }
+.rule__id{
+  font:400 var(--fs-eyebrow)/1 var(--font-mono); letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3); margin:0 0 var(--sp-2);
+}
+.rule__what{ font:var(--fw-medium) var(--fs-h4)/1.3 var(--font-body); margin:0; text-wrap:pretty; }
+
+/* Status is a state, so it reads as a chip rather than as prose. The three
+   states use the semantic scale, never the brand hue: a rule being finished is
+   information, not branding. */
+.rule__status{
+  flex:none; font:var(--fw-medium) var(--fs-eyebrow)/1 var(--font-body);
+  letter-spacing:.06em; text-transform:uppercase;
+  padding:.45em .7em; border-radius:var(--r-full); border:1px solid;
+}
+.rule__status--live{ color:var(--positive); background:var(--positive-wash); border-color:var(--positive-line); }
+.rule__status--done{ color:var(--ink-2);    background:var(--ground-sunken);  border-color:var(--line-strong); }
+.rule__status--off { color:var(--caution);  background:var(--caution-wash);   border-color:var(--caution-line); }
+
+.rule__bar{
+  height:6px; border-radius:var(--r-full);
+  background:var(--ground-sunken); overflow:hidden;
+}
+.rule__bar > span{ display:block; height:100%; background:var(--accent); border-radius:inherit; }
+.rule__progress{ margin:0; font-size:var(--fs-sm); color:var(--ink-2); }
+
+.rule__facts{ display:grid; gap:var(--sp-3) var(--sp-5); margin:0;
+              grid-template-columns:repeat(2,minmax(0,1fr)); }
+.rule__facts > div{ min-width:0; }
+.rule__facts dt{
+  font:400 var(--fs-eyebrow)/1 var(--font-body); letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:.35em;
+}
+.rule__facts dd{ margin:0; font-size:var(--fs-sm); color:var(--ink);
+                 font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.rule__facts a{ color:var(--accent); font-family:var(--font-mono); }
+
+.rule__note{
+  margin:0; font-size:var(--fs-sm); color:var(--ink-2);
+  border-inline-start:2px solid var(--accent); padding-inline-start:var(--sp-4);
+}
+.rule__note b{ color:var(--ink); }
+
+.rules__check{ margin-top:var(--sp-9); padding-top:var(--sp-7); border-top:1px solid var(--line); }
+.rules__check h2{ font:var(--fw-medium) var(--fs-h3)/1.25 var(--font-body); margin:0 0 var(--sp-3); }
+.rules__check p{ margin:0 0 var(--sp-4); color:var(--ink-2); }
+.rules__check pre{
+  background:var(--ground-sunken); border:1px solid var(--line);
+  border-radius:var(--r-md); padding:var(--sp-5); overflow-x:auto;
+  font:400 var(--fs-code)/1.6 var(--font-mono); margin:0 0 var(--sp-4);
+}
+.rules__check code{ white-space:pre; }
+.rules__check p code{ background:var(--ground-sunken); padding:.12em .38em;
+                      border-radius:var(--r-xs); white-space:normal; }

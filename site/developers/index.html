@@ -1,0 +1,208 @@
+<!doctype html>
+<!-- GENERATED from site/developers/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture | Trimmy</title>
+<meta name="description" content="How an XRPL payment becomes a rule that keeps executing on Flare, which protocol does what, and exactly what is new about it.">
+<link rel="canonical" href="https://trimmy.xyz/developers/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/developers/">
+<meta property="og:title" content="Architecture | Trimmy">
+<meta property="og:description" content="How an XRPL payment becomes a rule that keeps executing on Flare, which protocol does what, and exactly what is new about it.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/" aria-current="page">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/" aria-current="page">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Developer reference</p>
+    <h1>Architecture</h1>
+    <p class="doc-lede">How an XRPL payment becomes a rule that keeps executing on Flare, which protocol does what, and exactly what is new about it.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<h2 id="what-the-system-does">What the system does</h2>
+<p>One XRPL payment arms a rule. The rule stays in Flare storage, re-evaluates for days, and carries
+its own execution bounty, so nobody has to be online when its condition is met.</p>
+<p>A rule is a bounded mandate. An agent, a front end or a script can compose one, and none of them can
+exceed it: the allowance is sized exactly, the verb is one of three, the venue and the token pair are
+indices into arrays fixed at deploy time, the lifetime budget and the expiry are written at arm time,
+and <code>cancelAll</code> bumps an epoch that kills every rule for an account at once. Vendor-enforced agent
+permissions do the same thing with infrastructure. This does it with a contract.</p>
+<h2 id="the-flow">The flow</h2>
+<pre><code>  XRPL                                    Flare Coston2
+  ----                                    -------------
+
+  Payment carrying a 42-byte memo
+    FE | walletId | executorFeeUBA:u64 | keccak256(PackedUserOperation)
+        |
+        |  (1) FDC. attestationType XRPPayment, sourceId testXRP.
+        |      verifier prepareRequest -&gt; FdcHub.requestAttestation
+        |      -&gt; wait for the voting round -&gt; DA Layer serves the proof
+        v
+  (2) executeDirectMintingWithData(proof, userOpPreimage)
+      FAssets AssetManager mints FXRP to the personal account
+        |
+        v
+  (3) MasterAccountController -&gt; PersonalAccount.executeUserOp(calls)
+        calls[0]  FXRP.approve(Trimmy, exactAllowance)
+        calls[1]  Trimmy.arm(RuleParams)
+      msg.sender for both inner calls is the personal account
+        |
+        v
+  (4) Rule sits in Trimmy storage. The user is gone.
+        |
+        |&lt;---- anyone may call, competing for the fee the rule carries
+        v
+  (5) Trimmy.execute(ruleId)
+        REGISTRY.getContractAddressByHash(keccak(&quot;FtsoV2&quot;))
+        getFeedById(sell leg) and getFeedById(buy leg), both age-checked
+        trigger -&gt; latch -&gt; transferFrom(rule.account) -&gt; floor from FTSO
+        |
+        v
+  (6) SwapRouter.exactInput, or vault.deposit, or vault.redeem then claim()
+        proceeds -&gt; rule.account.  keeperFeeFlat -&gt; msg.sender.
+</code></pre>
+<h2 id="which-flare-protocol-does-what">Which Flare protocol does what</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>protocol</th>
+<th>used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FAssets</td>
+<td>FXRP itself, and direct minting so the arming payment funds the rule it arms</td>
+</tr>
+<tr>
+<td>FDC</td>
+<td>proving the XRPL payment happened. <code>XRPPayment</code> attestation, source <code>testXRP</code>, proof served by the DA Layer</td>
+</tr>
+<tr>
+<td>Smart Accounts</td>
+<td>deriving the personal account from the XRPL address, and executing the committed batch on it</td>
+</tr>
+<tr>
+<td>FTSO v2</td>
+<td>both legs of every price. <code>bytes21</code> feed ids, <code>getFeedById</code> is payable and non-view, <code>calculateFeeById</code> is queried and forwarded rather than assumed to be zero</td>
+</tr>
+<tr>
+<td>FCC (TEE extensions)</td>
+<td><code>PRIVATE</code> rules only. The threshold lives in an enclave; the chain holds a commitment</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="one-hardcoded-address">One hardcoded address</h2>
+<p><code>ContractRegistry</code> at <code>0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019</code> is the only address literal in
+the contract, and it is the same on all four Flare networks. <code>FtsoV2</code> is resolved from it on every
+read, never cached. Token, venue and vault addresses are constructor arguments: the deploy script
+resolves <code>WNat</code> and <code>FtsoV2</code> from the registry, reads each token's <code>decimals()</code> off the token,
+reads each feed live and requires a non-zero fresh value, and checks each vault's <code>asset()</code> before
+broadcasting. After that they are immutable. There is no owner, no admin, no proxy, no pause and no
+rescue, so the constructor arguments are the security model.</p>
+<h2 id="what-onlycontroller-forces">What <code>onlyController</code> forces</h2>
+<p><code>PersonalAccount.executeUserOp</code> is <code>onlyController</code>. A raw <code>eth_call</code> with selector <code>0x2b2ee783</code>
+returns <code>0x</code> from the controller <code>0x434936d4...</code> and reverts <code>OnlyController()</code> (<code>0x59907813</code>) from
+any other caller, in both deployed implementations. Two consequences follow, and they shaped
+everything else:</p>
+<ul>
+<li>No keeper can drive a user's personal account. A leaked keeper key grants no capability the public
+  lacks, because <code>execute()</code> is permissionless anyway.</li>
+<li>No rule can re-arm itself. A fresh XRPL payment is the only way to grant new authority.</li>
+</ul>
+<p>So the only durable authorisation a user can leave behind is an ERC-20 allowance, granted inside the
+arming batch, sized to <code>totalSellAmount + fee budgets</code> and never to <code>type(uint256).max</code>. A
+compromised agent that holds the arming path can still arm a hostile rule, which is why the token
+and venue allowlists are immutable and there is no <code>receiver</code> field. A compromised agent that holds
+only a keeper key extracts nothing.</p>
+<h2 id="the-persistence-claim-stated-precisely">The persistence claim, stated precisely</h2>
+<p>Flare Smart Accounts already let an XRPL payment drive an EVM call with no EVM wallet and no gas
+token. Axelar GMP does the same from other chains. Trimmy is built on Smart Accounts and adds
+nothing to them. Wallet-lessness is not the new part, and it is not claimed as one.</p>
+<p>The new part is what the payment leaves behind. Every one of those paths is immediate dispatch: the
+message fires once, now, and is gone. Step 4 above writes a <code>Rule</code> that is still there days later,
+still re-evaluating against a fresh oracle read, still paying whoever executes it out of its own
+proceeds. That is the property, and the allowance above is the whole of the mechanism.</p>
+<p><code>SCHEDULE</code> is not a new capability either. XRPL Escrow has done non-custodial time locks through
+<code>FinishAfter</code> for years. What a scheduled rule adds is an action at the other end and a keeper who is
+paid to take it.</p>
+<h2 id="keepers-and-the-executor-we-had-to-run">Keepers, and the executor we had to run</h2>
+<p><code>execute()</code> is callable by anyone. <code>msg.sender</code> appears once in it, as the fee recipient. Measured on
+Coston2: a plain execution costs 383,451 gas, and a <code>PRIVATE</code> execution costs 517,962. At the
+testnet gas price of 2125 gwei that is about 4,698 UBA of FXRP, so rules are armed with
+<code>keeperFeeFlat</code> around 9,400 for a 2x margin, and <code>arm()</code> refuses a fee budget that cannot fund the
+rule's own maximum execution count. The 2125 gwei is a testnet artefact and is not a mainnet
+figure.</p>
+<p>Arming needs an executor to submit the FDC proof. We run our own, and that is measured rather than
+assumed. Two arming payments settled on XRPL and neither was picked up by the public executor within
+600 seconds, including one offering <code>executorFeeUBA = 100000</code>. The public executor was measured
+acting on the 48-byte <code>DIRECT_MINTING_EX</code> branch; on the <code>0xFE</code> Smart Accounts branch it did not act
+at all.</p>
+<h2 id="limits">Limits</h2>
+<ul>
+<li>Coston2 testnet only. Nothing has run on Flare mainnet.</li>
+<li>The FXRP/WC2FLR pool <code>0xafcA1C5DfF08b3B8Bacb7721fb8189d2D8E7C3DB</code> is ours and it is thin. Coston2
+  had no FXRP pool at all: 5 factories x 4 counter-tokens x 4 fee tiers, 80 of 80 <code>getPool</code> calls
+  returned <code>address(0)</code>. Seeded with 0.305637 FXRP and 50 WC2FLR concentrated within about 5%. A
+  0.01 FXRP sell filled at 38 bips; a 0.05 FXRP sell was refused three times, then filled at 5.6
+  bips once the pool was re-centred against the oracle.</li>
+<li><code>PRIVATE</code> is strictly weaker than the other three triggers. It needs one enclave running, and its
+  operator can censor any such rule by declining to act. It is never trustless.</li>
+<li>The enclave's code hash is published only as its first four bytes, <code>0xe9ab7410</code>. The full 32 bytes
+  are not yet published.</li>
+<li>The execution floor is publicly computable, so it is a target. An observer can take up to
+  <code>MAX_SLIPPAGE_BIPS</code> (50) per execution with certainty. That is bounded, not eliminated.</li>
+</ul>
+<p>Source: <a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/Trimmy.sol"><code>contracts/src/Trimmy.sol</code></a>,
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/script/Deploy.s.sol"><code>contracts/script/Deploy.s.sol</code></a>,
+<a href="https://github.com/Immadominion/trimmy/blob/main/research/01-ARCHITECTURE.md"><code>research/01-ARCHITECTURE.md</code></a>,
+<a href="https://github.com/Immadominion/trimmy/blob/main/docs/GROUND-TRUTH.md"><code>docs/GROUND-TRUTH.md</code></a>.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/developers/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#what-the-system-does">What the system does</a></li><li><a href="#the-flow">The flow</a></li><li><a href="#which-flare-protocol-does-what">Which Flare protocol does what</a></li><li><a href="#one-hardcoded-address">One hardcoded address</a></li><li><a href="#what-onlycontroller-forces">What onlyController forces</a></li><li><a href="#the-persistence-claim-stated-precisely">The persistence claim, stated precisely</a></li><li><a href="#keepers-and-the-executor-we-had-to-run">Keepers, and the executor we had to run</a></li><li><a href="#limits">Limits</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

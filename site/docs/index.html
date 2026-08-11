@@ -1,0 +1,138 @@
+<!doctype html>
+<!-- GENERATED from site/docs/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation | Trimmy</title>
+<meta name="description" content="How to use Trimmy, from the first payment to cancelling a rule you no longer want.">
+<link rel="canonical" href="https://trimmy.xyz/docs/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/">
+<meta property="og:title" content="Documentation | Trimmy">
+<meta property="og:description" content="How to use Trimmy, from the first payment to cancelling a rule you no longer want.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/" aria-current="page">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/" aria-current="page">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Documentation</h1>
+    <p class="doc-lede">How to use Trimmy, from the first payment to cancelling a rule you no longer want.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>These pages are for someone using Trimmy. If you are integrating with it, auditing it, or want the
+wire formats and the transaction ledger, read the <a href="/developers/">developer reference</a> instead.</p>
+<h2 id="start-with-these">Start with these</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>What it answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="/docs/start-here/">Start here</a></td>
+<td>What Trimmy is, what you need in your wallet, and the shape of the whole journey</td>
+</tr>
+<tr>
+<td><a href="/docs/rule-types/">Rule types</a></td>
+<td>The four triggers and three actions, and which of them are genuinely new</td>
+</tr>
+<tr>
+<td><a href="/docs/arming/">Arming a rule</a></td>
+<td>Step by step, including the address check that only works offline</td>
+</tr>
+<tr>
+<td><a href="/docs/after-arming/">What happens after you arm</a></td>
+<td>Attestation, execution, and how long each step takes</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="then-before-you-commit-anything">Then, before you commit anything</h2>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>What it answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="/docs/managing/">Managing and cancelling rules</a></td>
+<td>How a rule ends by itself, and the three ways to stop one early</td>
+</tr>
+<tr>
+<td><a href="/docs/private-rules/">Private rules</a></td>
+<td>Keeping your trigger price off the chain, and the trust you take on for it</td>
+</tr>
+<tr>
+<td><a href="/docs/fees-limits-security/">Fees, limits and security</a></td>
+<td>The exact allowance, the keeper fee, the price bounds, and what the contract cannot do</td>
+</tr>
+<tr>
+<td><a href="/docs/availability/">Where Trimmy runs today</a></td>
+<td>The honest status: what is incomplete, measured rather than estimated</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="two-things-worth-knowing-before-you-read-anything-else">Two things worth knowing before you read anything else</h2>
+<p><strong>Trimmy runs on Flare Coston2 testnet.</strong> Nothing here has run on Flare mainnet, and the XRP in
+these flows is testnet XRP worth nothing. Every page says so again, because it is the kind of fact
+that a reader skims past once and then acts on.</p>
+<p><strong>The wallet-less part is not the new part.</strong> Flare Smart Accounts already lets an XRPL payment
+drive an EVM call with no EVM wallet and no gas token, and Trimmy is built on it. What Trimmy adds
+is what the payment leaves behind: a rule that persists, keeps evaluating for days, and carries the
+fee that pays whoever executes it.</p>
+<h2 id="if-you-would-rather-read-the-source">If you would rather read the source</h2>
+<p>Every page here has a markdown twin at the same address with <code>index.md</code> on the end, so
+<a href="/docs/start-here/index.md">/docs/start-here/index.md</a> is the same page without the markup. The
+whole site is also available as a single file at <a href="/llms-full.txt">/llms-full.txt</a>.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#start-with-these">Start with these</a></li><li><a href="#then-before-you-commit-anything">Then, before you commit anything</a></li><li><a href="#two-things-worth-knowing-before-you-read-anything-else">Two things worth knowing before you read anything else</a></li><li><a href="#if-you-would-rather-read-the-source">If you would rather read the source</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

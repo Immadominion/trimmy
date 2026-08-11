@@ -1,0 +1,245 @@
+<!doctype html>
+<!-- GENERATED from site/developers/private-triggers/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Private triggers and the enclave | Trimmy</title>
+<meta name="description" content="How a PRIVATE rule keeps its threshold inside a TEE, what the chain verifies, what has to be trusted, and the two bypasses that were found and closed.">
+<link rel="canonical" href="https://trimmy.xyz/developers/private-triggers/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/developers/private-triggers/">
+<meta property="og:title" content="Private triggers and the enclave | Trimmy">
+<meta property="og:description" content="How a PRIVATE rule keeps its threshold inside a TEE, what the chain verifies, what has to be trusted, and the two bypasses that were found and closed.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/" aria-current="page">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/" aria-current="page">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Developer reference</p>
+    <h1>Private triggers and the enclave</h1>
+    <p class="doc-lede">How a PRIVATE rule keeps its threshold inside a TEE, what the chain verifies, what has to be trusted, and the two bypasses that were found and closed.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>A <code>PRIVATE</code> rule keeps its threshold price out of chain state. The chain holds a commitment, an
+enclave holds the number, and the rule cannot fire without a fresh signed verdict from a machine the
+TEE registry vouches for. Coston2 only (chain id 114); nothing has run on Flare mainnet. Source:
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/TrimmyConfidentialTrigger.sol"><code>TrimmyConfidentialTrigger.sol</code></a>,
+<a href="https://github.com/Immadominion/trimmy/blob/main/fcc/extension/go/internal/extension/extension.go"><code>extension.go</code></a>.</p>
+<h2 id="what-runs-privately-inside-the-tee">What runs privately inside the TEE</h2>
+<p>The enclave is a Go handler in a GCP Confidential Space VM on AMD SEV. It keeps one map, rule id to
+<code>{threshold, commitment, direction, account}</code>, in process memory: nothing is written to disk, logged,
+or returned by any handler. <code>GET /state</code> reports counts, never contents.</p>
+<p>Three commands under op type <code>TRIMMY</code>. The contract's <code>bytes32</code> literals and the strings in
+<a href="https://github.com/Immadominion/trimmy/blob/main/fcc/extension/go/internal/config/config.go"><code>config.go</code></a>
+must match byte for byte; a mismatch falls through to "unsupported op type", silently.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>command</th>
+<th>what the enclave does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PROVISION</code></td>
+<td>ECIES-decrypts the payload via the node's loopback <code>/decrypt</code>, stores the secret</td>
+</tr>
+<tr>
+<td><code>EVALUATE</code></td>
+<td>compares an observed price against the threshold, returns one boolean</td>
+</tr>
+<tr>
+<td><code>FORGET</code></td>
+<td>deletes the secret, refusing a caller whose account does not match</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>PROVISION</code> takes <code>{ruleId, threshold, salt, direction, account}</code> as JSON with
+<code>DisallowUnknownFields</code>. The threshold is a decimal string, never a float. It refuses a non-positive
+threshold, a salt under 16 characters, a direction other than 0 or 1, an empty account, and an
+overwrite by another account. An earlier version read plaintext off the instruction, which would have
+published every threshold on chain.</p>
+<p>The commitment, literally:</p>
+<pre><code class="language-text">keccak256( decimal(threshold) || 0x1F || salt || 0x1F || byte(direction) )
+direction: 0 = below, 1 = above
+</code></pre>
+<p><code>0x1F</code> is the ASCII unit separator, so <code>"1" + "23"</code> cannot collide with <code>"12" + "3"</code>. The direction
+byte is inside the hash so a threshold provisioned for below cannot satisfy a rule armed as above.</p>
+<p><code>EVALUATE</code> fires when <code>observed &lt;= threshold</code> (below) or <code>observed &gt;= threshold</code> (above). The response
+carries <code>ruleId</code>, <code>fire</code>, <code>commitment</code>, <code>nonce</code> and <code>issuedAt</code>, and no distance, bounds or margin: a
+distance would let repeated queries binary-search the secret. A missing secret is a refusal, and
+enclave memory is volatile, so a restart loses every secret. 14 Go tests pin this, including
+<code>TestVerdictLeaksNothingAboutTheThreshold</code>.</p>
+<h2 id="what-is-verified-or-consumed-on-chain">What is verified or consumed on chain</h2>
+<p>The trigger is the InstructionSender bound to FCC extension 66052. The registry rejects
+<code>sendInstructions</code> from any other <code>msg.sender</code>.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>function</th>
+<th>selector</th>
+<th>access</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>commitTrigger(uint256,bytes32)</code></td>
+<td><code>0x5f1ddc2a</code></td>
+<td>anyone, write-once, records the owner</td>
+</tr>
+<tr>
+<td><code>provision(uint256,bytes)</code></td>
+<td><code>0x4863f523</code></td>
+<td>rule owner only</td>
+</tr>
+<tr>
+<td><code>requestEvaluation(uint256,uint64)</code></td>
+<td><code>0x654e2eef</code></td>
+<td>permissionless</td>
+</tr>
+<tr>
+<td><code>acceptVerdict(...)</code></td>
+<td><code>0x8666b696</code></td>
+<td>permissionless</td>
+</tr>
+<tr>
+<td><code>consumeVerdict(uint256,uint64)</code></td>
+<td><code>0x20531b43</code></td>
+<td><code>onlyTrimmy</code>, view</td>
+</tr>
+<tr>
+<td><code>isAuthorisedTee(address)</code></td>
+<td><code>0xe35ebda3</code></td>
+<td>view</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><code>requestEvaluation</code> has no price parameter, and that is the security of the function.</strong> It calls
+<code>Trimmy.currentPrice(ruleId)</code>, which re-derives the two-legged relative price from the same FTSO feeds
+the execution reads, builds <code>{"ruleId":N,"observedPrice":"P","nonce":K}</code>, sends it, and records the
+returned instruction id in <code>pendingAction[ruleId][nonce]</code>. A caller picks only when to ask.</p>
+<p><code>acceptVerdict</code> checks, in order: the commitment exists and equals the rule's; the nonce is unused;
+<code>pendingAction[ruleId][nonce]</code> is non-zero and equals <code>actionId</code>; <code>issuedAt</code> is not negative, not
+older than <code>MAX_VERDICT_AGE</code> (90 s), and not more than <code>MAX_CLOCK_SKEW</code> (10 s) ahead of the block
+clock; the signature recovers to an authorised TEE; and <code>fire</code> is true. <code>_recover</code> refuses any
+signature that is not 65 bytes, and the upper half of the curve order. The signature covers a
+domain-separated payload, not the bare result hash, which fails against real node signatures.</p>
+<pre><code class="language-text">resultHash  = keccak256( keccak256(resultData) || actionId || keccak256(submissionTag) || status )
+payloadHash = keccak256( abi.encode(bytes32(&quot;TEE_ACTION_RESULT&quot;), block.chainid, resultHash) )
+digest      = keccak256(&quot;\x19Ethereum Signed Message:\n32&quot; || payloadHash)
+</code></pre>
+<p><code>isAuthorisedTee</code> requires all three of: the machine serves extension 66052; status is <code>2</code>; attested
+platform is <code>bytes32("GCP_AMD_SEV")</code>. Each read sits in a <code>try/catch</code>, because the registry reverts
+for an address that was never a machine. Without the platform check a simulated machine passes, and
+its code hash is a constant shared by 254 machines.</p>
+<p><code>Trimmy.execute</code> calls <code>consumeVerdict(ruleId, uint64(rule.spent))</code>, so the nonce advances per
+executed part and a verdict cannot be replayed onto a later one. The live verdict for rule 0
+(<a href="https://coston2-explorer.flare.network/tx/0x9a2af814704419f6234a3664ac22721f6b355c316bed219326f8a733505b46ef"><code>0x9a2af814</code></a>,
+97,079 gas) used <code>submissionTag = "threshold"</code>, <code>status = 1</code>, and an <code>actionId</code> equal to the recorded
+<code>pendingAction(0,0)</code>.</p>
+<h2 id="what-trust-assumptions-exist">What trust assumptions exist</h2>
+<p><strong>A <code>PRIVATE</code> rule's trust model is strictly weaker than the other three triggers, and the code says
+so.</strong> <code>PRICE_BELOW</code>, <code>PRICE_ABOVE</code> and <code>SCHEDULE</code> are permissionless and re-derive every bound on
+chain from live FTSO. A <code>PRIVATE</code> rule's fire decision is asserted by one enclave at a point in time
+and no verifier can recompute it.</p>
+<ul>
+<li><strong>One enclave, and its operator can censor it.</strong> Instructions route through <code>getRandomTeeIds</code> over
+  the machines the registry holds live for extension 66052. One machine is registered. If its operator
+  declines to run, the rule cannot fire. Multi-machine verdicts would be a design change.</li>
+<li><strong>Staleness is bounded, not eliminated.</strong> 90 s maximum verdict age, 10 s maximum skew ahead.</li>
+<li><strong>Availability is not durable.</strong> A restart loses every secret and evaluation then refuses.</li>
+<li><strong>Public attestation evidence is partial.</strong> The platform check is on chain, but the ledger
+  publishes only the first four bytes of the machine's code hash (<code>0xe9ab7410</code>); read the full
+  measurement from the registry yourself. The VM runs <code>confidential-space-debug</code>, so its token reports
+  <code>dbgstat: enabled</code>; a production image would report <code>disabled</code>.</li>
+</ul>
+<p>What the operator cannot do matters as much. They cannot fire a rule at a price the chain did not
+produce, cannot move funds (<code>PersonalAccount.executeUserOp</code> is <code>onlyController</code>, and proceeds go to
+<code>rule.account</code>), and cannot exceed the rule's exact allowance, verb, venue, token pair, budget or
+expiry, all fixed at arm time. A <code>PRIVATE</code> rule is a bounded mandate an agent can compose and cannot
+exceed, and the agent never learns the threshold.</p>
+<h2 id="why-this-needs-confidential-compute-rather-than-a-normal-contract">Why this needs confidential compute rather than a normal contract</h2>
+<p>Contract storage is public. An ordinary rule stores <code>triggerValue</code> in the clear, so anyone reading
+<code>ruleAt(id)</code> knows the price at which a large, price-insensitive sell arrives. The related review
+finding (A2) is that the execution floor is a publicly computable target.</p>
+<p>The Flare Data Connector cannot substitute. <code>Web2Json</code>'s source identifier is <code>PublicWeb2</code>: the
+request and its headers go on chain and roughly 100 providers each fetch it. That property makes FDC
+trustworthy and stops it holding a secret. A commitment alone does not help either: the comparison
+needs the plaintext.</p>
+<p>Two bypasses were found while driving the first real <code>PRIVATE</code> rule. Both are closed.</p>
+<p><strong>The caller supplied the price.</strong> <code>requestEvaluation(uint256,string,uint64)</code> (selector <code>0x987e0204</code>)
+took the observed price as a string. Any stranger could ask "does rule N fire at a price of 1?", read
+the genuine signed <code>fire</code> verdict off the proxy's public, unauthenticated result endpoint, and push
+someone else's rule through <code>acceptVerdict</code> at a price its owner never chose. Asked repeatedly, each
+verdict is one bit of "is the threshold above or below the number I picked", so roughly twenty queries
+binary-search the secret.</p>
+<p><strong>The verdict was unbound.</strong> <code>acceptVerdict</code> never checked that a verdict answered an instruction this
+contract had sent, so a verdict minted by any other instruction satisfied it, including one an
+attacker sent directly. Every other check became decoration.</p>
+<p>One root cause: the number the enclave compared against came from the attacker, not the chain. The
+fix deleted the price parameter and added the <code>pendingAction</code> binding. Pinned by
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/test/VerdictBinding.t.sol"><code>VerdictBinding.t.sol</code></a>,
+8 tests: <code>test_theEnclaveIsAskedAboutTheChainsPrice</code>, <code>test_theQuestionTracksTheChainPrice</code>,
+<code>test_valueAccounting</code>, <code>test_anUnrequestedVerdictIsRefused</code>,
+<code>test_aVerdictForAnotherInstructionIsRefused</code>, <code>test_theAnswerToOurOwnQuestionIsAccepted</code>,
+<code>test_reAskingInvalidatesTheEarlierAnswer</code>, <code>test_requestBeforeBindingIsRefused</code>. Also
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/test/ConfidentialTrigger.t.sol"><code>ConfidentialTrigger.t.sol</code></a>
+(11 tests, <code>test_simulatedPlatformIsRejected</code> among them) and
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/test/PrivateTrigger.t.sol"><code>PrivateTrigger.t.sol</code></a>
+(7, including <code>test_theThresholdIsNotOnChain</code>).</p>
+<p>The binding is checked before the signature, so a verdict nobody asked for is refused whether or not
+the enclave really signed it. Against the live contract:</p>
+<pre><code class="language-bash">cast call 0x02EA709e2278EACDbA00D4A88caA604E3b35293b \
+  &quot;acceptVerdict(uint256,bool,bytes32,uint64,int64,bytes,bytes32,string,uint8,bytes)&quot; \
+  0 true 0xeca87739390ec330326bcb95dfbb5541b2126ada46d3f329b6ce64dcc12c8162 \
+  7 1786297877 0x00 0xdead...beef &quot;end&quot; 1 0x00 --rpc-url $R
+# reverts 0xe6cf311f... = NoEvaluationRequested(ruleId = 0, nonce = 7)
+</code></pre>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/developers/private-triggers/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#what-runs-privately-inside-the-tee">What runs privately inside the TEE</a></li><li><a href="#what-is-verified-or-consumed-on-chain">What is verified or consumed on chain</a></li><li><a href="#what-trust-assumptions-exist">What trust assumptions exist</a></li><li><a href="#why-this-needs-confidential-compute-rather-than-a-normal-contract">Why this needs confidential compute rather than a normal contract</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

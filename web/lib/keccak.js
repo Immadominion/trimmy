@@ -6,7 +6,7 @@
 // right, so it is verified against a real payment's commitment in ../test/arming.test.mjs rather
 // than trusted.
 //
-// The two hashes differ only in the domain byte — 0x01 here, 0x06 for SHA3 — and getting that wrong
+// The two hashes differ only in the domain byte, 0x01 here, 0x06 for SHA3, and getting that wrong
 // produces a plausible-looking 32 bytes that no contract will ever agree with.
 
 const RC = [

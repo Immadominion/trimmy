@@ -35,3 +35,6 @@ node_modules/
 # Working artefacts from arming runs. These are pre-images of real payments; harmless, but noise.
 arming/out/
 .gstack/
+
+# Tooling scratch, not ours.
+.superpowers/

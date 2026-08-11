@@ -1,0 +1,208 @@
+<!doctype html>
+<!-- GENERATED from site/docs/availability/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where Trimmy runs today | Trimmy</title>
+<meta name="description" content="The honest status list: Coston2 testnet only, a thin pool that is ours, our own executor, and what would have to change before real money.">
+<link rel="canonical" href="https://trimmy.xyz/docs/availability/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/availability/">
+<meta property="og:title" content="Where Trimmy runs today | Trimmy">
+<meta property="og:description" content="The honest status list: Coston2 testnet only, a thin pool that is ours, our own executor, and what would have to change before real money.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/" aria-current="page">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/" aria-current="page">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Where Trimmy runs today</h1>
+    <p class="doc-lede">The honest status list: Coston2 testnet only, a thin pool that is ours, our own executor, and what would have to change before real money.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<h2 id="coston2-testnet-and-nowhere-else">Coston2 testnet, and nowhere else</h2>
+<p>Trimmy runs on Flare's Coston2 test network, chain ID 114, against XRPL testnet XRP. Nothing has
+ever run on Flare mainnet, so you cannot use Trimmy with real money today.</p>
+<p>What runs, each with a public transaction behind it:</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trimmy</code> <code>0x19F81AAB…</code></td>
+<td>live, rules armed and executed</td>
+</tr>
+<tr>
+<td>Arming from one XRPL payment, no EVM wallet, no FLR</td>
+<td>live</td>
+</tr>
+<tr>
+<td><code>PRICE_BELOW</code>, <code>PRICE_ABOVE</code>, <code>SCHEDULE</code></td>
+<td>live, permissionless execution</td>
+</tr>
+<tr>
+<td><code>PRIVATE</code> on a real AMD SEV enclave</td>
+<td>live, one machine</td>
+</tr>
+<tr>
+<td>Swap into WC2FLR</td>
+<td>live, against a pool we deployed</td>
+</tr>
+<tr>
+<td>Deposit into an ERC-4626 vault</td>
+<td>live, against TESTearnXRP, which we do not control</td>
+</tr>
+<tr>
+<td>One-tap signing from a wallet</td>
+<td>not built</td>
+</tr>
+</tbody>
+</table></div>
+<p>Older deployments are still on chain and carry a bypassable version of the confidential trigger. Do
+not arm a private rule against <code>Trimmy 0x9c7876df…</code> or trigger <code>0x1121702e…</code>; they are left there so
+the history stays checkable.</p>
+<h2 id="the-swap-pool-is-ours-and-it-is-thin">The swap pool is ours, and it is thin</h2>
+<p>Coston2 had no FXRP pool at all: all 80 combinations of 5 deployed V3 factories, 4 counter-tokens
+and 4 fee tiers returned the zero address. So we deployed and seeded one ourselves.</p>
+<p>Pool <code>0xafcA1C5D…</code>, FXRP against WC2FLR, 0.30% fee tier, seeded with <strong>0.305637 FXRP and
+49.999999996 WC2FLR</strong> in one position, about 5% either side of the FTSO price. That is the whole
+depth.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Sell</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.01 FXRP</td>
+<td>executed, 38 bips of cost against the oracle</td>
+</tr>
+<tr>
+<td>0.05 FXRP</td>
+<td>refused, refused again after a 2.66x deepening, then executed at 5.6 bips</td>
+</tr>
+</tbody>
+</table></div>
+<p>The refusals matter more than the fills. The pool had drifted 36.6 bips below the oracle, and with
+the 0.30% fee on top no trade size fitted inside the rule's 50 bip floor. Depth was not the binding
+constraint; staleness was. A testnet pool has no arbitrageurs to correct that drift, so it decays
+until we re-centre it by hand. The rule refused rather than filling badly, which is what the floor
+is for, and the refusals cost no gas: they died in the keeper's pre-simulation.</p>
+<h2 id="we-run-our-own-executor-and-we-have-to">We run our own executor, and we have to</h2>
+<p>An arming payment is meant to be picked up by a public executor that collects a fee. We sent two,
+both <code>tesSUCCESS</code> on XRPL, and watched each for 600 seconds:</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Executor fee offered</th>
+<th>Picked up</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>no</td>
+</tr>
+<tr>
+<td>100,000 UBA, the protocol's full executor fee</td>
+<td>no</td>
+</tr>
+</tbody>
+</table></div>
+<p>The first is expected: our tool now refuses to build a zero-fee payment. The second is the
+finding, that a full fee was offered and the payment was still ignored. The public executor appears
+not to act on the <code>0xFE</code> Smart Accounts branch at all, and that is the only branch Trimmy uses, so
+we run our own. That is a dependency on us.</p>
+<h2 id="one-tap-signing-is-not-built">One-tap signing is not built</h2>
+<p>The arming page builds the payment in your browser and explains what signing it would authorise.
+What it cannot do is hand that payment to your wallet in one tap: Xaman's hex deep link carries
+TrustSet transactions only, and a memo-bearing request needs Xaman's Platform API with a server-held
+key. The page gives you the three fields to type into any XRPL wallet instead.</p>
+<h2 id="the-private-path-runs-on-one-enclave">The private path runs on one enclave</h2>
+<p>One Google Confidential Space machine on AMD SEV, run by us. Its operator can censor a private rule
+by declining to act, no on-chain heartbeat distinguishes censorship from a quiet market, enclave
+memory is volatile so a restart drops every threshold, and the full 32 byte code hash is not
+published. <a href="/docs/private-rules/">Private rules</a> sets this out in context. Multi-machine verdicts
+are a design change, not a setting.</p>
+<h2 id="other-measured-limits">Other measured limits</h2>
+<ul>
+<li><strong>Vault exits are not instant.</strong> All three FXRP vaults report <code>maxWithdraw</code> of zero: they are
+  request-and-claim queues. An exit runs in two steps, and the claim cannot land before the next
+  UTC midnight, so the wait reaches roughly 24 hours.</li>
+<li><strong>FAssets works in lots of 10 FXRP,</strong> so minting and redemption cannot go finer than that.</li>
+<li><strong>The fee numbers are testnet numbers.</strong> The keeper fee of 9,400 UBA is twice the 4,698 UBA that
+  383,451 gas costs at Coston2's 2125 gwei, and that gas price is a testnet artefact.</li>
+<li><strong>A mistyped XRPL address does not error.</strong> The controller derives a Flare account from any
+  string, so a typo resolves to a real account you do not control and the payment cannot be
+  recalled. Our tools verify the checksum offline first.</li>
+</ul>
+<h2 id="what-would-have-to-be-true-before-this-handles-real-money">What would have to be true before this handles real money</h2>
+<ol>
+<li>A deployment on Flare mainnet, which has never happened.</li>
+<li>A real FXRP venue with depth and arbitrageurs, not a pool we seeded with 0.305637 FXRP.</li>
+<li>Mainnet gas measured, so the keeper fee comes from that market, not a faucet chain.</li>
+<li>Either a public executor that acts on the <code>0xFE</code> branch, or a funded commitment that we keep
+   running ours.</li>
+<li>More than one enclave for <code>PRIVATE</code>, an on-chain heartbeat so censorship is visible, and the full
+   code hash published so anyone can rebuild the image and compare.</li>
+<li>One-tap signing, or an equally checked manual path: hand-copying a 42 byte memo does not survive
+   real users.</li>
+<li>An independent review of the deployed bytecode. The contracts have no owner, no proxy and no
+   pause, which is deliberate and means every fix is a redeploy.</li>
+</ol>
+<p>Measured between 2026-08-06 and 2026-08-09 on Coston2. Chain state drifts and protocol parameters
+are governance-settable, so re-check anything you rely on.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/availability/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#coston2-testnet-and-nowhere-else">Coston2 testnet, and nowhere else</a></li><li><a href="#the-swap-pool-is-ours-and-it-is-thin">The swap pool is ours, and it is thin</a></li><li><a href="#we-run-our-own-executor-and-we-have-to">We run our own executor, and we have to</a></li><li><a href="#one-tap-signing-is-not-built">One-tap signing is not built</a></li><li><a href="#the-private-path-runs-on-one-enclave">The private path runs on one enclave</a></li><li><a href="#other-measured-limits">Other measured limits</a></li><li><a href="#what-would-have-to-be-true-before-this-handles-real-money">What would have to be true before this handles real money</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

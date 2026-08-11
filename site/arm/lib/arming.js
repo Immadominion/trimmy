@@ -3,7 +3,7 @@
 // This is a second, independent implementation of what `arming/bin/arm.dart` does. That is
 // deliberate and it is also a hazard: two encoders that disagree produce a memo committing to a
 // batch nobody intended, and an XRPL payment is irreversible. So `../test/arming.test.mjs` pins
-// this file against a memo `arm.dart` actually produced for a payment that settled on chain — if
+// this file against a memo `arm.dart` actually produced for a payment that settled on chain, if
 // the two ever diverge, the test fails rather than a user's money going somewhere unintended.
 //
 // Everything here is byte-exact with Plimsoll's MEASURED layout, not the documented one: the wire
@@ -83,7 +83,7 @@ export const encodeApprove = (spender, amount) =>
  * `arm((uint8,uint8,uint8,uint8,uint8,uint128,uint128,uint128,uint128,uint64,uint16,uint16,uint128,uint128))`
  *
  * A struct of only static fields, so it encodes as its members in order, one word each.
- * `triggerValue` is uint128 as of the M-1 fix — it holds a relative price that exceeds uint64 for
+ * `triggerValue` is uint128 as of the M-1 fix, it holds a relative price that exceeds uint64 for
  * the FXRP→WC2FLR pair, and widening it changed the selector from c33d4cc3 to cc0c55f4.
  */
 export function encodeArm(r) {
@@ -104,8 +104,8 @@ export function encodeArm(r) {
 /**
  * `executeUserOp((address,uint256,bytes)[])`
  *
- * Each element is a dynamic tuple, so the array body is a run of element offsets — relative to the
- * start of the array body, not to the start of the calldata — followed by the elements themselves.
+ * Each element is a dynamic tuple, so the array body is a run of element offsets, relative to the
+ * start of the array body, not to the start of the calldata, followed by the elements themselves.
  */
 export function encodeExecuteUserOp(calls) {
   const elements = calls.map((c) => concat([
@@ -137,7 +137,7 @@ export function encodeExecuteUserOp(calls) {
 const HEAD_SIZE = 32 * 9;
 
 /**
- * `abi.encode(userOp)` — the exact bytes an executor passes as `_data`.
+ * `abi.encode(userOp)`, the exact bytes an executor passes as `_data`.
  *
  * A single dynamic tuple is encoded behind a leading offset word, so the output starts with 0x20.
  * Omitting that word produces a different hash and a mint that reverts with
@@ -175,7 +175,7 @@ export function encodeUserOp({ sender, nonce, callData }) {
 // memo
 // ---------------------------------------------------------------------------------------------
 
-/** `[0xFE][walletId:1][executorFeeUBA:uint64][commitment:32]` — 42 bytes exactly. */
+/** `[0xFE][walletId:1][executorFeeUBA:uint64][commitment:32]`, 42 bytes exactly. */
 export function encodeMemo({ commitment, executorFeeUBA, walletId = 0 }) {
   if (commitment.length !== 32) throw new Error('commitment must be 32 bytes');
   const fee = BigInt(executorFeeUBA);
@@ -199,7 +199,7 @@ export class Refusal extends Error {}
  * Builds the arming payment, refusing rather than warning.
  *
  * The `executorFeeUBA > 0` check is the expensive one. A payment that leaves the executor nothing
- * is never executed — and it does not fail, it sits at the Core Vault while the XRP is gone from
+ * is never executed, and it does not fail, it sits at the Core Vault while the XRP is gone from
  * the user's control. Every protocol-level check passes. We reproduced it with a real 5 XRP payment
  * that no executor ever touched.
  */

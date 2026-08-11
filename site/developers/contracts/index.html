@@ -1,0 +1,345 @@
+<!doctype html>
+<!-- GENERATED from site/developers/contracts/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contracts | Trimmy</title>
+<meta name="description" content="The public surface of Trimmy: the Rule struct, the enums, every entry point with its selector, the custom errors, and the test configuration.">
+<link rel="canonical" href="https://trimmy.xyz/developers/contracts/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/developers/contracts/">
+<meta property="og:title" content="Contracts | Trimmy">
+<meta property="og:description" content="The public surface of Trimmy: the Rule struct, the enums, every entry point with its selector, the custom errors, and the test configuration.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/" aria-current="page">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/" aria-current="page">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Developer reference</p>
+    <h1>Contracts</h1>
+    <p class="doc-lede">The public surface of Trimmy: the Rule struct, the enums, every entry point with its selector, the custom errors, and the test configuration.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>Source:
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/Trimmy.sol"><code>Trimmy.sol</code></a>,
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/Quote.sol"><code>Quote.sol</code></a>,
+<a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/Interfaces.sol"><code>Interfaces.sol</code></a>.
+Built with solc 0.8.36, <code>via_ir</code>, <code>optimizer_runs = 1_000_000</code>, <code>evm_version = cancun</code>.</p>
+<h2 id="deployment">Deployment</h2>
+<p>Read from the live contract on 2026-08-11. Coston2 only.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trimmy</code></td>
+<td><code>0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C</code></td>
+</tr>
+<tr>
+<td><code>TrimmyConfidentialTrigger</code></td>
+<td><code>0x02EA709e2278EACDbA00D4A88caA604E3b35293b</code></td>
+</tr>
+<tr>
+<td><code>REGISTRY</code> (the only literal)</td>
+<td><code>0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019</code></td>
+</tr>
+<tr>
+<td><code>tokenAt(0)</code></td>
+<td>FXRP <code>0x0b6A3645c240605887a5532109323A3E12273dc7</code>, feed <code>XRP/USD</code>, 6 dp</td>
+</tr>
+<tr>
+<td><code>tokenAt(1)</code></td>
+<td>WC2FLR <code>0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273</code>, feed <code>FLR/USD</code>, 18 dp</td>
+</tr>
+<tr>
+<td><code>venueAt(0)</code></td>
+<td>SwapRouter <code>0xe2B3aE21461c4ad3415210630EA210e9F53CCEBc</code>, <code>SWAP_ROUTER_V3</code>, fee tier 3000</td>
+</tr>
+<tr>
+<td><code>venueAt(1)</code></td>
+<td>TESTearnXRP <code>0x9E63a5D282F2fBb7DcE822B98e363b2719D28319</code>, <code>QUEUED_VAULT</code></td>
+</tr>
+<tr>
+<td><code>maxFeedAge()</code></td>
+<td>64</td>
+</tr>
+<tr>
+<td><code>protocolFeeRecipient()</code></td>
+<td><code>0x38d58d1BEA8FF21fd8397494f17F64A99bcF8E83</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Constants: <code>MAX_SLIPPAGE_BIPS</code> 50, <code>MAX_PROTOCOL_FEE_BIPS</code> 50, <code>MIN_SCHEDULE_INTERVAL</code> 60,
+<code>LATCH_DECAY_WINDOW</code> 1 hour, <code>MAX_RULE_LIFETIME</code> 365 days.</p>
+<h2 id="enums">Enums</h2>
+<p><code>Verb</code>: <code>SWAP</code> 0, <code>DEPOSIT_VAULT</code> 1, <code>EXIT_VAULT</code> 2.
+<code>Trigger</code>: <code>PRICE_BELOW</code> 0, <code>PRICE_ABOVE</code> 1, <code>SCHEDULE</code> 2, <code>PRIVATE</code> 3.
+<code>VenueKind</code>: <code>SWAP_ROUTER_V3</code> 0, <code>QUEUED_VAULT</code> 1.</p>
+<h2 id="rule">Rule</h2>
+<p>Packed into eight slots. Field order is load-bearing for that packing.</p>
+<pre><code class="language-solidity">address account;          // the personal account; == msg.sender at arm()
+uint32  epoch;            // must equal epochOf[account] or the rule is dead
+uint8   sellTokenId;      // index into the immutable token allowlist
+uint8   buyTokenId;
+Verb    verb;
+uint8   venueId;          // index into the immutable venue allowlist
+Trigger trigger;
+bool    active;
+uint128 totalSellAmount;  // lifetime budget, sell-token base units
+uint128 partSellAmount;   // per-execution size
+uint128 spent;            // measured deltas in, not amounts requested
+uint128 minOutAbsolute;   // user floor, independent of the oracle
+uint128 triggerValue;     // relative price, or interval seconds for SCHEDULE
+uint128 latchedPrice;     // 0 until first fire, then decays back to live
+uint64  nextEligibleAt;
+uint64  expiry;
+uint64  claimableAt;      // EXIT_VAULT
+uint64  claimPeriod;      // EXIT_VAULT: the vault's day-index bucket
+uint128 keeperFeeFlat;    // buy-token units, per execution
+uint128 keeperFeeBudget;  // lifetime cap
+uint128 keeperFeePaid;
+uint128 pendingShares;    // EXIT_VAULT: queued, awaiting claim
+uint16  slippageBips;
+uint16  protocolFeeBips;
+uint128 pendingAssets;    // EXIT_VAULT: assets owed for pendingShares
+uint64  latchedAt;        // when latchedPrice was set
+</code></pre>
+<p><code>triggerValue</code> and <code>latchedPrice</code> are relative prices: buy-token base units per one whole sell token.
+For FXRP to WC2FLR the exponent is <code>(18 + 8) - (6 + 6) = +14</code>, so the value is around 1.7e20, which
+is 9.3x past <code>uint64</code>. They were <code>uint64</code> in an earlier build and the latch saturated; a rule armed
+at 50 bips of slippage settled at roughly 10.7% of oracle fair value while reporting that it had
+honoured its floor.</p>
+<p><code>RuleParams</code> is deliberately not the storage struct. A caller supplies intent only:
+<code>sellTokenId, buyTokenId, verb, venueId, trigger, totalSellAmount, partSellAmount, minOutAbsolute,
+triggerValue, expiry, slippageBips, protocolFeeBips, keeperFeeFlat, keeperFeeBudget</code>. Everything
+else is derived.</p>
+<h2 id="entry-points">Entry points</h2>
+<p>Every selector below was computed with <code>cast sig</code> and confirmed present in the deployed runtime at
+<code>0x19F81AAB...</code>.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>function</th>
+<th>selector</th>
+<th>who may call</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>arm((uint8,uint8,uint8,uint8,uint8,uint128,uint128,uint128,uint128,uint64,uint16,uint16,uint128,uint128))</code></td>
+<td><code>0xcc0c55f4</code></td>
+<td>anyone; binds <code>msg.sender</code> as <code>rule.account</code></td>
+</tr>
+<tr>
+<td><code>execute(uint256)</code> payable</td>
+<td><code>0xfe0d94c1</code></td>
+<td>anyone</td>
+</tr>
+<tr>
+<td><code>claim(uint256)</code></td>
+<td><code>0x379607f5</code></td>
+<td>anyone</td>
+</tr>
+<tr>
+<td><code>cancel(uint256)</code></td>
+<td><code>0x40e58ee5</code></td>
+<td><code>rule.account</code> or its guardian</td>
+</tr>
+<tr>
+<td><code>cancelAll(address)</code></td>
+<td><code>0x97e8f717</code></td>
+<td>that account or its guardian</td>
+</tr>
+<tr>
+<td><code>setGuardian(address)</code></td>
+<td><code>0x8a0dac4a</code></td>
+<td>the account itself</td>
+</tr>
+<tr>
+<td><code>currentPrice(uint256)</code> payable</td>
+<td><code>0x7a3c4c17</code></td>
+<td>anyone; not a view, <code>getFeedById</code> is payable</td>
+</tr>
+<tr>
+<td><code>ruleAt(uint256)</code></td>
+<td><code>0x63a6fef6</code></td>
+<td>view; reverts <code>NoRule</code> past the end</td>
+</tr>
+<tr>
+<td><code>ruleCount()</code></td>
+<td><code>0xf6bcf633</code></td>
+<td>view; rule ids are array indices</td>
+</tr>
+<tr>
+<td><code>tokenAt(uint8)</code></td>
+<td><code>0xbc13f2a4</code></td>
+<td>view; reverts <code>UnknownToken</code></td>
+</tr>
+<tr>
+<td><code>venueAt(uint8)</code></td>
+<td><code>0x5ad2dfd6</code></td>
+<td>view; reverts <code>UnknownVenue</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Remaining views: <code>tokenCount()</code> <code>0x9f181b5e</code>, <code>venueCount()</code> <code>0x8d640d4b</code>, <code>ftsoV2()</code> <code>0x25e89883</code>,
+<code>epochOf(address)</code> <code>0x582805d9</code>, <code>guardianOf(address)</code> <code>0xacd52e8d</code>,
+<code>confidentialTrigger()</code> <code>0xbcb7f3ca</code>.</p>
+<p><code>arm()</code> was <code>0xc33d4cc3</code> before <code>triggerValue</code> widened to <code>uint128</code>. Widening the field changed the
+selector, so an off-chain encoder pinned to the old one silently builds calldata nothing answers.</p>
+<p><code>arm()</code> refuses, rather than accepts and warns: unknown token or venue id, zero or oversized part,
+slippage above 50 bips, protocol fee above 50 bips, an expiry in the past or beyond 365 days, a
+<code>SCHEDULE</code> interval under 60 seconds, a non-zero <code>triggerValue</code> on a <code>PRIVATE</code> rule, a zero
+<code>triggerValue</code> on a price rule, a venue whose kind does not match the verb, a vault whose <code>asset()</code>
+does not match the sell token (or, for <code>EXIT_VAULT</code>, a sell token that is not the share token), and
+a fee budget that cannot fund <code>ceil(total / part)</code> executions (doubled for <code>EXIT_VAULT</code>, which pays
+per <code>execute</code> and again per <code>claim</code>).</p>
+<p><code>execute()</code> loads the rule, checks active, expiry, epoch, eligibility and exhaustion, reads both FTSO
+legs fresh and age-checks them, evaluates the trigger, latches the first price it fires at, pulls the
+measured delta with <code>safeTransferFrom</code>, derives the floor from the decayed latch rather than from any
+venue quote, calls the venue, measures what actually arrived, and pays. <code>PRIVATE</code> rules call
+<code>confidentialTrigger.consumeVerdict(ruleId, spent)</code>, with <code>spent</code> as the nonce so one verdict covers
+one part.</p>
+<p><code>claim()</code> completes a queued vault exit. It deliberately bypasses the liveness checks: the shares are
+already burned, so a cancelled or stale-epoch rule must still be able to collect, and in that case
+fees are zeroed.</p>
+<h2 id="errors">Errors</h2>
+<p>Deploy: <code>EmptyAllowlist</code>, <code>ZeroAddress</code>, <code>TokenDecimalsMismatch(address,uint8,uint8)</code>.
+Arming: <code>UnknownToken(uint8)</code>, <code>UnknownVenue(uint8)</code>, <code>VenueKindMismatch(uint8,Verb)</code>,
+<code>VaultAssetMismatch(address,address,address)</code>, <code>SameToken</code>, <code>ZeroAmount</code>, <code>PartExceedsTotal</code>,
+<code>SlippageTooHigh(uint16,uint16)</code>, <code>ProtocolFeeTooHigh(uint16,uint16)</code>, <code>BadExpiry</code>,
+<code>ScheduleTooFast(uint64,uint64)</code>, <code>FeeBudgetCannotFundExecutions(uint128,uint256)</code>,
+<code>PrivateRuleMustNotPublishThreshold</code>.
+Execution: <code>NoRule(uint256)</code>, <code>RuleInactive(uint256)</code>, <code>RuleExpired(uint256)</code>,
+<code>StaleEpoch(uint32,uint32)</code>, <code>NotYetEligible(uint64)</code>, <code>TriggerNotMet(uint256,uint128)</code>,
+<code>Exhausted</code>, <code>FloorBreached(uint256,uint256)</code>, <code>InsufficientFeeValue(uint256,uint256)</code>,
+<code>PrivateTriggersDisabled</code>.
+Vault exit and authority: <code>RedemptionAlreadyPending(uint64)</code>, <code>NotYetClaimable(uint64)</code>,
+<code>NothingPending</code>, <code>WrongVerb</code>, <code>NotAuthorised</code>.
+From <code>Quote</code>: <code>FeedValueZero</code>, <code>ExponentOutOfRange(uint256)</code>, <code>FeedStale(uint64,uint256,uint64)</code>,
+<code>FeedFromTheFuture(uint64,uint256)</code>. A feed more than <code>MAX_CLOCK_SKEW</code> (10 s) ahead of
+<code>block.timestamp</code> is refused, because the latch would carry a poisoned price for the rule's life.</p>
+<h2 id="tests">Tests</h2>
+<p><code>forge test --no-match-path "test/research/*"</code> runs 92 tests:</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>suite</th>
+<th style="text-align: right;">tests</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trimmy.t.sol</code></td>
+<td style="text-align: right;">25</td>
+</tr>
+<tr>
+<td><code>Quote.t.sol</code></td>
+<td style="text-align: right;">15</td>
+</tr>
+<tr>
+<td><code>ConfidentialTrigger.t.sol</code></td>
+<td style="text-align: right;">11</td>
+</tr>
+<tr>
+<td><code>VerdictBinding.t.sol</code></td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr>
+<td><code>M1Verify.t.sol</code></td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td><code>PrivateTrigger.t.sol</code></td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td><code>TrimmyInvariant.t.sol</code></td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td><code>LatchRegression.t.sol</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>M3Regression.t.sol</code></td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td><code>TrimmyCoverage.t.sol</code></td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td><code>QuoteDifferential.t.sol</code></td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table></div>
+<p>Fuzz: <code>runs = 10_000</code>, <code>max_test_rejects = 500_000</code>. Invariant: <code>runs = 512</code>, <code>depth = 64</code>,
+<code>fail_on_revert = false</code>, with one handler as the sole <code>targetContract</code>. The <code>deep</code> profile raises
+these to 500,000 fuzz runs and 4,096 invariant runs at depth 256. The seven invariants: Trimmy
+retains neither sell nor buy token, proceeds are fully accounted as user plus keeper plus protocol,
+<code>spent</code> never exceeds the budget, <code>keeperFeePaid</code> never exceeds <code>keeperFeeBudget</code>, an exhausted rule
+is never left active, and an executed rule always has a latched price. Handler reach into <code>execute</code>
+is proven separately in <code>TrimmyCoverage.t.sol</code> rather than in <code>afterInvariant</code>, because a coverage
+assertion is not shrink-stable. The adversarial suites under <code>test/research/</code> are excluded from that
+count and from the <code>deny = "warnings"</code> gate; they are evidence, not production code.</p>
+<h2 id="limits">Limits</h2>
+<p>This deployment is on Coston2 testnet. Nothing has run on Flare mainnet, so no figure here is a
+mainnet figure. <code>venueAt(0)</code> routes into an FXRP/WC2FLR pool we deployed and seeded ourselves, and
+it is thin. <code>PRIVATE</code> rules depend on <code>TrimmyConfidentialTrigger</code> and on one enclave staying up,
+so the enclave operator can censor them by declining to act; the other three triggers are
+permissionless and re-derive every bound on chain. The contract has no owner, no pause and no
+rescue, so a wrong constructor argument cannot be corrected, only abandoned.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/developers/contracts/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#deployment">Deployment</a></li><li><a href="#enums">Enums</a></li><li><a href="#rule">Rule</a></li><li><a href="#entry-points">Entry points</a></li><li><a href="#errors">Errors</a></li><li><a href="#tests">Tests</a></li><li><a href="#limits">Limits</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

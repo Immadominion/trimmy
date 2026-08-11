@@ -1,6 +1,6 @@
-# Trimmy — AI-friendly automation for XRP
+# Trimmy: AI-friendly automation for XRP
 
-> Markdown twin of https://trimmy.xyz/ — same content, no markup.
+> Markdown twin of https://trimmy.xyz/, same content, no markup.
 
 ---
 
@@ -246,4 +246,4 @@ In 7 days
 Your rule can keep watching. You don’t have to.
 
 [Try Trimmy ↗](/arm/?preset=below)
-[Read the docs](https://github.com/Immadominion/trimmy/tree/main/docs)
+[Read the docs](/docs/start-here/)

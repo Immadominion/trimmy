@@ -19,7 +19,7 @@ const $ = (id) => document.getElementById(id);
 /**
  * Refuse to run at all on an origin where the checks cannot run.
  *
- * `crypto.subtle` — which verifies the XRPL address checksum — and `navigator.clipboard` are both
+ * `crypto.subtle`, which verifies the XRPL address checksum, and `navigator.clipboard` are both
  * secure-context only. Served from `http://<lan-ip>/`, which is exactly how this gets demoed from
  * a laptop to a phone, the checksum verify throws `Cannot read properties of undefined` and the
  * generic handler reports it as "could not read your account", blaming the chain for a browser
@@ -52,7 +52,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
  * Shows an error where its cause is, not at the bottom of the document.
  *
  * `#error` sits after every panel, so a rejected address used to render up to two viewports below
- * the field that produced it — with no scroll and no focus move, so the button appeared to do
+ * the field that produced it, with no scroll and no focus move, so the button appeared to do
  * nothing. `field` puts the message directly under its input and moves focus there.
  */
 const showError = (msg, field) => {
@@ -79,7 +79,7 @@ const clearError = () => {
 
 let account = null;   // { xrplAddress, personalAccount, nonce }
 
-if (!requireSecureContext()) throw new Error('insecure origin — page disabled');
+if (!requireSecureContext()) throw new Error('insecure origin, page disabled');
 
 $('lookup').addEventListener('click', async () => {
   clearError();
@@ -90,7 +90,7 @@ $('lookup').addEventListener('click', async () => {
   try {
     // The checksum is verified BEFORE anything touches the chain. `getPersonalAccount` derives an
     // address from whatever string it is given rather than looking one up, so a mistyped address
-    // does not fail — it quietly returns a different account, and a payment armed against it is
+    // does not fail, it quietly returns a different account, and a payment armed against it is
     // not recoverable.
     const xrpl = await validateXrplAddress($('xrpl').value);
     account = await lookupAccount(xrpl);
@@ -141,7 +141,7 @@ function updatePresetFields() {
   // actually executed for each venue instead of carrying one generic amount.
   $('amount').value = p === 'vault' ? '1' : '0.01';
   $('priceLabel').textContent = p === 'private'
-    ? 'Secret price — never published on chain (FLR per XRP)'
+    ? 'Secret price, never published on chain (FLR per XRP)'
     : 'Sell if 1 XRP falls to (FLR)';
   $('price').parentElement.style.display = (priced || p === 'private') ? '' : 'none';
 }
@@ -162,7 +162,7 @@ function ruleFromForm() {
   // How many times the rule may fire. Trimmy derives this itself as
   // `ceilDiv(totalSellAmount, partSellAmount)` (Trimmy.sol:451) and reverts `Exhausted()` once
   // `spent >= totalSellAmount`. This page used to send total == part, which meant EVERY rule ran
-  // exactly once — while the summary said "every hour". Setting the total from an explicit run
+  // exactly once, while the summary said "every hour". Setting the total from an explicit run
   // count is what makes a schedule actually a schedule.
   const runs = BigInt($('runs').value || 1);
   const amount = part * runs;
@@ -189,7 +189,7 @@ function ruleFromForm() {
     triggerValue = BigInt(Math.round(flrPerXrp * 1e18));  // WC2FLR base units per whole XRP
   }
 
-  // `minOutAbsolute` is a floor on ONE part, not on the whole rule — `execute` sells
+  // `minOutAbsolute` is a floor on ONE part, not on the whole rule, `execute` sells
   // `partSellAmount` and checks the proceeds of that part against it.
   const minOut = shape.verb === 1 ? part * 90n / 100n : 0n;
 
@@ -201,7 +201,7 @@ function ruleFromForm() {
     slippageBips: shape.verb === 0 ? 50 : 0, protocolFeeBips: 0,
     // L2 in the contract: a rule whose fee budget cannot fund its own executions is refused at
     // arm time rather than stopping silently partway through with a live allowance. The budget
-    // must therefore cover every run — `keeperFeeFlat * maxExecutions` (Trimmy.sol:457).
+    // must therefore cover every run, `keeperFeeFlat * maxExecutions` (Trimmy.sol:457).
     keeperFeeFlat: KEEPER_FEE_RESULT_UNITS, keeperFeeBudget: KEEPER_FEE_RESULT_UNITS * runs,
   };
 }
@@ -224,7 +224,7 @@ $('build').addEventListener('click', () => {
       executorFeeUBA,
     });
 
-    // Decode what was just built, from the bytes — not from the form. This is the only step that
+    // Decode what was just built, from the bytes, not from the form. This is the only step that
     // can catch an encoder that agreed with itself and with nothing else.
     const plain = decodeArmingPayment(built.memo, built.userOp, {
       knownTokens: { 0: 'XRP', 1: 'FLR' },
@@ -245,7 +245,7 @@ $('build').addEventListener('click', () => {
       + copyRow('Pay to', CORE_VAULT)
       + copyRow('Memo (hex)', toHex(built.memo).toUpperCase());
     // A PRIVATE rule's threshold is deliberately absent from this payment. Saying nothing here
-    // would leave the user believing the price they typed was carried by it — it is not, and a
+    // would leave the user believing the price they typed was carried by it, it is not, and a
     // rule armed without a provisioned secret simply never fires.
     const isPrivate = rule.trigger === 3;
     $('privateStep').classList.toggle('hidden', !isPrivate);
@@ -260,7 +260,7 @@ $('build').addEventListener('click', () => {
 
     $('out').classList.remove('hidden');
     wireCopyButtons();
-    // Move focus to the verdict, not just the scroll position — otherwise "this payment is not
+    // Move focus to the verdict, not just the scroll position, otherwise "this payment is not
     // safe to send" is delivered to sighted users only. Native focus scrolling already honours
     // prefers-reduced-motion.
     $('verdictHeading').focus();
@@ -313,7 +313,7 @@ function wireCopyButtons() {
       const text = val.textContent.trim();
       try {
         // Secure-context only. On a plain-http origin this rejects, and an unhandled rejection
-        // left the button unchanged — so the user pasted whatever was already on their clipboard
+        // left the button unchanged, so the user pasted whatever was already on their clipboard
         // into an irreversible payment.
         await navigator.clipboard.writeText(text);
         btn.textContent = 'Copied';

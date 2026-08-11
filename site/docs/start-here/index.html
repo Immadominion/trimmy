@@ -1,0 +1,144 @@
+<!doctype html>
+<!-- GENERATED from site/docs/start-here/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Start here | Trimmy</title>
+<meta name="description" content="What Trimmy is, what you need in your XRPL wallet before you begin, and the shape of the journey from one payment to a rule that runs itself.">
+<link rel="canonical" href="https://trimmy.xyz/docs/start-here/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/start-here/">
+<meta property="og:title" content="Start here | Trimmy">
+<meta property="og:description" content="What Trimmy is, what you need in your XRPL wallet before you begin, and the shape of the journey from one payment to a rule that runs itself.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/" aria-current="page">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/" aria-current="page">Start here</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Start here</h1>
+    <p class="doc-lede">What Trimmy is, what you need in your XRPL wallet before you begin, and the shape of the journey from one payment to a rule that runs itself.</p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>Trimmy turns one XRPL payment into a standing rule that keeps watching the market after you close the tab. When your condition is met, anyone can execute the rule, because the rule carries the fee that pays for its own execution.</p>
+<p><strong>Trimmy runs on Flare Coston2 testnet only.</strong> Nothing has run on Flare mainnet. The XRP in this flow is XRPL testnet XRP and is worth nothing. Everything else behaves as it would with real money.</p>
+<h2 id="what-you-need-before-you-begin">What you need before you begin</h2>
+<ul>
+<li>An XRPL testnet account, in any wallet that can send a Payment with a memo.</li>
+<li>Testnet XRP in that account.</li>
+<li>Nothing else. No EVM wallet, no FLR for gas, no extension, no account with us.</li>
+</ul>
+<p>The wallet-less part is not new. Flare Smart Accounts already lets an XRPL payment drive an EVM call with no EVM wallet and no gas token, and Trimmy is built on Smart Accounts. What Trimmy adds is what the payment leaves behind.</p>
+<h3 id="how-much-xrp">How much XRP</h3>
+<p>The arming page itemises the payment for you: what the rule can spend, plus the FAssets minting fee (0.1 XRP), plus the executor fee (0.1 XRP, read from the live asset manager), rounded up so the figure is typeable.</p>
+<p>There is a floor, and getting it wrong is silent. Anything from 0.1 to 0.2 XRP inclusive delivers you exactly zero: no revert, no event, the transaction succeeds and every party except you gets paid. The true floor is the minimum minting fee plus the executor fee plus one drop, which is 0.2 XRP and 1 drop. The protocol's own "payment too small" flag reads false across that whole dead zone, so the page computes the outcome instead of trusting the flag.</p>
+<h2 id="what-a-rule-is">What a rule is</h2>
+<p>A rule is a bounded mandate. Every bound is fixed at the moment you arm it, and no code path changes it afterwards. There is no owner, no admin, no proxy and no pause on the contract.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th>Fixed at arming</th>
+<th>What it bounds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Verb</td>
+<td>One action only: swap, deposit to a vault, or withdraw from a vault</td>
+</tr>
+<tr>
+<td>Trigger</td>
+<td>One condition: price below, price above, schedule, or private</td>
+</tr>
+<tr>
+<td>Token pair</td>
+<td>Which token is sold and which is received, chosen from an allowlist written into the contract at deploy time</td>
+</tr>
+<tr>
+<td>Venue</td>
+<td>The single router or vault it may touch</td>
+</tr>
+<tr>
+<td>Total budget</td>
+<td>The most the rule can ever spend, across its whole life</td>
+</tr>
+<tr>
+<td>Amount each time</td>
+<td>The size of one part</td>
+</tr>
+<tr>
+<td>Expiry</td>
+<td>At most 365 days</td>
+</tr>
+<tr>
+<td>Slippage</td>
+<td>At most 50 bips</td>
+</tr>
+</tbody>
+</table></div>
+<p>The allowance your account grants is exact, not unlimited. In the live end to end run it was 1,009,400 units, sized to that one rule, and the proceeds landed with the rule's own account rather than with whoever executed it.</p>
+<p>That is also why an AI agent can hold a Trimmy rule safely. Agent wallets give an agent bounded permission enforced by a vendor's infrastructure. A Trimmy rule is the same bound enforced by a contract, and the personal account's <code>executeUserOp</code> is <code>onlyController</code>, so an agent that composes a rule and is then compromised extracts nothing.</p>
+<h2 id="the-shape-of-the-journey">The shape of the journey</h2>
+<ol>
+<li><strong>Build the payment.</strong> The arming page builds it in your browser, then decodes the 42 byte memo back from the bytes themselves and tells you in English what signing it authorises. No server sees your rule.</li>
+<li><strong>Send one XRPL payment.</strong> Three fields matter: destination, amount, and the memo. Do not add a destination tag. A registered tag overrides the memo entirely and credits the tag holder instead.</li>
+<li><strong>Wait for settlement.</strong> The Flare Data Connector has to attest your payment before the rule exists, so arming is not instant. In our live runs the proof arrived after 5 and 8 polls. The closest measured figure we have is 30 direct mints at p50 131 seconds and p95 170 seconds, but that was the public executor on a different branch, so treat it as an order of magnitude, not a promise.</li>
+<li><strong>The rule is armed.</strong> It sits on chain, re-evaluating, until it is spent, expired or cancelled.</li>
+<li><strong>Someone executes it.</strong> Execution is permissionless. The keeper fee comes out of the proceeds and the remainder goes to your account. There is no code path that sends it anywhere else.</li>
+</ol>
+<p>We run our own executor for step 3. The public one did not pick up either of our arming payments, including one that offered a full 100,000 UBA executor fee. That is measured, not assumed: the public executor does not appear to act on the <code>0xFE</code> Smart Accounts branch at all.</p>
+<h2 id="what-is-not-built-yet">What is not built yet</h2>
+<ul>
+<li><strong>One tap signing.</strong> Xaman's hex deep link carries TrustSet transactions only, so a memo-bearing sign request needs their Platform API and a server-held key. The page gives you the three fields to enter in your own wallet instead.</li>
+<li><strong>A cancel button.</strong> Cancelling is a contract call from your personal account, which today means another XRPL payment and another settlement wait. The contract also supports a guardian who can cancel everything for you in one call.</li>
+<li><strong>A deep swap market.</strong> The FXRP pool the swap rules trade against is ours and it is thin. Coston2 had no FXRP pool at all.</li>
+</ul>
+<p>Next: <a href="/docs/rule-types/">Rule types</a> covers the four triggers and the three actions, and says which of them are genuinely new.</p>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/start-here/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#what-you-need-before-you-begin">What you need before you begin</a></li><li><a href="#what-a-rule-is">What a rule is</a></li><li><a href="#the-shape-of-the-journey">The shape of the journey</a></li><li><a href="#what-is-not-built-yet">What is not built yet</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

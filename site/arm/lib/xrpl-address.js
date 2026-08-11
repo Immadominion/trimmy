@@ -1,7 +1,7 @@
 // XRPL address validation, with the checksum actually checked.
 //
 // This is not cosmetic input validation. `MasterAccountController.getPersonalAccount(string)` is a
-// **deterministic derivation, not a registry lookup** — measured on Coston2, it returns a
+// **deterministic derivation, not a registry lookup**, measured on Coston2, it returns a
 // plausible-looking account for any string at all:
 //
 //   rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB  ->  0x07a76b5c…      (the real one)
@@ -10,7 +10,7 @@
 //
 // So a typo does not fail. It silently produces a different Flare account, and an arming payment
 // built against it would set an allowance and arm a rule on an account the sender does not
-// control — irreversibly, because the XRPL payment cannot be recalled.
+// control, irreversibly, because the XRPL payment cannot be recalled.
 //
 // A base58check address carries its own 4-byte checksum precisely so this class of typo is
 // detectable offline. We check it before anything else happens.
@@ -81,7 +81,7 @@ export async function validateXrplAddress(address) {
       // The whole point of the checksum: say plainly that this is a typo, because the contract
       // downstream will happily derive an account from it and never complain.
       throw new InvalidAddress(
-        'That address fails its own checksum — it is mistyped. Copy it from your wallet rather ' +
+        'That address fails its own checksum, so it is mistyped. Copy it from your wallet rather ' +
         'than retyping it.',
       );
     }

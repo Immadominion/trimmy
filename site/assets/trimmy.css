@@ -1,5 +1,5 @@
 /* ==========================================================================
-   TYPE — three faces, inlined as data URIs.
+   TYPE, three faces, inlined as data URIs.
    A strict CSP drops external font hosts silently, so nothing here may point
    at a font CDN. Archivo is pinned to one instance (wght 700 / wdth 112) and
    used on h1 + h2 ONLY, so it physically cannot be misused at body sizes.
@@ -42,17 +42,17 @@
 
   /* ---- 1. RAW BRAND RAMP (theme-independent; identical in both themes) ----
      These are the measured logo values. They are the ONLY place these hexes
-     appear. Never reference a raw hex in a component — reference a role token. */
+     appear. Never reference a raw hex in a component, reference a role token. */
   --brand-100: #E4E7FF;   /* derived: highlight lifted for washes/chips        */
   --brand-200: #C8CCFF;   /* MEASURED specular highlight                        */
   --brand-300: #B1BFFF;   /* MEASURED upper body                                */
-  --brand-400: #A0B4FA;   /* MEASURED core — the signature colour               */
+  --brand-400: #A0B4FA;   /* MEASURED core, the signature colour               */
   --brand-500: #8599FF;   /* MEASURED lower body                                */
-  --brand-600: #6A4CFB;   /* MEASURED deep violet — FILL ONLY, never body text  */
-  --brand-700: #5B3AE8;   /* derived: 6.53:1 on white — large text / borders    */
-  --brand-800: #4A2BC9;   /* derived: 8.47:1 on white — THE TEXT/LINK VIOLET    */
-  --brand-900: #3B1FA8;   /* derived: 10.38:1 on paper — hover/pressed          */
-  --brand-950: #02020F;   /* MEASURED logo ground — near-black with blue cast   */
+  --brand-600: #6A4CFB;   /* MEASURED deep violet, FILL ONLY, never body text  */
+  --brand-700: #5B3AE8;   /* derived: 6.53:1 on white, large text / borders    */
+  --brand-800: #4A2BC9;   /* derived: 8.47:1 on white, THE TEXT/LINK VIOLET    */
+  --brand-900: #3B1FA8;   /* derived: 10.38:1 on paper, hover/pressed          */
+  --brand-950: #02020F;   /* MEASURED logo ground, near-black with blue cast   */
 
   /* ---- 2. GRADIENT STOPS (roles, so the ramp can be retuned once) ---- */
   --grad-1: var(--brand-200);   /* specular   */
@@ -71,19 +71,19 @@
   --grad-seam: linear-gradient(180deg, transparent, var(--ground-sunken));
 
   /* ---- 3. GROUNDS (light) ---- */
-  --ground:         #FBFAFF;  /* page — white with 1% violet cast, not #FFF     */
+  --ground:         #FBFAFF;  /* page, white with 1% violet cast, not #FFF     */
   --ground-raised:  #FFFFFF;  /* cards, panels, popovers                        */
   --ground-sunken:  #F1EFFA;  /* wells, code, table headers, section seams      */
   --ground-inverse: #0B0A1A;  /* an inverted island inside a light page         */
   --ground-band:    #EDE9FC;  /* the one tinted band in a light run             */
 
   /* ---- 4. INKS (light) ---- */
-  --ink:        #14122B;  /* 17.57:1 on ground — headings + body                */
-  --ink-2:      #4B4870;  /*  8.22:1 — secondary prose, captions                */
-  --ink-3:      #6F6C93;  /*  4.77:1 — smallest legal text, meta, placeholders  */
-  --ink-ghost:  #8B88A8;  /*  3.27:1 — DECORATION ONLY. Never text under 18.66px*/
+  --ink:        #14122B;  /* 17.57:1 on ground, headings + body                */
+  --ink-2:      #4B4870;  /*  8.22:1, secondary prose, captions                */
+  --ink-3:      #6F6C93;  /*  4.77:1, smallest legal text, meta, placeholders  */
+  --ink-ghost:  #8B88A8;  /*  3.27:1, DECORATION ONLY. Never text under 18.66px*/
   --ink-inverse:#F2F1FA;  /* text on --ground-inverse                            */
-  --ink-on-brand:#14122B; /* 9.04:1 on --brand-400 — ink for periwinkle fills   */
+  --ink-on-brand:#14122B; /* 9.04:1 on --brand-400, ink for periwinkle fills   */
 
   /* ---- 5. BRAND ROLES (light) ---- */
   --accent:        var(--brand-800);  /* links, active state, focus  8.15:1     */
@@ -100,12 +100,12 @@
   --line-brand:  rgba(74, 43, 201, 0.28); /* the accented edge                  */
 
   /* ---- 7. FOCUS (light) ---- */
-  --focus:        var(--brand-800);   /* 8.15:1 vs ground — well over the 3:1   */
+  --focus:        var(--brand-800);   /* 8.15:1 vs ground. Well over the 3:1   */
   --focus-halo:   rgba(74, 43, 201, 0.22);
   --focus-width:  2px;
   --focus-offset: 2px;
 
-  /* ---- 8. SEMANTICS (light) — deliberately OUTSIDE the violet hue family.
+  /* ---- 8. SEMANTICS (light), deliberately OUTSIDE the violet hue family.
      Positive is a blue-green (not a violet-leaning teal), caution is a true
      amber, alarm is a red-orange. None of them can be mistaken for the brand
      at a glance, which is the whole point of a semantic colour. ---- */
@@ -128,7 +128,7 @@
   --code-num:    #7A4E00;
   --code-muted:  var(--ink-3);
 
-  /* ---- 10. ELEVATION (light) — shadows are violet-tinted, never grey ---- */
+  /* ---- 10. ELEVATION (light), shadows are violet-tinted, never grey ---- */
   --shadow-1: 0 1px 2px rgba(20, 18, 43, 0.06),
               0 1px 1px rgba(20, 18, 43, 0.04);
   --shadow-2: 0 4px 12px rgba(20, 18, 43, 0.08),
@@ -145,7 +145,7 @@
   --r-xl: 20px;   /* hero art frame, big media   */
   --r-full: 999px;
 
-  /* ---- 12. GRAIN — kills gradient banding on large violet fields.
+  /* ---- 12. GRAIN, kills gradient banding on large violet fields.
      A 2%-alpha noise tile at 200px, blended darken, exactly as measured on the
      reference. Inline as a data URI (CSP-safe); this is a 1-line SVG stand-in. */
   --grain: url("data:image/svg+xml;utf8,\
@@ -156,7 +156,7 @@
 }
 
 /* ============================================================================
-   DARK — the primary theme. Written once, applied through two selectors so it
+   DARK, the primary theme. Written once, applied through two selectors so it
    wins for system-preference users AND for explicit togglers.
    ============================================================================ */
 
@@ -164,15 +164,15 @@
   :root:not([data-theme="light"]) {
     --ground:         #0B0A1A;  /* page. Logo ground #02020F lifted 4% so
                                    pure-black media and the logo still read.   */
-    --ground-raised:  #17152E;  /* cards — one step up                          */
-    --ground-sunken:  #07060F;  /* code, wells, seams — DARKER than page        */
+    --ground-raised:  #17152E;  /* cards, one step up                          */
+    --ground-sunken:  #07060F;  /* code, wells, seams, DARKER than page        */
     --ground-inverse: #FBFAFF;
     --ground-band:    #191733;  /* the one lifted band in a dark run            */
 
     --ink:        #F2F1FA;      /* 17.47:1 */
     --ink-2:      #A7A4C8;      /*  8.19:1 */
     --ink-3:      #7D7AA0;      /*  4.81:1 */
-    --ink-ghost:  #6E6B92;      /*  3.90:1 — decoration only */
+    --ink-ghost:  #6E6B92;      /*  3.90:1, decoration only */
     --ink-inverse:#14122B;
     --ink-on-brand:#02020F;     /* 11.56:1 on --brand-300 */
 
@@ -298,9 +298,9 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
   --fs-body-lg: 1.125rem;   /* 18 */
   --fs-body:    1rem;       /* 16 */
   --fs-sm:      0.875rem;   /* 14 */
-  --fs-xs:      0.8125rem;  /* 13 — smallest allowed */
+  --fs-xs:      0.8125rem;  /* 13, smallest allowed */
   --fs-eyebrow: 0.75rem;    /* 12, uppercase only */
-  --fs-code:    0.9375rem;  /* 15 — mono runs small next to Plex Sans */
+  --fs-code:    0.9375rem;  /* 15, mono runs small next to Plex Sans */
 
   /* ---- weight: three, and only three ---- */
   --fw-regular: 400;
@@ -376,7 +376,7 @@ h1 .clause, h2 .clause{ color:var(--accent); display:block; }
   /*  0  4    8    12   16   24   32   40   48   64   80   96   128 */
 
   /* container */
-  --container: 1152px;   /* hard cap — never wider, even at 4K */
+  --container: 1152px;   /* hard cap, never wider, even at 4K */
   --measure-wide: 949px; /* code / screenshot column */
   --measure-text: 630px; /* pull-quote + long prose */
   --gutter: var(--sp-5);            /* 24px mobile */
@@ -386,7 +386,7 @@ h1 .clause, h2 .clause{ color:var(--accent); display:block; }
   --section-y: clamp(3rem, 1.6rem + 6.2vw, 8rem);   /* 48 -> 128px */
   --section-y-tight: clamp(2rem, 1.2rem + 3.6vw, 4rem); /* 32 -> 64, app pages */
 
-  /* breakpoints — Bootstrap-derived so 12ths divide cleanly against 1152 */
+  /* breakpoints, Bootstrap-derived so 12ths divide cleanly against 1152 */
   --bp-sm: 576px; --bp-md: 768px; --bp-lg: 992px; --bp-xl: 1152px;
 }
 
@@ -468,7 +468,7 @@ h1 .clause, h2 .clause{ color:var(--accent); display:block; }
 .btn--lg{ --btn-h:52px; --btn-px:var(--sp-6); font-size:var(--fs-body-lg); }
 .btn--block{ display:flex; width:100%; }
 
-/* PRIMARY ON DARK — the one place the gradient becomes a control surface.
+/* PRIMARY ON DARK, the one place the gradient becomes a control surface.
    Background is 250% oversized and SLIDES on hover; it never cross-fades,
    because a fading gradient reads as a loading state. */
 [data-surface="dark"] .btn--primary,
@@ -482,13 +482,13 @@ h1 .clause, h2 .clause{ color:var(--accent); display:block; }
 [data-surface="dark"] .btn--primary:hover,
 :root[data-theme="dark"] .btn--primary:hover{ background-position:2% 0; }
 
-/* PRIMARY ON LIGHT — solid, never gradient. #4A2BC9 fill, white label, 8.47:1. */
+/* PRIMARY ON LIGHT. Solid, never gradient. #4A2BC9 fill, white label, 8.47:1. */
 .btn--primary{
   background:var(--brand-800); color:#FFFFFF; box-shadow:var(--shadow-1);
 }
 .btn--primary:hover{ background:var(--brand-900); }
 
-/* SECONDARY — hairline box, ink label. The workhorse; appears far more often
+/* SECONDARY, hairline box, ink label. The workhorse; appears far more often
    than primary. One primary per viewport, maximum. */
 .btn--secondary{
   background:transparent; color:var(--ink);
@@ -496,11 +496,11 @@ h1 .clause, h2 .clause{ color:var(--accent); display:block; }
 }
 .btn--secondary:hover{ border-color:var(--accent); color:var(--accent); }
 
-/* GHOST — nav items, table row actions, dismissals. */
+/* GHOST, nav items, table row actions, dismissals. */
 .btn--ghost{ background:transparent; color:var(--ink-2); border-color:transparent; }
 .btn--ghost:hover{ background:var(--accent-wash); color:var(--ink); }
 
-/* DANGER — only on the arming/transactional surface. */
+/* DANGER, only on the arming/transactional surface. */
 .btn--danger{ background:var(--alarm); color:#FFFFFF; }
 .btn--danger:hover{ filter:brightness(.92); }
 
@@ -526,7 +526,7 @@ a.card:hover, .card--interactive:hover{
   transform:translateY(-2px);
   box-shadow:var(--shadow-2);
 }
-/* The ONE card that gets a gradient edge — the featured card in a row.
+/* The ONE card that gets a gradient edge, the featured card in a row.
    Max one per section. See §5. */
 .card--featured{
   border:0; padding:2px; background:var(--grad-brand); border-radius:var(--r-lg);
@@ -568,7 +568,7 @@ a.card:hover, .card--interactive:hover{
   padding:var(--sp-3) var(--sp-4);
   border-bottom:1px solid var(--code-line);
 }
-.code__lang{ /* deliberately NOT mono — a label is not code */
+.code__lang{ /* deliberately NOT mono, a label is not code */
   font:var(--fw-medium) var(--fs-xs)/1 var(--font-body);
   text-transform:uppercase; letter-spacing:var(--tr-eyebrow); color:var(--ink-3);
 }
@@ -609,7 +609,7 @@ tbody td{ padding:var(--sp-3) var(--sp-4);
 tbody tr:last-child td{ border-bottom:0; }
 tbody tr:hover{ background:var(--accent-wash); }
 td.num, th.num{ text-align:right; font-family:var(--font-mono); }
-/* No zebra striping. Hairlines only — striping fights the grain texture. */
+/* No zebra striping. Hairlines only, striping fights the grain texture. */
 
 
 .chip{
@@ -675,7 +675,7 @@ td.num, th.num{ text-align:right; font-family:var(--font-mono); }
   --d-4:480ms;   /* entrance only, and only for one hero element               */
 
   --e-standard:cubic-bezier(.2,.6,.2,1);   /* the house curve                  */
-  --e-out:     cubic-bezier(.16,1,.3,1);   /* entrances — fast in, long settle */
+  --e-out:     cubic-bezier(.16,1,.3,1);   /* entrances, fast in, long settle */
   --e-in:      cubic-bezier(.7,0,.84,0);   /* exits                            */
 }
 

@@ -3,7 +3,7 @@
 #
 # The arming page's source of truth is ../web/. It is COPIED here rather than
 # duplicated in git, because it has its own tests that import from ../lib and
-# moving it would break them — and because two tracked copies of a page that
+# moving it would break them. And because two tracked copies of a page that
 # authorises irreversible payments is exactly the kind of thing that drifts.
 #
 # Generates:
@@ -30,7 +30,7 @@ body = re.search(r'<main id="main">(.*)</main>', src, re.S).group(1)
 body = re.sub(r'<!--.*?-->', '', body, flags=re.S)
 body = re.sub(r'<(script|style|figcaption)\b.*?</\1>', '', body, flags=re.S)
 # A <br> is a word boundary. Dropping it silently welds two sentences together
-# ("Set the price.Then go to sleep.") — the twin's whole job is to be readable.
+# ("Set the price.Then go to sleep."), the twin's whole job is to be readable.
 body = re.sub(r'<br\s*/?>', ' ', body)
 # Keep links as links; a bare label like "See how it works" is noise in markdown.
 body = re.sub(r'<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
@@ -56,7 +56,7 @@ body = re.sub(r'</tr>', ' |\n', body)
 body = re.sub(r'</(p|div|section|article|dd|dt)>', '\n', body)
 body = re.sub(r'<[^>]+>', '', body)
 body = html.unescape(body)
-# Collapse runs of spaces, then strip per line — otherwise every line inherits
+# Collapse runs of spaces, then strip per line, otherwise every line inherits
 # the HTML source's indentation and markdown reads it as a code block.
 body = re.sub(r'[ \t]+', ' ', body)
 body = '\n'.join(l.rstrip() if l.startswith('```') or l.startswith('    ') else l.strip()
@@ -78,8 +78,8 @@ for line in body.split('\n'):
 if buf: rows.append(buf)
 body = re.sub(r'\n{3,}', '\n\n', '\n'.join(rows))
 
-head = ("# Trimmy — AI-friendly automation for XRP\n\n"
-        "> Markdown twin of https://trimmy.xyz/ — same content, no markup.\n\n---\n\n")
+head = ("# Trimmy: AI-friendly automation for XRP\n\n"
+        "> Markdown twin of https://trimmy.xyz/, same content, no markup.\n\n---\n\n")
 open('index.md', 'w', encoding='utf-8').write(head + body + '\n')
 print(f"  index.md {len(head)+len(body)} bytes")
 PY

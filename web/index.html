@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trimmy — arm a rule with one XRPL payment (Coston2 testnet)</title>
+<title>Trimmy: arm a rule with one XRPL payment (Coston2 testnet)</title>
 <meta name="description" content="One XRPL payment arms a rule on Flare. This page builds the payment in your browser and decodes it back from its own bytes so you can see what signing it authorises.">
 <meta name="theme-color" content="#2f3b8f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%232f3b8f'/%3E%3Crect y='5.5' width='16' height='1.6' fill='%23fff'/%3E%3Crect y='10' width='16' height='1.6' fill='%23fff'/%3E%3C/svg%3E">
@@ -11,7 +11,7 @@
   /* ---------------------------------------------------------------------------------------
      A payment declaration that gets stamped.
      The subject is an irreversible instruction written in bytes, so monospace is the interface
-     voice — eyebrows, labels, amounts, addresses — and prose is the only thing set in sans.
+     voice (eyebrows, labels, amounts, addresses), and prose is the only thing set in sans.
      Ground is cool security-paper rather than cream; the accent is stamp ink; vermilion is
      reserved for danger and never used decoratively.
      --------------------------------------------------------------------------------------- */
@@ -358,7 +358,7 @@
       <div class="banner warn">
         <strong>Read this before you send anything.</strong>
         An XRPL payment cannot be recalled. The 42-byte memo below is the only thing that decides
-        what happens on Flare, and it is unreadable by eye — so this is it, decoded independently
+        what happens on Flare, and it is unreadable by eye, so this is it, decoded independently
         from the bytes themselves rather than from what was typed above.
       </div>
       <div id="decoded"></div>
@@ -370,7 +370,7 @@
         <strong>This payment does not carry your secret price, and it cannot.</strong>
         Anything in the payment is on a public ledger forever. Arming creates the rule with no
         threshold at all; the number is delivered separately, encrypted to the enclave's own key, so
-        that nobody — including us — can read it.
+        that nobody, including us, can read it.
       </div>
       <div class="panel">
         <p class="note" style="margin-top:0">
@@ -390,7 +390,7 @@
       <div id="payment"></div>
       <div class="banner bad" style="margin-bottom:0">
         <strong>Do not add a destination tag.</strong>
-        A registered tag overrides the memo entirely and credits the tag holder instead — the
+        A registered tag overrides the memo entirely and credits the tag holder instead. The
         payment would be silently donated to a stranger.
       </div>
     </div>
@@ -403,7 +403,7 @@
 
   <footer>
     <p class="note">
-      Built by this page in your browser — no server sees your rule. The encoder is
+      Built by this page in your browser. No server sees your rule. The encoder is
       cross-checked byte-for-byte against the command-line builder in
       <span class="mono">arming/bin/arm.dart</span> using a payment that settled on chain; if the two
       ever disagreed, the test suite would fail rather than a payment going somewhere unintended.

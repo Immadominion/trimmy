@@ -1,7 +1,7 @@
 // Decodes an arming payment back out of its own bytes, into English.
 //
 // This exists to be *distrustful of the encoder next to it*. The page could simply restate the form
-// the user filled in — and that would look identical while proving nothing, because a bug in the
+// the user filled in, and that would look identical while proving nothing, because a bug in the
 // encoder would be echoed back word for word. So nothing here reads the form. Everything below is
 // recovered from the 42-byte memo and the user-operation pre-image, the same two artefacts an
 // executor sees, and the commitment is re-derived rather than trusted.
@@ -40,7 +40,7 @@ const fmtDuration = (s) => {
 
 /**
  * @param memo    the 42 bytes that will travel in the XRPL payment
- * @param userOp  abi.encode(PackedUserOperation) — what the memo commits to
+ * @param userOp  abi.encode(PackedUserOperation), what the memo commits to
  */
 export function decodeArmingPayment(memo, userOp, ctx = {}) {
   const problems = [];
@@ -60,7 +60,7 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
   const carried = memo.slice(10, 42);
   const matches = carried.length === 32 && commitment.every((b, i) => b === carried[i]);
   if (!matches) {
-    problems.push('the memo does not commit to this user operation — the payment would do something else');
+    problems.push('the memo does not commit to this user operation. The payment would do something else');
   }
 
   // ---- the batch itself ------------------------------------------------------------------------
@@ -71,7 +71,7 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
     // Head, after the leading offset-to-struct word:
     //   0 sender  1 nonce  2 initCode*  3 callData*  4 accountGasLimits
     //   5 preVerificationGas  6 gasFees  7 paymasterAndData*  8 signature*
-    // Slot 4 is a zero-filled value, not a pointer — reading callData from there yields offset 0
+    // Slot 4 is a zero-filled value, not a pointer. Reading callData from there yields offset 0
     // and the parse walks off the end.
     const base = 32;
     const sender = addressAt(userOp, base);
@@ -100,7 +100,7 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
 
   // ---- render ----------------------------------------------------------------------------------
   //
-  // This is emitted as a `.verdict` — a document, not another form panel. The whole page turns on
+  // This is emitted as a `.verdict`, a document, not another form panel. The whole page turns on
   // one fact, "did the memo really commit to this batch", and that fact used to render as the last
   // row of a grey definition list in the same weight as the executor fee. A refusal was loud and a
   // pass was a whisper; a verdict has to be equally legible in both directions.
@@ -133,7 +133,7 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
       const who = known
         ? `<strong>Trimmy</strong> <span class="mono">(${esc(spender)})</span>`
         : `<strong>an unrecognised contract</strong> <span class="mono">${esc(spender)}</span>`;
-      html += `<li><strong>Allow spending</strong> — let ${who} move up to
+      html += `<li><strong>Allow spending</strong>: let ${who} move up to
         <strong>${fmtUnits(amount, 6)} XRP</strong> of yours.
         <div class="note">This is an allowance, not a transfer. It is capped at exactly this
         amount and nothing can spend more than it.${
@@ -143,7 +143,7 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
       html += `<li><strong>Create the rule</strong>${renderRule(call.data, ctx)}</li>`;
     } else {
       html += `<li><strong>Unrecognised call</strong> to
-        <span class="mono">${esc(call.target)}</span> — selector
+        <span class="mono">${esc(call.target)}</span>, selector
         <span class="mono">0x${esc(sel)}</span>.
         <div class="note">This page cannot tell you what it does. Do not send it.</div></li>`;
     }
@@ -151,7 +151,7 @@ export function decodeArmingPayment(memo, userOp, ctx = {}) {
   html += '</ol>';
 
   // The match result has been promoted into the stamp above, so it is deliberately not repeated
-  // here. The fingerprint goes in a <details> — it is the evidence, and it matters, but sixty-six
+  // here. The fingerprint goes in a <details>. It is the evidence and it matters, but sixty-six
   // hex characters should not be the last thing a reader's eye lands on.
   html += `</ol></div>
     <div class="verdict__total">
@@ -197,7 +197,7 @@ function renderRule(data, ctx = {}) {
     // about a rule that can only run once is the exact misreading this decoder exists to prevent.
     when = once
       ? 'once, as soon as somebody runs it for you'
-      : `${runs} times — the first straight away, then every ${fmtDuration(triggerValue)}`;
+      : `${runs} times: the first straight away, then every ${fmtDuration(triggerValue)}`;
   } else if (trigger === 0) {
     when = `when 1 XRP falls to ${fmtUnits(triggerValue, 18)} FLR or below`;
   } else if (trigger === 1) {
@@ -218,8 +218,8 @@ function renderRule(data, ctx = {}) {
   out += once
     ? `<div class="note">This happens <strong>once</strong>, and then the rule is finished.
        ${trigger === 2 ? 'The interval never applies, because there is no second run.' : ''}</div>`
-    : `<div class="note">Up to <strong>${runs}</strong> runs of ${fmtUnits(part, 6)} XRP —
-       <strong>${fmtUnits(total, 6)} XRP</strong> in all, if every one of them fires.</div>`;
+    : `<div class="note">Up to <strong>${runs}</strong> runs of ${fmtUnits(part, 6)} XRP, which is
+       <strong>${fmtUnits(total, 6)} XRP</strong> in all if every one of them fires.</div>`;
   out += `<div class="note">Expires ${esc(expiryDate)} UTC. Anything unspent stays yours.</div>`;
 
   if (trigger === 3) {

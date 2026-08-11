@@ -1,0 +1,97 @@
+<!doctype html>
+<!--
+  Live rules, read from Coston2 in the reader's own browser.
+
+  This page exists because every other page on the site makes claims. This one
+  makes none: it shows the rules that are actually armed right now, and gives
+  you the two commands to check it without us.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live rules | Trimmy</title>
+<meta name="description" content="Every rule armed on Trimmy right now, read live from Flare Coston2 in your browser. No backend, no cache.">
+<link rel="canonical" href="https://trimmy.xyz/rules/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://trimmy.xyz/rules/">
+<meta property="og:title" content="Live rules | Trimmy">
+<meta property="og:description" content="Every rule armed on Trimmy right now, read live from Flare Coston2.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css">
+<link rel="stylesheet" href="/assets/rules.css">
+</head>
+<body>
+<a href="#main" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/" aria-current="page">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container rules" id="main">
+  <p class="doc-kicker">Live from the chain</p>
+  <h1>Every rule armed on Trimmy, right now.</h1>
+  <p class="doc-lede">
+    Read from Flare Coston2 when this page loaded, in your browser. There is no backend,
+    no database and no cache between you and the contract.
+  </p>
+
+  <p class="doc-testnet"><b>Testnet.</b> <span>These are real rules on Coston2, not on Flare
+    mainnet, and the amounts are testnet XRP.</span></p>
+
+  <p class="rules__status" id="status" role="status" aria-live="polite">Reading the chain…</p>
+
+  <div class="rules__list" id="list"></div>
+
+  <noscript>
+    <p class="rules__status rules__status--bad">
+      This page reads the chain with JavaScript, so it needs it enabled. You can get the same
+      answer without a browser using the two commands below.
+    </p>
+  </noscript>
+
+  <section class="rules__check">
+    <h2>Check it yourself</h2>
+    <p>The page above runs exactly these two calls. Nothing else.</p>
+    <pre><code>export RPC=https://coston2-api.flare.network/ext/C/rpc
+export TRIMMY=0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C
+
+cast call $TRIMMY "ruleCount()(uint256)"  --rpc-url $RPC
+cast call $TRIMMY "ruleAt(uint256)"     0 --rpc-url $RPC</code></pre>
+    <p class="t-sm dim">
+      <code>ruleAt</code> returns the Rule struct as 26 words, one field per word.
+      The field order is in
+      <a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/Trimmy.sol">Trimmy.sol</a>,
+      and <a href="/rules/rules.js">rules.js</a> refuses to decode anything that is not 26 words
+      rather than shifting every value by a slot.
+    </p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://coston2-explorer.flare.network/address/0x19F81AAB43f7a26B0659754b70179aDcAF43ef7C">The contract</a> &middot;
+      <a href="https://github.com/Immadominion/trimmy">Source</a></p>
+  </div>
+</footer>
+
+<script type="module" src="/rules/rules.js"></script>
+</body>
+</html>
