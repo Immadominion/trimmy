@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const landing = readFileSync(new URL('../../site/index.html', import.meta.url), 'utf8');
 const interactions = readFileSync(new URL('../../site/assets/page.js', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../../site/assets/page.css', import.meta.url), 'utf8');
 
 test('the hero example is an explicit replayable three-state product demo', () => {
   assert.match(landing, /data-demo-state="watching"/);
@@ -41,4 +42,12 @@ test('interaction assets use a matching cache-busting version', () => {
 
   assert.ok(cssVersion);
   assert.equal(scriptVersion, cssVersion);
+});
+
+test('the desktop rule card cannot cover the XRP headline block', () => {
+  assert.match(styles, /@media \(min-width:56\.0625rem\)/);
+  assert.match(styles, /--hero-headline-reserve:31\.5rem/);
+  assert.match(styles, /\.hero \.poster-line--split\{margin-left:auto;margin-right:var\(--hero-headline-reserve\)\}/);
+  assert.match(styles, /@media \(min-width:68\.0625rem\)/);
+  assert.match(styles, /--hero-headline-reserve:35rem/);
 });

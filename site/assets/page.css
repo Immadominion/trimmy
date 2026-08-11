@@ -666,9 +666,22 @@ main section[id]{scroll-margin-top:6.25rem}
 /* --------------------------------------------------------------------------
    Responsive
    -------------------------------------------------------------------------- */
+@media (min-width:56.0625rem){
+  .hero__poster{--hero-headline-reserve:31.5rem}
+  .hero .poster-line--split{margin-left:auto;margin-right:var(--hero-headline-reserve)}
+}
+
+@media (min-width:56.0625rem) and (max-width:68rem){
+  .hero__seal{display:none}
+}
+
+@media (min-width:68.0625rem){
+  .hero__poster{--hero-headline-reserve:35rem}
+}
+
 @media (max-width:68rem){
   .nav__links{gap:1rem}.nav__links a:nth-child(3),.nav__links a:nth-child(4){display:none}
-  .hero{min-height:68rem}.hero__poster{min-height:55rem}.hero__intro{width:30%}.hero-rule{right:1%;width:31rem}.hero__seal{left:12%}
+  .hero{min-height:68rem}.hero__poster{min-height:55rem}.hero__intro{width:30%}.hero-rule{right:3%;width:min(30rem,51vw)}.hero__seal{left:12%}
   .poster-heading{grid-template-columns:1fr}.poster-heading>p{justify-self:start}
   .private__panel{grid-template-columns:1fr;gap:2rem}.private-compute{max-width:50rem;margin-inline:auto}
 }
