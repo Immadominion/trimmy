@@ -1,4 +1,4 @@
-// Trimmy keeper — permissionless executor.
+// Trimmy keeper, permissionless executor.
 //
 // The keeper is trusted with NOTHING. `Trimmy.execute` re-derives every bound on chain from the
 // stored rule and a fresh FTSO read, and `msg.sender` appears in it exactly once: as the recipient
@@ -11,14 +11,14 @@
 // ## Why it simulates first
 //
 // Near a price threshold the feed oscillates across the trigger, so `execute` reverting is the
-// COMMON case, not the exceptional one — the red-team flagged that the cost of those reverts was
+// COMMON case, not the exceptional one, the red-team flagged that the cost of those reverts was
 // missing from every fee model written. This keeper never pays for one: every candidate is
 // simulated with `eth_call` at the current block, and a transaction is only signed and broadcast
 // when the simulation succeeds. A revert costs an RPC round trip, not gas.
 //
 // ## Signing
 //
-// `flare_network` holds no private keys and never will — a deliberate, permanent non-goal. It
+// `flare_network` holds no private keys and never will, a deliberate, permanent non-goal. It
 // builds the transaction, prices it, broadcasts the signed bytes, waits for the receipt and
 // explains a revert. The signature itself is shelled out to Foundry's `cast mktx`, which is the
 // same split the SDK's own broadcast tests use.
@@ -69,8 +69,8 @@ class Rule {
   bool get exhausted => spent >= totalSellAmount;
 
   /// Cheap local filter. Deliberately conservative: it only rules a candidate OUT on conditions
-  /// that are certain from stored state. Anything requiring a fresh oracle read — the price
-  /// trigger, feed staleness, the execution floor — is left to the on-chain simulation, because
+  /// that are certain from stored state. Anything requiring a fresh oracle read, the price
+  /// trigger, feed staleness, the execution floor, is left to the on-chain simulation, because
   /// duplicating that logic here would create a second implementation that can silently disagree
   /// with the contract.
   bool get maybeExecutable => active && !exhausted;
@@ -127,7 +127,7 @@ class Keeper {
   ///
   /// These indices shifted when `triggerValue` and `latchedPrice` widened to `uint128` for the
   /// M-1 fix and the slot layout was reordered. An index that is silently one out makes the keeper
-  /// act on the wrong field — `active` reading `trigger`, say — so `keeper_decode_test` pins every
+  /// act on the wrong field, `active` reading `trigger`, say - so `keeper_decode_test` pins every
   /// one of them against a live `ruleAt` response.
   Future<Rule> ruleAt(int id) async {
     final out =
@@ -279,7 +279,7 @@ class Keeper {
         final hash = await send(data, privateKey);
         _log(i, 'EXEC', hash);
       } else {
-        _log(i, 'EXEC', 'would execute (dry run) — fee ${rule.keeperFeeFlat}');
+        _log(i, 'EXEC', 'would execute (dry run), fee ${rule.keeperFeeFlat}');
       }
       executed++;
     }

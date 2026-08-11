@@ -1,9 +1,9 @@
-// TEMPORARY attack probe — delete after use.
+// TEMPORARY attack probe, delete after use.
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'arm.dart' as a;
 import 'package:plimsoll_core/plimsoll_core.dart' as p;
+import 'package:trimmy_arming/arming.dart' as a;
 
 String hex(Uint8List b) => b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
 

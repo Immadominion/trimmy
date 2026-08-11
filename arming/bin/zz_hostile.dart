@@ -56,7 +56,7 @@ void main() {
   // B: honest-looking batch plus an undescribed native-value transfer (data < 4 bytes).
   write('hidden-value', [Call(FXRP, BigInt.zero, approve(TRIMMY, amt)), Call(TRIMMY, BigInt.zero, arm),
       Call(EVIL, BigInt.from(10) * BigInt.from(10).pow(18), Uint8List(0))]);
-  // C: truncated approve — selector only.
+  // C: truncated approve, selector only.
   write('short-approve', [Call(FXRP, BigInt.zero, bs('095ea7b3'))]);
   // D: expiry at the uint64 ceiling.
   write('huge-expiry', [Call(TRIMMY, BigInt.zero, armCd(verb:1, trigger:2, total:BigInt.from(1000000),

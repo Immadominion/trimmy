@@ -50,7 +50,7 @@ void main(List<String> args) {
     p.abiWord(BigInt.from(1009400)),
   ]);
 
-  // 2. TRIMMY.arm(...) — 14 words of plausible args
+  // 2. TRIMMY.arm(...), 14 words of plausible args
   final arm = p.abiConcat([
     sel('c33d4cc3'),
     for (var i = 0; i < 14; i++) p.abiWord(BigInt.from(i == 9 ? 1786000000 : 1)),

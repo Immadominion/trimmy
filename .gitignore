@@ -38,3 +38,6 @@ arming/out/
 
 # Tooling scratch, not ours.
 .superpowers/
+
+# Dart build output
+mcp/.dart_tool/

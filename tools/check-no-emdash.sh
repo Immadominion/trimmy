@@ -18,6 +18,10 @@ TARGETS=(
   site/assets/page.css site/assets/trimmy.css
   web/index.html web/arm.js web/lib
   README.md docs/ROADMAP.md
+  site/docs site/developers site/rules
+  # The Dart packages: their strings reach the user through the arming CLI and
+  # through an agent's answer, so they are user-facing even though they are code.
+  arming/lib arming/bin mcp/lib mcp/bin mcp/test keeper/bin
 )
 
 hits=0

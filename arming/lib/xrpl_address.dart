@@ -1,7 +1,7 @@
 // XRPL address validation, with the checksum actually checked.
 //
 // This is not cosmetic input validation. `MasterAccountController.getPersonalAccount(string)` is a
-// **deterministic derivation, not a registry lookup** — measured on Coston2, it returns a
+// **deterministic derivation, not a registry lookup**, measured on Coston2, it returns a
 // plausible-looking account for any string at all:
 //
 //   rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB  ->  0x07a76b5c...      (the real one)
@@ -10,7 +10,7 @@
 //
 // So a typo does not fail. It silently derives a different Flare account, and this tool would then
 // build an arming payment that sets an allowance and arms a rule on an account the sender does not
-// control — irreversibly, because an XRPL payment cannot be recalled.
+// control, irreversibly, because an XRPL payment cannot be recalled.
 //
 // A base58check address carries its own four-byte checksum precisely so this is detectable
 // offline, before anything is sent. Rule 7: refuse rather than proceed on an unknown.
@@ -90,7 +90,7 @@ String validateXrplAddress(String address) {
   for (var i = 0; i < 4; i++) {
     if (expected[i] != checksum[i]) {
       throw const InvalidXrplAddress(
-        'That address fails its own checksum — it is mistyped. Copy it from your wallet '
+        'That address fails its own checksum. It is mistyped. Copy it from your wallet '
         'rather than retyping it.',
       );
     }

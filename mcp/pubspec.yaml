@@ -1,0 +1,35 @@
+name: trimmy_mcp
+description: >-
+  An MCP server that lets an AI agent compose a Trimmy rule for a person to sign.
+  It cannot sign, cannot send, and cannot learn a private rule's threshold price.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+executables:
+  trimmy-mcp:
+
+dependencies:
+  # The address checksum and the arming payment builder, shared with the CLI so
+  # the agent boundary cannot have weaker refusals than the command line.
+  trimmy_arming:
+    path: ../arming
+
+  # FlareClient, for the read-only eth_call surface. This package holds no key:
+  # flare_network exposes no signing API at all, by its own design.
+  flare_network:
+    path: ../../sdk/packages/flare_network
+
+  # Plimsoll owns the measured PackedUserOperation layout and the memo codec.
+  plimsoll_core:
+    path: ../../plimsoll/packages/plimsoll_core
+
+  # Nothing else. An MCP server is a JSON-RPC loop over two pipes, and a
+  # framework would add a supply chain to a process that an agent consults
+  # before a person signs an irreversible payment.
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0

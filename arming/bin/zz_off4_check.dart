@@ -25,7 +25,7 @@ Uint8List encodeBatch(List<(String, BigInt, Uint8List)> calls) {
     cursor += e.length;
   }
   return p.abiConcat([
-    sel('2b2ee783'), // executeUserOp — matches plimsoll executeUserOpSelector
+    sel('2b2ee783'), // executeUserOp, matches plimsoll executeUserOpSelector
     p.abiWord(BigInt.from(32)),
     p.abiWord(BigInt.from(calls.length)),
     ...offsets,

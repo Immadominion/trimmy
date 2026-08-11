@@ -9,7 +9,7 @@
 // A decoder built into the same front end that produced the payment does not fix that: a
 // compromised front end takes its own decoder with it, and the user is told a comforting story
 // about a hostile batch. So this is a **standalone program with no network access**. It reads a
-// pre-image, re-derives the commitment, and describes the calls — and it will do that for a
+// pre-image, re-derives the commitment, and describes the calls. And it will do that for a
 // payment produced by anyone, including one produced by an attacker.
 //
 // On stage this decodes a batch we did not generate. That is the point.
@@ -47,7 +47,7 @@ BigInt _word(Uint8List d, int i) {
   return v;
 }
 
-/// 6-decimal amounts, rendered as a decimal string. No floating point anywhere — rule 8.
+/// 6-decimal amounts, rendered as a decimal string. No floating point anywhere, rule 8.
 String _fxrpAmount(BigInt uba) {
   final s = uba.toString().padLeft(7, '0');
   final whole = s.substring(0, s.length - 6);
@@ -92,7 +92,7 @@ void _describeArm(Uint8List data) {
 
   if (trigger == 2) {
     if (runs == BigInt.one) {
-      stdout.writeln('     every      n/a — one run only, so the ${bw(8)}s interval never applies');
+      stdout.writeln('     every      n/a, one run only, so the ${bw(8)}s interval never applies');
     } else {
       stdout.writeln('     every      ${bw(8)} seconds, after an immediate first run');
     }
@@ -135,7 +135,7 @@ void main(List<String> args) {
   final preimage = _parseHex(preimageHex);
   final commitment = p.keccak256(preimage);
 
-  stdout.writeln('Trimmy arming payment — independent decode');
+  stdout.writeln('Trimmy arming payment, independent decode');
   stdout.writeln('  (no network, no trust in whoever produced this payment)\n');
   stdout.writeln('  user operation : ${preimage.length} bytes');
   stdout.writeln('  commitment     : 0x${_hex(commitment)}');
@@ -199,7 +199,7 @@ void main(List<String> args) {
                 continue;
               }
               stdout.writeln('  ?. UNRECOGNISED CALL to ${c.target}');
-              stdout.writeln('     selector 0x$sel — this decoder does not know it.');
+              stdout.writeln('     selector 0x$sel. This decoder does not know it.');
               stdout.writeln('     Treat that as a reason NOT to sign, not as a detail.');
               stdout.writeln('');
             }
