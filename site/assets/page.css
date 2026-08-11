@@ -669,6 +669,8 @@ main section[id]{scroll-margin-top:6.25rem}
 @media (min-width:56.0625rem){
   .hero__poster{--hero-headline-reserve:31.5rem}
   .hero .poster-line--split{margin-left:auto;margin-right:var(--hero-headline-reserve)}
+  .hero-rule{bottom:-.75rem}
+  .hero__custody{bottom:-1rem}
 }
 
 @media (min-width:56.0625rem) and (max-width:68rem){

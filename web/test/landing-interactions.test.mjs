@@ -48,6 +48,7 @@ test('the desktop rule card cannot cover the XRP headline block', () => {
   assert.match(styles, /@media \(min-width:56\.0625rem\)/);
   assert.match(styles, /--hero-headline-reserve:31\.5rem/);
   assert.match(styles, /\.hero \.poster-line--split\{margin-left:auto;margin-right:var\(--hero-headline-reserve\)\}/);
+  assert.match(styles, /\.hero-rule\{bottom:-\.75rem\}/);
   assert.match(styles, /@media \(min-width:68\.0625rem\)/);
   assert.match(styles, /--hero-headline-reserve:35rem/);
 });
