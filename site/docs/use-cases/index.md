@@ -94,3 +94,10 @@ Worth saying, because a primitive that claims to fit everything fits nothing.
 - [Rule types](/docs/rule-types/) for what each trigger and action actually does, including which of them are genuinely new.
 - [Arming](/docs/arming/) for the memo layout a wallet would build.
 - [Live rules](/rules/) for every rule armed right now, read from the chain in your own browser.
+
+## The other two
+
+Trimmy is the third thing built, not the first, and both of the others stand on their own.
+
+- [Plimsoll](https://plimsoll.trimmy.xyz/) computes what an XRPL payment aimed at Flare will do before you sign it, and refuses the ones that lose money. Anything from 0.1 to 0.2 XRP delivers exactly zero, silently, and the protocol's own warning flag stays false across that whole band. That was measured and paid for, not inferred.
+- [Flare Dart](https://flaredart.trimmy.xyz/) is the SDK. Flare publishes developer guides for JavaScript, React, Python, Rust and Go, and none for Dart. It is 164 generated bindings against Flare's own ABI artifacts, so FTSO, FDC, FAssets and Smart Accounts are an import rather than a week of hand-rolled work.
