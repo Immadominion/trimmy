@@ -1,7 +1,7 @@
 ---
 title: Where Trimmy runs today
 summary: The honest status list: Coston2 testnet only, a thin pool that is ours, our own executor, and what would have to change before real money.
-order: 8
+order: 9
 ---
 
 ## Coston2 testnet, and nowhere else

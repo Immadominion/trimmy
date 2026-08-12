@@ -1,7 +1,7 @@
 ---
 title: Rule types
 summary: The four triggers and three actions a rule can be built from, what each one is for, and which of them are genuinely new.
-order: 2
+order: 3
 ---
 
 Every rule is two choices: what Trimmy watches (the trigger) and what it does when the condition is met (the action). Both are fixed for the life of the rule. If you have not armed anything yet, read [Start here](/docs/start-here/) first.

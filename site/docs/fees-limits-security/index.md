@@ -1,7 +1,7 @@
 ---
 title: Fees, limits and security
 summary: The exact allowance, the keeper fee, the 50-bip oracle floor, the 64-second feed age, and what the contract can never do to you.
-order: 7
+order: 8
 ---
 
 An XRPL arming payment cannot be recalled. This is what a rule can take from you, and what nothing here can take.

@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- GENERATED from site/docs/use-cases/index.md. Edit the markdown, then run tools/build-docs.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Use cases | Trimmy</title>
+<meta name="description" content="Six things a standing rule is good for, each anchored to a product that exists today, including one that already runs on the same rails Trimmy uses.">
+<link rel="canonical" href="https://trimmy.xyz/docs/use-cases/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trimmy.xyz/docs/use-cases/">
+<meta property="og:title" content="Use cases | Trimmy">
+<meta property="og:description" content="Six things a standing rule is good for, each anchored to a product that exists today, including one that already runs on the same rails Trimmy uses.">
+<link rel="stylesheet" href="/assets/trimmy.css">
+<link rel="stylesheet" href="/assets/docs.css?v=poster-2">
+<script src="/assets/docs.js" defer></script>
+</head>
+<body>
+<a href="#doc" class="skip">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="/" aria-label="Trimmy, home">
+      <img src="/assets/mark-64.png" width="30" height="30" alt="" class="brand__mark">
+      <span class="brand__word">Trimmy</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary navigation">
+      <a href="/docs/start-here/">Docs</a>
+      <a href="/developers/">Developers</a>
+      <a href="/rules/">Live rules</a>
+    </nav>
+    <div class="nav__end">
+      <a class="nav__cta" href="/arm/">Try Trimmy</a>
+    </div>
+  </div>
+</header>
+
+<main class="container doc-shell">
+  <details class="doc-nav__toggle"><summary>All pages</summary>
+    <div><nav class="doc-nav" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/use-cases/" aria-current="page">Use cases</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav></div>
+  </details>
+  <nav class="doc-nav doc-nav--wide" aria-label="Documentation"><div class="doc-nav__group"><p class="doc-nav__title">Using Trimmy</p><ul><li><a href="/docs/">Documentation</a></li><li><a href="/docs/start-here/">Start here</a></li><li><a href="/docs/use-cases/" aria-current="page">Use cases</a></li><li><a href="/docs/rule-types/">Rule types</a></li><li><a href="/docs/arming/">Arming a rule</a></li><li><a href="/docs/after-arming/">What happens after you arm</a></li><li><a href="/docs/managing/">Managing and cancelling rules</a></li><li><a href="/docs/private-rules/">Private rules</a></li><li><a href="/docs/fees-limits-security/">Fees, limits and security</a></li><li><a href="/docs/availability/">Where Trimmy runs today</a></li></ul></div><div class="doc-nav__group"><p class="doc-nav__title">Developer reference</p><ul><li><a href="/developers/">Architecture</a></li><li><a href="/developers/contracts/">Contracts</a></li><li><a href="/developers/arming-format/">The arming payment format</a></li><li><a href="/developers/keeper/">Running a keeper</a></li><li><a href="/developers/private-triggers/">Private triggers and the enclave</a></li><li><a href="/developers/deployments/">Deployments</a></li><li><a href="/developers/evidence/">Evidence</a></li></ul></div></nav>
+
+  <article class="doc-body" id="doc">
+    <p class="doc-kicker">Using Trimmy</p>
+    <h1>Use cases</h1>
+    <p class="doc-lede">Six things a standing rule is good for, each anchored to a product that exists today, including one that already runs on the same rails Trimmy uses.</p>
+    <div class="page-actions" data-page-actions>
+      <noscript><a class="page-act" href="/docs/use-cases/index.md">View as markdown</a></noscript>
+    </div>
+    <p class="doc-skill"><b>Working with an agent?</b>
+      <span>Every page here has a markdown twin, the whole site is one file at
+      <a href="/llms-full.txt">llms-full.txt</a>, and
+      <a href="https://github.com/Immadominion/trimmy/tree/main/mcp">trimmy-mcp</a>
+      lets it read live rules and compose a payment it cannot send.</span></p>
+    <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
+      here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<p>A Trimmy rule is a small primitive: money that can be told what to do later, without being handed over now. This page is what that is good for, anchored to products that exist rather than to hypotheticals.</p>
+<p><strong>Nothing on this page is a partnership, an integration, or an endorsement.</strong> No product named here has any relationship with Trimmy, and none of them has been asked. Everything below is read off public documentation and public announcements, dated, so you can check it. Where a product already does part of what a rule would do, that is said plainly rather than hidden.</p>
+<h2 id="the-one-that-already-exists">The one that already exists</h2>
+<p>In late February 2026, Flare and <a href="https://xaman.app/">Xaman</a> shipped a one-click DeFi vault for XRP as an xApp inside the wallet, <a href="https://xaman.app/blog/flare">Flare XRPFi Yield</a>, built on Flare Smart Accounts and FAssets. An XRPL account signs once, a Flare Smart Account it controls holds the position, and the user keeps self-custody throughout.</p>
+<p>That matters here for two reasons, and the first one is uncomfortable.</p>
+<p><strong>It proves the rails, and it is not Trimmy's idea.</strong> The claim that an XRPL account can drive a contract on Flare without giving up custody is not a thing Trimmy is asking anyone to take on faith. A production wallet with millions of users shipped it six months ago, on the same Smart Accounts and the same FAssets that Trimmy arms rules through. If you doubt the model, that is the thing to look at, not us.</p>
+<p><strong>What it does not do is repeat, and it does not wait.</strong> One click, one deposit, now. There is no <em>deposit a little every week</em>, no <em>only if the price falls to my number</em>, and no bound that says <em>at most twelve times and never after the 30th</em>. Signing once to move money once is a different product from signing once to authorise a rule that keeps its own limits for a month.</p>
+<p>That difference is the whole of Trimmy. A rule is the standing version of the transaction that product already makes.</p>
+<h2 id="six-shapes">Six shapes</h2>
+<h3 id="for-wallets-limit-orders-without-becoming-an-exchange">For wallets: limit orders without becoming an exchange</h3>
+<p><strong>Anchored to:</strong> <a href="https://www.sologenic.com/ecosystem/sologenic-decentralized-exchange">Sologenic DEX</a>, which trades XRPL assets against the ledger's own order book and its XLS-30 AMM, and <a href="https://xaman.app/">Xaman Swap</a>, which routes swaps natively on the ledger.</p>
+<p>Both execute a swap you ask for now. Neither offers a standing stop, because the XRP Ledger does not natively represent one: a native stop order amendment is still an open discussion, not a shipped feature. A wallet that wants <em>sell if it drops to 150</em> has to either watch the market itself and hold a key to act, or send its users somewhere custodial.</p>
+<p>With a rule it does neither. The wallet composes the 42-byte memo, the user signs an ordinary payment from their own account, and the standing order lives on Flare as a contract with the amount, the count, the expiry and the price band already fixed. The wallet never holds a balance and never holds a key, so it does not acquire the obligations that come with either.</p>
+<p><strong>Built on:</strong> the <a href="/docs/arming/">arming memo layout</a>, and price rules from <a href="/docs/rule-types/">Rule types</a>.</p>
+<h3 id="for-agents-a-mandate-an-assistant-cannot-exceed">For agents: a mandate an assistant cannot exceed</h3>
+<p><strong>Anchored to:</strong> any assistant that speaks the Model Context Protocol. Trimmy ships an MCP server over stdio with four tools, and every one of them is read-only.</p>
+<p>The reason assistants do not act on money is not that they are bad at deciding. It is that the only lever available to them is a key, and a key is all or nothing. Handing one to a chat window means handing over everything the key can reach, forever, on the strength of a system prompt.</p>
+<p>A rule inverts that. An assistant can list what is armed, describe any rule in plain language, check that an address is well formed, and compose a new rule. What it produces is a payment for a person to sign, so the worst it can do is suggest. It cannot sign, cannot send, and refuses outright when asked to handle a private threshold, because a threshold that reaches an agent is a threshold that has left the enclave.</p>
+<p><strong>Built on:</strong> <code>trimmy_list_rules</code>, <code>trimmy_describe_rule</code>, <code>trimmy_check_address</code>, <code>trimmy_compose_rule</code>.</p>
+<h3 id="for-treasuries-payroll-that-converts-itself">For treasuries: payroll that converts itself</h3>
+<p><strong>Anchored to:</strong> any business holding XRP against costs it settles in something else.</p>
+<p>The manual version is somebody with a calendar reminder and a spreadsheet, converting a fixed amount every Friday, which is both a job nobody wants and a single point of failure when that person is on leave. The custodial version is an exchange account with an API key, which is a different risk wearing a suit.</p>
+<p>A scheduled rule is approved once by whoever is allowed to approve it, and then bounded: this much each run, this many runs, stop on this date. Anyone can execute it and is paid from the rule's own fee, so nothing depends on a particular machine being awake.</p>
+<p><strong>Built on:</strong> scheduled rules, minimum cadence 60 seconds, with a per-run cap and a hard expiry.</p>
+<h3 id="for-merchants-a-floor-price-on-money-already-taken">For merchants: a floor price on money already taken</h3>
+<p><strong>Anchored to:</strong> any XRPL payment processor settling to a merchant who thinks in another currency.</p>
+<p>The exposure between accepting XRP and converting it is real and nobody wants to staff it. A price rule sets the rate below which the margin stops working. If the market gets there, the conversion happens without anyone watching a chart. If it never does, nothing moves, and at no point was anything escrowed or deposited anywhere.</p>
+<p>Two legs are read fresh from FTSO on every check, sell feed against buy feed, so the threshold keeps its meaning whatever the counter asset is worth. A stale feed reverts rather than guesses.</p>
+<p><strong>Built on:</strong> price rules against FTSO feeds, with the slippage band in <a href="/docs/fees-limits-security/">Fees, limits and security</a>.</p>
+<h3 id="for-funds-an-entry-price-that-stays-a-trade-secret">For funds: an entry price that stays a trade secret</h3>
+<p><strong>Anchored to:</strong> anyone whose published stop is itself the risk.</p>
+<p>A visible threshold tells every observer when a large sell arrives. On a public chain, an automated strategy publishes its own plan as the price of being automated, and copy traders get the entry before the fill.</p>
+<p>A private rule holds the number inside a hardware enclave. The chain stores a commitment to it, the enclave signs a yes or no against a price the contract re-derives itself, and the rule never learns the value. Read <a href="/docs/private-rules/">Private rules</a> before relying on this: it needs one enclave to be running, its operator can censor it by declining to act, and that is a weaker trust model than the other three triggers, which are permissionless.</p>
+<p><strong>Built on:</strong> private rules, threshold held in a TEE, commitment on chain.</p>
+<h3 id="for-savers-a-deposit-habit-with-nothing-to-remember">For savers: a deposit habit with nothing to remember</h3>
+<p><strong>Anchored to:</strong> the Flare vault ecosystem the XRPFi Yield xApp already reaches, and the ERC-4626 vaults on Flare that a rule can deposit into directly.</p>
+<p>The one-click version needs a click. The rule version needs a signature, once, and then puts a little in every week until the date it stops. There is no subscription to cancel, no tab to leave open, and no app that has to survive a phone upgrade for the plan to keep working. Shares go to the account the rule belongs to, not to whoever executed it.</p>
+<p><strong>Built on:</strong> vault rules against an allowlisted ERC-4626 vault, with a hard expiry.</p>
+<h2 id="what-a-rule-is-not-good-for">What a rule is not good for</h2>
+<p>Worth saying, because a primitive that claims to fit everything fits nothing.</p>
+<ul>
+<li><strong>Anything needing sub-minute reaction.</strong> The scheduled cadence floors at 60 seconds and execution is permissionless, so a rule fires when somebody executes it and the condition holds, not on the tick. This is not a trading engine.</li>
+<li><strong>Anything needing discretion.</strong> A rule cannot change its mind, read news, or size a position differently on the day. Every bound is fixed when it is armed and nothing can widen it afterwards, including us. That is the safety property, and it is also the limitation.</li>
+<li><strong>Anything where the venue matters more than the price.</strong> The route comes from an allowlisted pair and fee tier, so nobody can substitute one, and that also means nobody can pick a better one.</li>
+<li><strong>Private rules, if you need censorship resistance.</strong> See above. One enclave, one operator, one way to be stopped.</li>
+</ul>
+<h2 id="next">Next</h2>
+<ul>
+<li><a href="/docs/rule-types/">Rule types</a> for what each trigger and action actually does, including which of them are genuinely new.</li>
+<li><a href="/docs/arming/">Arming</a> for the memo layout a wallet would build.</li>
+<li><a href="/rules/">Live rules</a> for every rule armed right now, read from the chain in your own browser.</li>
+</ul>
+    <div class="doc-foot">
+      <a href="https://github.com/Immadominion/trimmy">Source on GitHub</a>
+      <span class="doc-foot__md">Read this page as markdown: <code>/docs/use-cases/index.md</code></span>
+    </div>
+  </article>
+
+  <aside class="doc-toc" aria-label="On this page"><p class="doc-nav__title">On this page</p><ul><li><a href="#the-one-that-already-exists">The one that already exists</a></li><li><a href="#six-shapes">Six shapes</a></li><li><a href="#what-a-rule-is-not-good-for">What a rule is not good for</a></li><li><a href="#next">Next</a></li></ul></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer__end">
+    <p class="t-sm dim">Trimmy runs on Flare Coston2 testnet.
+      <a href="https://github.com/Immadominion/trimmy">trimmy</a> &middot;
+      <a href="https://github.com/Immadominion/plimsoll">plimsoll</a> &middot;
+      <a href="https://github.com/Immadominion/flare-dart">flare-dart</a></p>
+  </div>
+</footer>
+</body>
+</html>

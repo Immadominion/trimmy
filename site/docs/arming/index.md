@@ -1,7 +1,7 @@
 ---
 title: Arming a rule
 summary: Step by step: check your XRPL address offline, choose the rule, read the independent decode, then send one XRPL payment carrying three fields.
-order: 3
+order: 4
 ---
 
 Trimmy is live on Flare Coston2 testnet only. Nothing has run on Flare mainnet. The XRP you send is

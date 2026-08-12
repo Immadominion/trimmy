@@ -1,7 +1,7 @@
 ---
 title: What happens after you arm
 summary: The timeline from a settled XRPL payment to a rule that executes itself, with measured times and who does each step.
-order: 4
+order: 5
 ---
 
 Your payment is sent. From here nothing needs you: you can close the tab, and no support desk is

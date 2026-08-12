@@ -41,3 +41,4 @@ arming/out/
 
 # Dart build output
 mcp/.dart_tool/
+.venv/

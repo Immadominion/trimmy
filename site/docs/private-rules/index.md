@@ -1,7 +1,7 @@
 ---
 title: Private rules
 summary: How a PRIVATE rule keeps your trigger price off the chain, and the exact trust you take on in exchange.
-order: 6
+order: 7
 ---
 
 <figure class="doc-fig">

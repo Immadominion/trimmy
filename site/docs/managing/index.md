@@ -1,7 +1,7 @@
 ---
 title: Managing and cancelling rules
 summary: How to find your rules, how one ends by itself, and the three ways to stop one early: cancel, an epoch bump, or a guardian.
-order: 5
+order: 6
 ---
 
 You armed a rule and closed the browser. It keeps working. Here is how to look at one, how it stops on its own, and how to stop it early.
