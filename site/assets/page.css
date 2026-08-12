@@ -288,7 +288,7 @@ main section[id]{scroll-margin-top:6.25rem}
 /* --------------------------------------------------------------------------
    Hero
    -------------------------------------------------------------------------- */
-.hero{position:relative;min-height:72rem;padding:8.5rem 0 5rem;overflow:hidden}
+.hero{position:relative;padding:7.5rem 0 3.5rem;overflow:hidden}
 .hero::before{
   content:"";
   position:absolute;
@@ -301,47 +301,36 @@ main section[id]{scroll-margin-top:6.25rem}
   filter:blur(1rem);
   pointer-events:none;
 }
-.hero__poster{position:relative;min-height:58.5rem}
+.hero__poster{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:2.25rem;justify-items:center}
 .hero__heading{position:relative;z-index:3;text-align:center}
 .hero__heading .poster-kicker{margin-bottom:1.5rem;color:var(--poster-muted)}
 .hero h1{
   margin:0;
   color:var(--poster-paper);
   font-family:var(--poster-display);
-  font-size:clamp(5.4rem,10vw,9rem);
+  font-size:clamp(2.9rem,9.2vw,5.9rem);
   font-weight:900;
   letter-spacing:-.015em;
   line-height:.84;
   text-transform:uppercase;
   text-wrap:nowrap;
 }
-.hero__intro{
-  position:absolute;
-  left:clamp(0rem,2vw,2rem);
-  bottom:2.5rem;
-  z-index:5;
-  width:min(24rem,34%);
-}
+.hero__intro{position:static;width:100%;max-width:34rem}
 .hero__intro>p{color:var(--poster-paper-2);font-size:1rem;line-height:1.55}
 .hero__actions{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1.6rem}
 .hero-ornament{position:absolute;z-index:4;pointer-events:none}
-.hero-ornament--radar{
-  left:-1.2rem;
-  top:23rem;
-  width:12rem;
-  transform:translate3d(0,var(--parallax-y,0),0) rotate(-9deg);
-}
+.hero__cardwrap{position:relative;width:100%;max-width:34rem}
+.hero__band{position:relative;width:100%}
+
 .hero-ornament__image{display:block;width:100%;height:auto;filter:drop-shadow(.55rem .6rem 0 rgba(25,25,24,.92))}
-.hero-ornament--rocket{right:1.5%;top:19rem;width:11.5rem;transform:translate3d(0,var(--parallax-y,0),0) rotate(7deg)}
-.hero__seal{position:absolute;left:17%;top:35rem;z-index:7}
-.hero__custody{position:absolute;right:1%;bottom:1rem;z-index:9;width:7.4rem;min-height:0;aspect-ratio:11/7;padding:.8rem 1.8rem .8rem .65rem;background:transparent;border:0;border-radius:0;box-shadow:none}
+
+.hero__seal{position:absolute;z-index:7}
+
 
 .hero-rule{
-  position:absolute;
-  right:4%;
-  bottom:1.25rem;
+  position:static;
+  width:100%;
   z-index:6;
-  width:min(33rem,50%);
   padding:1.45rem;
   background:var(--poster-paper);
   color:var(--poster-ink);
@@ -416,7 +405,7 @@ main section[id]{scroll-margin-top:6.25rem}
 .rule-demo__receipt small{font-size:.68rem;line-height:1.3}
 .hero-rule[data-demo-state="met"] .rule-demo__receipt{background:var(--poster-amber);transform:translateY(-.08rem);box-shadow:.18rem .2rem 0 var(--poster-ink)}
 .hero-rule[data-demo-state="acted"] .rule-demo__receipt{background:var(--poster-mint);transform:translateY(-.08rem);box-shadow:.18rem .2rem 0 var(--poster-ink)}
-.hero-rule__footer>p{grid-column:1/-1;display:flex;align-items:flex-start;gap:.55rem;padding:.65rem .75rem;background:var(--poster-mint);border:2px solid var(--poster-ink);border-radius:var(--poster-cell-radius);font-size:.75rem;font-weight:700;line-height:1.35}
+.hero-rule__footer>p{grid-column:1/-1;display:flex;align-items:flex-start;gap:.55rem;padding:.65rem .75rem;padding-right:7rem;background:var(--poster-mint);border:2px solid var(--poster-ink);border-radius:var(--poster-cell-radius);font-size:.75rem;font-weight:700;line-height:1.35}
 .hero-rule__footer>p span{display:grid;place-items:center;flex:0 0 1.25rem;width:1.25rem;aspect-ratio:1;background:var(--poster-ink);color:var(--poster-paper);border-radius:50%;font-size:.68rem}
 
 /* --------------------------------------------------------------------------
@@ -668,34 +657,18 @@ main section[id]{scroll-margin-top:6.25rem}
    Responsive
    -------------------------------------------------------------------------- */
 @media (min-width:56.0625rem){
-  .hero__poster{--hero-headline-reserve:31.5rem}
-  .hero .poster-line--split{margin-left:auto;margin-right:var(--hero-headline-reserve)}
-  .hero-rule{bottom:-.75rem}
-  .hero__custody{bottom:-1rem}
-}
-
-@media (min-width:56.0625rem) and (max-width:68rem){
-  .hero__seal{display:none}
-}
-
-@media (min-width:68.0625rem){
-  .hero__poster{--hero-headline-reserve:35rem}
 }
 
 @media (max-width:68rem){
   .nav__links{gap:1rem}.nav__links a:nth-child(3),.nav__links a:nth-child(4){display:none}
-  .hero{min-height:68rem}.hero__poster{min-height:55rem}.hero__intro{width:30%}.hero-rule{right:3%;width:min(30rem,51vw)}.hero__seal{left:12%}
   .poster-heading{grid-template-columns:1fr}.poster-heading>p{justify-self:start}
   .private__panel{grid-template-columns:1fr;gap:2rem}.private-compute{max-width:50rem;margin-inline:auto}
 }
 
 @media (max-width:56rem){
   .nav{grid-template-columns:auto 1fr}.nav__links,.nav__github,.nav__cta-arrow{display:none}.nav__end{justify-self:end}
-  .hero{min-height:0;padding-top:7.5rem}.hero__poster{min-height:0;display:flex;flex-direction:column;align-items:center}
-  .hero h1{font-size:clamp(4.5rem,14vw,7rem)}
-  .hero__intro{position:relative;left:auto;bottom:auto;width:min(34rem,100%);margin-top:3rem;text-align:center}.hero__actions{justify-content:center}
-  .hero-rule{position:relative;right:auto;bottom:auto;width:min(33rem,100%);margin-top:5rem}
-  .hero__seal{display:none}.hero__custody{right:2%;bottom:13rem}.hero-ornament--radar{left:-3rem;top:28rem;transform:translate3d(0,var(--parallax-y,0),0) rotate(-13deg) scale(.78)}.hero-ornament--rocket{right:1%;top:26rem;transform:translate3d(0,var(--parallax-y,0),0) rotate(16deg) scale(.78)}
+  .hero h1{font-size:clamp(3.4rem,8.4vw,5.6rem)}
+  .hero__actions{justify-content:center}
   .ecosystem__inner{flex-direction:column;justify-content:center;padding-block:2rem}.ecosystem ul{justify-content:center;flex-wrap:wrap}
   .capability-grid{grid-template-columns:1fr 1fr}.capability:nth-child(3){grid-column:1/-1;max-width:50%;justify-self:center}.capability:not(:last-child)::after{display:none}
   .story-product{grid-template-columns:1fr;min-height:55.9375rem;align-content:start;align-items:start}.story__sticker{right:0;bottom:-1rem}.story-product__copy{padding-bottom:5rem}
@@ -708,10 +681,9 @@ main section[id]{scroll-margin-top:6.25rem}
   .container{padding-inline:1.25rem}
   .poster-grid-dark,.poster-grid-light{background-size:54rem 54rem}
   .nav{min-height:4.8rem}.brand__word{font-size:1.05rem}.nav__cta-arrow{display:none}
-  .hero{padding-top:6.5rem;padding-bottom:4rem}.hero h1{font-size:clamp(3.9rem,18vw,6.2rem);line-height:.86}.poster-block{border-width:2px;box-shadow:.05em .06em 0 var(--poster-ink)}
+  .hero{padding-top:6.25rem;padding-bottom:3rem}.hero h1{font-size:clamp(3.05rem,13.2vw,4.7rem);line-height:.88}.poster-block{border-width:2px;box-shadow:.05em .06em 0 var(--poster-ink)}
   .hero__heading .poster-kicker{font-size:.67rem}.hero__intro{margin-top:2.2rem}.hero__intro>p{font-size:.92rem}
-  .hero-ornament,.hero__seal,.hero__custody{display:none}
-  .hero-rule{margin-top:4rem;padding:1rem;box-shadow:.6rem .65rem 0 var(--poster-violet)}.hero-rule__header{gap:.65rem}.hero-rule__header h2{font-size:1.2rem}.hero-rule__controls{gap:.35rem}.watching-state{font-size:.65rem}.rule-demo__replay{min-height:2.75rem;padding:.4rem .55rem;font-size:.65rem}.hero-rule__market{grid-template-columns:1fr}.rule-sparkline{height:3.5rem}.rule-logic div{grid-template-columns:3.8rem 1fr}.rule-limits{grid-template-columns:1fr 1fr}.hero-rule__footer{grid-template-columns:1fr}.hero-rule__footer>p{grid-column:auto}
+  .hero-rule{padding:1rem;box-shadow:.6rem .65rem 0 var(--poster-violet)}.hero-rule__header{gap:.65rem}.hero-rule__header h2{font-size:1.2rem}.hero-rule__controls{gap:.35rem}.watching-state{font-size:.65rem}.rule-demo__replay{min-height:2.75rem;padding:.4rem .55rem;font-size:.65rem}.hero-rule__market{grid-template-columns:1fr}.rule-sparkline{height:3.5rem}.rule-logic div{grid-template-columns:3.8rem 1fr}.rule-limits{grid-template-columns:1fr 1fr}.hero-rule__footer{grid-template-columns:1fr}.hero-rule__footer>p{grid-column:auto}
   .ecosystem ul{gap:1rem 1.5rem;font-size:.85rem}.ecosystem li:last-child{width:100%;justify-content:center;text-align:center}
   .rules{border-radius:2.2rem 2.2rem 0 0}.poster-slab{padding-block:5rem}.poster-heading{gap:1.5rem;margin-bottom:2.8rem}.poster-heading h2,.private__copy h2{font-size:clamp(3.6rem,15vw,5.2rem)}
   .capability-nav{display:flex;align-items:center;justify-content:flex-end;gap:.9rem;margin:-1rem 0 1.2rem}.capability-nav button{width:2.8rem;height:2.8rem;background:var(--poster-paper);color:var(--poster-ink);border:3px solid var(--poster-ink);border-radius:.5rem;font-size:1.1rem;cursor:pointer}.capability-nav button:focus-visible{outline:3px solid var(--poster-amber);outline-offset:3px}.capability-nav p{font-size:.8rem}
@@ -726,7 +698,7 @@ main section[id]{scroll-margin-top:6.25rem}
 }
 
 @media (max-width:24rem){
-  .hero h1{font-size:3.7rem}.poster-btn{width:100%}.hero__actions{width:100%}.hero-ornament--rocket{display:none}.hero__seal{top:28rem}.nav__cta{min-width:6.4rem}.nav__cta-ring{inset:0 -.25rem}
+  .poster-btn{width:100%}.hero__actions{width:100%}.nav__cta{min-width:6.4rem}.nav__cta-ring{inset:0 -.25rem}
   .footer__grid{grid-template-columns:1fr}
 }
 
@@ -779,16 +751,20 @@ main section[id]{scroll-margin-top:6.25rem}
   .hero__poster{
     display:grid;
     grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
+    /* Row 1 is the argument, row 2 is the art. Two rows rather than one plus
+       absolute offsets, so nothing has to be nudged past anything. */
+    grid-template-rows:auto auto;
     align-items:center;
     gap:3rem;
     min-height:auto;
-    padding-block:4rem 5rem;
+    padding-block:4rem 3rem;
   }
-  .hero__col{ grid-column:1; }
-  .hero-rule{
-    position:static; grid-column:2; width:100%; max-width:34rem;
-    justify-self:end; margin:0;
+  .hero__col{ grid-column:1; grid-row:1; }
+  .hero__cardwrap{
+    position:relative; grid-column:2; grid-row:1;
+    width:100%; max-width:34rem; justify-self:end;
   }
+  .hero-rule{ position:static; width:100%; margin:0; }
   /* Flush left, so the three lines share an edge instead of a centre. */
   .hero__heading{ text-align:start; }
   .poster-line{ margin-inline:0; }
@@ -801,12 +777,119 @@ main section[id]{scroll-margin-top:6.25rem}
 /* Below the grid breakpoint the card stacks under the headline rather than
    floating over it. */
 @media (max-width:63.99rem){
-  .hero__poster{ min-height:auto; padding-block:2rem 3rem; }
-  .hero-rule{ position:static; width:100%; max-width:34rem;
-              margin:2.5rem auto 0; transform:none; }
-  .hero__intro{ position:static; width:100%; max-width:34rem; margin-top:2rem; }
-  .hero__seal, .hero-ornament{ display:none; }
+  /* One column, so the card sits square rather than tilted into a gutter that
+     is not there. */
+  .hero-rule{ transform:none; }
 }
+
+/* ==========================================================================
+   THE STICKER, AND THE ART ROW
+
+   NO CUSTODY is the one claim on this page a reader either believes or does
+   not, so it is stamped across the corner of the thing it is a claim about
+   rather than parked somewhere near it.
+
+   It is a child of .hero__cardwrap, which is the card's own box, so the
+   overlap holds at every width without a single number being tuned per
+   breakpoint. As a sibling of the card pinned to the section it could not:
+   right:1% is a distance from the SECTION edge, and the card's right edge is
+   somewhere else at every viewport.
+   ========================================================================== */
+.hero__cardwrap{ position:relative; }
+
+/* ---- mobile first ------------------------------------------------------
+   On a phone the card is nearly the full width, so a tag hung off the bottom
+   corner would be half off screen. It comes in over the top corner instead,
+   across the title, where the card has no numbers to cover. */
+.hero__custody{
+  position:absolute; z-index:9; display:grid;
+  right:-1rem; bottom:-1.35rem; top:auto; left:auto;
+  width:8.5rem; min-height:0; aspect-ratio:11/7;
+  padding:.5rem 1.7rem .5rem .65rem;
+  background:transparent; border:0; border-radius:0; box-shadow:none;
+  font-size:1.08rem;
+  pointer-events:none;
+}
+/* The word sits on a drawn tag that is wider than it is tall and has a notch
+   bitten out of its right edge, so the text is nudged off centre to land on
+   the ink rather than across the notch. */
+.hero__custody > span{ transform:translate(-.3rem,.05rem) rotate(-2deg); }
+
+.hero__band{ height:7.75rem; }
+/* Three pieces of art on one line: radar left, seal centre, rocket right.
+   Centring the seal on the band rather than on the column is what finally gave
+   it room. Measured, the second headline line already fills the text column to
+   its max-width at 1440, so there was never a gap beside the headline for an
+   11.5rem disc, at any width. */
+/* Sits on the band's baseline like the other two. Centred vertically it hung
+   half its height above the band, which put it over the card in the stacked
+   layout where the card is directly above. */
+.hero__band .hero__seal{ left:50%; bottom:0; top:auto; right:auto;
+             transform:translateX(-50%) rotate(-9deg); width:5.75rem; }
+.hero__band .hero-ornament{
+  position:absolute; bottom:0; top:auto; display:block;
+  transform:translate3d(0,var(--parallax-y,0),0) rotate(-8deg);
+}
+.hero__band .hero-ornament--radar{ left:0; right:auto; width:6rem; }
+.hero__band .hero-ornament--rocket{
+  left:auto; right:0; width:5.5rem;
+  transform:translate3d(0,var(--parallax-y,0),0) rotate(9deg);
+}
+
+/* ---- past the phones, the tag moves to the bottom corner --------------- */
+@media (min-width:30.0625rem){
+  .hero__custody{
+    right:-1.35rem; bottom:-1.6rem;
+    width:10.5rem; padding:.68rem 2.1rem .68rem .8rem; font-size:1.36rem;
+  }
+  .hero-rule__footer>p{ padding-right:8.5rem; }
+  .hero__band{ height:9.75rem; }
+  .hero__band .hero-ornament--radar{ width:8rem; }
+  .hero__band .hero-ornament--rocket{ width:7.5rem; }
+  .hero__band .hero__seal{ width:7.5rem; }
+}
+
+/* ---- desktop: everything at full size, and the seal comes back --------- */
+@media (min-width:64rem){
+  .hero__custody{
+    right:-2.25rem; bottom:-2rem;
+    width:13rem; padding:.9rem 2.6rem .9rem 1rem; font-size:1.65rem;
+  }
+  .hero-rule__footer>p{ padding-right:10rem; }
+  .hero__band{ height:12rem; }
+  .hero__band .hero-ornament--radar{ width:11.5rem; }
+  .hero__band .hero-ornament--rocket{ width:10.5rem; }
+  .hero__band .hero__seal{ width:11.5rem; }
+  /* Sits in the gap the short third headline line leaves beside FOR XRP.
+     Hidden below this width because there is no gap to sit in. */
+  /* The seal is 11.5rem tall and the headline line it belongs beside is 5.4rem,
+     so it cannot fit inside the column without landing on a longer line above.
+     It hangs off the outside corner instead, into the grid gap and just over
+     the card's edge, which is what a stamp does. */
+}
+
+/* ==========================================================================
+   THE HEADER GETS OUT OF THE WAY
+
+   Hidden on the way down, back on the way up. The page is long now, and a
+   fixed bar that never leaves spends the whole of it covering the thing being
+   read.
+
+   Two rules it has to keep: always visible at the very top, whatever the last
+   scroll direction was, and never hidden while something inside it has focus,
+   because a keyboard user tabbing into the nav must not send it off screen.
+   ========================================================================== */
+.page-enhanced .site-header{
+  transition:transform 280ms var(--poster-ease),
+             background-color var(--poster-fast) ease,
+             border-color var(--poster-fast) ease,
+             box-shadow var(--poster-fast) ease;
+  will-change:transform;
+}
+.page-enhanced .site-header.is-tucked{ transform:translateY(-102%); }
+/* Same compound as .is-tucked, so this wins outright rather than relying on
+   source order between two equally specific rules. */
+.page-enhanced .site-header.is-tucked:focus-within{ transform:none; }
 
 /* The two buttons were different widths because each was sized by its own
    label. They are a pair, so they match. */
@@ -817,7 +900,9 @@ main section[id]{scroll-margin-top:6.25rem}
    SET ONCE / arrow / STAYS READY was set at a size that did not fit inside the
    circle it sits on, so the last word rode the edge. The type is now sized off
    the seal itself and the whole stack is centred within it. */
-.poster-seal{ width:9.5rem; }
+/* The type inside is positioned as a percentage of the disc, so the seal
+   scales as one piece and nothing needs refitting when it grows. */
+.poster-seal{ width:11.5rem; }
 .poster-seal > span,
 .poster-seal > b,
 .poster-seal > small{
@@ -838,15 +923,15 @@ main section[id]{scroll-margin-top:6.25rem}
    column instead, and let it wrap if a viewport ever makes it necessary rather
    than sending it off the edge. */
 @media (min-width:64rem){
-  .hero h1{ font-size:clamp(3.35rem,6.55vw,6.3rem); text-wrap:balance; }
+  .hero h1{ font-size:clamp(3.6rem,7.1vw,6.9rem); text-wrap:balance; }
   .hero__col{ min-width:0; }
   /* The lede was set at 1rem to fit a 24rem absolutely positioned box. It now
      has a whole column, and it is the only sentence on the page that explains
      what Trimmy is, so it is sized like one. */
-  .hero__intro>p{ font-size:1.22rem; line-height:1.5; max-width:30rem; }
-  .hero__heading .poster-kicker{ font-size:.86rem; letter-spacing:.2em; }
+  .hero__intro>p{ font-size:1.38rem; line-height:1.48; max-width:31rem; }
+  .hero__heading .poster-kicker{ font-size:.92rem; letter-spacing:.2em; }
 }
-@media (min-width:100rem){ .hero h1{ font-size:7rem; } }
+@media (min-width:100rem){ .hero h1{ font-size:7.6rem; } }
 
 /* Ornaments were positioned against the old absolute layout, so in the grid
    they landed on top of the copy and the buttons. They live in the gutters
@@ -870,7 +955,6 @@ main section[id]{scroll-margin-top:6.25rem}
   /* Anchored to the left column now, in the gap the short third line leaves
      beside "FOR XRP". Before this it was a child of the whole hero, so
      right:2rem meant the far right of the section, which is where the card is. */
-  .hero__seal{ left:auto; right:0; top:auto; bottom:9rem; z-index:2; }
   .hero__col{ position:relative; }
 }
 
@@ -1315,4 +1399,47 @@ main section[id]{scroll-margin-top:6.25rem}
 
 @media (prefers-reduced-motion:reduce){
   .motion-ready .ecosystem__sheen{display:none}
+}
+
+/* ==========================================================================
+   TOUCH AND LEGIBILITY
+
+   Measured at 390px, not assumed. Fourteen links were under the 44px touch
+   target minimum, all of them 18px because they are plain text in a list, and
+   sixteen runs of real prose were rendering under 13px.
+
+   The small type is the poster system doing its job (eyebrows and chips are
+   meant to be small), so this raises the floor rather than flattening the
+   scale: nothing that is a sentence goes below 13px on a phone, and nothing
+   at all goes below 11.5px.
+   ========================================================================== */
+@media (max-width:63.99rem){
+  .ecosystem__inner>p{ font-size:.76rem; }
+  .build-card p.build-card__who,
+  .sibling p.sibling__kicker,
+  .gap p.gap__index{ font-size:.7rem; }
+  /* A footer link is a 18px line of text with nothing around it. Padding is
+     what makes it hittable, and inline-flex is what makes the padding count. */
+  .footer__grid a,
+  .site-footer nav a{
+    display:inline-flex; align-items:center; min-height:2.75rem;
+  }
+  .footer__grid li+li{ margin-top:0; }
+  .brand{ min-height:2.75rem; }
+}
+
+@media (max-width:47.9375rem){
+  .poster-kicker{ font-size:.8rem; }
+  .hero__heading .poster-kicker{ font-size:.8rem; }
+  .ecosystem__inner>p{ font-size:.76rem; }
+  .story-product__eyebrow{ font-size:.82rem; }
+  .window-note{ font-size:.82rem; }
+  .hero-rule__footer>p{ font-size:.82rem; }
+  .build-card p.build-card__who,
+  .sibling p.sibling__kicker,
+  .gap p.gap__index{ font-size:.72rem; }
+  .builder__steps li{ font-size:.75rem; }
+  .rule-limits span,
+  .hero-rule__footer span{ font-size:.68rem; }
+  .footer__end{ font-size:.8rem; }
 }

@@ -83,8 +83,6 @@ Set a rule for your XRP. Trimmy keeps watch and acts when your conditions are me
 [Try Trimmy ↗](/arm/)
 [Read the docs](/docs/start-here/)
 
-SET ONCE↗STAYS READY
-
 Example rule
 
 ## Sell if XRP falls
@@ -120,6 +118,8 @@ Watching the priceWaiting for the condition you set.
 ✓ Your keys stay with you. Anything unspent stays yours.
 
 NO CUSTODY
+
+SET ONCE↗STAYS READY
 
 Built for XRP on Flare
 

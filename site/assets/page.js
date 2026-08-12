@@ -12,9 +12,39 @@
   const parallaxItems = [...document.querySelectorAll('[data-parallax]')];
   let frameRequested = false;
 
+  /* ─── the header gets out of the way ───────────────────────────────────
+   * Hidden going down, back going up. The page is long, and a fixed bar that
+   * never leaves spends the whole of it covering what is being read.
+   *
+   * REVEAL_AT exists because momentum scrolling on a trackpad reverses by a
+   * pixel or two constantly; without it the header flickers the entire way
+   * down. TUCK_BELOW keeps it put while the hero is still on screen, where
+   * hiding it would read as a glitch rather than as an affordance.
+   */
+  const TUCK_BELOW = 320;   // px of scroll before it may hide at all
+  const REVEAL_AT = 12;     // px of upward travel before it comes back
+  let lastY = window.scrollY;
+  let travel = 0;
+
+  function updateHeaderTuck() {
+    if (!header) return;
+    const y = Math.max(0, window.scrollY);
+    const delta = y - lastY;
+    lastY = y;
+
+    // Accumulate travel in the current direction, and reset it the moment the
+    // direction changes, so the thresholds measure a deliberate gesture.
+    travel = (delta > 0) === (travel > 0) ? travel + delta : delta;
+
+    if (y <= TUCK_BELOW) { header.classList.remove('is-tucked'); return; }
+    if (travel > REVEAL_AT) header.classList.add('is-tucked');
+    else if (travel < -REVEAL_AT) header.classList.remove('is-tucked');
+  }
+
   function updateViewportEffects() {
     frameRequested = false;
     header?.classList.toggle('is-scrolled', window.scrollY > 24);
+    updateHeaderTuck();
 
     const allowDepth = canAnimate() && desktopMotion.matches;
     const viewportCentre = window.innerHeight / 2;
@@ -48,9 +78,9 @@
    *
    * Static product facts remain readable throughout.
    *
-   *    0ms   Watching — chart redraws from its starting price
-   * 1100ms   Condition met — the WHEN row and threshold respond
-   * 2500ms   Acted — the THEN row and compact result stay visible
+   *    0ms   Watching, and the chart redraws from its starting price
+   * 1100ms   Condition met, so the WHEN row and threshold respond
+   * 2500ms   Acted, and the THEN row and compact result stay visible
    * ───────────────────────────────────────────────────────── */
   const RULE_DEMO_TIMING = {
     autoplayDelay: 650,

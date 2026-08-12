@@ -34,7 +34,7 @@
 <meta name="twitter:image:alt" content="Trimmy: AI-friendly automation for XRP, shown with an example price rule.">
 
 <link rel="stylesheet" href="/assets/trimmy.css">
-<link rel="stylesheet" href="/assets/page.css?v=20260812-siblings">
+<link rel="stylesheet" href="/assets/page.css?v=20260812-hero-2">
 
 <script type="application/ld+json">
 {
@@ -108,31 +108,13 @@
         <a class="poster-btn poster-btn--ink" href="/docs/start-here/">Read the docs</a>
       </div>
     </div>
-    <div class="poster-seal hero__seal" data-asset-id="STICKER-RULE-SEAL" aria-hidden="true">
-      <picture>
-        <source media="(min-width: 56.0625rem)" type="image/avif" srcset="/assets/art/rule-seal.avif">
-        <source media="(min-width: 56.0625rem)" type="image/webp" srcset="/assets/art/rule-seal.webp">
-        <img class="poster-seal__base" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="900" height="900" alt="" decoding="async">
-      </picture>
-      <span>SET ONCE</span><b>↗</b><small>STAYS READY</small>
-    </div>
     </div>
 
-    <div class="hero-ornament hero-ornament--radar" data-asset-id="ART-HERO-WATCHER-RADAR" data-parallax="22" aria-hidden="true">
-      <picture>
-        <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/hero-watcher-radar.avif">
-        <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/hero-watcher-radar.webp">
-        <img class="hero-ornament__image" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="1200" height="1200" alt="" decoding="async">
-      </picture>
-    </div>
-    <div class="hero-ornament hero-ornament--rocket" data-asset-id="ART-HERO-RULE-ROCKET" data-parallax="-18" aria-hidden="true">
-      <picture>
-        <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/hero-rule-courier.avif">
-        <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/hero-rule-courier.webp">
-        <img class="hero-ornament__image" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="948" height="850" alt="" decoding="async">
-      </picture>
-    </div>
-
+    <!-- The card and the NO CUSTODY sticker are one positioned unit, so the
+         sticker is anchored to the CARD rather than to the section. It used to
+         be a sibling pinned to the poster at right:1%, which put it near the
+         card at one width and beside it at every other, and on it at none. -->
+    <div class="hero__cardwrap">
     <article class="hero-rule" data-asset-id="UI-HERO-RULE-CARD" data-motion="hero-rule" data-demo-state="watching" aria-label="Interactive example Trimmy rule">
       <header class="hero-rule__header">
         <div>
@@ -180,13 +162,46 @@
       </footer>
     </article>
 
+    <!-- No media condition on these sources: the sticker now shows at every
+         width, because it sits on the card and the card is on every screen. -->
     <div class="poster-sticker hero__custody" data-asset-id="STICKER-NO-CUSTODY" aria-hidden="true">
       <picture>
-        <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/no-custody-sticker.avif">
-        <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/no-custody-sticker.webp">
+        <source type="image/avif" srcset="/assets/art/no-custody-sticker.avif">
+        <source type="image/webp" srcset="/assets/art/no-custody-sticker.webp">
         <img class="poster-sticker__base" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="1100" height="700" alt="" decoding="async">
       </picture>
       <span>NO<br>CUSTODY</span>
+    </div>
+    </div>
+
+    <!-- The ornaments get a grid row of their own rather than absolute offsets
+         guessed against the two columns above. In their own row they cannot
+         collide with the copy or the card at any width, which is what lets
+         them be this size. It is the same fix that turned the hero into a grid
+         in the first place. -->
+    <div class="hero__band" aria-hidden="true">
+      <div class="hero-ornament hero-ornament--radar" data-asset-id="ART-HERO-WATCHER-RADAR" data-parallax="22">
+        <picture>
+          <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/hero-watcher-radar.avif">
+          <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/hero-watcher-radar.webp">
+          <img class="hero-ornament__image" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="1200" height="1200" alt="" decoding="async">
+        </picture>
+      </div>
+      <div class="poster-seal hero__seal" data-asset-id="STICKER-RULE-SEAL">
+        <picture>
+          <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/rule-seal.avif">
+          <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/rule-seal.webp">
+          <img class="poster-seal__base" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="900" height="900" alt="" decoding="async">
+        </picture>
+        <span>SET ONCE</span><b>&#8599;</b><small>STAYS READY</small>
+      </div>
+      <div class="hero-ornament hero-ornament--rocket" data-asset-id="ART-HERO-RULE-ROCKET" data-parallax="-18">
+        <picture>
+          <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/hero-rule-courier.avif">
+          <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/hero-rule-courier.webp">
+          <img class="hero-ornament__image" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="948" height="850" alt="" decoding="async">
+        </picture>
+      </div>
     </div>
   </div>
 </section>
@@ -644,7 +659,7 @@
   <div class="container footer__end"><p>Open source. Designed for self-custody.</p><p>© 2026 Trimmy</p></div>
 </footer>
 
-<script src="/assets/page.js?v=20260812-interactions-6" defer></script>
+<script src="/assets/page.js?v=20260812-interactions-7" defer></script>
 <script src="/assets/motion.js?v=20260812-motion-1" defer></script>
 
 </body>
