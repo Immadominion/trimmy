@@ -1,0 +1,251 @@
+/* ==========================================================================
+   Try Trimmy, in the poster system.
+
+   This surface used to carry its own palette (stamp ink on paper) because it
+   was built before the landing page existed. It is the same product, so it now
+   speaks the same vocabulary: paper ground, Impact display, 3px ink borders,
+   hard offset shadows.
+
+   One thing does NOT come across from the landing page, deliberately: the
+   brand gradient and the decorative art. This page authorises an irreversible
+   payment. Every colour on it below the header carries meaning (amber warns,
+   red refuses, lime confirms) and nothing is here to look nice.
+   ========================================================================== */
+
+@import url("/assets/poster-tokens.css");
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  background-color:var(--poster-paper);
+  background-image:var(--poster-grid-light);
+  background-size:78rem 78rem;
+  color:var(--poster-ink);
+  font-family:var(--poster-body);
+  font-size:1rem; line-height:1.6;
+  -webkit-text-size-adjust:100%;
+}
+
+.wrap{ max-width:52rem; margin-inline:auto; padding:1.5rem 1.25rem 5rem; }
+@media (min-width:48rem){ .wrap{ padding-inline:2rem; } }
+
+/* ---- masthead ----------------------------------------------------------- */
+.masthead{
+  display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+  padding-block:1rem 1.75rem;
+}
+.masthead a{ display:inline-flex; align-items:center; gap:.6rem;
+             text-decoration:none; color:var(--poster-ink); }
+.masthead img{ display:block; }
+.wordmark{ font-family:var(--poster-display); font-weight:400; font-size:1.35rem;
+           text-transform:uppercase; letter-spacing:.02em; }
+.chip{
+  margin-inline-start:auto; font-size:.68rem; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase;
+  border:2px solid var(--poster-ink); border-radius:.3rem;
+  padding:.3rem .55rem; background:var(--poster-paper);
+}
+
+/* ---- the pitch ---------------------------------------------------------- */
+h1{
+  font-family:var(--poster-display); font-weight:400; text-transform:uppercase;
+  font-size:clamp(2.3rem,1.9rem + 2vw,3.4rem); line-height:.94;
+  margin:0 0 1rem; text-wrap:balance;
+}
+.lede{ max-width:46rem; margin:0 0 2rem; }
+.lede p{ margin:0 0 .75rem; color:var(--poster-copy-dark); }
+.lede strong{ color:var(--poster-ink); }
+
+/* ---- the stepper -------------------------------------------------------- */
+.rail{
+  display:flex; gap:.5rem; flex-wrap:wrap; list-style:none;
+  margin:0 0 2rem; padding:0;
+}
+.rail li{
+  display:flex; align-items:center; gap:.5rem;
+  font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--poster-ink-muted);
+  border:2px solid var(--poster-paper-deep); border-radius:.35rem;
+  padding:.35rem .6rem; background:var(--poster-paper);
+}
+.rail li b{
+  display:grid; place-items:center; inline-size:1.15rem; block-size:1.15rem;
+  border-radius:50%; background:var(--poster-paper-deep); color:var(--poster-ink);
+  font-size:.65rem;
+}
+.rail li[data-state="current"]{
+  color:var(--poster-ink); border-color:var(--poster-ink);
+  background:var(--poster-amber); box-shadow:.16rem .18rem 0 var(--poster-ink);
+}
+.rail li[data-state="current"] b{ background:var(--poster-ink); color:var(--poster-amber); }
+.rail li[data-state="done"]{ color:var(--poster-ink); border-color:var(--poster-ink); }
+.rail li[data-state="done"] b{ background:var(--poster-lime); }
+.rail li[data-state="done"] b::after{ content:"\2713"; }
+.rail li[data-state="done"] b span{ display:none; }
+
+/* ---- a step ------------------------------------------------------------- */
+.step[hidden]{ display:none; }
+.step h2{
+  font-family:var(--poster-display); font-weight:400; text-transform:uppercase;
+  font-size:clamp(1.5rem,1.3rem + .7vw,2rem); line-height:1.05;
+  margin:0 0 .35rem;
+}
+.step > .sub{ margin:0 0 1.25rem; color:var(--poster-copy-dark); max-width:44rem; }
+
+.panel{
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-ink);
+  background:var(--poster-paper); padding:1.25rem;
+}
+@media (min-width:36rem){ .panel{ padding:1.5rem; } }
+
+.field{ display:grid; gap:.35rem; margin-bottom:1rem; }
+.field:last-child{ margin-bottom:0; }
+label{ font-size:.72rem; font-weight:700; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--poster-ink-muted); }
+input,select{
+  font:400 1rem/1.4 var(--poster-body); color:var(--poster-ink);
+  background:var(--poster-paper); border:2px solid var(--poster-ink);
+  border-radius:.4rem; padding:.65rem .75rem; inline-size:100%;
+}
+input:focus-visible,select:focus-visible{
+  outline:3px solid var(--poster-violet); outline-offset:2px;
+}
+input[aria-invalid="true"]{ border-color:var(--poster-red);
+                            box-shadow:.14rem .16rem 0 var(--poster-red); }
+.row{ display:grid; gap:1rem; }
+@media (min-width:36rem){ .row{ grid-template-columns:1fr 1fr; } }
+
+button, .btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+  min-height:3rem; padding:.7rem 1.2rem;
+  font:700 .82rem/1 var(--poster-body); letter-spacing:.07em; text-transform:uppercase;
+  color:var(--poster-ink); background:var(--poster-amber);
+  border:3px solid var(--poster-ink); border-radius:.45rem;
+  box-shadow:.3rem .34rem 0 var(--poster-ink);
+  cursor:pointer; text-decoration:none;
+  transition:transform var(--poster-fast) var(--poster-ease),
+             box-shadow var(--poster-fast) var(--poster-ease);
+}
+button:hover:not(:disabled), .btn:hover{
+  transform:translate(-1px,-1px); box-shadow:.4rem .44rem 0 var(--poster-ink);
+}
+button:disabled{
+  background:var(--poster-paper-deep); color:var(--poster-ink-muted);
+  box-shadow:none; cursor:not-allowed;
+}
+.btn--quiet{
+  background:var(--poster-paper); box-shadow:.2rem .22rem 0 var(--poster-ink);
+  min-height:2.5rem; font-size:.72rem;
+}
+
+.step__nav{ display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;
+            margin-top:1.5rem; }
+.step__nav .spacer{ margin-inline-start:auto; }
+
+/* ---- banners: the only colour that means anything ----------------------- */
+.banner{
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  padding:.9rem 1.1rem; margin:0 0 1.25rem; font-size:.92rem;
+  box-shadow:.28rem .32rem 0 var(--poster-ink);
+}
+.banner strong{ display:block; margin-bottom:.2rem; }
+.banner.warn{ background:var(--poster-amber); }
+.banner.bad { background:var(--poster-red); color:var(--poster-paper); }
+.banner.bad strong{ color:var(--poster-paper); }
+.banner.good{ background:var(--poster-lime); }
+
+.note{ font-size:.85rem; color:var(--poster-ink-muted); margin:.75rem 0 0; }
+.fielderr{ font-size:.82rem; font-weight:600; color:var(--poster-red); margin:0; }
+.hidden{ display:none !important; }
+.mono{ font-family:var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
+
+/* ---- key/value + copy rows ----------------------------------------------
+   These class names come from arm.js and decode.js, which emit the markup.
+   An earlier version of this file styled `.copyrow`, a name nothing produces,
+   so the payment fields rendered completely unstyled while the CSS looked
+   fine in isolation. Style what is emitted, not what would have been tidy. */
+.kv{ display:grid; grid-template-columns:auto 1fr; gap:.4rem .9rem; margin:1rem 0 0;
+     font-size:.88rem; }
+.kv dt{ font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+        color:var(--poster-ink-muted); }
+.kv dd{ margin:0; font-family:var(--font-mono, monospace); overflow-wrap:anywhere; }
+
+.copy{
+  display:flex; gap:1rem; align-items:flex-start;
+  border:2px solid var(--poster-ink); border-radius:.4rem;
+  background:var(--poster-paper-cell); padding:.85rem 1rem; margin-bottom:1rem;
+}
+.copy:last-child{ margin-bottom:0; }
+.copy label{ display:block; margin-bottom:.3rem; }
+.copy .val{
+  font-family:var(--font-mono, monospace); font-size:.85rem; line-height:1.55;
+  overflow-wrap:anywhere; color:var(--poster-ink);
+}
+.copy button.ghost{
+  flex:none; min-height:2.2rem; padding:.4rem .85rem; font-size:.68rem;
+  background:var(--poster-paper); box-shadow:.16rem .18rem 0 var(--poster-ink);
+}
+.copy button.ghost:hover{ background:var(--poster-lime); }
+
+/* The amount is the one number a person checks against their wallet, so it is
+   the one thing on this page allowed to be large. */
+.amount-hero{
+  display:inline-flex; align-items:baseline; gap:.4rem;
+  font-family:var(--poster-display); font-weight:400;
+  font-size:2.1rem; line-height:1; letter-spacing:.01em;
+}
+.amount-hero span{ font-family:var(--poster-body); font-size:.8rem; font-weight:700;
+                   letter-spacing:.12em; text-transform:uppercase;
+                   color:var(--poster-ink-muted); }
+
+.breakdown{ margin:0 0 1rem; font-size:.88rem; }
+.breakdown summary{
+  cursor:pointer; font-size:.72rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--poster-violet-dark);
+}
+.breakdown[open] summary{ margin-bottom:.5rem; }
+.breakdown .note{ margin-top:.6rem; }
+
+/* ---- the verdict -------------------------------------------------------- */
+.verdict{
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-lime);
+  background:var(--poster-paper); overflow:hidden; margin-bottom:1.25rem;
+}
+.verdict--fail{ box-shadow:.32rem .36rem 0 var(--poster-red); }
+.verdict__head{
+  display:flex; gap:1rem; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; padding:.85rem 1.1rem;
+  border-bottom:3px solid var(--poster-ink); background:var(--poster-paper-cell);
+}
+.verdict__title{ font-size:.72rem; font-weight:700; letter-spacing:.12em;
+                 text-transform:uppercase; }
+.stamp{
+  font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  border:2px solid var(--poster-ink); border-radius:.3rem; padding:.3rem .6rem;
+  background:var(--poster-lime); color:var(--poster-ink);
+}
+.stamp--fail{ background:var(--poster-red); color:var(--poster-paper); }
+.verdict__body{ padding:1.1rem; }
+.verdict__body ol.plain{ margin:0; padding-inline-start:1.2em; }
+.verdict__body li{ margin-bottom:.9rem; }
+.verdict__total{ padding:1.1rem; border-top:2px solid var(--poster-paper-deep);
+                 background:var(--poster-paper-cell); }
+.verdict details summary{ cursor:pointer; }
+
+footer{ margin-top:3.5rem; padding-top:1.5rem; border-top:3px solid var(--poster-ink); }
+footer .note{ margin:0 0 .75rem; }
+
+/* ---- inside the verdict, emitted by lib/decode.js ----------------------- */
+.verdict__body ol.plain{ margin:0; padding-inline-start:1.2em; }
+.verdict__body ol.plain > li{ margin-bottom:1rem; }
+.verdict__body ol.plain > li:last-child{ margin-bottom:0; }
+.verdict__body .note{ margin-top:.4rem; }
+.verdict .banner{ margin-bottom:1rem; }
+.verdict__total .kv{ margin-top:0; }
+.verdict__total details summary{
+  cursor:pointer; font-size:.72rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--poster-violet-dark);
+}

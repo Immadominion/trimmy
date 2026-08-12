@@ -1,5 +1,6 @@
 import { buildArmingPayment, toHex, Refusal } from './lib/arming.js';
 import { decodeArmingPayment } from './lib/decode.js';
+import { advanceFrom, goToStep, markSkipped } from './steps.js';
 import { lookupAccount, readExecutorFeeUBA, MINTING_FEE_UBA, UnknownAccount } from './lib/chain.js';
 import { validateXrplAddress, InvalidAddress } from './lib/xrpl-address.js';
 
@@ -12,7 +13,31 @@ const CORE_VAULT = 'rDhpmiPq4BVBDWMVdSrmkgt8thKyRzGV1p';
 let executorFeeUBA = 100000n;
 // Trimmy stores this in units of the result asset. The decoder names that
 // asset explicitly so this value is never presented as XRP when the result is FLR or vault shares.
-const KEEPER_FEE_RESULT_UNITS = 9400n;
+/// The keeper fee, per run, in the BUY token's own base units.
+///
+/// This has to be per-token and it was not. `keeperFeeFlat` is denominated in
+/// whatever the rule pays out in, and the two allowed buy tokens do not share
+/// a scale: FXRP has 6 decimals, WC2FLR has 18. A single flat 9400 is 0.0094
+/// FXRP for a vault deposit, which is right, and 0.0000000000000094 FLR for a
+/// swap, which is dust.
+///
+/// That is not a rounding error, it is a dead rule. A keeper compares the fee
+/// against the gas it will spend (383,451 gas, about 0.81 C2FLR measured on
+/// Coston2) and simply never executes one paying fourteen zeroes of nothing.
+/// It is the same failure Plimsoll measured on the XRPL side: an executor fee
+/// too small to attract anyone does not fail loudly, it just never happens.
+///
+/// The FXRP figure is the one used by the live end-to-end run. The WC2FLR
+/// figure is the one the live swap rules actually carry on chain, readable at
+/// /rules/ as 0.02 WC2FLR per run.
+const KEEPER_FEE_BY_DECIMALS = {
+  6: 9400n,                   // 0.0094 FXRP
+  18: 20000000000000000n,     // 0.02 WC2FLR
+};
+
+/// Decimals per token id, matching the constructor's allowlist. Read once on
+/// lookup rather than hardcoded here would be better; this mirrors tokenAt().
+const TOKEN_DECIMALS = { 0: 6, 1: 18 };
 
 const $ = (id) => document.getElementById(id);
 
@@ -107,6 +132,7 @@ $('lookup').addEventListener('click', async () => {
       <dt>Next instruction</dt><dd>#${account.nonce}</dd>`;
     $('account').classList.remove('hidden');
     $('build').disabled = false;
+    $('toRule').disabled = false;
   } catch (e) {
     if (e instanceof InvalidAddress) showError(e.message, 'xrpl');
     else if (e instanceof UnknownAccount) showError('Flare has no account for this address yet.', 'xrpl');
@@ -124,8 +150,8 @@ $('xrpl').addEventListener('input', () => {
   clearError();
   account = null;
   $('build').disabled = true;
+  $('toRule').disabled = true;
   $('account').classList.add('hidden');
-  $('out').classList.add('hidden');
 });
 
 // ---- rule shape -----------------------------------------------------------------------------
@@ -177,6 +203,17 @@ function ruleFromForm() {
     private: { verb: 0, venueId: 0, buyTokenId: 1, trigger: 3 },
   }[preset];
 
+  // The fee is denominated in the BUY token, so it has to be chosen after the
+  // shape is known, not before.
+  const buyDecimals = TOKEN_DECIMALS[shape.buyTokenId];
+  const keeperFee = KEEPER_FEE_BY_DECIMALS[buyDecimals];
+  if (keeperFee === undefined) {
+    throw new Refusal(
+      `No keeper fee is defined for a payout token with ${buyDecimals} decimals. ` +
+      'Refusing rather than arming a rule nobody would execute.',
+    );
+  }
+
   let triggerValue;
   if (shape.trigger === 2) {
     triggerValue = BigInt($('every').value);              // seconds between runs
@@ -202,7 +239,7 @@ function ruleFromForm() {
     // L2 in the contract: a rule whose fee budget cannot fund its own executions is refused at
     // arm time rather than stopping silently partway through with a live allowance. The budget
     // must therefore cover every run, `keeperFeeFlat * maxExecutions` (Trimmy.sol:457).
-    keeperFeeFlat: KEEPER_FEE_RESULT_UNITS, keeperFeeBudget: KEEPER_FEE_RESULT_UNITS * runs,
+    keeperFeeFlat: keeperFee, keeperFeeBudget: keeperFee * runs,
   };
 }
 
@@ -248,7 +285,6 @@ $('build').addEventListener('click', () => {
     // would leave the user believing the price they typed was carried by it, it is not, and a
     // rule armed without a provisioned secret simply never fires.
     const isPrivate = rule.trigger === 3;
-    $('privateStep').classList.toggle('hidden', !isPrivate);
     if (isPrivate) {
       const threshold = BigInt(Math.round(Number($('price').value) * 1e18));
       $('privateCmd').innerHTML = copyRow(
@@ -258,12 +294,11 @@ $('build').addEventListener('click', () => {
       );
     }
 
-    $('out').classList.remove('hidden');
+    markSkipped('private', !isPrivate);
     wireCopyButtons();
-    // Move focus to the verdict, not just the scroll position, otherwise "this payment is not
-    // safe to send" is delivered to sighted users only. Native focus scrolling already honours
-    // prefers-reduced-motion.
-    $('verdictHeading').focus();
+    advanceFrom('rule');
+    // steps.js focuses the heading of whichever step it reveals, so "this payment
+    // is not safe to send" is announced rather than only scrolled to.
   } catch (e) {
     showError(e instanceof Refusal ? 'Refused: ' + e.message : 'Could not build it: ' + e.message);
   }
@@ -329,3 +364,16 @@ function wireCopyButtons() {
     });
   }
 }
+
+
+// ---------------------------------------------------------------------------
+// Step navigation that is gated on something having succeeded.
+//
+// Back is declarative in steps.js. Forward is not, and never should be: every
+// forward move here is only reachable because a lookup returned an account or
+// a builder refused to throw.
+// ---------------------------------------------------------------------------
+
+$('toRule').addEventListener('click', () => goToStep('rule'));
+$('toSend').addEventListener('click', () => advanceFrom('check'));
+$('toSendFromPrivate').addEventListener('click', () => goToStep('send'));

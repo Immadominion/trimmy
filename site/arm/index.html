@@ -1,412 +1,220 @@
 <!doctype html>
+<!--
+  Try Trimmy.
+//
+  Four steps, one at a time. This was one long screen until it was not, and the
+  reason for the change is the third step: "should I sign this at all" is a
+  decision, and a decision does not belong in a panel somebody scrolls past on
+  the way to the memo.
+
+  Everything happens in this browser. No server sees the rule, and there is no
+  wallet connection, because the thing being produced is a payment for a human
+  to sign somewhere else.
+
+  Every element id here is load-bearing: arm.js reads them. steps.js owns only
+  visibility, so safety lives in exactly one file and it is not steps.js.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trimmy: arm a rule with one XRPL payment (Coston2 testnet)</title>
-<meta name="description" content="One XRPL payment arms a rule on Flare. This page builds the payment in your browser and decodes it back from its own bytes so you can see what signing it authorises.">
-<meta name="theme-color" content="#2f3b8f">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%232f3b8f'/%3E%3Crect y='5.5' width='16' height='1.6' fill='%23fff'/%3E%3Crect y='10' width='16' height='1.6' fill='%23fff'/%3E%3C/svg%3E">
-<style>
-  /* ---------------------------------------------------------------------------------------
-     A payment declaration that gets stamped.
-     The subject is an irreversible instruction written in bytes, so monospace is the interface
-     voice (eyebrows, labels, amounts, addresses), and prose is the only thing set in sans.
-     Ground is cool security-paper rather than cream; the accent is stamp ink; vermilion is
-     reserved for danger and never used decoratively.
-     --------------------------------------------------------------------------------------- */
-  :root {
-    color-scheme: light dark;
-
-    --paper:      #eef0f3;
-    --card:       #ffffff;
-    --ink:        #14181f;
-    --ink-soft:   #5b6472;
-    --rule:       #d3d8e0;
-    --rule-soft:  #e6e9ee;
-
-    --stamp:      #2f3b8f;
-    --stamp-ink:  #ffffff;
-    --stamp-wash: #e9ebf7;
-
-    --alarm:      #b3261e;
-    --alarm-wash: #fbeceb;
-    --caution:    #7a5410;
-    --caution-wash:#fdf3e0;
-
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-
-    --s1: .35rem; --s2: .7rem; --s3: 1.1rem; --s4: 1.7rem; --s5: 2.6rem;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --paper:      #0f1216;
-      --card:       #171b22;
-      --ink:        #e6e9ef;
-      --ink-soft:   #98a1b0;
-      --rule:       #2a303a;
-      --rule-soft:  #21262e;
-
-      --stamp:      #93a4ff;
-      --stamp-ink:  #10131c;
-      --stamp-wash: #1b2140;
-
-      --alarm:      #ff9b91;
-      --alarm-wash: #2b1614;
-      --caution:    #e8c07a;
-      --caution-wash:#2a2113;
-    }
-  }
-
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: var(--s4) var(--s3) var(--s5);
-    background: var(--paper); color: var(--ink);
-    font: 16px/1.6 var(--sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  main { max-width: 44rem; margin: 0 auto; }
-
-  /* --- masthead ------------------------------------------------------------------------- */
-  .masthead {
-    display: flex; align-items: center; gap: var(--s2);
-    padding-bottom: var(--s2); margin-bottom: var(--s4);
-    border-bottom: 2px solid var(--ink);
-  }
-  .mark {
-    width: 1.15rem; height: 1.15rem; flex: none;
-    background: var(--stamp); position: relative; border-radius: 2px;
-  }
-  .mark::after {
-    content: ""; position: absolute; inset: 0;
-    background:
-      linear-gradient(var(--card), var(--card)) 0 38% / 100% 2px no-repeat,
-      linear-gradient(var(--card), var(--card)) 0 68% / 100% 2px no-repeat;
-  }
-  .wordmark {
-    font: 600 .82rem/1 var(--mono); letter-spacing: .22em; text-transform: uppercase;
-  }
-  .chip {
-    margin-left: auto;
-    font: 500 .68rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
-    color: var(--ink-soft); border: 1px solid var(--rule);
-    padding: .35rem .55rem; border-radius: 2px; white-space: nowrap;
-  }
-
-  h1 {
-    font-size: clamp(1.45rem, 4vw, 1.85rem); line-height: 1.15;
-    margin: 0 0 var(--s2); letter-spacing: -.02em; text-wrap: balance;
-  }
-  .lede { display: flex; flex-direction: column; gap: var(--s2); max-width: 40em; }
-  .sub { color: var(--ink-soft); margin: 0; }
-  .lede .note { margin: 0; }
-
-  /* Steps are numbered because they are genuinely sequential: you cannot build before you
-     look up, and you cannot send before you build. */
-  .step { margin-top: var(--s5); }
-  .step > h2 {
-    font: 600 .72rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
-    color: var(--ink-soft); margin: 0 0 var(--s2);
-    display: flex; align-items: baseline; gap: .6rem;
-  }
-  .step > h2::before {
-    content: counter(step, decimal-leading-zero); counter-increment: step;
-    color: var(--stamp); font-weight: 700;
-  }
-  main { counter-reset: step; }
-
-  .panel {
-    background: var(--card); border: 1px solid var(--rule);
-    border-radius: 3px; padding: var(--s3);
-  }
-
-  /* --- form ---------------------------------------------------------------------------- */
-  label, .field-head {
-    display: block; margin: 0 0 var(--s1);
-    font: 500 .68rem/1.3 var(--mono); letter-spacing: .09em; text-transform: uppercase;
-    color: var(--ink-soft);
-  }
-  input, select {
-    width: 100%; padding: .55rem .6rem; font: inherit;
-    background: var(--paper); color: var(--ink);
-    border: 1px solid var(--rule); border-radius: 2px;
-  }
-  input[type=text] { font-family: var(--mono); font-size: .9rem; }
-  input[aria-invalid="true"] { border-color: var(--alarm); }
-  .row { display: grid; gap: var(--s2) var(--s3); grid-template-columns: 1fr 1fr; }
-  @media (max-width: 34rem) { .row { grid-template-columns: 1fr; } }
-  .field { margin-bottom: var(--s2); }
-
-  button {
-    font: 600 .82rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
-    cursor: pointer; padding: .7rem 1.1rem; border-radius: 2px;
-    border: 1px solid var(--stamp); background: var(--stamp); color: var(--stamp-ink);
-  }
-  button.ghost {
-    background: transparent; color: var(--ink); border-color: var(--rule);
-    letter-spacing: .06em;
-  }
-  button:disabled { opacity: .4; cursor: default; }
-  :is(input, select, button, summary, a):focus-visible {
-    outline: 2px solid var(--stamp); outline-offset: 2px;
-  }
-
-  .hidden { display: none !important; }
-  .note { font-size: .86rem; color: var(--ink-soft); }
-  .mono { font-family: var(--mono); font-size: .84rem; word-break: break-all; }
-  .fielderr { margin: var(--s1) 0 0; font-size: .84rem; color: var(--alarm); }
-
-  .kv { display: grid; grid-template-columns: max-content 1fr; gap: var(--s1) var(--s3); align-items: baseline; }
-  .kv dt { color: var(--ink-soft); font: 500 .68rem/1.6 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
-  .kv dd { margin: 0; font-family: var(--mono); font-size: .86rem; word-break: break-all; font-variant-numeric: tabular-nums; }
-
-  /* --- notices -------------------------------------------------------------------------- */
-  .banner {
-    border-radius: 2px; padding: var(--s2) var(--s3); margin: var(--s3) 0;
-    border: 1px solid; border-left-width: 3px; font-size: .92rem;
-  }
-  .banner.warn { background: var(--caution-wash); border-color: var(--caution); color: var(--caution); }
-  .banner.bad  { background: var(--alarm-wash);   border-color: var(--alarm);   color: var(--alarm); }
-  .banner strong { display: block; margin-bottom: var(--s1); }
-  .banner ul { margin: var(--s1) 0 0; padding-left: 1.1rem; }
-
-  /* --- the verdict ---------------------------------------------------------------------- */
-  /* Not a .panel. This is the one object on the page that is a document rather than a form,
-     and it is the only thing here that casts a shadow. */
-  .verdict {
-    background: var(--card); border: 1px solid var(--rule);
-    border-top: 2px solid var(--ink); border-radius: 2px;
-    box-shadow: 0 18px 40px -30px rgb(20 24 31 / .55);
-  }
-  .verdict__head {
-    display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
-    padding: var(--s2) var(--s3);
-    border-bottom: 1px dashed var(--rule);
-  }
-  .verdict__title {
-    font: 600 .68rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
-    color: var(--ink-soft);
-  }
-  .stamp {
-    margin-left: auto; display: inline-flex; align-items: center; gap: .45rem;
-    font: 700 .68rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
-    padding: .4rem .6rem; border-radius: 2px;
-    color: var(--stamp); background: var(--stamp-wash);
-    border: 1px solid currentColor;
-  }
-  .stamp::before {
-    content: ""; width: .42rem; height: .72rem; flex: none;
-    border: solid currentColor; border-width: 0 2px 2px 0;
-    transform: rotate(42deg) translateY(-.08rem);
-  }
-  .stamp--fail { color: var(--alarm); background: var(--alarm-wash); }
-  /* A proper X, not a rotated tick-fragment: two crossed bars from one box. */
-  .stamp--fail::before {
-    width: .62rem; height: .62rem; border: 0; transform: rotate(45deg);
-    background:
-      linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
-      linear-gradient(currentColor, currentColor) center / 2px 100% no-repeat;
-  }
-  .verdict--fail { border-top-color: var(--alarm); }
-  .verdict__body { padding: var(--s3); }
-  .verdict__total {
-    padding: var(--s2) var(--s3);
-    border-top: 1px dashed var(--rule); background: var(--rule-soft);
-  }
-  ol.plain { margin: 0; padding-left: 1.2rem; }
-  ol.plain > li { margin-bottom: var(--s3); }
-  ol.plain > li:last-child { margin-bottom: 0; }
-  ol.plain > li::marker { font-family: var(--mono); color: var(--ink-soft); font-size: .85em; }
-
-  /* --- payment slip ---------------------------------------------------------------------- */
-  .copy { display: flex; gap: var(--s2); align-items: flex-end; margin-bottom: var(--s2); }
-  .copy > div { flex: 1; min-width: 0; }
-  .copy .val {
-    background: var(--paper); border: 1px solid var(--rule); border-radius: 2px;
-    padding: .5rem .6rem; font-family: var(--mono); font-size: .84rem;
-    word-break: break-all; font-variant-numeric: tabular-nums;
-  }
-  .copy button { padding: .55rem .7rem; font-size: .7rem; }
-  .amount-hero {
-    font: 600 1.6rem/1.1 var(--mono); font-variant-numeric: tabular-nums;
-    letter-spacing: -.01em;
-  }
-  .amount-hero span { font-size: .55em; color: var(--ink-soft); margin-left: .35em; }
-
-  .breakdown { margin: 0 0 var(--s3); font-size: .9rem; }
-  .breakdown summary {
-    cursor: pointer; color: var(--ink-soft);
-    font: 500 .7rem/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase;
-    padding: var(--s1) 0;
-  }
-  .breakdown summary:hover { color: var(--ink); }
-  .breakdown .kv {
-    grid-template-columns: 1fr auto; gap: .3rem var(--s3);
-    margin: var(--s1) 0 0; padding: var(--s2);
-    background: var(--paper); border: 1px solid var(--rule); border-radius: 2px;
-  }
-  .breakdown .kv dt { text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: .84rem; }
-  .breakdown .kv dd { text-align: right; }
-
-  footer {
-    margin-top: var(--s5); padding-top: var(--s3);
-    border-top: 1px solid var(--rule); color: var(--ink-soft);
-  }
-  a { color: var(--stamp); }
-  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
-</style>
+<title>Try Trimmy: arm a rule with one XRPL payment</title>
+<meta name="description" content="Build the XRPL payment that arms a Trimmy rule, entirely in your browser, and read what signing it would authorise before you send it. Coston2 testnet.">
+<link rel="canonical" href="https://trimmy.xyz/arm/">
+<link rel="icon" href="/assets/mark-64.png" sizes="64x64" type="image/png">
+<link rel="icon" href="/assets/mark-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/mark-180.png">
+<meta name="theme-color" content="#f6f3ec">
+<link rel="stylesheet" href="./arm.css">
 </head>
 <body>
-<main>
+<div class="wrap">
+
   <header class="masthead">
-    <span class="mark" aria-hidden="true"></span>
-    <span class="wordmark">Trimmy</span>
-    <span class="chip">Coston2 · testnet</span>
+    <a href="/"><img src="/assets/mark-64.png" width="28" height="28" alt=""><span class="wordmark">Trimmy</span></a>
+    <span class="chip">Coston2 testnet</span>
   </header>
 
-  <h1>Arm a rule with one XRPL payment</h1>
+  <h1>Try Trimmy</h1>
   <div class="lede">
-    <p class="sub">
-      You keep your keys. There is no wallet to connect, nothing to install, and no FLR to hold.
-      This page builds the payment locally in your browser and then shows you, in plain English,
-      exactly what signing it will authorise.
+    <p>
+      <strong>We built this to show you what Trimmy can do.</strong> In four steps you will produce
+      a real XRPL payment that arms a real rule on Flare, and before you send it you will read,
+      in plain English, exactly what signing it authorises.
     </p>
-    <p class="note">
-      The XRP here is testnet XRP and is not worth anything. Everything below behaves exactly as it
-      would with real money, which is the point of showing it to you.
+    <p>
+      Everything happens in this browser. There is no wallet to connect, nothing to install, no FLR
+      to hold, and no server sees your rule. The XRP is testnet XRP and is worth nothing. Everything
+      else behaves exactly as it would with real money, which is the point of showing it to you.
     </p>
   </div>
 
   <div id="insecure" class="banner bad hidden" role="alert"></div>
 
-  <section class="step">
-  <h2>Your XRPL account</h2>
-  <div class="panel">
-    <div class="field">
-      <label for="xrpl">XRPL testnet address</label>
-      <input id="xrpl" type="text" placeholder="rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB"
-             spellcheck="false" autocapitalize="none" autocorrect="off" inputmode="text"
-             aria-describedby="xrplError">
-      <p id="xrplError" class="fielderr hidden" role="alert"></p>
-    </div>
-    <button id="lookup">Look up my account</button>
-    <p class="note" id="lookupNote" style="margin-top:.7rem">
-      Read-only. This asks Flare which contract address your XRPL account controls.
-    </p>
-    <dl class="kv hidden" id="account" style="margin-top:.9rem"></dl>
-  </div>
+  <ol class="rail" id="rail" aria-label="Progress"></ol>
 
+  <!-- ============================================================ 1 -->
+  <section class="step" data-step="account" data-label="Your account">
+    <h2>Whose rule is this?</h2>
+    <p class="sub">
+      Flare works out which contract address your XRPL account controls. This is read-only and
+      changes nothing.
+    </p>
+    <div class="panel">
+      <div class="field">
+        <label for="xrpl">XRPL testnet address</label>
+        <input id="xrpl" type="text" placeholder="rDE4JUm2jaue31VwidRXWuWzf5dQkUxcsB"
+               spellcheck="false" autocapitalize="none" autocorrect="off" inputmode="text"
+               aria-describedby="xrplError">
+        <p id="xrplError" class="fielderr hidden" role="alert"></p>
+      </div>
+      <button id="lookup">Look up my account</button>
+      <p class="note" id="lookupNote">
+        The address is checked against its own four-byte checksum first, here, before anything
+        touches a chain. Flare would accept a mistyped one and quietly derive an account nobody
+        controls, and the payment could not be recalled.
+      </p>
+      <dl class="kv hidden" id="account"></dl>
+    </div>
+    <div class="step__nav">
+      <span class="spacer"></span>
+      <button class="btn--quiet" id="toRule" disabled>Next: the rule</button>
+    </div>
   </section>
 
-  <section class="step">
-  <h2>The rule</h2>
-  <div class="panel">
-    <div class="field">
-      <label for="preset">What should happen</label>
-      <select id="preset">
-        <option value="below">Sell if the price falls to a level I choose</option>
-        <option value="swap">Exchange XRP for FLR on a schedule</option>
-        <option value="vault">Deposit XRP into the yield vault on a schedule</option>
-        <option value="private">Sell at a secret price only a secure enclave knows</option>
-      </select>
-    </div>
-    <div class="row">
+  <!-- ============================================================ 2 -->
+  <section class="step" data-step="rule" data-label="The rule" hidden>
+    <h2>What should happen, and when?</h2>
+    <p class="sub">
+      Every bound below is fixed the moment the rule is armed. Nothing can change them afterwards,
+      including us.
+    </p>
+    <div class="panel">
       <div class="field">
-        <label for="amount">Amount each time (XRP)</label>
-        <input id="amount" type="number" min="0.01" step="0.01" value="0.01">
-      </div>
-      <div class="field">
-        <label for="runs">How many times</label>
-        <select id="runs">
-          <option value="1">Once</option>
-          <option value="6">6 times</option>
-          <option value="12" selected>12 times</option>
-          <option value="24">24 times</option>
+        <label for="preset">What should happen</label>
+        <select id="preset">
+          <option value="below">Sell if the price falls to a level I choose</option>
+          <option value="swap">Exchange XRP for FLR on a schedule</option>
+          <option value="vault">Deposit XRP into the yield vault on a schedule</option>
+          <option value="private">Sell at a secret price only a secure enclave knows</option>
         </select>
       </div>
+      <div class="row">
+        <div class="field">
+          <label for="amount">Amount each time (XRP)</label>
+          <input id="amount" type="number" min="0.01" step="0.01" value="0.01">
+        </div>
+        <div class="field">
+          <label for="runs">How many times</label>
+          <select id="runs">
+            <option value="1">Once</option>
+            <option value="6">6 times</option>
+            <option value="12" selected>12 times</option>
+            <option value="24">24 times</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" id="everyField">
+          <label for="every">How often</label>
+          <select id="every">
+            <option value="60">Every minute</option>
+            <option value="3600" selected>Every hour</option>
+            <option value="86400">Every day</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="days">Rule expires after</label>
+          <select id="days">
+            <option value="7" selected>7 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" id="priceRow" style="display:none">
+        <div class="field">
+          <label for="price" id="priceLabel">Sell if 1 XRP falls to (FLR)</label>
+          <input id="price" type="number" min="0" step="0.01" value="150">
+        </div>
+      </div>
     </div>
-    <div class="row">
-      <div class="field" id="everyField">
-        <label for="every">How often</label>
-        <select id="every">
-          <option value="60">Every minute</option>
-          <option value="3600" selected>Every hour</option>
-          <option value="86400">Every day</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="days">Rule expires after</label>
-        <select id="days">
-          <option value="7" selected>7 days</option>
-          <option value="30">30 days</option>
-        </select>
-      </div>
+    <div class="step__nav">
+      <button class="btn--quiet" data-back type="button">Back</button>
+      <span class="spacer"></span>
+      <button id="build" disabled>Build the payment</button>
     </div>
-    <div class="row" id="priceRow" style="display:none">
-      <div class="field">
-        <label for="price" id="priceLabel">Sell if 1 XRP falls to (FLR)</label>
-        <input id="price" type="number" min="0" step="0.01" value="150">
-      </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section class="step" data-step="check" data-label="Check it" hidden>
+    <h2 id="verdictHeading">Read this before you send anything</h2>
+    <p class="sub">
+      An XRPL payment cannot be recalled. The 42-byte memo is the only thing that decides what
+      happens on Flare, and it is unreadable by eye. So below is that memo decoded independently,
+      from the bytes themselves rather than from what you typed.
+    </p>
+    <div id="decoded" aria-live="polite"></div>
+    <div class="step__nav">
+      <button class="btn--quiet" data-back type="button">Change the rule</button>
+      <span class="spacer"></span>
+      <button id="toSend">This is what I want</button>
     </div>
-    <button id="build" disabled>Build the payment</button>
-  </div>
+  </section>
 
-  <div id="out" class="hidden" aria-live="polite">
-    <section class="step">
-      <h2 tabindex="-1" id="verdictHeading">What you would be authorising</h2>
-      <div class="banner warn">
-        <strong>Read this before you send anything.</strong>
-        An XRPL payment cannot be recalled. The 42-byte memo below is the only thing that decides
-        what happens on Flare, and it is unreadable by eye, so this is it, decoded independently
-        from the bytes themselves rather than from what was typed above.
-      </div>
-      <div id="decoded"></div>
-    </section>
-
-    <section class="step hidden" id="privateStep">
-      <h2>Then tell the enclave your price</h2>
-      <div class="banner warn">
-        <strong>This payment does not carry your secret price, and it cannot.</strong>
-        Anything in the payment is on a public ledger forever. Arming creates the rule with no
-        threshold at all; the number is delivered separately, encrypted to the enclave's own key, so
-        that nobody, including us, can read it.
-      </div>
-      <div class="panel">
-        <p class="note" style="margin-top:0">
-          After the payment settles and your rule exists, run this once. It encrypts your price to
-          the enclave and commits only a hash of it on chain.
-        </p>
-        <div id="privateCmd"></div>
-      </div>
-    </section>
-
-    <section class="step">
-    <h2 id="sendHeading">Send it</h2>
+  <!-- ============================================================ 3b -->
+  <section class="step" data-step="private" data-label="Your secret price" hidden>
+    <h2>Your price does not travel in the payment</h2>
+    <p class="sub">
+      It cannot. Anything inside an XRPL payment is on a public ledger forever.
+    </p>
+    <div class="banner warn">
+      <strong>Arming creates the rule with no threshold at all.</strong>
+      The number is delivered separately, encrypted to the enclave's own key, so that nobody,
+      including us, can read it. The chain holds only a hash of it.
+    </div>
     <div class="panel">
       <p class="note" style="margin-top:0">
-        Make this payment from your XRPL wallet. All three fields matter, and the memo most of all.
+        After the payment settles and your rule exists, run this once.
       </p>
-      <div id="payment"></div>
-      <div class="banner bad" style="margin-bottom:0">
-        <strong>Do not add a destination tag.</strong>
-        A registered tag overrides the memo entirely and credits the tag holder instead. The
-        payment would be silently donated to a stranger.
-      </div>
+      <div id="privateCmd"></div>
     </div>
-  </div>
+    <div class="step__nav">
+      <button class="btn--quiet" data-back type="button">Back</button>
+      <span class="spacer"></span>
+      <button id="toSendFromPrivate">Next: send the payment</button>
+    </div>
+  </section>
 
-    </section>
-  </div>
+  <!-- ============================================================ 4 -->
+  <section class="step" data-step="send" data-label="Send it" hidden>
+    <h2 id="sendHeading">Send it from your own wallet</h2>
+    <p class="sub">
+      Three fields, and the memo matters most. Trimmy never sees your keys and cannot send this
+      for you.
+    </p>
+    <div class="panel">
+      <div id="payment"></div>
+    </div>
+    <div class="banner bad" style="margin-top:1.25rem">
+      <strong>Do not add a destination tag.</strong>
+      A registered tag overrides the memo entirely and credits the tag holder instead. The payment
+      would be silently donated to a stranger.
+    </div>
+    <div class="step__nav">
+      <button class="btn--quiet" data-back type="button">Back</button>
+      <span class="spacer"></span>
+      <a class="btn btn--quiet" href="/rules/">Watch it appear in the live rules</a>
+    </div>
+  </section>
 
   <div id="error" class="banner bad hidden" role="alert"></div>
 
   <footer>
     <p class="note">
-      Built by this page in your browser. No server sees your rule. The encoder is
-      cross-checked byte-for-byte against the command-line builder in
-      <span class="mono">arming/bin/arm.dart</span> using a payment that settled on chain; if the two
-      ever disagreed, the test suite would fail rather than a payment going somewhere unintended.
+      Built by this page in your browser. The encoder is cross-checked byte for byte against the
+      command-line builder in <span class="mono">arming/bin/arm.dart</span> using a payment that
+      settled on chain. If the two ever disagreed the test suite would fail, rather than a payment
+      going somewhere unintended.
     </p>
     <p class="note">
       <strong>Not one-tap yet.</strong> Xaman's hex deep link carries TrustSet transactions only, so
@@ -414,7 +222,7 @@
       piece of this flow that cannot be done from a static page, and it is not built.
     </p>
   </footer>
-</main>
+</div>
 
 <script type="module" src="./arm.js"></script>
 </body>

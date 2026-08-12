@@ -17,7 +17,7 @@ cd "$(dirname "$0")"
 
 echo "→ arming page"
 rm -rf arm && mkdir -p arm
-cp -R ../web/index.html ../web/arm.js ../web/lib arm/
+cp -R ../web/index.html ../web/arm.js ../web/arm.css ../web/steps.js ../web/lib arm/
 # The test fixtures and the page's own README are not part of the deployment.
 echo "  arm/ $(find arm -type f | wc -l | tr -d ' ') files"
 
