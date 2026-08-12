@@ -1,337 +1,359 @@
 /* ==========================================================================
-   Documentation layout.
+   Documentation, in the poster system.
 
-   The landing page is committed dark because it is one continuous argument.
-   Docs are the opposite: you are working, not being talked to, so they default
-   light and follow the reader's own theme. That is the same rule, applied to a
-   different job, not an inconsistency.
+   The first version of this file styled the docs from trimmy.css: violet
+   brand, Archivo display, soft shadows, hairline borders. The landing page
+   runs a different system entirely (Impact display, 3px ink borders, hard
+   offset shadows, paper ground, amber and lime and mint), so the two read as
+   two different products, which is what they were.
 
-   Consumes tokens from trimmy.css. Defines no colour of its own.
+   This is the docs rebuilt on the landing page's vocabulary. It consumes the
+   --poster-* tokens declared in page.css and adds no palette of its own.
+
+   Reading is a light job, so docs sit on paper. Where the landing page shouts,
+   the docs speak: the poster devices are all here, just quieter, because a
+   reference page that shouts is a reference page nobody finishes.
    ========================================================================== */
 
+@import url("/assets/poster-tokens.css");
+
+body{
+  background-color:var(--poster-paper);
+  background-image:var(--poster-grid-light);
+  background-size:78rem 78rem;
+  color:var(--poster-ink);
+  font-family:var(--poster-body);
+}
+
+/* ---- shell -------------------------------------------------------------- */
 .doc-shell{
-  display:grid;
-  grid-template-columns:minmax(0,1fr);
-  gap:var(--sp-8);
-  align-items:start;
-  padding-block:var(--sp-8) var(--sp-10);
+  display:grid; grid-template-columns:minmax(0,1fr);
+  gap:2.5rem; align-items:start; padding-block:2.5rem 5rem;
 }
-@media (min-width:64rem){
-  .doc-shell{ grid-template-columns:15rem minmax(0,1fr); gap:var(--sp-9); }
-}
-@media (min-width:90rem){
-  .doc-shell{ grid-template-columns:15rem minmax(0,1fr) 13rem; }
-}
+@media (min-width:64rem){ .doc-shell{ grid-template-columns:15rem minmax(0,1fr); gap:3.5rem; } }
+@media (min-width:92rem){ .doc-shell{ grid-template-columns:15rem minmax(0,1fr) 13rem; } }
 
 /* ---- left rail ---------------------------------------------------------- */
-.doc-nav{ position:static; font-size:var(--fs-sm); }
+.doc-nav{ font-size:.9rem; }
 @media (min-width:64rem){
   .doc-nav{ position:sticky; top:5.5rem; max-height:calc(100vh - 7rem); overflow-y:auto;
-            padding-inline-end:var(--sp-3); }
+            padding-inline-end:.75rem; }
 }
-.doc-nav__group + .doc-nav__group{ margin-top:var(--sp-6); }
+.doc-nav__group + .doc-nav__group{ margin-top:2rem; }
 .doc-nav__title{
-  font:var(--fw-medium) var(--fs-eyebrow)/1 var(--font-body);
-  letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3);
-  margin:0 0 var(--sp-3);
+  font-family:var(--poster-body); font-size:.7rem; font-weight:700;
+  letter-spacing:.18em; text-transform:uppercase;
+  color:var(--poster-ink-muted); margin:0 0 .75rem;
 }
-.doc-nav ul{ list-style:none; margin:0; padding:0; display:grid; gap:1px; }
+.doc-nav ul{ list-style:none; margin:0; padding:0; display:grid; gap:.15rem; }
 .doc-nav a{
-  display:block; padding:var(--sp-2) var(--sp-3);
-  margin-inline-start:calc(-1 * var(--sp-3));
-  color:var(--ink-2); text-decoration:none; border-radius:var(--r-sm);
-  border-inline-start:2px solid transparent;
+  display:block; padding:.4rem .7rem; margin-inline-start:-.7rem;
+  color:var(--poster-copy-dark); text-decoration:none;
+  border:2px solid transparent; border-radius:.4rem; font-weight:500;
 }
-.doc-nav a:hover{ color:var(--ink); background:var(--ground-sunken); }
+.doc-nav a:hover{ color:var(--poster-ink); background:var(--poster-paper-cell); }
+/* The current page gets the poster block treatment: hard border, hard shadow,
+   a colour fill. It is the one loud thing in the rail, which is the point. */
 .doc-nav a[aria-current="page"]{
-  color:var(--accent); font-weight:var(--fw-medium);
-  border-inline-start-color:var(--accent); background:var(--accent-wash);
+  color:var(--poster-ink); font-weight:700;
+  background:var(--poster-amber);
+  border-color:var(--poster-ink);
+  box-shadow:.18rem .2rem 0 var(--poster-ink);
 }
 
-/* On narrow screens the rail becomes a disclosure rather than 15 links the
-   reader has to scroll past to reach the page they already chose. */
 .doc-nav__toggle{ display:block; }
 @media (min-width:64rem){ .doc-nav__toggle{ display:none; } }
 .doc-nav__toggle summary{
-  cursor:pointer; padding:var(--sp-3) var(--sp-4);
-  border:1px solid var(--line); border-radius:var(--r-md);
-  background:var(--ground-raised); color:var(--ink);
-  font-weight:var(--fw-medium); list-style:none;
+  cursor:pointer; padding:.7rem 1rem; list-style:none;
+  border:3px solid var(--poster-ink); border-radius:.45rem;
+  background:var(--poster-paper); color:var(--poster-ink);
+  font-weight:700; letter-spacing:.05em; text-transform:uppercase; font-size:.8rem;
+  box-shadow:.28rem .32rem 0 var(--poster-ink);
 }
 .doc-nav__toggle summary::-webkit-details-marker{ display:none; }
-.doc-nav__toggle summary::after{ content:" ▾"; color:var(--ink-3); }
-.doc-nav__toggle[open] summary::after{ content:" ▴"; }
-.doc-nav__toggle > div{ padding-top:var(--sp-5); }
-@media (min-width:64rem){ .doc-nav__inner{ display:block !important; } }
+.doc-nav__toggle summary::after{ content:" \25BE"; }
+.doc-nav__toggle[open] summary::after{ content:" \25B4"; }
+.doc-nav__toggle > div{ padding-top:1.5rem; }
 
-/* ---- the prose column --------------------------------------------------- */
-.doc-body{ min-width:0; max-width:68ch; }
+/* ---- prose -------------------------------------------------------------- */
+.doc-body{ min-width:0; max-width:70ch; }
 .doc-body > *:first-child{ margin-top:0; }
 
 .doc-kicker{
-  font:var(--fw-medium) var(--fs-eyebrow)/1 var(--font-body);
-  letter-spacing:.09em; text-transform:uppercase; color:var(--accent);
-  margin:0 0 var(--sp-4);
+  font-size:.78rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--poster-ink-muted); margin:0 0 1rem;
 }
+/* Impact, uppercase, tight. The landing page's h1, in a size a page of prose
+   can live underneath. */
 .doc-body h1{
-  font:var(--fw-display) clamp(2rem,1.7rem + 1.2vw,2.75rem)/1.1 var(--font-display);
-  letter-spacing:-.015em; margin:0 0 var(--sp-4); text-wrap:balance;
+  font-family:var(--poster-display); font-weight:400;
+  font-size:clamp(2.4rem,2rem + 1.9vw,3.6rem); line-height:.94;
+  letter-spacing:.005em; text-transform:uppercase;
+  margin:0 0 1rem; text-wrap:balance; color:var(--poster-ink);
 }
-.doc-lede{ font-size:var(--fs-lead); color:var(--ink-2); margin:0 0 var(--sp-7);
-           line-height:1.55; text-wrap:pretty; }
+.doc-lede{
+  font-size:clamp(1.05rem,1rem + .3vw,1.25rem); color:var(--poster-copy-dark);
+  margin:0 0 1.75rem; line-height:1.55; text-wrap:pretty; max-width:60ch;
+}
 
 .doc-body h2{
-  font:var(--fw-medium) clamp(1.375rem,1.28rem + 0.42vw,1.625rem)/1.25 var(--font-body);
-  margin:var(--sp-8) 0 var(--sp-4); scroll-margin-top:5.5rem; letter-spacing:-.01em;
+  font-family:var(--poster-display); font-weight:400; text-transform:uppercase;
+  font-size:clamp(1.5rem,1.35rem + .6vw,1.95rem); line-height:1.05;
+  letter-spacing:.01em; margin:3rem 0 1rem; scroll-margin-top:5.5rem;
+  color:var(--poster-ink);
+}
+/* A short rule under every h2, in the poster's own ink. Cheap, and it makes a
+   long reference page scannable without introducing another colour. */
+.doc-body h2::after{
+  content:""; display:block; inline-size:2.5rem; block-size:3px;
+  background:var(--poster-ink); margin-top:.55rem;
 }
 .doc-body h3{
-  font:var(--fw-medium) var(--fs-h4)/1.3 var(--font-body);
-  margin:var(--sp-6) 0 var(--sp-3); scroll-margin-top:5.5rem;
+  font-weight:700; font-size:1.05rem; line-height:1.35;
+  letter-spacing:.02em; margin:2rem 0 .75rem; scroll-margin-top:5.5rem;
 }
-.doc-body p{ margin:0 0 var(--sp-4); line-height:1.65; text-wrap:pretty; }
-.doc-body ul, .doc-body ol{ margin:0 0 var(--sp-4); padding-inline-start:1.35em; }
-.doc-body li{ margin-bottom:var(--sp-2); line-height:1.6; }
-.doc-body li > ul, .doc-body li > ol{ margin-top:var(--sp-2); }
-.doc-body strong{ font-weight:var(--fw-medium); color:var(--ink); }
-.doc-body a{ color:var(--accent); text-underline-offset:.18em; }
-.doc-body a:hover{ color:var(--accent-hover); }
+.doc-body p{ margin:0 0 1rem; line-height:1.68; color:var(--poster-copy-dark);
+             text-wrap:pretty; }
+.doc-body ul, .doc-body ol{ margin:0 0 1rem; padding-inline-start:1.35em;
+                            color:var(--poster-copy-dark); }
+.doc-body li{ margin-bottom:.5rem; line-height:1.62; }
+.doc-body li > ul, .doc-body li > ol{ margin-top:.5rem; }
+.doc-body strong{ font-weight:700; color:var(--poster-ink); }
+.doc-body a{ color:var(--poster-violet-dark); font-weight:500;
+             text-underline-offset:.18em; }
+.doc-body a:hover{ color:var(--poster-ink); background:var(--poster-amber); }
 
 .doc-body :not(pre) > code{
-  font:400 .9em/1.4 var(--font-mono);
-  background:var(--ground-sunken); color:var(--ink);
-  padding:.12em .38em; border-radius:var(--r-xs);
-  overflow-wrap:anywhere;
+  font:400 .88em/1.4 var(--font-mono);
+  background:var(--poster-paper-cell); color:var(--poster-ink);
+  border:1px solid var(--poster-paper-deep);
+  padding:.1em .36em; border-radius:.25rem; overflow-wrap:anywhere;
 }
+/* Code is the one place the docs go dark, the way the landing page's hero
+   does. It separates what you read from what you paste. */
 .doc-body pre{
-  background:var(--ground-sunken); border:1px solid var(--line);
-  border-radius:var(--r-md); padding:var(--sp-5);
-  overflow-x:auto; margin:0 0 var(--sp-5);
-  font:400 var(--fs-code)/1.6 var(--font-mono);
+  background:var(--poster-ink); color:var(--poster-paper);
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-violet);
+  padding:1.25rem 1.4rem; overflow-x:auto; margin:0 0 1.75rem;
+  font:400 .875rem/1.65 var(--font-mono);
 }
-.doc-body pre code{ background:none; padding:0; white-space:pre; }
+.doc-body pre code{ background:none; border:0; padding:0; white-space:pre;
+                    color:inherit; }
 
-/* Tables carry most of the reference detail, so they scroll rather than
-   squeeze, and they never push the page sideways. */
-.doc-table{ overflow-x:auto; margin:0 0 var(--sp-5);
-            border:1px solid var(--line); border-radius:var(--r-md); }
-.doc-body table{ border-collapse:collapse; width:100%; font-size:var(--fs-sm); }
+.doc-table{
+  overflow-x:auto; margin:0 0 1.75rem;
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-ink);
+  background:var(--poster-paper);
+}
+.doc-body table{ border-collapse:collapse; width:100%; font-size:.9rem; }
 .doc-body th, .doc-body td{
-  text-align:start; padding:var(--sp-3) var(--sp-4);
-  border-bottom:1px solid var(--line); vertical-align:top;
+  text-align:start; padding:.7rem .95rem; vertical-align:top;
+  border-bottom:1px solid var(--poster-paper-deep);
 }
 .doc-body thead th{
-  background:var(--ground-sunken); color:var(--ink);
-  font:var(--fw-medium) var(--fs-eyebrow)/1.4 var(--font-body);
-  letter-spacing:.07em; text-transform:uppercase; white-space:nowrap;
+  background:var(--poster-ink); color:var(--poster-paper);
+  font-size:.7rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  white-space:nowrap; border-bottom:0;
 }
 .doc-body tbody tr:last-child td{ border-bottom:0; }
+.doc-body tbody tr:hover{ background:var(--poster-paper-cell); }
 
 .doc-body blockquote{
-  margin:0 0 var(--sp-5); padding:var(--sp-4) var(--sp-5);
-  border-inline-start:2px solid var(--accent);
-  background:var(--accent-wash); border-radius:0 var(--r-md) var(--r-md) 0;
-  color:var(--ink-2);
+  margin:0 0 1.75rem; padding:1rem 1.25rem;
+  background:var(--poster-paper-cell);
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-mint);
+  color:var(--poster-copy-dark);
 }
 .doc-body blockquote p:last-child{ margin-bottom:0; }
-.doc-body hr{ border:0; border-top:1px solid var(--line); margin:var(--sp-8) 0; }
+.doc-body hr{ border:0; border-top:3px solid var(--poster-ink); margin:3rem 0; }
 
-/* ---- right rail: on-page contents --------------------------------------- */
+/* ---- right rail --------------------------------------------------------- */
 .doc-toc{ display:none; }
-@media (min-width:90rem){
-  .doc-toc{ display:block; position:sticky; top:5.5rem; font-size:var(--fs-sm); }
-}
-.doc-toc ul{ list-style:none; margin:0; padding:0; display:grid; gap:var(--sp-2); }
-.doc-toc a{ color:var(--ink-3); text-decoration:none; display:block; line-height:1.4; }
-.doc-toc a:hover{ color:var(--ink); }
+@media (min-width:92rem){ .doc-toc{ display:block; position:sticky; top:5.5rem; font-size:.85rem; } }
+.doc-toc ul{ list-style:none; margin:0; padding:0; display:grid; gap:.5rem; }
+.doc-toc a{ color:var(--poster-ink-muted); text-decoration:none; display:block;
+            line-height:1.4; border-inline-start:2px solid var(--poster-paper-deep);
+            padding-inline-start:.7rem; }
+.doc-toc a:hover{ color:var(--poster-ink); border-inline-start-color:var(--poster-ink); }
 
-/* ---- footer of a page --------------------------------------------------- */
-.doc-foot{
-  margin-top:var(--sp-9); padding-top:var(--sp-6);
-  border-top:1px solid var(--line);
-  display:flex; flex-wrap:wrap; gap:var(--sp-4); justify-content:space-between;
-  align-items:center; font-size:var(--fs-sm);
+/* ---- notices ------------------------------------------------------------ */
+.doc-testnet{
+  display:flex; gap:.7rem; align-items:baseline; flex-wrap:wrap;
+  background:var(--poster-amber); color:var(--poster-ink);
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-ink);
+  padding:.75rem 1rem; margin:0 0 2rem; font-size:.9rem; font-weight:500;
 }
-.doc-foot a{ color:var(--accent); text-decoration:none; }
-.doc-foot a:hover{ text-decoration:underline; }
-.doc-foot__md{ color:var(--ink-3); }
+.doc-testnet b{ font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+
+.doc-skill{
+  display:flex; gap:.7rem; align-items:baseline; flex-wrap:wrap;
+  background:var(--poster-paper-cell); color:var(--poster-copy-dark);
+  border:2px dashed var(--poster-ink-muted); border-radius:var(--poster-cell-radius);
+  padding:.75rem 1rem; margin:0 0 2rem; font-size:.85rem;
+}
+.doc-skill b{ color:var(--poster-ink); }
+.doc-skill a{ color:var(--poster-violet-dark); font-weight:600; }
+
+.doc-foot{
+  margin-top:3.5rem; padding-top:1.75rem; border-top:3px solid var(--poster-ink);
+  display:flex; flex-wrap:wrap; gap:1rem; justify-content:space-between;
+  align-items:center; font-size:.85rem; color:var(--poster-ink-muted);
+}
+.doc-foot a{ color:var(--poster-violet-dark); text-decoration:none; font-weight:600; }
+.doc-foot a:hover{ background:var(--poster-amber); color:var(--poster-ink); }
 .doc-foot__md code{ font-family:var(--font-mono); }
 
-/* A testnet banner that cannot be missed and cannot be mistaken for a promo. */
-.doc-testnet{
-  display:flex; gap:var(--sp-3); align-items:baseline;
-  border:1px solid var(--caution-line); background:var(--caution-wash);
-  color:var(--caution); border-radius:var(--r-md);
-  padding:var(--sp-3) var(--sp-4); margin-bottom:var(--sp-7);
-  font-size:var(--fs-sm);
+/* ---- page actions ------------------------------------------------------- */
+.page-actions{
+  display:flex; flex-wrap:wrap; gap:.5rem;
+  margin:0 0 1.75rem; padding-bottom:1.5rem;
+  border-bottom:1px solid var(--poster-paper-deep);
 }
-.doc-testnet b{ color:var(--caution); }
+.page-act{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.4rem .7rem; border-radius:.4rem;
+  border:2px solid var(--poster-ink); background:var(--poster-paper);
+  color:var(--poster-ink); font-size:.72rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; text-decoration:none;
+  cursor:pointer; font-family:var(--poster-body);
+  transition:transform var(--poster-fast) var(--poster-ease),
+             box-shadow var(--poster-fast) var(--poster-ease),
+             background-color var(--poster-fast) var(--poster-ease);
+}
+.page-act:hover{
+  background:var(--poster-lime);
+  box-shadow:.2rem .22rem 0 var(--poster-ink); transform:translate(-1px,-1px);
+}
+.page-act svg{ inline-size:13px; block-size:13px; fill:none; stroke:currentColor;
+               stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 
-/* ==========================================================================
-   Shared chrome.
-
-   The header and footer styles live in page.css, which also carries the
-   landing page's poster treatment. Loading that stylesheet here would drag the
-   poster in with it, so the chrome the docs and the rule list actually need is
-   redeclared, and only that.
-   ========================================================================== */
-.site-header{
-  position:sticky; top:0; z-index:50;
-  background:color-mix(in srgb, var(--ground) 88%, transparent);
-  backdrop-filter:saturate(140%) blur(12px);
-  border-bottom:1px solid var(--line);
-}
-.site-header .nav{
-  display:flex; align-items:center; gap:var(--sp-6); padding-block:var(--sp-4);
-}
-.brand{ display:inline-flex; align-items:center; gap:var(--sp-3);
-        text-decoration:none; color:var(--ink); flex:none; }
-.brand__word{ font:var(--fw-display) 1.0625rem/1 var(--font-display); letter-spacing:.01em; }
-.nav__links{ display:none; gap:var(--sp-6); margin-inline-start:auto; }
-.nav__links a{ color:var(--ink-2); text-decoration:none; font-size:var(--fs-sm); }
-.nav__links a:hover{ color:var(--ink); }
-.nav__links a[aria-current="page"]{ color:var(--accent); font-weight:var(--fw-medium); }
-.nav__end{ display:flex; align-items:center; gap:var(--sp-3); margin-inline-start:auto; }
-@media (min-width:64rem){
-  .nav__links{ display:flex; }
-  .nav__end{ margin-inline-start:0; }
-}
-.nav__cta{
-  display:inline-flex; align-items:center; height:38px; padding-inline:var(--sp-5);
-  border-radius:var(--r-full); background:var(--accent); color:var(--ground-raised);
-  text-decoration:none; font-weight:var(--fw-medium); font-size:var(--fs-sm);
-  white-space:nowrap;
-}
-.nav__cta:hover{ background:var(--accent-hover); }
-
-.site-footer{
-  border-top:1px solid var(--line); background:var(--ground-sunken);
-  padding-block:var(--sp-7); margin-top:var(--sp-10);
-}
-.site-footer a{ color:var(--accent); text-decoration:none; }
-.site-footer a:hover{ text-decoration:underline; }
-.footer__end p{ margin:0; }
-
-.skip{
-  position:absolute; left:var(--sp-4); top:var(--sp-4); z-index:100;
-  transform:translateY(-200%);
-  background:var(--ground-raised); color:var(--ink);
-  padding:var(--sp-3) var(--sp-5); border-radius:var(--r-md);
-  border:1px solid var(--line-strong); text-decoration:none;
-}
-.skip:focus{ transform:translateY(0); }
-.t-sm{ font-size:var(--fs-sm); }
-.dim{ color:var(--ink-3); }
-
-/* ---- figures ------------------------------------------------------------
-   The diagrams are whiteboard sketches on white, which is exactly wrong on a
-   dark ground: the strokes vanish. So a figure always carries its own light
-   panel, in both themes, and the caption sits outside it in page ink. */
-.doc-fig{
-  margin:0 0 var(--sp-6); display:grid; gap:var(--sp-3);
-}
+/* ---- figures ------------------------------------------------------------ */
+.doc-fig{ position:relative; margin:0 0 1.75rem; display:grid; gap:.75rem; }
 .doc-fig img{
-  display:block; width:100%; height:auto;
-  background:#FFFFFF; border:1px solid var(--line);
-  border-radius:var(--r-md); padding:var(--sp-5);
+  display:block; width:100%; height:auto; background:#FFFFFF;
+  border:3px solid var(--poster-ink); border-radius:var(--poster-cell-radius);
+  box-shadow:.32rem .36rem 0 var(--poster-blue);
+  padding:1.25rem; cursor:zoom-in;
 }
 .doc-fig figcaption{
-  font-size:var(--fs-sm); color:var(--ink-3); line-height:1.5;
-  padding-inline-start:var(--sp-1);
+  font-size:.85rem; color:var(--poster-ink-muted); line-height:1.5;
+  padding-inline-start:.15rem;
 }
-/* Tall portrait diagrams would otherwise run past a screenful on their own. */
-.doc-fig--tall img{ max-height:min(78vh, 44rem); width:auto; margin-inline:auto; }
-
-/* ==========================================================================
-   Diagram viewer + page actions.
-   ========================================================================== */
-
-.doc-fig{ position:relative; }
 .doc-fig__acts{
-  position:absolute; inset-block-start:var(--sp-3); inset-inline-end:var(--sp-3);
-  display:flex; gap:var(--sp-2); z-index:2;
-  opacity:0; transition:opacity var(--d-2) var(--e-standard);
+  position:absolute; inset-block-start:.7rem; inset-inline-end:.7rem;
+  display:flex; gap:.4rem; z-index:2;
+  opacity:0; transition:opacity var(--poster-panel) var(--poster-ease);
 }
-/* Always visible on touch, where there is no hover to reveal them. */
 @media (hover:none){ .doc-fig__acts{ opacity:1; } }
-.doc-fig:hover .doc-fig__acts,
-.doc-fig:focus-within .doc-fig__acts{ opacity:1; }
-
+.doc-fig:hover .doc-fig__acts, .doc-fig:focus-within .doc-fig__acts{ opacity:1; }
 .doc-fig__btn{
   display:grid; place-items:center; inline-size:32px; block-size:32px;
-  border:1px solid var(--line-strong); border-radius:var(--r-sm);
-  /* The panel behind is always white, so these are dark-on-light in both
-     themes. Using theme ink here would make them invisible in dark mode. */
-  background:rgba(255,255,255,.92); color:#14122B;
+  border:2px solid var(--poster-ink); border-radius:.35rem;
+  background:var(--poster-paper); color:var(--poster-ink);
   cursor:pointer; padding:0; text-decoration:none;
 }
-.doc-fig__btn:hover{ background:#FFFFFF; border-color:#14122B; }
-.doc-fig__btn svg{ inline-size:17px; block-size:17px; fill:none;
-  stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.doc-fig__btn:hover{ background:var(--poster-amber);
+                     box-shadow:.16rem .18rem 0 var(--poster-ink); }
+.doc-fig__btn svg{ inline-size:17px; block-size:17px; fill:none; stroke:currentColor;
+                   stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 
 /* ---- the full-screen viewer -------------------------------------------- */
 .figview{
   position:fixed; inset:0; z-index:200;
-  /* Near-opaque on purpose. At 92% the site header read through the caption
-     bar and the two sets of words fought each other. */
-  background:color-mix(in srgb, var(--brand-950) 97%, transparent);
+  background:color-mix(in srgb, var(--poster-ink) 97%, transparent);
   backdrop-filter:blur(3px);
   display:grid; grid-template-rows:auto 1fr auto;
 }
 .figview[hidden]{ display:none; }
 .figview__bar{
-  display:flex; gap:var(--sp-5); align-items:center; justify-content:space-between;
-  padding:var(--sp-4) var(--sp-5); border-bottom:1px solid rgba(255,255,255,.14);
+  display:flex; gap:1.5rem; align-items:center; justify-content:space-between;
+  padding:1rem 1.5rem; border-bottom:1px solid var(--poster-line-strong);
 }
-.figview__cap{ margin:0; color:#F2F1FA; font-size:var(--fs-sm); }
-.figview__acts{ display:flex; gap:var(--sp-3); flex:none; }
+.figview__cap{ margin:0; color:var(--poster-paper); font-size:.9rem; }
+.figview__acts{ display:flex; gap:.75rem; flex:none; }
 .figview__btn{
-  display:inline-flex; align-items:center; gap:var(--sp-2);
-  padding:var(--sp-2) var(--sp-4); border-radius:var(--r-sm);
-  border:1px solid rgba(255,255,255,.22); background:transparent;
-  color:#F2F1FA; font:var(--fw-medium) var(--fs-sm)/1 var(--font-body);
-  cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.5rem 1rem; border-radius:.4rem;
+  border:2px solid var(--poster-paper); background:transparent;
+  color:var(--poster-paper); font:700 .75rem/1 var(--poster-body);
+  letter-spacing:.08em; text-transform:uppercase; cursor:pointer; text-decoration:none;
 }
-.figview__btn:hover{ background:rgba(255,255,255,.1); }
-.figview__btn svg{ inline-size:16px; block-size:16px; fill:none;
-  stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
-
-.figview__stage{
-  overflow:hidden; display:grid; place-items:center;
-  cursor:grab; touch-action:none; padding:var(--sp-5);
-}
+.figview__btn:hover{ background:var(--poster-amber); color:var(--poster-ink);
+                     border-color:var(--poster-amber); }
+.figview__btn svg{ inline-size:15px; block-size:15px; fill:none; stroke:currentColor;
+                   stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.figview__stage{ overflow:hidden; display:grid; place-items:center;
+                 cursor:grab; touch-action:none; padding:1.5rem; }
 .figview__stage.is-dragging{ cursor:grabbing; }
 .figview__stage img{
-  max-inline-size:min(1400px, 94vw); inline-size:auto;
-  background:#FFFFFF; border-radius:var(--r-md); padding:var(--sp-6);
+  max-inline-size:min(1400px,94vw); inline-size:auto;
+  background:#FFFFFF; border:3px solid var(--poster-paper);
+  border-radius:var(--poster-cell-radius); padding:1.75rem;
   transform-origin:center center; will-change:transform;
   user-select:none; -webkit-user-drag:none;
 }
 .figview__hint{
-  margin:0; padding:var(--sp-3) var(--sp-5) var(--sp-5);
-  color:rgba(242,241,250,.55); font-size:var(--fs-xs); text-align:center;
+  margin:0; padding:.75rem 1.5rem 1.5rem; text-align:center;
+  color:var(--poster-muted); font-size:.75rem;
+  letter-spacing:.08em; text-transform:uppercase;
 }
 
-/* ---- page actions ------------------------------------------------------ */
-.page-actions{
-  display:flex; flex-wrap:wrap; gap:var(--sp-2);
-  margin:0 0 var(--sp-6); padding-bottom:var(--sp-5);
-  border-bottom:1px solid var(--line);
+/* ---- accessibility ------------------------------------------------------ */
+.skip{
+  position:absolute; left:1rem; top:1rem; z-index:100; transform:translateY(-200%);
+  background:var(--poster-amber); color:var(--poster-ink);
+  padding:.7rem 1.2rem; border:3px solid var(--poster-ink); border-radius:.45rem;
+  text-decoration:none; font-weight:700;
 }
-.page-act{
-  display:inline-flex; align-items:center; gap:var(--sp-2);
-  padding:var(--sp-2) var(--sp-3); border-radius:var(--r-sm);
-  border:1px solid var(--line); background:var(--ground-raised);
-  color:var(--ink-2); font-size:var(--fs-xs); text-decoration:none;
-  cursor:pointer; font-family:var(--font-body);
+.skip:focus{ transform:translateY(0); }
+:where(.doc-body, .doc-nav, .page-actions) :focus-visible{
+  outline:3px solid var(--poster-violet); outline-offset:2px;
 }
-.page-act:hover{ color:var(--ink); border-color:var(--line-strong); }
-.page-act svg{ inline-size:14px; block-size:14px; fill:none; stroke:currentColor;
-  stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
 
-.doc-skill{
-  display:flex; gap:var(--sp-3); align-items:baseline; flex-wrap:wrap;
-  margin:0 0 var(--sp-7); padding:var(--sp-3) var(--sp-4);
-  border:1px solid var(--accent-wash); background:var(--accent-wash);
-  border-radius:var(--r-md); font-size:var(--fs-sm); color:var(--ink-2);
+/* ---- chrome -------------------------------------------------------------
+   The landing page's header lives in page.css alongside its poster layout, so
+   the docs declare their own. Same shapes, paper ground instead of ink. */
+.site-header{
+  position:sticky; top:0; z-index:50;
+  background:color-mix(in srgb, var(--poster-paper) 92%, transparent);
+  backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:3px solid var(--poster-ink);
 }
-.doc-skill a{ color:var(--accent); }
+.site-header .nav{ display:flex; align-items:center; gap:2rem; padding-block:.9rem; }
+.brand{ display:inline-flex; align-items:center; gap:.6rem; text-decoration:none;
+        color:var(--poster-ink); flex:none; }
+.brand__word{ font-family:var(--poster-display); font-weight:400; font-size:1.35rem;
+              text-transform:uppercase; letter-spacing:.02em; }
+.nav__links{ display:none; gap:1.6rem; margin-inline-start:auto; }
+.nav__links a{ color:var(--poster-copy-dark); text-decoration:none; font-size:.82rem;
+               font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.nav__links a:hover{ color:var(--poster-ink); }
+.nav__links a[aria-current="page"]{ color:var(--poster-ink);
+  box-shadow:inset 0 -.35em 0 var(--poster-amber); }
+.nav__end{ display:flex; align-items:center; gap:.75rem; margin-inline-start:auto; }
+@media (min-width:64rem){ .nav__links{ display:flex; } .nav__end{ margin-inline-start:0; } }
+.nav__cta{
+  display:inline-flex; align-items:center; padding:.55rem 1rem;
+  border:3px solid var(--poster-ink); border-radius:.45rem;
+  background:var(--poster-violet); color:var(--poster-paper);
+  font-size:.78rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  text-decoration:none; white-space:nowrap;
+  box-shadow:.24rem .28rem 0 var(--poster-ink);
+  transition:transform var(--poster-fast) var(--poster-ease),
+             box-shadow var(--poster-fast) var(--poster-ease);
+}
+.nav__cta:hover{ transform:translate(-1px,-1px); box-shadow:.34rem .38rem 0 var(--poster-ink); }
+
+.site-footer{
+  border-top:3px solid var(--poster-ink); background:var(--poster-paper-2);
+  padding-block:2rem; margin-top:5rem;
+}
+.site-footer p{ margin:0; color:var(--poster-ink-muted); font-size:.85rem; }
+.site-footer a{ color:var(--poster-violet-dark); text-decoration:none; font-weight:600; }
+.site-footer a:hover{ background:var(--poster-amber); color:var(--poster-ink); }
+.t-sm{ font-size:.85rem; }
+.dim{ color:var(--poster-ink-muted); }

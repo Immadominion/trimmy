@@ -141,7 +141,7 @@ SHELL = """<!doctype html>
 <meta property="og:title" content="{title} | Trimmy">
 <meta property="og:description" content="{summary}">
 <link rel="stylesheet" href="/assets/trimmy.css">
-<link rel="stylesheet" href="/assets/docs.css">
+<link rel="stylesheet" href="/assets/docs.css?v=poster-2">
 <script src="/assets/docs.js" defer></script>
 </head>
 <body>

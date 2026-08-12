@@ -1,0 +1,47 @@
+/* ==========================================================================
+   The poster palette and type, extracted so more than one surface can use it.
+
+   page.css declares these AND the landing page's layout. Importing that whole
+   file into the docs dragged the dark hero body rules along with it and put
+   dark text on a dark ground. So the tokens live here, and each surface brings
+   its own layout.
+
+   This block is duplicated from page.css rather than removed from it, because
+   editing the landing page's stylesheet to fix the docs is how you break the
+   landing page two days before a deadline.
+   ========================================================================== */
+
+:root{
+  --poster-ink:#191918;
+  --poster-charcoal:#242423;
+  --poster-charcoal-2:#2d2d2b;
+  --poster-paper:#f6f3ec;
+  --poster-paper-2:#e9e5dc;
+  --poster-violet:#6975f6;
+  --poster-violet-dark:#4d42d7;
+  --poster-amber:#ffd34e;
+  --poster-pink:#ed78db;
+  --poster-mint:#68d8a7;
+  --poster-lime:#9bdc55;
+  --poster-orange:#ff8a51;
+  --poster-red:#ec4a47;
+  --poster-blue:#50b9ed;
+  --poster-muted:#b9b6ae;
+  --poster-ink-muted:#5a574f;
+  --poster-ink-muted-2:#68635b;
+  --poster-copy-dark:#4e4a44;
+  --poster-paper-deep:#e3dfd5;
+  --poster-paper-cell:#e7e2d8;
+  --poster-line:rgba(246,243,236,.08);
+  --poster-line-strong:rgba(246,243,236,.2);
+  --poster-display:Impact,"Arial Narrow","Archivo Display",sans-serif;
+  --poster-body:"Plex Sans","IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --poster-ease:cubic-bezier(.23,1,.32,1);
+  --poster-ui-radius:1.55rem;
+  --poster-cell-radius:.65rem;
+  --poster-fast:140ms;
+  --poster-panel:220ms;
+  --poster-grid-dark:url("/assets/art/texture-dark-grid.webp");
+  --poster-grid-light:url("/assets/art/texture-light-grid.webp");
+  --poster-grid-light:image-set(url("/assets/art/texture-light-grid.avif") type("image/avif"),url("/assets/art/texture-light-grid.webp") type("image/webp"));
+}

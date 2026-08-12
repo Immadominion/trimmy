@@ -162,6 +162,19 @@
   // ---------------------------------------------------------------------
 
   function mdUrl() {
+    // The CANONICAL url, not location.origin. On a dev server the origin is
+    // 127.0.0.1, and handing an assistant a localhost link asks it to fetch a
+    // machine it cannot reach. Every page carries its canonical already.
+    const canon = $('link[rel="canonical"]');
+    const base = canon
+      ? canon.href.replace(/\/?$/, '/')
+      : location.origin + (location.pathname.endsWith('/') ? location.pathname : location.pathname + '/');
+    return base + 'index.md';
+  }
+
+  /// The same distinction for the copy button: it must fetch from THIS server
+  /// (the local one, which has the file) while handing out the canonical URL.
+  function localMdUrl() {
     const path = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
     return location.origin + path + 'index.md';
   }
@@ -170,7 +183,7 @@
     const label = btn.querySelector('span');
     const original = label.textContent;
     try {
-      const res = await fetch(mdUrl());
+      const res = await fetch(localMdUrl());
       if (!res.ok) throw new Error(`the markdown twin returned ${res.status}`);
       await navigator.clipboard.writeText(await res.text());
       label.textContent = 'Copied';
