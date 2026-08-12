@@ -1,6 +1,6 @@
-graph LR
-  A["Your rule, on chain. triggerValue = 0"] --> B["requestEvaluation. The price is read from the chain, never from the caller"]
-  B -->|"crosses in"| C{"Inside the enclave: is the price past your threshold?"}
-  D["Your threshold price. It is here and nowhere else"] --> C
-  C -->|"crosses out: true or false, carrying no threshold, no margin, no bounds"| E["The chain accepts the verdict and the rule fires"]
-  F["On chain: a commitment, keccak256 of your number"] -.->|"the enclave recomputes it and they match"| D
+graph TD
+  A["Your rule, on chain. triggerValue is 0"] --> B["requestEvaluation. The price comes from the chain, never from the caller"]
+  B -->|"crosses in"| C{"Is the price past your threshold?"}
+  D["Your threshold. It is in here and nowhere else"] --> C
+  C -->|"crosses out: true or false, and nothing else"| E["The chain accepts it. The rule fires."]
+  F["On chain: a commitment to your number"] -.->|"the enclave recomputes it, and they match"| D

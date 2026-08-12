@@ -240,3 +240,98 @@
 }
 /* Tall portrait diagrams would otherwise run past a screenful on their own. */
 .doc-fig--tall img{ max-height:min(78vh, 44rem); width:auto; margin-inline:auto; }
+
+/* ==========================================================================
+   Diagram viewer + page actions.
+   ========================================================================== */
+
+.doc-fig{ position:relative; }
+.doc-fig__acts{
+  position:absolute; inset-block-start:var(--sp-3); inset-inline-end:var(--sp-3);
+  display:flex; gap:var(--sp-2); z-index:2;
+  opacity:0; transition:opacity var(--d-2) var(--e-standard);
+}
+/* Always visible on touch, where there is no hover to reveal them. */
+@media (hover:none){ .doc-fig__acts{ opacity:1; } }
+.doc-fig:hover .doc-fig__acts,
+.doc-fig:focus-within .doc-fig__acts{ opacity:1; }
+
+.doc-fig__btn{
+  display:grid; place-items:center; inline-size:32px; block-size:32px;
+  border:1px solid var(--line-strong); border-radius:var(--r-sm);
+  /* The panel behind is always white, so these are dark-on-light in both
+     themes. Using theme ink here would make them invisible in dark mode. */
+  background:rgba(255,255,255,.92); color:#14122B;
+  cursor:pointer; padding:0; text-decoration:none;
+}
+.doc-fig__btn:hover{ background:#FFFFFF; border-color:#14122B; }
+.doc-fig__btn svg{ inline-size:17px; block-size:17px; fill:none;
+  stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+
+/* ---- the full-screen viewer -------------------------------------------- */
+.figview{
+  position:fixed; inset:0; z-index:200;
+  /* Near-opaque on purpose. At 92% the site header read through the caption
+     bar and the two sets of words fought each other. */
+  background:color-mix(in srgb, var(--brand-950) 97%, transparent);
+  backdrop-filter:blur(3px);
+  display:grid; grid-template-rows:auto 1fr auto;
+}
+.figview[hidden]{ display:none; }
+.figview__bar{
+  display:flex; gap:var(--sp-5); align-items:center; justify-content:space-between;
+  padding:var(--sp-4) var(--sp-5); border-bottom:1px solid rgba(255,255,255,.14);
+}
+.figview__cap{ margin:0; color:#F2F1FA; font-size:var(--fs-sm); }
+.figview__acts{ display:flex; gap:var(--sp-3); flex:none; }
+.figview__btn{
+  display:inline-flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-4); border-radius:var(--r-sm);
+  border:1px solid rgba(255,255,255,.22); background:transparent;
+  color:#F2F1FA; font:var(--fw-medium) var(--fs-sm)/1 var(--font-body);
+  cursor:pointer; text-decoration:none;
+}
+.figview__btn:hover{ background:rgba(255,255,255,.1); }
+.figview__btn svg{ inline-size:16px; block-size:16px; fill:none;
+  stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+
+.figview__stage{
+  overflow:hidden; display:grid; place-items:center;
+  cursor:grab; touch-action:none; padding:var(--sp-5);
+}
+.figview__stage.is-dragging{ cursor:grabbing; }
+.figview__stage img{
+  max-inline-size:min(1400px, 94vw); inline-size:auto;
+  background:#FFFFFF; border-radius:var(--r-md); padding:var(--sp-6);
+  transform-origin:center center; will-change:transform;
+  user-select:none; -webkit-user-drag:none;
+}
+.figview__hint{
+  margin:0; padding:var(--sp-3) var(--sp-5) var(--sp-5);
+  color:rgba(242,241,250,.55); font-size:var(--fs-xs); text-align:center;
+}
+
+/* ---- page actions ------------------------------------------------------ */
+.page-actions{
+  display:flex; flex-wrap:wrap; gap:var(--sp-2);
+  margin:0 0 var(--sp-6); padding-bottom:var(--sp-5);
+  border-bottom:1px solid var(--line);
+}
+.page-act{
+  display:inline-flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-3); border-radius:var(--r-sm);
+  border:1px solid var(--line); background:var(--ground-raised);
+  color:var(--ink-2); font-size:var(--fs-xs); text-decoration:none;
+  cursor:pointer; font-family:var(--font-body);
+}
+.page-act:hover{ color:var(--ink); border-color:var(--line-strong); }
+.page-act svg{ inline-size:14px; block-size:14px; fill:none; stroke:currentColor;
+  stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+
+.doc-skill{
+  display:flex; gap:var(--sp-3); align-items:baseline; flex-wrap:wrap;
+  margin:0 0 var(--sp-7); padding:var(--sp-3) var(--sp-4);
+  border:1px solid var(--accent-wash); background:var(--accent-wash);
+  border-radius:var(--r-md); font-size:var(--fs-sm); color:var(--ink-2);
+}
+.doc-skill a{ color:var(--accent); }
