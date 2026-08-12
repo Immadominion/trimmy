@@ -49,6 +49,11 @@
     <p class="doc-lede">How a PRIVATE rule keeps your trigger price off the chain, and the exact trust you take on in exchange.</p>
     <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
       here has run on Flare mainnet, and no page on this site describes real money.</span></p>
+<figure class="doc-fig">
+  <img src="/assets/diagrams/private-trigger.svg" alt="What crosses between the chain and the enclave, and what never does." loading="lazy">
+  <figcaption>Only two things cross the boundary, and neither of them is your number.</figcaption>
+</figure>
+
 <h2 id="the-number-you-do-not-want-to-publish">The number you do not want to publish</h2>
 <p>You want a rule that sells if XRP falls to a certain price. On a <code>PRICE_BELOW</code> rule that price is
 stored as <code>triggerValue</code>, where anyone can read it. It announces the exact price at which a large,

@@ -4,6 +4,11 @@ summary: How a PRIVATE rule keeps your trigger price off the chain, and the exac
 order: 6
 ---
 
+<figure class="doc-fig">
+  <img src="/assets/diagrams/private-trigger.svg" alt="What crosses between the chain and the enclave, and what never does." loading="lazy">
+  <figcaption>Only two things cross the boundary, and neither of them is your number.</figcaption>
+</figure>
+
 ## The number you do not want to publish
 
 You want a rule that sells if XRP falls to a certain price. On a `PRICE_BELOW` rule that price is

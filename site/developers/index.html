@@ -58,39 +58,11 @@ indices into arrays fixed at deploy time, the lifetime budget and the expiry are
 and <code>cancelAll</code> bumps an epoch that kills every rule for an account at once. Vendor-enforced agent
 permissions do the same thing with infrastructure. This does it with a contract.</p>
 <h2 id="the-flow">The flow</h2>
-<pre><code>  XRPL                                    Flare Coston2
-  ----                                    -------------
+<figure class="doc-fig">
+  <img src="/assets/diagrams/architecture.svg" alt="The full path from one XRPL payment to an executed rule on Flare." loading="lazy">
+  <figcaption>One XRPL payment in at the top, an executed rule out at the bottom. You appear once.</figcaption>
+</figure>
 
-  Payment carrying a 42-byte memo
-    FE | walletId | executorFeeUBA:u64 | keccak256(PackedUserOperation)
-        |
-        |  (1) FDC. attestationType XRPPayment, sourceId testXRP.
-        |      verifier prepareRequest -&gt; FdcHub.requestAttestation
-        |      -&gt; wait for the voting round -&gt; DA Layer serves the proof
-        v
-  (2) executeDirectMintingWithData(proof, userOpPreimage)
-      FAssets AssetManager mints FXRP to the personal account
-        |
-        v
-  (3) MasterAccountController -&gt; PersonalAccount.executeUserOp(calls)
-        calls[0]  FXRP.approve(Trimmy, exactAllowance)
-        calls[1]  Trimmy.arm(RuleParams)
-      msg.sender for both inner calls is the personal account
-        |
-        v
-  (4) Rule sits in Trimmy storage. The user is gone.
-        |
-        |&lt;---- anyone may call, competing for the fee the rule carries
-        v
-  (5) Trimmy.execute(ruleId)
-        REGISTRY.getContractAddressByHash(keccak(&quot;FtsoV2&quot;))
-        getFeedById(sell leg) and getFeedById(buy leg), both age-checked
-        trigger -&gt; latch -&gt; transferFrom(rule.account) -&gt; floor from FTSO
-        |
-        v
-  (6) SwapRouter.exactInput, or vault.deposit, or vault.redeem then claim()
-        proceeds -&gt; rule.account.  keeperFeeFlat -&gt; msg.sender.
-</code></pre>
 <h2 id="which-flare-protocol-does-what">Which Flare protocol does what</h2>
 <div class="doc-table"><table>
 <thead>

@@ -54,6 +54,11 @@ enclave holds the number, and the rule cannot fire without a fresh signed verdic
 TEE registry vouches for. Coston2 only (chain id 114); nothing has run on Flare mainnet. Source:
 <a href="https://github.com/Immadominion/trimmy/blob/main/contracts/src/TrimmyConfidentialTrigger.sol"><code>TrimmyConfidentialTrigger.sol</code></a>,
 <a href="https://github.com/Immadominion/trimmy/blob/main/fcc/extension/go/internal/extension/extension.go"><code>extension.go</code></a>.</p>
+<figure class="doc-fig">
+  <img src="/assets/diagrams/private-trigger.svg" alt="What crosses between the chain and the enclave, and what never does." loading="lazy">
+  <figcaption>requestEvaluation crosses in, a signed yes or no crosses out.</figcaption>
+</figure>
+
 <h2 id="what-runs-privately-inside-the-tee">What runs privately inside the TEE</h2>
 <p>The enclave is a Go handler in a GCP Confidential Space VM on AMD SEV. It keeps one map, rule id to
 <code>{threshold, commitment, direction, account}</code>, in process memory: nothing is written to disk, logged,

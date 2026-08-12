@@ -221,3 +221,22 @@
 .skip:focus{ transform:translateY(0); }
 .t-sm{ font-size:var(--fs-sm); }
 .dim{ color:var(--ink-3); }
+
+/* ---- figures ------------------------------------------------------------
+   The diagrams are whiteboard sketches on white, which is exactly wrong on a
+   dark ground: the strokes vanish. So a figure always carries its own light
+   panel, in both themes, and the caption sits outside it in page ink. */
+.doc-fig{
+  margin:0 0 var(--sp-6); display:grid; gap:var(--sp-3);
+}
+.doc-fig img{
+  display:block; width:100%; height:auto;
+  background:#FFFFFF; border:1px solid var(--line);
+  border-radius:var(--r-md); padding:var(--sp-5);
+}
+.doc-fig figcaption{
+  font-size:var(--fs-sm); color:var(--ink-3); line-height:1.5;
+  padding-inline-start:var(--sp-1);
+}
+/* Tall portrait diagrams would otherwise run past a screenful on their own. */
+.doc-fig--tall img{ max-height:min(78vh, 44rem); width:auto; margin-inline:auto; }

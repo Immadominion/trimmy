@@ -50,6 +50,11 @@
     <p class="doc-testnet"><b>Testnet.</b> <span>Trimmy runs on Flare Coston2. Nothing described
       here has run on Flare mainnet, and no page on this site describes real money.</span></p>
 <p>You armed a rule and closed the browser. It keeps working. Here is how to look at one, how it stops on its own, and how to stop it early.</p>
+<figure class="doc-fig">
+  <img src="/assets/diagrams/rule-lifecycle.svg" alt="A rule goes from armed to finished, expired, or cancelled." loading="lazy">
+  <figcaption>Every way a rule can end. Three of them need nothing from you.</figcaption>
+</figure>
+
 <h2 id="find-your-account-then-your-rules">Find your account, then your rules</h2>
 <p>Rules are stored against your personal account, not your XRPL address. Derive the account from the canonical controller, then read the rules:</p>
 <pre><code class="language-bash">R=https://coston2-api.flare.network/ext/C/rpc

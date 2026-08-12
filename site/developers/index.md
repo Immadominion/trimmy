@@ -17,40 +17,10 @@ permissions do the same thing with infrastructure. This does it with a contract.
 
 ## The flow
 
-```
-  XRPL                                    Flare Coston2
-  ----                                    -------------
-
-  Payment carrying a 42-byte memo
-    FE | walletId | executorFeeUBA:u64 | keccak256(PackedUserOperation)
-        |
-        |  (1) FDC. attestationType XRPPayment, sourceId testXRP.
-        |      verifier prepareRequest -> FdcHub.requestAttestation
-        |      -> wait for the voting round -> DA Layer serves the proof
-        v
-  (2) executeDirectMintingWithData(proof, userOpPreimage)
-      FAssets AssetManager mints FXRP to the personal account
-        |
-        v
-  (3) MasterAccountController -> PersonalAccount.executeUserOp(calls)
-        calls[0]  FXRP.approve(Trimmy, exactAllowance)
-        calls[1]  Trimmy.arm(RuleParams)
-      msg.sender for both inner calls is the personal account
-        |
-        v
-  (4) Rule sits in Trimmy storage. The user is gone.
-        |
-        |<---- anyone may call, competing for the fee the rule carries
-        v
-  (5) Trimmy.execute(ruleId)
-        REGISTRY.getContractAddressByHash(keccak("FtsoV2"))
-        getFeedById(sell leg) and getFeedById(buy leg), both age-checked
-        trigger -> latch -> transferFrom(rule.account) -> floor from FTSO
-        |
-        v
-  (6) SwapRouter.exactInput, or vault.deposit, or vault.redeem then claim()
-        proceeds -> rule.account.  keeperFeeFlat -> msg.sender.
-```
+<figure class="doc-fig">
+  <img src="/assets/diagrams/architecture.svg" alt="The full path from one XRPL payment to an executed rule on Flare." loading="lazy">
+  <figcaption>One XRPL payment in at the top, an executed rule out at the bottom. You appear once.</figcaption>
+</figure>
 
 ## Which Flare protocol does what
 

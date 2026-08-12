@@ -1,0 +1,6 @@
+graph TD
+  A["byte 0: 0xFE, the Smart Accounts opcode"] --> B["byte 1: walletId"]
+  B --> C["bytes 2 to 9: executorFeeUBA, what delivering it is worth"]
+  C --> D["bytes 10 to 41: keccak256 of the batch"]
+  D -->|"commits to exactly these two calls, and nothing else"| E["approve, for an exact allowance"]
+  D --> F["arm, with every bound fixed"]

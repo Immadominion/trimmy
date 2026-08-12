@@ -10,6 +10,11 @@ TEE registry vouches for. Coston2 only (chain id 114); nothing has run on Flare 
 [`TrimmyConfidentialTrigger.sol`](https://github.com/Immadominion/trimmy/blob/main/contracts/src/TrimmyConfidentialTrigger.sol),
 [`extension.go`](https://github.com/Immadominion/trimmy/blob/main/fcc/extension/go/internal/extension/extension.go).
 
+<figure class="doc-fig">
+  <img src="/assets/diagrams/private-trigger.svg" alt="What crosses between the chain and the enclave, and what never does." loading="lazy">
+  <figcaption>requestEvaluation crosses in, a signed yes or no crosses out.</figcaption>
+</figure>
+
 ## What runs privately inside the TEE
 
 The enclave is a Go handler in a GCP Confidential Space VM on AMD SEV. It keeps one map, rule id to

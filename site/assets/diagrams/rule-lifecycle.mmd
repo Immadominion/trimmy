@@ -1,0 +1,9 @@
+graph LR
+  A["Armed"] --> B{"Is the condition met?"}
+  B -->|"not yet"| A
+  B -->|"yes"| C["Runs one part"]
+  C --> D{"Budget used up?"}
+  D -->|"no, waits again"| A
+  D -->|"yes"| E["Finished"]
+  A -->|"expiry passes"| F["Expired"]
+  A -->|"you, or your guardian"| G["Cancelled"]

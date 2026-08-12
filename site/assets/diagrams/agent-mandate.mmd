@@ -1,0 +1,10 @@
+graph TD
+  A["You"] -->|"say what you want"| B["Your agent"]
+  B -->|"compose_rule"| C["Trimmy MCP"]
+  C -->|"a payment, not a transaction"| B
+  B -->|"hands it to you"| D["You sign it in your own wallet"]
+  D --> E["The rule"]
+  E -->|"runs without either of you"| F["Executed"]
+  B -.->|"no key, so it cannot sign or send"| X(("cannot spend"))
+  C -.->|"refuses the number, so it never learns it"| Y(("your price"))
+  Y -.-> E

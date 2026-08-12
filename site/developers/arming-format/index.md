@@ -18,6 +18,11 @@ Coston2 testnet only. Nothing here has been exercised on Flare mainnet.
 
 ## The 42 byte memo
 
+<figure class="doc-fig">
+  <img src="/assets/diagrams/memo-layout.svg" alt="The 42 byte memo: opcode, wallet id, executor fee, and a 32 byte commitment." loading="lazy">
+  <figcaption>Forty-two bytes. Thirty-two of them are a hash, which is why the decoder exists.</figcaption>
+</figure>
+
 | offset | length | field | encoding |
 | ---: | ---: | --- | --- |
 | 0 | 1 | opcode | `0xFE`, Smart Accounts custom instruction |

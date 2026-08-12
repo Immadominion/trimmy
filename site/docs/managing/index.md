@@ -6,6 +6,11 @@ order: 5
 
 You armed a rule and closed the browser. It keeps working. Here is how to look at one, how it stops on its own, and how to stop it early.
 
+<figure class="doc-fig">
+  <img src="/assets/diagrams/rule-lifecycle.svg" alt="A rule goes from armed to finished, expired, or cancelled." loading="lazy">
+  <figcaption>Every way a rule can end. Three of them need nothing from you.</figcaption>
+</figure>
+
 ## Find your account, then your rules
 
 Rules are stored against your personal account, not your XRPL address. Derive the account from the canonical controller, then read the rules:

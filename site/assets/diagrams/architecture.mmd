@@ -1,0 +1,10 @@
+graph TD
+  A["One XRPL payment 42-byte memo"] -->|"FDC attests it"| B["Flare proves the payment happened"]
+  B --> C["FAssets mints FXRP to your own account"]
+  C -->|"approve + arm, as you"| D["Your rule sits in storage"]
+  D --> E(("you are gone"))
+  E --> F["Anyone may call execute"]
+  F -->|"two-legged, age-checked"| G["FTSOv2 price"]
+  G --> H["A swap, or a vault"]
+  H -->|"proceeds"| I["Your account"]
+  H -->|"the fee the rule carries"| J["Whoever ran it"]

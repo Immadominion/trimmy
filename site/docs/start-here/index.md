@@ -43,6 +43,11 @@ That is also why an AI agent can hold a Trimmy rule safely. Agent wallets give a
 
 ## The shape of the journey
 
+<figure class="doc-fig">
+  <img src="/assets/diagrams/the-journey.svg" alt="Five steps: pay, prove, arm, watch, fire. Only the first is yours." loading="lazy">
+  <figcaption>Five steps. You do the first one.</figcaption>
+</figure>
+
 1. **Build the payment.** The arming page builds it in your browser, then decodes the 42 byte memo back from the bytes themselves and tells you in English what signing it authorises. No server sees your rule.
 2. **Send one XRPL payment.** Three fields matter: destination, amount, and the memo. Do not add a destination tag. A registered tag overrides the memo entirely and credits the tag holder instead.
 3. **Wait for settlement.** The Flare Data Connector has to attest your payment before the rule exists, so arming is not instant. In our live runs the proof arrived after 5 and 8 polls. The closest measured figure we have is 30 direct mints at p50 131 seconds and p95 170 seconds, but that was the public executor on a different branch, so treat it as an order of magnitude, not a promise.

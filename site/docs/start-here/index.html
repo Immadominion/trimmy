@@ -108,6 +108,11 @@
 <p>The allowance your account grants is exact, not unlimited. In the live end to end run it was 1,009,400 units, sized to that one rule, and the proceeds landed with the rule's own account rather than with whoever executed it.</p>
 <p>That is also why an AI agent can hold a Trimmy rule safely. Agent wallets give an agent bounded permission enforced by a vendor's infrastructure. A Trimmy rule is the same bound enforced by a contract, and the personal account's <code>executeUserOp</code> is <code>onlyController</code>, so an agent that composes a rule and is then compromised extracts nothing.</p>
 <h2 id="the-shape-of-the-journey">The shape of the journey</h2>
+<figure class="doc-fig">
+  <img src="/assets/diagrams/the-journey.svg" alt="Five steps: pay, prove, arm, watch, fire. Only the first is yours." loading="lazy">
+  <figcaption>Five steps. You do the first one.</figcaption>
+</figure>
+
 <ol>
 <li><strong>Build the payment.</strong> The arming page builds it in your browser, then decodes the 42 byte memo back from the bytes themselves and tells you in English what signing it authorises. No server sees your rule.</li>
 <li><strong>Send one XRPL payment.</strong> Three fields matter: destination, amount, and the memo. Do not add a destination tag. A registered tag overrides the memo entirely and credits the tag holder instead.</li>
