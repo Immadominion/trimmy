@@ -10,9 +10,41 @@ Trimmy turns one XRPL payment into a standing rule that keeps watching the marke
 
 ## What you need before you begin
 
-- An XRPL testnet account, in any wallet that can send a Payment with a memo.
-- Testnet XRP in that account.
+- An XRPL **testnet** account that can send a Payment carrying a memo.
+- Some testnet XRP in it.
 - Nothing else. No EVM wallet, no FLR for gas, no extension, no account with us.
+
+### If you have never used the XRP Ledger, start here
+
+**You do not need to install a wallet, and you do not need to buy anything.** On
+testnet the faucet creates the account for you.
+
+1. Open [faucet.altnet.rippletest.net/accounts](https://faucet.altnet.rippletest.net/accounts).
+2. It returns an **address** (starting `r`), a **secret** (starting `s`), and
+   100 test XRP already in the account. That is the whole setup.
+3. Keep the secret in a file, not in a chat window or a note that syncs.
+
+That secret controls a testnet account and nothing else. Testnet XRP cannot be
+sold and is worth nothing, which is exactly why it is safe to learn on. Never
+reuse a testnet secret on XRPL mainnet, and never put mainnet funds in an
+account whose secret came from a faucet.
+
+### Sending the payment
+
+Trimmy builds the payment for you but deliberately cannot send it: it never
+sees your secret. So something you control has to sign it. Three ways, easiest
+first.
+
+| | |
+|---|---|
+| **A wallet you already use** | Anything that can send an XRPL Payment with a memo and no destination tag. Paste the three fields the [arming page](/arm/) gives you. |
+| **The sender in this repository** | [`arming/xrpl/send.mjs`](https://github.com/Immadominion/trimmy/blob/main/arming/xrpl/send.mjs). It reads `XRPL_TEST_SEED` from your environment and refuses to send if the memo is the wrong length, carries a destination tag, or the amount falls in the range that delivers nothing. |
+| **A few lines of your own** | `xrpl-py` or `xrpl.js`. The payment is an ordinary Payment; the memo is the only unusual part. |
+
+**Do not add a destination tag.** A registered tag overrides the memo entirely
+and credits the tag holder instead, so the payment would be quietly donated to a
+stranger. Both the arming page and the sender refuse over this, because it is
+not recoverable.
 
 The wallet-less part is not new. Flare Smart Accounts already lets an XRPL payment drive an EVM call with no EVM wallet and no gas token, and Trimmy is built on Smart Accounts. What Trimmy adds is what the payment leaves behind.
 

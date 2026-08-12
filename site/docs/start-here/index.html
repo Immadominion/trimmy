@@ -62,10 +62,53 @@
 <p><strong>Trimmy runs on Flare Coston2 testnet only.</strong> Nothing has run on Flare mainnet. The XRP in this flow is XRPL testnet XRP and is worth nothing. Everything else behaves as it would with real money.</p>
 <h2 id="what-you-need-before-you-begin">What you need before you begin</h2>
 <ul>
-<li>An XRPL testnet account, in any wallet that can send a Payment with a memo.</li>
-<li>Testnet XRP in that account.</li>
+<li>An XRPL <strong>testnet</strong> account that can send a Payment carrying a memo.</li>
+<li>Some testnet XRP in it.</li>
 <li>Nothing else. No EVM wallet, no FLR for gas, no extension, no account with us.</li>
 </ul>
+<h3 id="if-you-have-never-used-the-xrp-ledger-start-here">If you have never used the XRP Ledger, start here</h3>
+<p><strong>You do not need to install a wallet, and you do not need to buy anything.</strong> On
+testnet the faucet creates the account for you.</p>
+<ol>
+<li>Open <a href="https://faucet.altnet.rippletest.net/accounts">faucet.altnet.rippletest.net/accounts</a>.</li>
+<li>It returns an <strong>address</strong> (starting <code>r</code>), a <strong>secret</strong> (starting <code>s</code>), and
+   100 test XRP already in the account. That is the whole setup.</li>
+<li>Keep the secret in a file, not in a chat window or a note that syncs.</li>
+</ol>
+<p>That secret controls a testnet account and nothing else. Testnet XRP cannot be
+sold and is worth nothing, which is exactly why it is safe to learn on. Never
+reuse a testnet secret on XRPL mainnet, and never put mainnet funds in an
+account whose secret came from a faucet.</p>
+<h3 id="sending-the-payment">Sending the payment</h3>
+<p>Trimmy builds the payment for you but deliberately cannot send it: it never
+sees your secret. So something you control has to sign it. Three ways, easiest
+first.</p>
+<div class="doc-table"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A wallet you already use</strong></td>
+<td>Anything that can send an XRPL Payment with a memo and no destination tag. Paste the three fields the <a href="/arm/">arming page</a> gives you.</td>
+</tr>
+<tr>
+<td><strong>The sender in this repository</strong></td>
+<td><a href="https://github.com/Immadominion/trimmy/blob/main/arming/xrpl/send.mjs"><code>arming/xrpl/send.mjs</code></a>. It reads <code>XRPL_TEST_SEED</code> from your environment and refuses to send if the memo is the wrong length, carries a destination tag, or the amount falls in the range that delivers nothing.</td>
+</tr>
+<tr>
+<td><strong>A few lines of your own</strong></td>
+<td><code>xrpl-py</code> or <code>xrpl.js</code>. The payment is an ordinary Payment; the memo is the only unusual part.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Do not add a destination tag.</strong> A registered tag overrides the memo entirely
+and credits the tag holder instead, so the payment would be quietly donated to a
+stranger. Both the arming page and the sender refuse over this, because it is
+not recoverable.</p>
 <p>The wallet-less part is not new. Flare Smart Accounts already lets an XRPL payment drive an EVM call with no EVM wallet and no gas token, and Trimmy is built on Smart Accounts. What Trimmy adds is what the payment leaves behind.</p>
 <h3 id="how-much-xrp">How much XRP</h3>
 <p>The arming page itemises the payment for you: what the rule can spend, plus the FAssets minting fee (0.1 XRP), plus the executor fee (0.1 XRP, read from the live asset manager), rounded up so the figure is typeable.</p>
