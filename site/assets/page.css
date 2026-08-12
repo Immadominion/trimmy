@@ -139,6 +139,7 @@ main section[id]{scroll-margin-top:6.25rem}
 .poster-block--pink{background:var(--poster-pink);transform:rotate(-.55deg)}
 .poster-block--mint{background:var(--poster-mint);transform:rotate(.5deg)}
 .poster-block--lime{background:var(--poster-lime);transform:rotate(-.55deg)}
+.poster-block--orange{background:var(--poster-orange);transform:rotate(.5deg)}
 .poster-block--dashed::after{
   content:"";
   position:absolute;
@@ -825,32 +826,47 @@ main section[id]{scroll-margin-top:6.25rem}
   letter-spacing:.12em; text-transform:uppercase; line-height:1;
   color:var(--poster-ink); white-space:nowrap;
 }
-.poster-seal > span { top:33%;  font-size:.56rem; letter-spacing:.1em; }
-.poster-seal > b    { top:45%;  font-size:1.05rem; }
+.poster-seal > span { top:32%;  font-size:.56rem; letter-spacing:.1em; }
+.poster-seal > b    { top:43.5%; font-size:1.02rem; }
 /* STAYS READY is the wider of the two words and it sat at 62%, where the inner
    circle has already narrowed, so it rode the ring. Moved up and set smaller
    so both lines sit inside the flat part of the disc. */
-.poster-seal > small{ top:58%;  font-size:.5rem;  letter-spacing:.08em; }
+.poster-seal > small{ top:55.5%; font-size:.5rem;  letter-spacing:.08em; }
 
 /* The headline was sized for a full-bleed centred hero (up to 9rem, nowrap).
    In a half-width column that overruns the track and clips. Size it off the
    column instead, and let it wrap if a viewport ever makes it necessary rather
    than sending it off the edge. */
 @media (min-width:64rem){
-  .hero h1{ font-size:clamp(3rem,5.4vw,4.9rem); text-wrap:balance; }
+  .hero h1{ font-size:clamp(3.35rem,6.55vw,6.3rem); text-wrap:balance; }
   .hero__col{ min-width:0; }
+  /* The lede was set at 1rem to fit a 24rem absolutely positioned box. It now
+     has a whole column, and it is the only sentence on the page that explains
+     what Trimmy is, so it is sized like one. */
+  .hero__intro>p{ font-size:1.22rem; line-height:1.5; max-width:30rem; }
+  .hero__heading .poster-kicker{ font-size:.86rem; letter-spacing:.2em; }
 }
-@media (min-width:100rem){ .hero h1{ font-size:5.6rem; } }
+@media (min-width:100rem){ .hero h1{ font-size:7rem; } }
 
 /* Ornaments were positioned against the old absolute layout, so in the grid
    they landed on top of the copy and the buttons. They live in the gutters
    now: the radar outside the left edge, the seal in the gap the short third
    line leaves beside it. Both stay decorative and non-interactive. */
+/* Both ornaments were still placed against the pre-grid layout. Measured, the
+   rocket sat behind the rule card at every desktop width (1024 through 1600),
+   which is why only a sliver of it was ever visible, and the radar ran off the
+   left edge below 1600 and landed on the buttons at 1200.
+
+   There is no room beside the columns: the gutter is 80px at 1440 and 0 at
+   1200, and the space under the shorter text column is 47px to 106px. The one
+   band with real room is under the card, between the card's bottom edge and
+   the end of the hero's own padding. All three ornaments live there now, so
+   they read as a row along the foot of the poster rather than as three things
+   that missed. */
 @media (min-width:64rem){
-  /* Sits in the page gutter beside the container, not inside the text column.
-     overflow-x is clipped on the section so it never creates a scrollbar. */
-  .hero-ornament--radar{ left:auto; right:calc(100% - 3.5rem); top:auto; bottom:5rem;
-                         width:9.5rem; opacity:.92; }
+  .hero-ornament{ top:auto; bottom:-4.5rem; }
+  .hero-ornament--radar{ left:0; right:auto; width:7.5rem; opacity:.95; }
+  .hero-ornament--rocket{ left:calc(50% - 3.5rem); right:auto; bottom:-5rem; width:7rem; }
   /* Anchored to the left column now, in the gap the short third line leaves
      beside "FOR XRP". Before this it was a child of the whole hero, so
      right:2rem meant the far right of the section, which is where the card is. */
@@ -859,3 +875,444 @@ main section[id]{scroll-margin-top:6.25rem}
 }
 
 .hero{ overflow-x:clip; }
+
+/* ==========================================================================
+   ORIGIN: the gaps.
+
+   A light slab early in the page, on purpose. The hero and the rail are both
+   dark, and dropping to paper here is what stops the first three screens
+   reading as one long dark surface. It also puts the poster palette on the
+   ground it was designed for.
+
+   The section is a list of five holes we went looking for a product in. Gaps
+   01 to 04 are a two-up grid; gap 05 spans both columns because it carries the
+   two sibling projects, which are the reason Trimmy was the third thing built
+   rather than the first.
+   ========================================================================== */
+.origin{
+  position:relative;
+  padding-block:clamp(5rem,9vw,8rem);
+  color:var(--poster-ink);
+  border-top:3px solid var(--poster-ink);
+  overflow:hidden;
+}
+.poster-heading--origin{margin-bottom:3.5rem}
+.poster-heading--origin h2,
+.poster-heading--build h2{font-size:clamp(3.1rem,5.35vw,5rem);line-height:.92}
+/* .poster-heading>p is written for dark slabs. On paper it needs ink. */
+.origin .poster-heading>p,
+.build .poster-heading>p{color:var(--poster-copy-dark)}
+
+.gap-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1.4rem;
+  margin:0;
+  padding:0;
+  list-style:none;
+  counter-reset:gap;
+}
+.gap{
+  --gap-accent:var(--poster-amber);
+  position:relative;
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:1rem;
+  padding:1.6rem;
+  background:var(--poster-paper);
+  border:3px solid var(--poster-ink);
+  border-radius:1.1rem;
+  box-shadow:.5rem .55rem 0 var(--poster-ink);
+}
+.gap:nth-child(2){--gap-accent:var(--poster-violet)}
+.gap:nth-child(3){--gap-accent:var(--poster-mint)}
+.gap:nth-child(4){--gap-accent:var(--poster-pink)}
+.gap:nth-child(5){--gap-accent:var(--poster-lime)}
+.gap--wide{grid-column:1/-1}
+.gap p.gap__index{
+  width:max-content;
+  color:var(--poster-ink);
+  padding:.35rem .7rem;
+  background:var(--gap-accent);
+  border:2px solid var(--poster-ink);
+  border-radius:.35rem;
+  box-shadow:.16rem .18rem 0 var(--poster-ink);
+  font-size:.66rem;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.gap__body{display:flex;min-width:0;flex-direction:column;gap:.8rem}
+.gap h3{
+  margin:0;
+  font-family:var(--poster-display);
+  font-size:clamp(1.9rem,2.5vw,2.55rem);
+  font-weight:400;
+  line-height:.98;
+  letter-spacing:-.005em;
+  text-transform:uppercase;
+  text-wrap:balance;
+}
+.gap p{color:var(--poster-copy-dark);font-size:.95rem;line-height:1.6}
+.gap i{font-style:italic;color:var(--poster-ink)}
+.gap__fix{
+  padding:.85rem 1rem;
+  background:var(--poster-paper-cell);
+  border-left:5px solid var(--gap-accent);
+  border-radius:.2rem .5rem .5rem .2rem;
+}
+.gap__fix b{color:var(--poster-ink)}
+
+/* The two sibling projects. They are links, so the whole card is the target
+   and the arrow is decoration rather than the only thing you can hit. */
+.sibling-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-top:.6rem}
+.sibling{
+  --sib-accent:var(--poster-blue);
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:.45rem;
+  padding:1.2rem;
+  background:var(--poster-paper-cell);
+  color:var(--poster-ink);
+  border:3px solid var(--poster-ink);
+  border-radius:.8rem;
+  box-shadow:.3rem .34rem 0 var(--sib-accent);
+  text-decoration:none;
+  transition:transform 120ms var(--poster-ease),box-shadow 120ms var(--poster-ease);
+}
+.sibling--plimsoll{--sib-accent:var(--poster-violet)}
+.sibling p.sibling__kicker{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--poster-ink-muted)}
+.sibling h4{
+  margin:0;
+  font-family:var(--poster-display);
+  font-size:1.85rem;
+  font-weight:400;
+  line-height:1;
+  text-transform:uppercase;
+}
+.sibling p{font-size:.87rem;line-height:1.55;color:var(--poster-copy-dark)}
+.sibling__go{
+  margin-top:auto;
+  padding-top:.45rem;
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.sibling__go b{display:inline-block;transition:transform 120ms var(--poster-ease)}
+.sibling:focus-visible{outline:3px solid var(--poster-ink);outline-offset:4px}
+
+/* ==========================================================================
+   BUILD: what the primitive is good for.
+
+   Six shapes, not six announcements. Nothing here claims a partnership, and
+   each card names the specific piece it would be built on so a developer can
+   tell in one line whether it is a weekend or a quarter.
+   ========================================================================== */
+.build{
+  position:relative;
+  padding-block:clamp(5rem,9vw,8rem);
+  color:var(--poster-ink);
+  border-top:3px solid var(--poster-ink);
+  overflow:hidden;
+}
+.poster-heading--build{margin-bottom:3.5rem}
+.poster-heading--build h2 .poster-block{line-height:.9}
+.build-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem}
+.build-card{
+  --build-accent:var(--poster-amber);
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:.7rem;
+  padding:1.5rem;
+  background:var(--build-accent);
+  color:var(--poster-ink);
+  border:3px solid var(--poster-ink);
+  border-radius:1.1rem;
+  box-shadow:.5rem .55rem 0 var(--poster-ink);
+  transition:transform 140ms var(--poster-ease),box-shadow 140ms var(--poster-ease);
+}
+.build-card--violet{--build-accent:var(--poster-violet)}
+.build-card--mint{--build-accent:var(--poster-mint)}
+.build-card--pink{--build-accent:var(--poster-pink)}
+.build-card--orange{--build-accent:var(--poster-orange)}
+.build-card--blue{--build-accent:var(--poster-blue)}
+.build-card p.build-card__who{
+  width:max-content;
+  padding:.3rem .6rem;
+  background:var(--poster-ink);
+  color:var(--poster-paper);
+  border-radius:.3rem;
+  font-size:.63rem;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.build-card h3{
+  margin:0;
+  font-family:var(--poster-body);
+  font-size:1.22rem;
+  font-weight:700;
+  line-height:1.22;
+  text-wrap:pretty;
+}
+.build-card p{color:var(--poster-ink);font-size:.88rem;line-height:1.55}
+.build-card i{font-style:italic}
+.build-card__uses{
+  margin-top:auto;
+  padding-top:.85rem;
+  border-top:2px solid rgba(25,25,24,.32);
+  font-size:.76rem;
+  font-weight:700;
+}
+.build-card__uses span{
+  display:block;
+  margin-bottom:.15rem;
+  font-size:.6rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  opacity:.72;
+}
+.build__foot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:1.5rem;
+  margin-top:3rem;
+  padding-top:2rem;
+  border-top:3px solid var(--poster-ink);
+}
+.build__foot>p{max-width:38rem;color:var(--poster-copy-dark);font-size:.95rem;line-height:1.6}
+.build__actions{display:flex;align-items:center;flex-wrap:wrap;gap:1.5rem}
+
+@media (max-width:68rem){
+  .build-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:56rem){
+  .gap-list{grid-template-columns:minmax(0,1fr)}
+  .gap--wide{grid-column:auto}
+}
+@media (max-width:47.9375rem){
+  .origin,.build{padding-block:4rem}
+  .poster-heading--origin,.poster-heading--build{margin-bottom:2.4rem}
+  .gap{padding:1.2rem}
+  .gap h3{font-size:1.75rem}
+  .sibling-grid{grid-template-columns:minmax(0,1fr)}
+  .build-grid{grid-template-columns:minmax(0,1fr)}
+  .build-card{padding:1.2rem}
+  .build__foot{flex-direction:column;align-items:flex-start}
+  .build__actions{flex-direction:column;align-items:flex-start;gap:1rem}
+}
+
+@media (hover:hover){
+  .sibling:hover{transform:translate(-.12rem,-.14rem);box-shadow:.46rem .5rem 0 var(--sib-accent)}
+  .sibling:hover .sibling__go b{transform:translate(.18rem,-.18rem)}
+  .build-card:hover{transform:translate(-.14rem,-.16rem);box-shadow:.66rem .72rem 0 var(--poster-ink)}
+}
+
+/* ==========================================================================
+   MOTION
+
+   Three kinds, deliberately separated:
+
+     1. Ambient    slow, endless, never triggered by anything. The stickers and
+                   ornaments breathe between two close positions so the poster
+                   feels drawn rather than printed.
+     2. Entrance   once, on first sight. Scroll reveals and the hero build.
+     3. Response   the pointer. The hero light follows the cursor and the rule
+                   card leans toward it.
+
+   Everything here is gated on html.motion-ready, which motion.js adds only
+   after checking prefers-reduced-motion. If the script never runs, or the
+   reader has asked for less motion, the page renders in its final state with
+   nothing hidden. Content is never behind an animation.
+   ========================================================================== */
+
+/* ---- 1. ambient ---------------------------------------------------------
+   Applied to the inner image rather than the positioned parent, because the
+   parent's transform already carries the scroll parallax and the two would
+   fight over the same property. */
+@keyframes drift-a{
+  from{transform:translate3d(0,0,0) rotate(0deg)}
+  to  {transform:translate3d(.35rem,-.7rem,0) rotate(1.6deg)}
+}
+@keyframes drift-b{
+  from{transform:translate3d(0,0,0) rotate(0deg)}
+  to  {transform:translate3d(-.4rem,-.55rem,0) rotate(-1.9deg)}
+}
+@keyframes drift-seal{
+  from{transform:translate3d(0,0,0) rotate(-9deg) scale(1)}
+  to  {transform:translate3d(0,-.8rem,0) rotate(-6.4deg) scale(1.02)}
+}
+@keyframes drift-sticker{
+  from{transform:translate3d(0,0,0) rotate(-7deg)}
+  to  {transform:translate3d(.25rem,-.6rem,0) rotate(-4.4deg)}
+}
+/* A slow sweep across the ecosystem rail, so the row of logos is not the only
+   dead pixels between two moving sections. */
+@keyframes rail-sheen{
+  from{transform:translateX(-40%)}
+  to  {transform:translateX(140%)}
+}
+
+.motion-ready .hero-ornament--radar .hero-ornament__image{
+  animation:drift-a 7.5s var(--poster-ease) infinite alternate;
+}
+.motion-ready .hero-ornament--rocket .hero-ornament__image{
+  animation:drift-b 9.2s var(--poster-ease) infinite alternate;
+  animation-delay:-2.4s;
+}
+.motion-ready .builder-helper--left .builder-helper__image{
+  animation:drift-b 10.5s var(--poster-ease) infinite alternate;
+}
+.motion-ready .builder-helper--right .builder-helper__image{
+  animation:drift-a 8.8s var(--poster-ease) infinite alternate;
+  animation-delay:-3.1s;
+}
+/* The seal and the custody sticker carry text children positioned against the
+   disc, so the whole element has to move as one. Their scroll parallax is
+   dropped in the markup in exchange. */
+.motion-ready .hero__seal{animation:drift-seal 6.8s var(--poster-ease) infinite alternate}
+.motion-ready .hero__custody{animation:drift-sticker 8.1s var(--poster-ease) infinite alternate;animation-delay:-1.6s}
+.motion-ready .story__sticker{animation:drift-sticker 9.4s var(--poster-ease) infinite alternate}
+
+.ecosystem__inner{position:relative}
+.motion-ready .ecosystem::before{z-index:2}
+.motion-ready .ecosystem__sheen{
+  position:absolute;
+  inset:-2rem 0;
+  z-index:1;
+  width:14rem;
+  background:linear-gradient(100deg,transparent,rgba(246,243,236,.055) 45%,transparent);
+  pointer-events:none;
+  animation:rail-sheen 9s linear infinite;
+}
+
+/* ---- 2. entrance --------------------------------------------------------
+   One shared transition, one shared trigger class. --reveal-delay is written
+   by motion.js so a group of siblings arrives in sequence rather than all at
+   once, which is the whole difference between a reveal and a flicker. */
+.motion-ready [data-reveal]{
+  opacity:0;
+  transform:translate3d(0,1.75rem,0);
+  transition:opacity 620ms var(--poster-ease) var(--reveal-delay,0ms),
+             transform 720ms var(--poster-ease) var(--reveal-delay,0ms);
+}
+.motion-ready [data-reveal].is-in{opacity:1;transform:none}
+
+/* Cards arrive with the poster's own tilt rather than flat, so the settle has
+   somewhere to land. */
+.motion-ready .gap[data-reveal],
+.motion-ready .build-card[data-reveal]{transform:translate3d(0,2.1rem,0) rotate(-.9deg)}
+.motion-ready .gap[data-reveal].is-in,
+.motion-ready .build-card[data-reveal].is-in{transform:none}
+
+/* The colour slabs inside a heading paint in from the left once the heading
+   itself has arrived. */
+.motion-ready [data-reveal] .poster-block{
+  clip-path:inset(0 100% 0 0);
+  transition:clip-path 700ms var(--poster-ease) calc(var(--reveal-delay,0ms) + 210ms);
+}
+.motion-ready [data-reveal].is-in .poster-block{clip-path:inset(0 -.2em 0 0)}
+
+/* Hero build. The headline is the page's first statement, so it arrives a line
+   at a time instead of as one block. */
+@keyframes hero-line-in{
+  from{opacity:0;transform:translate3d(0,2.4rem,0) skewY(2.2deg)}
+  to  {opacity:1;transform:none}
+}
+@keyframes hero-soft-in{
+  from{opacity:0;transform:translate3d(0,1.1rem,0)}
+  to  {opacity:1;transform:none}
+}
+@keyframes hero-card-in{
+  from{opacity:0;transform:translate3d(2.2rem,1.4rem,0) rotate(3.4deg) scale(.965)}
+  to  {opacity:1;transform:none}
+}
+@keyframes hero-pop-in{
+  from{opacity:0;transform:scale(.72) rotate(-24deg)}
+  to  {opacity:1;transform:none}
+}
+.motion-ready .hero__heading .poster-kicker{animation:hero-soft-in 620ms var(--poster-ease) both}
+.motion-ready .hero h1 .poster-line{animation:hero-line-in 760ms var(--poster-ease) both}
+.motion-ready .hero h1 .poster-line:nth-child(1){animation-delay:120ms}
+.motion-ready .hero h1 .poster-line:nth-child(2){animation-delay:230ms}
+.motion-ready .hero h1 .poster-line:nth-child(3){animation-delay:340ms}
+.motion-ready .hero__intro{animation:hero-soft-in 700ms var(--poster-ease) 480ms both}
+.motion-ready .hero-rule{animation:hero-card-in 900ms var(--poster-ease) 260ms both}
+.motion-ready .hero-ornament,
+.motion-ready .hero__custody{animation:hero-pop-in 620ms var(--poster-ease) 700ms both}
+/* The seal already owns an infinite ambient animation, so its entrance is a
+   second name on the same element rather than a competing one. */
+.motion-ready .hero__seal{
+  animation:hero-pop-in 620ms var(--poster-ease) 780ms both,
+            drift-seal 6.8s var(--poster-ease) 1.4s infinite alternate;
+}
+.motion-ready .hero__custody{
+  animation:hero-pop-in 620ms var(--poster-ease) 820ms both,
+            drift-sticker 8.1s var(--poster-ease) 1.44s infinite alternate;
+}
+
+/* ---- 3. response --------------------------------------------------------
+   The hero light. It was a fixed ellipse bolted to the middle of the section;
+   now it is where the pointer is, lerped so it trails rather than snaps. */
+.hero::before{
+  left:var(--hero-glow-x,58%);
+  top:var(--hero-glow-y,48%);
+  width:46rem;
+  height:26rem;
+  transform:translate(-50%,-50%) rotate(-6deg);
+  background:radial-gradient(ellipse,
+    color-mix(in srgb,var(--poster-violet) 22%,transparent),
+    color-mix(in srgb,var(--poster-violet) 6%,transparent) 52%,
+    transparent 72%);
+  opacity:var(--hero-glow-o,1);
+  transition:opacity 420ms ease;
+}
+/* A second, smaller warm core that trails further behind, so the light reads
+   as depth rather than as one flat blob tied to the cursor. */
+.motion-ready .hero::after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:var(--hero-glow2-x,52%);
+  top:var(--hero-glow2-y,42%);
+  width:17rem;
+  height:17rem;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,color-mix(in srgb,var(--poster-amber) 13%,transparent),transparent 68%);
+  filter:blur(.6rem);
+  pointer-events:none;
+}
+/* The graph paper drifts a couple of pixels against the pointer. Small enough
+   that nobody names it, large enough that the surface stops feeling flat. */
+.motion-ready .hero{
+  background-position:calc(50% + var(--hero-tilt-x,0px)) calc(0% + var(--hero-tilt-y,0px));
+}
+/* The card leans toward the cursor. Two degrees, from a real perspective, so
+   the border shadow shifts with it instead of the whole thing sliding. */
+.motion-ready .hero__poster{perspective:70rem}
+@media (min-width:64rem) and (hover:hover){
+  /* The entrance keyframes own transform while they run, and an animation with
+     fill-mode both keeps winning the cascade after it ends. So the lean is
+     wired up only once the card has landed, and it cancels the animation by
+     name at the same time. */
+  .motion-ready .hero-rule.is-landed{
+    animation:none;
+    transform:rotate(1deg) rotateX(var(--card-rx,0deg)) rotateY(var(--card-ry,0deg));
+    transform-style:preserve-3d;
+    will-change:transform;
+  }
+  .motion-ready .hero-rule.is-landed:hover{
+    transform:translateY(-.22rem) rotate(1deg)
+              rotateX(var(--card-rx,0deg)) rotateY(var(--card-ry,0deg));
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .motion-ready .ecosystem__sheen{display:none}
+}

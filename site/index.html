@@ -34,7 +34,7 @@
 <meta name="twitter:image:alt" content="Trimmy: AI-friendly automation for XRP, shown with an example price rule.">
 
 <link rel="stylesheet" href="/assets/trimmy.css">
-<link rel="stylesheet" href="/assets/page.css?v=20260812-hero-grid">
+<link rel="stylesheet" href="/assets/page.css?v=20260812-gaps-build-motion">
 
 <script type="application/ld+json">
 {
@@ -108,7 +108,7 @@
         <a class="poster-btn poster-btn--ink" href="/docs/start-here/">Read the docs</a>
       </div>
     </div>
-    <div class="poster-seal hero__seal" data-asset-id="STICKER-RULE-SEAL" data-parallax="14" aria-hidden="true">
+    <div class="poster-seal hero__seal" data-asset-id="STICKER-RULE-SEAL" aria-hidden="true">
       <picture>
         <source media="(min-width: 56.0625rem)" type="image/avif" srcset="/assets/art/rule-seal.avif">
         <source media="(min-width: 56.0625rem)" type="image/webp" srcset="/assets/art/rule-seal.webp">
@@ -180,7 +180,7 @@
       </footer>
     </article>
 
-    <div class="poster-sticker hero__custody" data-asset-id="STICKER-NO-CUSTODY" data-parallax="-12" aria-hidden="true">
+    <div class="poster-sticker hero__custody" data-asset-id="STICKER-NO-CUSTODY" aria-hidden="true">
       <picture>
         <source media="(min-width: 48rem)" type="image/avif" srcset="/assets/art/no-custody-sticker.avif">
         <source media="(min-width: 48rem)" type="image/webp" srcset="/assets/art/no-custody-sticker.webp">
@@ -202,6 +202,82 @@
       <li data-asset-id="LOGO-FTSO"><img src="/assets/brands/ftso.svg" width="59" height="38" alt=""><span>FTSO</span></li>
       <li data-asset-id="ICON-CONFIDENTIAL-COMPUTE"><img src="/assets/brands/confidential-compute.svg" width="18" height="18" alt=""><span>Confidential Compute</span></li>
     </ul>
+  </div>
+</section>
+
+<!-- =========================================================== ORIGIN
+     Why this exists. Written as gaps rather than benefits, because a benefit
+     is a claim and a gap is checkable: every one of these is something we
+     went looking for and did not find. The last one is why two other repos
+     exist, which is the honest order things happened in. -->
+<section class="origin poster-grid-light" id="why">
+  <div class="container">
+    <header class="poster-heading poster-heading--origin" data-reveal>
+      <h2>WE WANTED ONE RULE.<br>EVERYTHING ELSE WANTED<br><span class="poster-block poster-block--orange">THE KEYS.</span></h2>
+      <p>Trimmy started as something we wanted for ourselves. Set a price for our XRP, close the laptop, and have it act without us. We went looking for that and found five holes where the product should have been.</p>
+    </header>
+
+    <ol class="gap-list">
+      <li class="gap" data-reveal>
+        <p class="gap__index">Gap 01</p>
+        <div class="gap__body">
+          <h3>XRP settles in seconds, then forgets you.</h3>
+          <p>A payment on the XRP Ledger is one shot and final. There is no <i>if it falls to 150</i> and no <i>every Friday</i>. A standing instruction has to live somewhere, and every somewhere on offer was a company holding the coins.</p>
+          <p class="gap__fix"><b>So the rule lives on Flare.</b> It is a contract anyone can read, armed by one ordinary XRPL payment that you sign from your own account.</p>
+        </div>
+      </li>
+
+      <li class="gap" data-reveal>
+        <p class="gap__index">Gap 02</p>
+        <div class="gap__body">
+          <h3>Automation was priced in keys.</h3>
+          <p>Every service that could do this wanted an API key with withdrawal rights, or a deposit into an account we did not control. The thing that goes wrong is not the rule misfiring. It is the operator leaving.</p>
+          <p class="gap__fix"><b>So Trimmy holds nothing.</b> No key, no balance, no customer ledger. What it may do is written into the rule itself: amount each time, how many times, an expiry, and a price band. Anything unspent was never ours.</p>
+        </div>
+      </li>
+
+      <li class="gap" data-reveal>
+        <p class="gap__index">Gap 03</p>
+        <div class="gap__body">
+          <h3>An AI can tell you what to do, and then stop.</h3>
+          <p>Assistants got good at reading a market and stayed useless at acting on one, because the only way to let software act is to give it a key, and a key is all or nothing. Nobody sensible hands that to a chat window.</p>
+          <p class="gap__fix"><b>So the mandate is the rule, not the key.</b> Trimmy ships an MCP server. An assistant can read what is armed and compose a new rule in plain language. It cannot sign, cannot send, and refuses outright to touch a private threshold.</p>
+        </div>
+      </li>
+
+      <li class="gap" data-reveal>
+        <p class="gap__index">Gap 04</p>
+        <div class="gap__body">
+          <h3>Your threshold is your strategy.</h3>
+          <p>Put a sell price on a public chain and you have published your plan. Anyone can read it, price around it, or simply copy it. Automation that leaks the number is not automation you can use at size.</p>
+          <p class="gap__fix"><b>So the number never reaches the chain.</b> A private rule keeps it inside a hardware enclave. The chain stores a hash. The rule receives a signed yes or no and never learns the value.</p>
+        </div>
+      </li>
+
+      <li class="gap gap--wide" data-reveal>
+        <p class="gap__index">Gap 05</p>
+        <div class="gap__body">
+          <h3>The tools we needed did not exist, so we wrote those first.</h3>
+          <p>Flare publishes developer guides for JavaScript, React, Python, Rust and Go. None for Dart, which is what we build in. And nothing described how to put an instruction inside an XRPL memo safely, which meant guessing at the bytes that decide where money goes on a payment that cannot be recalled.</p>
+          <p class="gap__fix"><b>So Trimmy is the third thing we built, not the first.</b> Both of the others are open source and stand on their own.</p>
+
+          <div class="sibling-grid">
+            <a class="sibling sibling--flaredart" href="https://github.com/Immadominion/flare-dart">
+              <p class="sibling__kicker">Sibling project</p>
+              <h4>Flare Dart</h4>
+              <p>Typed bindings for Flare's own contracts, so FTSO feeds, FDC attestations, FAssets and Smart Accounts are an import rather than a week of hand-rolled ABIs.</p>
+              <span class="sibling__go">Open the SDK <b aria-hidden="true">↗</b></span>
+            </a>
+            <a class="sibling sibling--plimsoll" href="https://github.com/Immadominion/plimsoll">
+              <p class="sibling__kicker">Sibling project</p>
+              <h4>Plimsoll</h4>
+              <p>Know what your XRPL payment will do on Flare before you sign it. It computes the outcome from live chain state and refuses the ones that lose money.</p>
+              <span class="sibling__go">Read the line <b aria-hidden="true">↗</b></span>
+            </a>
+          </div>
+        </div>
+      </li>
+    </ol>
   </div>
 </section>
 
@@ -391,6 +467,72 @@
   </div>
 </section>
 
+<!-- ============================================================ BUILD
+     What a standing rule is good for once it exists. These are shapes, not
+     announcements: nothing here claims a partnership with anyone. Each card
+     names the specific piece of Trimmy it would be built on, so a developer
+     can tell in one line whether it is a weekend or a quarter. -->
+<section class="build poster-grid-light" id="build">
+  <div class="container">
+    <header class="poster-heading poster-heading--build" data-reveal>
+      <h2>A RULE IS A PRIMITIVE.<br><span class="poster-block poster-block--violet">HERE IS WHAT TO BUILD.</span></h2>
+      <p>Trimmy is one product on top of a small idea: money that can be told what to do later, without being handed over now. Everything below is the same primitive pointed somewhere else.</p>
+    </header>
+
+    <div class="build-grid">
+      <article class="build-card build-card--amber" data-reveal>
+        <p class="build-card__who">For wallets</p>
+        <h3>Limit orders without becoming an exchange.</h3>
+        <p>A self-custody XRP wallet adds <i>sell if it drops</i> and <i>buy every payday</i> without holding a balance, running a matching engine, or taking on the licence that comes with either. The wallet builds the memo. The user signs a normal payment.</p>
+        <p class="build-card__uses"><span>Built on</span> the arming memo layout, 42 bytes</p>
+      </article>
+
+      <article class="build-card build-card--violet" data-reveal>
+        <p class="build-card__who">For agents</p>
+        <h3>An assistant with a mandate it cannot exceed.</h3>
+        <p>Point an AI agent at the MCP server and it can read every rule the user has armed, explain what one would do, and compose a new one in plain language. Signing stays with the person, so the worst an agent can do is suggest.</p>
+        <p class="build-card__uses"><span>Built on</span> four read-only MCP tools over stdio</p>
+      </article>
+
+      <article class="build-card build-card--mint" data-reveal>
+        <p class="build-card__who">For treasuries</p>
+        <h3>Payroll that converts itself on schedule.</h3>
+        <p>A business holding XRP against costs it pays in something else stops timing the market by hand. Convert a fixed amount on a fixed cadence, bounded by a total and an expiry, and let the finance lead approve it once instead of every Friday.</p>
+        <p class="build-card__uses"><span>Built on</span> scheduled rules with a per-run cap</p>
+      </article>
+
+      <article class="build-card build-card--pink" data-reveal>
+        <p class="build-card__who">For merchants</p>
+        <h3>A floor price on money you already took.</h3>
+        <p>Accept XRP at the till and set the rate below which the margin stops working. If it gets there, the conversion happens without anyone watching a chart, and if it never does, nothing moves and nothing was ever escrowed.</p>
+        <p class="build-card__uses"><span>Built on</span> price rules against FTSO feeds</p>
+      </article>
+
+      <article class="build-card build-card--orange" data-reveal>
+        <p class="build-card__who">For funds</p>
+        <h3>An entry price that stays a trade secret.</h3>
+        <p>The number that defines a strategy is the one thing a public chain will happily publish. Keep it inside confidential compute instead, and let followers see the fill after it happens rather than the plan before it does.</p>
+        <p class="build-card__uses"><span>Built on</span> private rules, threshold held in a TEE</p>
+      </article>
+
+      <article class="build-card build-card--blue" data-reveal>
+        <p class="build-card__who">For savers</p>
+        <h3>A deposit habit with nothing to remember.</h3>
+        <p>Put a little into the yield vault every week, bounded by an amount, a count, and a date it stops. No subscription, no open tab, no app that has to survive a phone upgrade for the plan to keep working.</p>
+        <p class="build-card__uses"><span>Built on</span> vault rules with a hard expiry</p>
+      </article>
+    </div>
+
+    <div class="build__foot" data-reveal>
+      <p>Every one of these is the same three moving parts: a rule you arm, a condition Flare checks, and limits nothing can widen after the fact.</p>
+      <div class="build__actions">
+        <a class="poster-btn poster-btn--ink" href="/developers/">Read the developer docs</a>
+        <a class="poster-link" href="/docs/use-cases/">See these in detail <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ======================================================= GET STARTED -->
 <section class="poster-slab builder" id="try">
   <div class="container">
@@ -502,7 +644,8 @@
   <div class="container footer__end"><p>Open source. Designed for self-custody.</p><p>© 2026 Trimmy</p></div>
 </footer>
 
-<script src="/assets/page.js?v=20260811-interactions-5" defer></script>
+<script src="/assets/page.js?v=20260812-interactions-6" defer></script>
+<script src="/assets/motion.js?v=20260812-motion-1" defer></script>
 
 </body>
 </html>
