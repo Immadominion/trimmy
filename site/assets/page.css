@@ -757,3 +757,105 @@ main section[id]{scroll-margin-top:6.25rem}
   .story-window--review .window-title{min-height:0;padding-right:0}
   .poster-outline{color:currentColor;-webkit-text-stroke:0}
 }
+
+/* ==========================================================================
+   HERO: a real grid.
+
+   The hero was a stack of absolutely positioned overlays on a fixed 58.5rem
+   block: the headline optically centred, the rule card floated over it at
+   right:4%, the intro pinned bottom-left. Nothing was aligned to anything, so
+   the card sat on top of "XRP" and the fix at the time was to nudge things
+   until they missed each other. That is not alignment, it is avoidance, and it
+   comes apart at every width that was not the one it was nudged at.
+
+   Now: two columns. The headline and the card cannot overlap because they are
+   in different tracks, so no nudging is needed at any width. The headline is
+   also left-aligned rather than centred, which is what makes three lines of
+   very different lengths read as deliberate typography instead of three
+   accidents that happen to share a centre.
+   ========================================================================== */
+@media (min-width:64rem){
+  .hero__poster{
+    display:grid;
+    grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
+    align-items:center;
+    gap:3rem;
+    min-height:auto;
+    padding-block:4rem 5rem;
+  }
+  .hero__col{ grid-column:1; }
+  .hero-rule{
+    position:static; grid-column:2; width:100%; max-width:34rem;
+    justify-self:end; margin:0;
+  }
+  /* Flush left, so the three lines share an edge instead of a centre. */
+  .hero__heading{ text-align:start; }
+  .poster-line{ margin-inline:0; }
+  .poster-line--split{ justify-content:flex-start; }
+  .hero__intro{
+    position:static; width:100%; max-width:30rem; margin-top:2.5rem;
+  }
+}
+
+/* Below the grid breakpoint the card stacks under the headline rather than
+   floating over it. */
+@media (max-width:63.99rem){
+  .hero__poster{ min-height:auto; padding-block:2rem 3rem; }
+  .hero-rule{ position:static; width:100%; max-width:34rem;
+              margin:2.5rem auto 0; transform:none; }
+  .hero__intro{ position:static; width:100%; max-width:34rem; margin-top:2rem; }
+  .hero__seal, .hero-ornament{ display:none; }
+}
+
+/* The two buttons were different widths because each was sized by its own
+   label. They are a pair, so they match. */
+.hero__actions{ display:flex; flex-wrap:wrap; gap:1rem; margin-top:1.6rem; }
+.hero__actions .poster-btn{ flex:1 1 13rem; max-width:16rem; }
+
+/* ---- the seal ------------------------------------------------------------
+   SET ONCE / arrow / STAYS READY was set at a size that did not fit inside the
+   circle it sits on, so the last word rode the edge. The type is now sized off
+   the seal itself and the whole stack is centred within it. */
+.poster-seal{ width:9.5rem; }
+.poster-seal > span,
+.poster-seal > b,
+.poster-seal > small{
+  position:absolute; left:50%; transform:translateX(-50%);
+  font-family:var(--poster-body); font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; line-height:1;
+  color:var(--poster-ink); white-space:nowrap;
+}
+.poster-seal > span { top:33%;  font-size:.56rem; letter-spacing:.1em; }
+.poster-seal > b    { top:45%;  font-size:1.05rem; }
+/* STAYS READY is the wider of the two words and it sat at 62%, where the inner
+   circle has already narrowed, so it rode the ring. Moved up and set smaller
+   so both lines sit inside the flat part of the disc. */
+.poster-seal > small{ top:58%;  font-size:.5rem;  letter-spacing:.08em; }
+
+/* The headline was sized for a full-bleed centred hero (up to 9rem, nowrap).
+   In a half-width column that overruns the track and clips. Size it off the
+   column instead, and let it wrap if a viewport ever makes it necessary rather
+   than sending it off the edge. */
+@media (min-width:64rem){
+  .hero h1{ font-size:clamp(3rem,5.4vw,4.9rem); text-wrap:balance; }
+  .hero__col{ min-width:0; }
+}
+@media (min-width:100rem){ .hero h1{ font-size:5.6rem; } }
+
+/* Ornaments were positioned against the old absolute layout, so in the grid
+   they landed on top of the copy and the buttons. They live in the gutters
+   now: the radar outside the left edge, the seal in the gap the short third
+   line leaves beside it. Both stay decorative and non-interactive. */
+@media (min-width:64rem){
+  /* Sits in the page gutter beside the container, not inside the text column.
+     overflow-x is clipped on the section so it never creates a scrollbar. */
+  .hero-ornament--radar{ left:auto; right:calc(100% - 3.5rem); top:auto; bottom:5rem;
+                         width:9.5rem; opacity:.92; }
+  /* Anchored to the left column now, in the gap the short third line leaves
+     beside "FOR XRP". Before this it was a child of the whole hero, so
+     right:2rem meant the far right of the section, which is where the card is. */
+  .hero__seal{ left:auto; right:0; top:auto; bottom:9rem; z-index:2; }
+  .hero__col{ position:relative; }
+}
+
+.hero{ overflow-x:clip; }
