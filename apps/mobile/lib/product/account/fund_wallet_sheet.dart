@@ -159,7 +159,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                                     : [],
                               ),
                               child: Text(
-                                card ? 'Card' : 'Crypto',
+                                card ? 'Cash' : 'Crypto',
                                 textAlign: TextAlign.center,
                                 style: type.titleMedium,
                               ),
@@ -246,7 +246,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'USDC or SOL · Solana network only',
+                  'Send only USDC or SOL to this account on the Solana network.',
                   textAlign: TextAlign.center,
                   style: type.bodySmall,
                 ),

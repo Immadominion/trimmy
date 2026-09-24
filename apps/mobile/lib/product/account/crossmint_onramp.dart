@@ -437,6 +437,10 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
               style: type.labelLarge?.copyWith(color: ProductColor.ink),
             ),
           ),
+        Text('Card, Apple Pay or Google Pay', style: type.titleMedium),
+        const SizedBox(height: 4),
+        Text('Available options appear at checkout.', style: type.bodySmall),
+        const SizedBox(height: 22),
         Text('Amount', style: type.titleMedium),
         const SizedBox(height: 18),
         Container(
@@ -513,7 +517,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
         const SizedBox(height: 16),
         Text(
           _challenge == null
-              ? 'USDC on Solana · fees shown at checkout'
+              ? 'USDC on Solana. Fees shown at checkout.'
               : 'Confirm this wallet is yours. This signs a message, not a payment.',
           style: type.bodyMedium,
         ),
