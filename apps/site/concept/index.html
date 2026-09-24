@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F8F37B">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Trimmy | The investing game</title>
+  <meta name="description" content="Learn how stocks work in a mobile game. Join a fictional Wall Street firm, make decisions, and see what happens. Try a Trimmy activity.">
+  <link rel="icon" href="./assets/mark.png">
+  <link rel="preload" href="./assets/fonts/BricolageGrotesque-Latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./room-details.css">
+  <link rel="stylesheet" href="./fluid.css">
+  <link rel="stylesheet" href="./activity-feedback.css">
+  <script type="module" src="./motion.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="header">
+    <a class="brand" href="#main" aria-label="Trimmy home"><img src="./assets/mark.png" width="44" height="44" alt=""><span>trimmy</span></a>
+    <nav aria-label="Main navigation"><a href="#the-game">The game</a><a href="#why-trimmy">Why Trimmy</a><a class="nav-play" href="#practice-title">Try an activity <span class="play-icon" aria-hidden="true"></span></a></nav>
+  </header>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title"><span class="title-row"><span>The investing</span></span><span class="title-row title-game"><span>game.</span></span></h1>
+      <button class="token-button" type="button" aria-label="Play the liquid Trimmy logo animation" disabled>
+        <img class="token-fallback" src="./assets/token.webp" width="700" height="700" alt="Trimmy’s lavender liquid logo, shaped into a soft token.">
+        <canvas class="token-canvas" width="700" height="700" aria-hidden="true" hidden></canvas>
+      </button>
+      <div class="hero-bottom"><p>Start as the rookie at a fictional Wall Street firm. Learn how stocks work through short activities and a story you play on your phone.</p><div class="hero-action"><a class="button button-dark" href="#practice-title"><span class="play-circle" aria-hidden="true"><span class="play-icon"></span></span>Try an activity</a><span class="availability">Play a preview. Full app in development.</span></div></div>
+      <a class="peek-link" href="#the-game" aria-label="Meet Ada in the game"><span>Your first day starts here</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15m-6-6 6 6 6-6"/></svg></a>
+    </section>
+
+    <section class="office-section" id="the-game" aria-labelledby="office-title">
+      <div class="office-heading"><h2 id="office-title">You’re up,<br>rookie.</h2><p>Ada has a report for you. The headline sounds great. Check the numbers before the team shares it.</p></div>
+      <div class="office-stage" aria-label="An illustrated office with Ada, your guide">
+        <svg class="office-set" viewBox="0 0 1200 650" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <defs><pattern id="city-windows" width="28" height="35" patternUnits="userSpaceOnUse"><rect x="8" y="8" width="8" height="14" fill="#D4C9F5"/></pattern></defs>
+          <path fill="#D5C7F2" d="M0 0h1200v650H0z"/><path fill="#BEACDB" d="M0 0h430v650H0z"/>
+          <path fill="#564268" d="M60 25h420v485H60z"/><path fill="#F8F37B" d="M73 39h394v457H73z"/>
+          <circle cx="310" cy="142" r="62" fill="#FFFBE0"/>
+          <path fill="#ADA1CF" d="M74 450V310h78V190l50-25 52 25v120h30V265h88V350h92v145H74z"/>
+          <path fill="url(#city-windows)" d="M74 450V310h78V190l50-25 52 25v120h30V265h88V350h92v145H74z"/>
+          <path stroke="#564268" stroke-width="14" d="M267 34v465M67 250h405"/>
+          <path fill="#8568AE" d="M54 497h435v22H54z"/>
+          <g class="lamp" transform="translate(-150 0)"><path stroke="#564268" stroke-width="7" fill="none" d="M700 0v50"/><path fill="#F8F37B" d="M636 54q64-42 128 0l25 58H611z"/><path fill="#251B38" d="M641 53q59-42 118 0z"/></g>
+
+          <path fill="#AF94C8" d="M0 609h1200v41H0z"/>
+        </svg>
+        <div class="ada-stage"><img class="ada-fallback" src="./assets/ada-poster.webp" width="480" height="512" alt="Ada in yellow glasses and a pink jacket"><canvas class="ada-canvas" width="480" height="512" role="img" aria-label="Ada, your guide, looking toward the report" hidden></canvas></div>
+        <span class="speech">Check the dates first.</span>
+        <div class="desk"><span class="desk-edge"></span><div class="coffee" aria-hidden="true"><span></span></div><div class="books" aria-hidden="true"><i></i><i></i><i></i></div><a class="envelope" href="#practice-title" aria-label="Open Ada’s report"><span class="envelope-back"></span><span class="envelope-paper">Aster<br><small>Company report</small></span><span class="envelope-front"></span><span class="envelope-flap"></span><span class="envelope-seal">t</span></a></div>
+        <div class="office-caption"><span>Ada</span><span>Your guide</span></div>
+      </div>
+    </section>
+
+    <section class="practice" aria-labelledby="practice-title">
+      <div class="section-intro"><h2 id="practice-title" tabindex="-1">Your first<br>activity.</h2><p>Check the report.<br>Choose what the evidence supports.</p></div>
+      <div class="activity-grid">
+        <article class="report" aria-labelledby="report-name"><div class="report-meta"><span>Company report</span><span class="paper-clip" aria-hidden="true"></span></div><h3 id="report-name">Aster</h3><p class="report-date">Published February <span data-date>2026</span></p><h4>Number of users</h4><div class="chart" aria-hidden="true"><div class="chart-col"><span>100,000</span><i class="bar bar-one"></i><strong>2024</strong></div><div class="chart-col"><span>180,000</span><i class="bar bar-two"></i><strong>2025</strong></div></div><table class="sr-only"><caption>Number of users</caption><thead><tr><th>Year</th><th>Users</th></tr></thead><tbody><tr><th>2024</th><td>100,000</td></tr><tr><th>2025</th><td>180,000</td></tr></tbody></table><div class="report-bottom"><span>Aster / Annual report</span><span>01</span></div><div class="answer-seal" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="m10 21 7 7 14-17"/></svg><span>Good catch</span></div></article>
+        <div class="decision"><div class="guide-note"><canvas class="response-ada" width="480" height="512" role="img" aria-label="Ada reacts to your answer" hidden></canvas><div><span class="practice-label">Fictional company. No real money.</span><p>Check the dates first.</p></div></div><form id="practice-form"><fieldset disabled><legend>Which headline matches the report?</legend><label class="choice"><input type="radio" name="headline" value="publication" required><span class="radio-mark" aria-hidden="true"></span><span>In <strong>2026</strong>, users grew 80%.</span></label><label class="choice"><input type="radio" name="headline" value="dated" required><span class="radio-mark" aria-hidden="true"></span><span>In <strong>2025</strong>, users grew 80%.</span></label><button class="button button-dark check-answer" type="button" disabled>Check my answer<span class="check-icon" aria-hidden="true">✓</span></button></fieldset></form><div class="feedback" role="status" aria-live="polite" id="practice-feedback"></div><noscript><p>Users grew 80% in 2025. The report was published in 2026. Enable JavaScript to choose an answer.</p></noscript></div>
+      </div>
+    </section>
+
+    <section class="upstairs" aria-labelledby="upstairs-title">
+      <div class="upstairs-copy"><h2 id="upstairs-title">There’s more<br>upstairs.</h2><p>Finish activities to unlock the next floor. Work out company value, fees, and risk. Then help Nia with a decision that comes back to you.</p><div class="floor-controls" role="group" aria-label="Explore the floors"><button type="button" disabled class="floor-button active" data-floor="1" aria-pressed="true"><span>Floor 1</span><strong>Read the evidence</strong><i aria-hidden="true">↗</i></button><button type="button" disabled class="floor-button" data-floor="2" aria-pressed="false"><span>Floor 2</span><strong>Understand the numbers</strong><i aria-hidden="true">↗</i></button><button type="button" disabled class="floor-button" data-floor="3" aria-pressed="false"><span>Floor 3</span><strong>Work with the team</strong><i aria-hidden="true">↗</i></button></div><p class="floor-caption" aria-live="polite">Floor 1: Read the evidence</p></div>
+      <div class="tower" data-active-floor="1" role="img" aria-label="An illustrated three-floor office. Floor 1 is highlighted.">
+        <svg class="tower-art" viewBox="0 0 600 790" aria-hidden="true">
+          <defs><pattern id="tower-bricks" width="45" height="30" patternUnits="userSpaceOnUse"><path d="M0 30h45M22 0v30" fill="none" stroke="#2C604A" stroke-width="1"/></pattern></defs>
+          <path d="M74 127 410 28l142 77v579L213 785 74 695Z" fill="#245B47"/><path d="M74 127 410 28l142 77-339 105Z" fill="#E4ECD0"/>
+          <path d="m74 127 139 83v575L74 695Z" fill="url(#tower-bricks)"/>
+          <path d="m213 210 339-105v579L213 785Z" fill="#397659"/>
+          <g class="tower-room room-three"><path d="m231 231 303-94v144l-303 95Z" fill="#F8F37B"/><path d="m231 344 303-94v31l-303 95Z" fill="#D4B864"/><path d="m247 322 46-15v-50l-46 14Z" fill="#7455E8"/><path d="m473 206 44-14v48l-44 13Z" fill="#F55984"/><path d="m311 301 134-42v11l-134 42Z" fill="#251B38"/><path d="m326 306 9-3v25l-9 3m94-63 9-3v25l-9 3" fill="#251B38"/><path d="m354 269 48-15v-28l-48 15Z" fill="#7455E8"/></g>
+          <g class="tower-room room-two"><path d="m231 421 303-94v144l-303 95Z" fill="#E1D4FC"/><path d="m231 534 303-94v31l-303 95Z" fill="#AA8BCC"/><path d="m254 486 63-20v-72l-63 20Z" fill="#7352C0"/><path d="m264 431 44-14m-44 35 44-14m-44 35 44-14" stroke="#F8F37B" stroke-width="5"/><path d="m376 484 134-42v11l-134 42Z" fill="#251B38"/><path d="m393 488 9-3v25l-9 3m86-60 9-3v25l-9 3" fill="#251B38"/><path d="m404 451 48-15v-28l-48 15Z" fill="#F55984"/></g>
+          <g class="tower-room room-one"><path d="m231 611 303-94v144l-303 95Z" fill="#FFCCDC"/><path d="m231 724 303-94v31l-303 95Z" fill="#D986A5"/><path d="m261 655 44-14v-65l-44 14Z" fill="#F8F37B"/><path d="m352 684 144-45v12l-144 45Z" fill="#251B38"/><path d="m368 689 9-3v26l-9 3m100-65 9-3v26l-9 3" fill="#251B38"/><path d="m380 658 48-15v-28l-48 15Z" fill="#7455E8"/><path d="m452 633 25-8-8-10-24 7Z" fill="#fff"/></g>
+          <path d="m87 165 101 60v515L87 678Z" fill="#174A39"/><path d="m101 198 74 44v99l-74-44zm0 157 74 44v100l-74-45zm0 160 74 44v98l-74-44z" fill="#83B39B"/>
+          <g class="lift"><path d="m106 519 64 38v88l-64-39Z" fill="#F8F37B"/><path d="m138 538 0 87" stroke="#927D46" stroke-width="3"/><path d="m132 566 6-6 6 13" fill="none" stroke="#251B38" stroke-width="3"/></g>
+          <path d="m214 206 338-106v20L214 226zm0 187 338-106v20L214 413zm0 190 338-106v20L214 603zm0 184 338-106v20L214 787Z" fill="#163F31"/>
+          <path d="m133 121 227-68 39 24-230 69Z" fill="#F8F37B"/>
+        </svg>
+        <span class="tower-note">One floor at a time.</span>
+      </div>
+    </section>
+
+    <section class="why" id="why-trimmy" aria-labelledby="why-title">
+      <h2 id="why-title">Investing felt like<br>someone else’s<br>world.</h2>
+      <div class="why-bottom"><div class="world-window" aria-hidden="true"><div class="world-building"><i></i><i></i><i></i><i></i></div><div class="world-phone"><span></span><img src="./assets/mark.png" width="128" height="128" alt=""></div><span class="world-orbit"></span></div><p>Stock tokens on Solana are opening another way in. We want understanding to feel within reach, too. That’s why we’re making the first steps a game.</p></div>
+    </section>
+
+    <footer class="closing"><div class="closing-top"><h2>Your first day<br>is coming.</h2><div><p>Follow Trimmy for a look inside the game and launch updates.</p><a class="button button-light" href="https://x.com/trimmyhq" rel="noopener noreferrer">Follow Trimmy<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14"/></svg></a></div></div><div class="closing-brand" aria-hidden="true">trimmy<span class="closing-token"><img class="closing-token-fallback" src="./assets/token.webp" width="700" height="700" alt=""><canvas class="closing-token-canvas" width="700" height="700" hidden></canvas></span></div><div class="footer-bottom"><span>Learn investing through play.</span><nav aria-label="Footer"><a href="https://trimmy.xyz/privacy">Privacy</a><a href="https://trimmy.xyz/terms">Terms</a><a href="https://x.com/trimmyhq" rel="noopener noreferrer">Contact</a></nav></div></footer>
+  </main>
+  <aside class="study-note" aria-label="Design study">Design & motion study <a href="./direction.html">View the plan</a></aside>
+</body>
+</html>

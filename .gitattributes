@@ -1,0 +1,3 @@
+# Preserve verbatim upstream licence files, including their original whitespace.
+**/OFL.txt -whitespace
+**/*-OFL.txt -whitespace

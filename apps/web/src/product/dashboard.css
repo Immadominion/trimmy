@@ -1,0 +1,182 @@
+/* A continuous lilac surround joins the sidebar to a lightly inset white workspace. */
+.product-shell { grid-template-columns: 208px minmax(0, 1fr); }
+.product-shell:not(.onboarding-shell) { background:#f5f2f9; }
+.product-shell:not(.onboarding-shell)>.product-body {
+  margin:12px 12px 12px 0;
+  border:1px solid #e8e1ef;
+  border-radius:24px;
+}
+.product-nav { background: #f5f2f9; padding: 29px 17px 20px; }
+.product-nav nav { margin-top: 45px; gap: 8px; }
+.product-nav nav button { padding: 12px 16px; min-height: 52px; font-size: 15px; color: #766c83; }
+.product-nav nav button[aria-current=page] { background: #fff; color: #6745cf; box-shadow: 0 2px 0 #e9e2f2; }
+.product-nav nav button:hover { background: #eee7f7; }
+.product-nav nav button[aria-current=page]:hover { background: #fff; }
+.product-nav .product-brand { font-size: 32px; }
+.nav-identity { display:flex;align-items:center;gap:12px;text-align:left;padding:13px 7px;margin-top:auto;min-height:64px;border-radius:17px; }
+.nav-identity:hover { background:#ede7f5; }
+.nav-identity>img { width:42px;height:42px;border-radius:50%;object-fit:cover; }
+.nav-identity>span { display:grid;gap:5px;min-width:0; }
+.nav-identity strong { font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis; }
+.nav-identity small { font-size:11px;color:#80718f; }
+.product-main { padding:34px 38px; }
+.desk-screen,.product-main .market-screen,.web-profile,.career-screen { max-width:1000px; }
+
+.desk-screen .desk-overview { padding-top:10px; }
+.desk-screen .balance-card { background:linear-gradient(#63429abf,#583e92c9),url('/trimmy/profile-sky.webp') center/cover;border:4px solid #eee6ff;padding:23px 24px;overflow:visible; }
+.desk-screen .balance-card::before { content:'';position:absolute;top:-14px;left:15px;right:15px;height:10px;border-radius:25px 25px 0 0;background:#bedfd3; }
+.balance-heading { display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:34px; }
+.balance-coins { display:flex;padding-left:8px; }
+.balance-coins .company-logo { margin-left:-8px; }
+.desk-screen .balance-amount { margin-top:13px; }
+.desk-screen .balance-details { border-top:0;margin-top:21px;padding-top:0; }
+.desk-screen .desk-mentor p { font-size:13px; }
+.desk-screen .desk-mentor-label,.desk-screen .desk-mentor-label>span { font-size:11px; }
+.desk-screen .desk-mentor .text-button { font-size:13px; }
+.desk-screen .position-main { min-width:0; }
+.desk-screen .position-main strong { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.desk-screen .activity-copy strong { font-size:13px; }
+.desk-screen .activity-copy span,.desk-screen .activity-value small { font-size:11px; }
+.desk-screen .position-row .company-logo { flex-shrink:0; }
+.desk-screen .empty-positions p { font-size:13px; }
+.desk-screen .activity-row .company-logo { flex-shrink:0; }
+
+.daily-entry { display:flex;align-items:center;justify-content:space-between;gap:20px;padding:21px 25px;margin-top:27px;background:#f2edfb;border-radius:23px; }
+.daily-entry>div { min-width:0; }
+.daily-label { color:#7a639e;font-size:12px;line-height:1.5; }
+.daily-entry h2 { font-size:23px;line-height:1.25;margin:7px 0 4px; }
+.daily-entry>img { width:90px;height:102px;object-fit:contain; }
+.daily-entry .text-button { font-size:13px; }
+.daily-entry-loading .loading { min-height:50px; }
+.progress-stale { font-size:12px;color:#8e6371;line-height:1.6; }
+.progress-error { font-size:13px;background:#faf2f5;color:#875263;border-radius:15px;padding:12px 16px;margin:12px 0;line-height:1.6; }
+.progress-error .text-button { margin-left:8px; }
+.career-screen { margin:auto; }
+.career-screen .page-intro h1 { font-size:40px; }
+.career-rank-link { display:flex;align-items:center;gap:9px;min-height:44px;text-decoration:none;font-size:15px;font-weight:600; }
+.career-rank-link>img { width:25px;height:25px;object-fit:contain; }
+.career-overview { display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:28px;align-items:start; }
+.career-week { min-width:0; }
+.career-week .section-line { margin:8px 0 28px; }
+.career-week .section-line h2 { font-size:20px; }
+.week-range { font-size:12px;color:#82758e; }
+.desk-week-days { list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:9px; }
+.desk-week-days>li { min-width:0;text-align:center;position:relative; }
+.desk-week-days>li>span { display:block;color:#8b7d9b;font-size:11px;margin-bottom:10px; }
+.desk-week-days .desk-day,.desk-week-days button { display:grid;place-items:center;aspect-ratio:1;min-height:54px;width:100%;background:#f7f4fb;color:#b2a7c0;border-radius:19px;font-family:Bricolage,sans-serif;font-size:22px;font-weight:600;box-shadow:0 4px 0 #e9e2f1; }
+.desk-week-days .today>span { color:#7455e8;font-weight:700; }
+.desk-week-days .today>button { background:#eae1fb;box-shadow:0 4px 0 #cdbbec; }
+.desk-week-days .complete .desk-day,.desk-week-days .complete button { background:#e4f2eb;box-shadow:0 4px 0 #acd9c2; }
+.desk-week-days img { width:90%;height:90%;object-fit:contain; }
+.completion-seal { display:grid;place-items:center;width:34px;height:34px;background:#44b77c;color:#fff;font-size:23px;font-weight:700;border-radius:40%; }
+.career-today { display:flex;align-items:center;gap:24px;margin:35px 0 0;padding:26px 22px;background:#faf8fd;border-radius:25px; }
+.career-today>img { width:120px;height:150px;object-fit:contain; }
+.career-today h2 { font-size:25px;line-height:1.2;margin:7px 0 10px; }
+.career-today p:not(.daily-label) { font-size:13px;color:#81748f; }
+.career-today .primary { font-size:13px;min-height:46px;margin-top:20px;padding:12px 22px; }
+.career-progress { background:#f5f0fc;padding:23px;border-radius:26px;text-align:center;scroll-margin-top:20px; }
+.career-briefcase { width:85px;height:80px;object-fit:contain;margin:0 auto 12px; }
+.career-progress h2 { font-size:23px; }
+.career-trims { font-size:14px;color:#79688e;margin:10px 0 17px; }
+.career-trims strong { font-size:25px;color:#6745d6; }
+.career-meter { background:#fff;height:10px;border-radius:6px;overflow:hidden; }
+.career-meter>span { display:block;height:100%;background:#9477e5;border-radius:6px; }
+.career-next-rank { font-size:11px;color:#81718f;margin-top:9px; }
+.career-streak-line { display:flex;justify-content:center;align-items:center;gap:7px;margin-top:24px;font-size:14px; }
+.career-flame { display:block;width:22px;height:24px;background:#f47b35;mask:url('/trimmy/icons/career-streak.png') center/contain no-repeat; }
+.activity-week-label { font-size:11px;color:#84748f;margin:20px 0 11px; }
+.activity-week { display:flex;justify-content:center;gap:5px; }
+.activity-week>span { display:grid;place-items:center;width:24px;height:28px;background:#fff;border-radius:8px;font-size:10px;color:#a999b7; }
+.activity-week>span.active { color:#6745d6;background:#e4d6fa;font-weight:700; }
+.career-milestones { margin-top:31px; }
+.career-milestones summary { min-height:50px;cursor:pointer;font-size:18px;font-weight:600;padding:12px 0; }
+.career-milestones summary>span { font-size:12px;color:#8a7c99;margin-left:12px;font-weight:400; }
+.career-milestones article { display:flex;align-items:center;gap:15px;padding:18px 0; }
+.milestone-icon { display:grid;place-items:center;width:40px;height:40px;flex-shrink:0;background:#f0e9fb;border-radius:14px;color:#8267ae; }
+.milestone-icon.complete { background:#e5f4ed;color:#278159; }
+.milestone-icon img { width:24px;height:24px;object-fit:contain; }
+.career-milestones h3 { font-size:15px; }
+.career-milestones p { color:#81758c;font-size:12px;margin-top:6px; }
+.milestone-status { margin-left:auto;font-size:11px;color:#887599;white-space:nowrap; }
+.daily-story-screen { max-width:640px;margin:auto; }
+.daily-story-heading { display:flex;align-items:center;gap:22px;margin:3px 0 25px; }
+.daily-story-heading>img { width:120px;height:128px;object-fit:contain; }
+.daily-story-heading h1 { font-size:35px;line-height:1.13;margin-top:8px; }
+.daily-story-body { font-size:17px;line-height:1.75;color:#62536f;white-space:pre-line; }
+.daily-choices { border:0;padding:0;margin:27px 0 0; }
+.daily-choices legend { font-weight:600;font-size:19px;margin-bottom:16px; }
+.daily-choices label { display:flex;align-items:center;gap:13px;padding:17px 19px;margin:10px 0;background:#f7f4fb;border-radius:18px;font-size:15px;line-height:1.5;cursor:pointer; }
+.daily-choices label.selected { background:#eae0fc; }
+.daily-choices input { accent-color:#7455e8;width:18px;height:18px;flex-shrink:0; }
+.daily-outcome { background:#f4eefb;border-radius:23px;padding:25px;margin-top:25px; }
+.daily-outcome h2 { font-size:20px;margin:10px 0 16px; }
+.daily-outcome>p { font-size:15px;color:#71617f;line-height:1.7; }
+.daily-outcome .daily-takeaway { font-weight:600;margin-top:17px;color:#4c365f; }
+.daily-story-actions { display:flex;flex-wrap:wrap;align-items:center;gap:20px;margin-top:25px;padding-bottom:20px; }
+.daily-story-actions .primary { font-size:14px;min-height:48px; }
+.daily-saved { display:flex;align-items:center;gap:10px;color:#287a5c;font-size:14px;flex-basis:100%; }
+.daily-saved .completion-seal { width:27px;height:27px;font-size:19px; }
+
+@media(min-width:701px) and (max-width:1000px) {
+  .product-shell { grid-template-columns:78px minmax(0,1fr); }
+  .product-nav { padding:27px 9px 16px; }
+  .product-nav .product-brand { font-size:0;padding:0;justify-content:center; }
+  .product-nav nav button { padding:12px;justify-content:center; }
+  .product-nav nav button>span,.nav-identity>span { display:none; }
+  .nav-identity { padding:8px; }
+  .nav-identity>img { width:40px;height:40px; }
+  .product-main { padding:28px; }
+  .career-overview { grid-template-columns:minmax(0,1fr); }
+  .career-progress { max-width:none;display:grid;grid-template-columns:100px 1fr;column-gap:25px;align-items:center;text-align:left; }
+  .career-briefcase { grid-row:span 4;margin:0; }
+  .career-streak-line,.activity-week-label,.activity-week { grid-column:1/-1; }
+}
+@media(max-width:700px) {
+  .product-shell { grid-template-columns:minmax(0,1fr); }
+  .product-shell:not(.onboarding-shell)>.product-body { margin:6px 6px 0;border-radius:18px; }
+  .product-shell:not(.onboarding-shell)>.product-nav { background:#f5f2f9; }
+  .product-main { padding:24px 19px; }
+  .product-nav { padding:0 5px max(4px,env(safe-area-inset-bottom));background:#f7f4fb; }
+  .product-nav nav { margin:0;gap:4px; }
+  .product-nav nav button { font-size:10px;padding:8px 4px 5px;min-height:52px; }
+  .product-nav nav button[aria-current=page] { box-shadow:none; }
+  .nav-identity { display:none; }
+  .desk-screen .balance-card { padding:21px 20px; }
+  .desk-screen .balance-amount { font-size:40px; }
+  .desk-screen .balance-details { gap:28px; }
+  .desk-screen .desk-mentor-label,.desk-screen .desk-mentor-label>span { font-size:10px; }
+  .daily-entry { padding:18px 19px;margin-top:23px;gap:10px; }
+  .daily-entry h2 { font-size:21px; }
+  .daily-entry>img { width:72px;height:90px; }
+  .career-screen .page-intro h1 { font-size:33px; }
+  .career-rank-link { font-size:13px; }
+  .career-overview { grid-template-columns:minmax(0,1fr);gap:25px; }
+  .career-week .section-line { margin-bottom:24px;gap:10px; }
+  .career-week .section-line h2 { font-size:18px; }
+  .week-range { font-size:10px; }
+  .desk-week-days { gap:6px; }
+  .desk-week-days .desk-day,.desk-week-days button { min-height:44px;border-radius:13px;font-size:18px; }
+  .desk-week-days>li>span { font-size:10px; }
+  .completion-seal { width:26px;height:26px;font-size:19px; }
+  .career-today { margin-top:29px;gap:13px;padding:20px 17px; }
+  .career-today>img { width:82px;height:115px; }
+  .career-today h2 { font-size:22px; }
+  .career-progress { padding:22px; }
+  .career-progress .activity-week { gap:12px; }
+  .career-milestones article { flex-wrap:wrap;gap:12px; }
+  .career-milestones article>div { flex:1;min-width:180px; }
+  .milestone-status { margin-left:52px; }
+  .daily-story-heading { gap:14px;margin-bottom:20px; }
+  .daily-story-heading>img { width:85px;height:110px; }
+  .daily-story-heading h1 { font-size:29px; }
+  .daily-story-body { font-size:15px; }
+  .daily-outcome { padding:21px; }
+  .daily-outcome>p { font-size:14px; }
+  .daily-choices label { font-size:14px;padding:16px; }
+  .daily-story-actions .primary { flex:1; }
+}
+@media(max-width:360px) {
+  .desk-screen .balance-amount { font-size:35px; }
+  .desk-week-days { gap:4px; }
+  .desk-week-days .desk-day,.desk-week-days button { min-height:40px; }
+}

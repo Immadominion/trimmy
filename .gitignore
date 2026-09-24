@@ -1,0 +1,76 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+coverage/
+.DS_Store
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+*.iml
+local.properties
+Pods/
+.symlinks/
+ephemeral/
+infra/.test-runtime/
+infra/.practice-runtime/
+infra/.migration-runtime/
+infra/.deployment-runtime/
+
+# Android release signing. The keystore and its passwords never enter the repo.
+key.properties
+*.jks
+*.keystore
+
+# Private device/provider configuration. Commit only the example configs.
+**/production-config.json
+**/*-config.local.json
+**/account-config.json
+**/*.pem
+**/*.p12
+**/*.mobileprovision
+**/service-account*.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Local research, source artwork, recordings and verification captures.
+# Runtime assets belong under each app's assets/public directory.
+/art/
+/artifacts/
+/tool/art/
+/tmp/
+/work-in-progress/
+/output/
+**/.gradle/
+**/.idea/
+**/.vscode/
+**/.vercel/
+**/.DS_Store
+**/*.log
+**/*.apk
+**/*.aab
+**/*.ipa
+**/*.xcarchive/
+**/*.dSYM/
+**/DerivedData/
+**/.swiftpm/
+**/.build/
+**/xcuserdata/
+**/flutter_export_environment.sh
+**/Generated.xcconfig
+**/.env.*
+!**/.env.example
+
+# Commercial font binaries remain local. Public clones use the setup script.
+**/DejanireSans-*.otf
+
+# Library sound licences permit use in the app, not redistribution with source.
+/apps/mobile/assets/audio/wall_street_orbit_v*.wav
+/apps/mobile/assets/audio/welcome_press_v1.wav
+/apps/site-v2/public/audio/floor*.mp3
+/apps/site-v2/public/audio/floor-public.wav
+/tool/research/
+**/live-dist/
+**/concept-dist/

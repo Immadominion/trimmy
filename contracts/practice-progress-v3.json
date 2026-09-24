@@ -1,0 +1,1024 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "empty",
+      "progress": {
+        "version": 3,
+        "active": null,
+        "completions": {}
+      }
+    },
+    {
+      "name": "check-the-date-brief",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 0,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {}
+      }
+    },
+    {
+      "name": "check-the-date-source",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 1,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {}
+      }
+    },
+    {
+      "name": "check-the-date-selected",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 2,
+          "selectedChoiceId": "keep-headline",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {}
+      }
+    },
+    {
+      "name": "check-the-date-reinspect-with-selection",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 1,
+          "selectedChoiceId": "keep-headline",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {}
+      }
+    },
+    {
+      "name": "check-the-date-correction",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 3,
+          "selectedChoiceId": "keep-headline",
+          "corrected": true,
+          "answerParts": {}
+        },
+        "completions": {}
+      }
+    },
+    {
+      "name": "check-the-date-completed",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "keep-headline",
+          "corrected": true,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-date-closed",
+      "progress": {
+        "version": 3,
+        "active": null,
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-brief",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "sales-and-profit",
+          "stage": 0,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-source",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "sales-and-profit",
+          "stage": 1,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-selected",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "sales-and-profit",
+          "stage": 2,
+          "selectedChoiceId": "sales-mean-profit",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-reinspect-with-selection",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "sales-and-profit",
+          "stage": 1,
+          "selectedChoiceId": "sales-mean-profit",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-correction",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "sales-and-profit",
+          "stage": 3,
+          "selectedChoiceId": "sales-mean-profit",
+          "corrected": true,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-completed",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "sales-and-profit",
+          "stage": 4,
+          "selectedChoiceId": "sales-mean-profit",
+          "corrected": true,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "sales-and-profit-closed",
+      "progress": {
+        "version": 3,
+        "active": null,
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-brief",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 0,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-source",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 1,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-partial",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 2,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {
+            "amount": "all"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-selected",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 2,
+          "selectedChoiceId": "all-customers",
+          "corrected": false,
+          "answerParts": {
+            "amount": "all",
+            "group": "customers"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-reinspect-with-selection",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 1,
+          "selectedChoiceId": "all-customers",
+          "corrected": false,
+          "answerParts": {
+            "amount": "all",
+            "group": "customers"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-correction",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 3,
+          "selectedChoiceId": "all-customers",
+          "corrected": true,
+          "answerParts": {
+            "amount": "all",
+            "group": "customers"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-completed",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-sample",
+          "stage": 4,
+          "selectedChoiceId": "all-customers",
+          "corrected": true,
+          "answerParts": {
+            "amount": "all",
+            "group": "customers"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "check-the-sample-closed",
+      "progress": {
+        "version": 3,
+        "active": null,
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-brief",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 0,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-source",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 1,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-partial",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 2,
+          "selectedChoiceId": null,
+          "corrected": false,
+          "answerParts": {
+            "current-growth": "included"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-selected",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 2,
+          "selectedChoiceId": "lower-profit+trial-result+current-growth",
+          "corrected": false,
+          "answerParts": {
+            "current-growth": "included",
+            "dated-growth": "excluded",
+            "lower-profit": "included",
+            "trial-result": "included"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-reinspect-with-selection",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 1,
+          "selectedChoiceId": "lower-profit+trial-result+current-growth",
+          "corrected": false,
+          "answerParts": {
+            "current-growth": "included",
+            "dated-growth": "excluded",
+            "lower-profit": "included",
+            "trial-result": "included"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-correction",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 3,
+          "selectedChoiceId": "lower-profit+trial-result+current-growth",
+          "corrected": true,
+          "answerParts": {
+            "current-growth": "included",
+            "dated-growth": "excluded",
+            "lower-profit": "included",
+            "trial-result": "included"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-completed",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "prepare-the-update",
+          "stage": 4,
+          "selectedChoiceId": "lower-profit+trial-result+current-growth",
+          "corrected": true,
+          "answerParts": {
+            "current-growth": "included",
+            "dated-growth": "excluded",
+            "lower-profit": "included",
+            "trial-result": "included"
+          }
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "prepare-the-update": {
+            "activityId": "prepare-the-update",
+            "selectedChoiceId": "lower-profit+trial-result+current-growth",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "prepare-the-update-closed",
+      "progress": {
+        "version": 3,
+        "active": null,
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "prepare-the-update": {
+            "activityId": "prepare-the-update",
+            "selectedChoiceId": "lower-profit+trial-result+current-growth",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "correct-replay-preserves-first-mistake",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "add-year",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "keep-headline",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "sales-and-profit": {
+            "activityId": "sales-and-profit",
+            "selectedChoiceId": "sales-mean-profit",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "check-the-sample": {
+            "activityId": "check-the-sample",
+            "selectedChoiceId": "all-customers",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          },
+          "prepare-the-update": {
+            "activityId": "prepare-the-update",
+            "selectedChoiceId": "lower-profit+trial-result+current-growth",
+            "corrected": true,
+            "completedAt": "2026-09-14T10:20:30.123456Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "timestamp-2026-09-14T00:00:00.000Z",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "add-year",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "add-year",
+            "corrected": false,
+            "completedAt": "2026-09-14T00:00:00.000Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "timestamp-2024-02-29T23:59:59.999999Z",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "add-year",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "add-year",
+            "corrected": false,
+            "completedAt": "2024-02-29T23:59:59.999999Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "timestamp-0099-01-01T00:00:00.000Z",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "add-year",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "add-year",
+            "corrected": false,
+            "completedAt": "0099-01-01T00:00:00.000Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "timestamp--0001-01-01T00:00:00.000Z",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "add-year",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "add-year",
+            "corrected": false,
+            "completedAt": "-0001-01-01T00:00:00.000Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "timestamp-+010000-01-01T00:00:00.000Z",
+      "progress": {
+        "version": 3,
+        "active": {
+          "activityId": "check-the-date",
+          "stage": 4,
+          "selectedChoiceId": "add-year",
+          "corrected": false,
+          "answerParts": {}
+        },
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "add-year",
+            "corrected": false,
+            "completedAt": "+010000-01-01T00:00:00.000Z",
+            "importedFromLegacy": false
+          }
+        }
+      }
+    },
+    {
+      "name": "legacy-first-completion-exported-as-v3",
+      "progress": {
+        "version": 3,
+        "active": null,
+        "completions": {
+          "check-the-date": {
+            "activityId": "check-the-date",
+            "selectedChoiceId": "add-year",
+            "corrected": false,
+            "completedAt": null,
+            "importedFromLegacy": true
+          }
+        }
+      }
+    }
+  ]
+}

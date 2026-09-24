@@ -1,0 +1,122 @@
+.workday-screen{width:100%;max-width:780px;margin:0 auto;padding-bottom:20px}
+.workday-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:19px;color:#8a7c9d;font-size:12px}
+.workday-screen .company-back{margin:0;min-height:44px;padding:9px 0;color:#705592;font-size:12px}
+.workday-stages{list-style:none;display:flex;gap:14px;padding:0;margin:0 0 32px}
+.workday-stages li{flex:1;display:flex;align-items:center;gap:8px;position:relative;padding:13px 0;font-size:12px;color:#9b8ba9;border-top:4px solid #ece7f4}
+.workday-stages li>span{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#f3eff8;font-size:10px;flex:0 0 20px}
+.workday-stages li.current{border-color:#7455e8;color:#6745c9;font-weight:600}
+.workday-stages li.current>span{background:#ece4fd;color:#6745c9}
+.workday-stages li.complete{border-color:#7455e8;color:#78688e}
+.workday-stages li.complete>span{background:#dff3e8;color:#247a59}
+.workday-heading{display:flex;gap:24px;align-items:flex-start;margin-bottom:28px}
+.workday-heading>div{flex:1;min-width:0}
+.workday-heading h1{font-size:38px;letter-spacing:-1.3px;line-height:1.13;margin-top:8px;outline:none}
+.workday-heading>div>p:last-child{font-size:15px;line-height:1.6;color:#796b87;margin-top:13px;max-width:565px}
+.workday-heading>img{width:92px;height:112px;flex:0 0 92px;object-fit:contain;margin-top:14px}
+.workday-eyebrow{font-size:11px;color:#92819f;line-height:1.5}
+.workday-context{padding:18px 21px;background:#eaf7ee;color:#427454;border-radius:18px;margin:-3px 0 25px;font-size:13px;line-height:1.6}
+.workday-task>h2,.workday-task-heading h2{font-size:21px;letter-spacing:-.4px;line-height:1.4}
+.workday-task-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-top:13px}
+.workday-task-heading>span{color:#917eac;font-size:12px;white-space:nowrap;line-height:28px}
+.workday-source-caption{font-size:11px;color:#92849e;margin:14px 0 13px;line-height:1.5}
+.workday-source-list{display:grid;gap:12px;margin-bottom:22px}
+.workday-choice{border:2px solid #e9e6f0;border-bottom-width:4px;background:#fcfbfd;border-radius:22px;min-width:0;width:100%;padding:18px 20px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:background .14s,border-color .14s;color:#3d304e;font-size:14px;line-height:1.55}
+.workday-choice:hover:not(:disabled){background:#f7f3fc;border-color:#cfc0e5}
+.workday-choice.selected{border-color:#7455e8;background:#faf8ff}
+.workday-choice.selected:hover:not(:disabled){border-color:#7455e8;background:#f4efff}
+.workday-choice:disabled{opacity:.66}
+.workday-choice:active:not(:disabled){border-bottom-width:2px;margin-top:2px}
+.workday-source{display:block}
+.workday-source-label{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;color:#897996}
+.workday-source strong{font-size:18px;font-weight:600;line-height:1.4;display:block;margin-top:6px;color:#40314f}
+.workday-source p{font-size:13px;color:#84738f;line-height:1.55;margin-top:7px}
+.workday-pin{width:22px;height:22px;flex:0 0 22px;color:#998ba8}
+.workday-choice.selected .workday-pin{color:#7455e8}
+.workday-source-reading{border-radius:18px;background:#f7f4fa;padding:17px 20px}
+.workday-sources-toggle{display:flex;align-items:center;gap:10px;color:#705293;padding:13px 0;min-height:48px;font-size:13px;font-weight:500;width:100%;margin:0 0 12px;text-align:left}
+.workday-sources-toggle img{width:24px;height:24px;object-fit:contain}
+.workday-sources-toggle>span{margin-left:auto;font-size:20px;font-weight:400;color:#9b8bac}
+.workday-option-list{display:grid;gap:12px;margin:20px 0}
+.workday-number{display:flex;align-items:center;gap:10px;background:#f7f4fc;border-radius:22px;padding:23px 25px;margin:20px 0 3px;font-size:34px;color:#8c79a3;max-width:440px}
+.workday-number input{border:0;outline:0;background:none;font-size:36px;letter-spacing:-1px;color:#4c355f;min-width:0;width:100%;font-weight:500}
+.workday-number input::placeholder{color:#b8aaca}
+.workday-number:focus-within{outline:3px solid #7455e8;outline-offset:3px}
+.workday-screen .text-button{font-size:12px;min-height:44px;color:#7455c9}
+.workday-hint-toggle{margin:5px 0}
+.workday-hint{padding:18px 20px;border-radius:19px;background:#fff4d6;color:#897243;font-size:13px;line-height:1.6;margin-bottom:17px}
+.workday-task-copy{font-size:13px;color:#897797;line-height:1.6;margin-top:7px}
+.workday-note{margin-top:25px}
+.workday-note>label{display:flex;align-items:center;gap:10px;color:#766180;font-size:13px;margin-bottom:10px;font-weight:500}
+.workday-note>label>span{font-size:11px;color:#a091ad;font-weight:400}
+.workday-note textarea{display:block;resize:vertical;min-height:108px;max-height:260px;width:100%;border:0;border-radius:20px;background:#f7f4fb;padding:18px 20px;color:#4b3a5b;line-height:1.6;font:inherit;font-size:14px}
+.workday-note textarea::placeholder{color:#a093ad}
+.workday-note>div{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:10px;color:#9b8ba7;margin-top:8px;min-height:16px}
+.workday-note-conflict{margin-top:20px;padding:20px 22px;border-radius:20px;background:#fff5dd;color:#846b42}
+.workday-note-conflict h3{font-size:15px;letter-spacing:-.15px}
+.workday-note-conflict>p{font-size:12px;margin-top:7px;line-height:1.6}
+.workday-note-conflict>div:not(.workday-conflict-actions){margin-top:16px;padding:14px 16px;background:#fffaf0;border-radius:13px}
+.workday-note-conflict strong{font-size:10px;font-weight:500;color:#ad946b}
+.workday-note-conflict>div>p{font-size:13px;line-height:1.6;margin-top:5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.workday-conflict-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px 19px;margin-top:15px}
+.workday-conflict-actions .secondary{min-height:44px;padding:11px 15px;font-size:12px;border-radius:13px;background:#fff;color:#846b42}
+.workday-actions{display:flex;align-items:center;gap:18px;padding:22px 0 5px}
+.workday-actions .primary{min-height:49px;border-radius:17px;padding:13px 24px;font-size:13px;min-width:215px}
+.workday-actions>span{color:#9b8ba7;font-size:11px}
+.workday-error{font-size:13px;line-height:1.6;color:#b14f67;margin-top:18px}
+.workday-pending{font-size:12px;color:#877594;margin-top:12px}
+.workday-filed{max-width:650px;margin:0 auto}
+.workday-filed-art{width:120px;height:120px;object-fit:contain;margin:0 auto 18px}
+.workday-filed>.workday-eyebrow,.workday-filed>h1,.workday-filed>.workday-feedback{text-align:center}
+.workday-filed>h1{font-size:44px;margin-top:8px;outline:none}
+.workday-feedback{font-size:15px;color:#897795;line-height:1.6;margin:15px auto 27px;max-width:530px}
+.workday-artifact{background:#f5f1fc;border-radius:24px;padding:24px 27px}
+.workday-artifact h2{font-size:20px;margin-bottom:15px}
+.workday-artifact>p:not(.workday-reward){font-size:14px;color:#796586;line-height:1.7;white-space:pre-wrap}
+.workday-saved-note{margin-top:20px;padding-top:17px;border-top:1px solid #e6dfef}
+.workday-saved-note h3{font-size:12px;color:#9d8daa;font-weight:500;margin-bottom:6px}
+.workday-saved-note p{font-size:13px;color:#7d6d8a;white-space:pre-wrap}
+.workday-reward{display:flex;align-items:center;gap:9px;font-size:13px;color:#36805b;margin-top:23px;font-weight:500}
+.workday-reward .completion-seal{width:24px;height:24px;font-size:13px}
+.workday-review{margin-top:18px}
+.workday-review summary{cursor:pointer;min-height:44px;padding:11px 0;font-size:13px;color:#83659c}
+.workday-review dl{margin:10px 0 19px;padding:0 0 12px;border-bottom:1px solid #eee8f3}
+.workday-review dl>div{margin-bottom:13px}
+.workday-review dt{font-size:11px;color:#9c8ba8;margin-bottom:5px}
+.workday-review dd{font-size:13px;line-height:1.6;color:#75617e;margin:0}
+.workday-dialog-backdrop{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:#24133155;padding:22px}
+.workday-leave-dialog{width:100%;max-width:390px;background:white;border-radius:24px;padding:28px}
+.workday-leave-dialog h2{font-size:23px;margin-bottom:10px}
+.workday-leave-dialog p{font-size:14px;color:#877592;line-height:1.6}
+.workday-leave-dialog>div{display:flex;flex-direction:column;gap:8px;margin-top:24px}
+.workday-leave-dialog .primary{box-shadow:none;min-height:46px;font-size:13px}
+@media(max-width:700px){
+  .workday-topbar{margin-bottom:12px}
+  .workday-stages{gap:10px;margin-bottom:21px}
+  .workday-stages li{font-size:10px;gap:6px;padding:12px 0}
+  .workday-stages li>span{width:18px;height:18px;flex-basis:18px;font-size:9px}
+  .workday-heading{gap:15px;margin-bottom:25px}
+  .workday-heading h1{font-size:29px;letter-spacing:-.9px;margin-top:7px}
+  .workday-heading>div>p:last-child{font-size:13px;line-height:1.6;margin-top:11px}
+  .workday-heading>img{width:60px;height:82px;flex-basis:60px;margin-top:23px}
+  .workday-eyebrow{font-size:10px}
+  .workday-task-heading h2,.workday-task>h2{font-size:19px;line-height:1.4}
+  .workday-task-heading{gap:15px}
+  .workday-source-caption{font-size:10px;margin-top:12px}
+  .workday-choice{padding:16px 17px;border-radius:21px;font-size:13px;gap:12px}
+  .workday-source strong{font-size:16px}
+  .workday-source p{font-size:12px}
+  .workday-source-label{font-size:10px}
+  .workday-pin{width:20px;height:20px;flex-basis:20px}
+  .workday-sources-toggle{font-size:12px}
+  .workday-number{padding:21px;font-size:30px;margin-top:19px}
+  .workday-number input{font-size:32px}
+  .workday-context,.workday-hint{font-size:12px;padding:17px 19px}
+  .workday-actions{flex-direction:column;align-items:stretch;gap:13px;text-align:center;padding-top:22px}
+  .workday-actions .primary{min-width:0;min-height:50px}
+  .workday-note textarea{font-size:16px;padding:17px}
+  .workday-filed>h1{font-size:37px}
+  .workday-feedback{font-size:13px}
+  .workday-artifact{padding:21px;border-radius:22px}
+  .workday-artifact h2{font-size:18px}
+  .workday-artifact>p:not(.workday-reward){font-size:13px}
+}

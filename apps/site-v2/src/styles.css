@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/*
+ * White on black. Type is Trimmy's own: the Bricolage and Manrope files from the
+ * live site at apps/site, the same faces the mobile app uses.
+ */
+
+@font-face {
+  font-family: Bricolage;
+  src: url("/fonts/BricolageGrotesque-Latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Manrope;
+  src: url("/fonts/Manrope-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@theme {
+  --font-display: Bricolage, Arial, sans-serif;
+  --font-body: Manrope, Arial, sans-serif;
+}
+
+/* A real document scroll drives the fixed visual stage. */
+html {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior-y: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+.story-scroll-track {
+  display: block;
+  width: 1px;
+  pointer-events: none;
+}
+
+html {
+  background: #000;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Base element rules live inside Tailwind's base layer, not as plain CSS, so a
+ * utility class such as mx-auto still wins the cascade. Unlayered CSS beats any
+ * @layer in Tailwind v4 regardless of source order, and a plain h1 { margin: 0 }
+ * here would silently cancel every centering utility applied to an h1.
+ */
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.6;
+  }
+}
+
+::selection {
+  background: #fff;
+  color: #000;
+}
+
+/*
+ * The capsule's arrow is the Icons8 "animated right arrow" the mobile app already
+ * uses (assets/images/ui_review/icons8), turned to point down and drawn as a mask
+ * so it takes any colour. One arrow rests, slides out of the bottom of its circle,
+ * and an identical one slides in from the top and rests where the first began.
+ * At the loop point both sit in the same spot, so the swap cannot be seen.
+ * Easy Ease on every leg, to match the screens.
+ */
+@keyframes cue-leave {
+  0%,
+  45% {
+    transform: translateY(0) rotate(90deg);
+    opacity: 1;
+  }
+  75%,
+  100% {
+    transform: translateY(170%) rotate(90deg);
+    opacity: 0;
+  }
+}
+
+@keyframes cue-enter {
+  0%,
+  60% {
+    transform: translateY(-170%) rotate(90deg);
+    opacity: 0;
+  }
+  90%,
+  100% {
+    transform: translateY(0) rotate(90deg);
+    opacity: 1;
+  }
+}
+
+.cue-arrow {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  background: currentColor;
+  -webkit-mask: url("/icons8-arrow.png") center / contain no-repeat;
+  mask: url("/icons8-arrow.png") center / contain no-repeat;
+  transform: rotate(90deg);
+  animation: cue-leave 2.4s cubic-bezier(0.33, 0, 0.67, 1) infinite;
+}
+
+.cue-arrow-next {
+  animation-name: cue-enter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cue-arrow {
+    animation: none;
+  }
+
+  .cue-arrow-next {
+    display: none;
+  }
+}

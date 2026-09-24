@@ -1,0 +1,235 @@
+{
+  "coordinates": "X east, Y up, Z south; metres",
+  "routeUnchanged": true,
+  "groups": {
+    "ground": "WORLD_GROUND__*",
+    "modern": "MODERN_STATIC__*",
+    "interior": "INTERIOR_STATIC__*",
+    "flags": [
+      "FLAG_EXCHANGE_01",
+      "FLAG_EXCHANGE_02",
+      "FLAG_EXCHANGE_03"
+    ],
+    "crowd": "CROWD_*",
+    "palisade": "ERA_PALISADE_*",
+    "houses": "HISTORIC_HOUSES_*",
+    "tree": "HISTORIC_TREE*",
+    "agreementTable": "HISTORIC_AGREEMENT_TABLE*"
+  },
+  "lampAnchors": [
+    [
+      -32.0,
+      4.150000095367432,
+      -6.349999904632568
+    ],
+    [
+      -18.0,
+      4.150000095367432,
+      -6.349999904632568
+    ],
+    [
+      -32.0,
+      4.150000095367432,
+      6.349999904632568
+    ],
+    [
+      -18.0,
+      4.150000095367432,
+      6.349999904632568
+    ],
+    [
+      -8.0,
+      4.150000095367432,
+      14.0
+    ],
+    [
+      -8.0,
+      4.150000095367432,
+      29.0
+    ],
+    [
+      -8.0,
+      4.150000095367432,
+      52.0
+    ],
+    [
+      8.0,
+      4.150000095367432,
+      12.0
+    ],
+    [
+      8.0,
+      4.150000095367432,
+      27.0
+    ],
+    [
+      8.0,
+      4.150000095367432,
+      47.0
+    ],
+    [
+      8.0,
+      4.150000095367432,
+      64.0
+    ]
+  ],
+  "lampColor": "#ffd39b",
+  "lampIntensityHint": 11,
+  "lights": [
+    {
+      "position": [
+        -32.0,
+        4.150000095367432,
+        -6.349999904632568
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        -18.0,
+        4.150000095367432,
+        -6.349999904632568
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        -32.0,
+        4.150000095367432,
+        6.349999904632568
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        -18.0,
+        4.150000095367432,
+        6.349999904632568
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        -8.0,
+        4.150000095367432,
+        14.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        -8.0,
+        4.150000095367432,
+        29.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        -8.0,
+        4.150000095367432,
+        52.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        8.0,
+        4.150000095367432,
+        12.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        8.0,
+        4.150000095367432,
+        27.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        8.0,
+        4.150000095367432,
+        47.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    },
+    {
+      "position": [
+        8.0,
+        4.150000095367432,
+        64.0
+      ],
+      "color": "#ffd39b",
+      "intensity": 11,
+      "distance": 12
+    }
+  ],
+  "bull": {
+    "position": [
+      5.8,
+      0.275,
+      19
+    ],
+    "orientation": "head toward north (-Z)",
+    "plinthSize": [
+      4.0,
+      0.23,
+      5.2
+    ]
+  },
+  "textures": "Original authored procedural PBR maps, 512 px, embedded. No borrowed photos.",
+  "materials": "Real stone/cobble/wood normal and roughness textures; bronze metalness; glass coat; emissive fixtures and original fictional charts.",
+  "modelBytes": 6139184,
+  "meshObjects": 63,
+  "primitives": 75,
+  "compression": "EXT_meshopt_compression; GLTFLoader.setMeshoptDecoder required",
+  "exportedOutdoorPeople": 0,
+  "editableOutdoorPeopleRetained": 8,
+  "refinements": {
+    "treeLeaves": 3078,
+    "treeLeafGeometry": "individual convex folded blades, six triangular faces each",
+    "treeBranchLevels": 3,
+    "treeWorldHeight": 6.37199068069458,
+    "tablePosition": [
+      -10,
+      0,
+      2.7
+    ],
+    "flagStripes": 13,
+    "flagStars": 50,
+    "flagTexture": [
+      1024,
+      540
+    ],
+    "unchanged": "Route, modern architecture, interior, cloth fold positions and flag pole origins",
+    "publicWorldWritten": false,
+    "compressedBytes": 6139184,
+    "meshNodes": 63,
+    "primitives": 75,
+    "embeddedTextures": 22,
+    "routeUnchanged": true
+  }
+}

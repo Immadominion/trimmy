@@ -1,0 +1,61 @@
+/* 1653 to 1792. Layer boxes are set from JS on resize; frames only move them. */
+.historical-flight { position:absolute; inset:0; z-index:6; overflow:hidden; pointer-events:none; }
+.historical-flight img { display:block; max-width:none; user-select:none; -webkit-user-drag:none; }
+
+/* The 1792 street, underneath the modern one; in the camera frame's box. */
+.historical-flight__photo { position:absolute; z-index:1; transform-origin:50% 50%; will-change:transform; }
+.historical-flight__photo img { width:100%; height:100%; object-fit:cover; }
+
+/* The sky and the title painted on it, one WebGL layer over the whole screen
+   (PaintTitle.tsx). wallTitle.ts sets the title out and centres it. */
+.historical-flight__title { position:absolute; z-index:3; inset:0; }
+.historical-flight__paint,.historical-flight__paint canvas { display:block; width:100%; height:100%; }
+
+/* The Blender frames, drawn one at a time; sized to the camera frame from JS. */
+.historical-flight__rise { position:absolute; z-index:4; left:0; top:0; display:block; }
+
+/* Text appears the way the reference does it: a half-second fade at a scroll point. */
+.historical-flight__story { position:absolute; opacity:0; visibility:hidden; transition:opacity .5s ease-in-out,visibility 0s linear .5s; }
+.historical-flight__story.is-shown { opacity:1; visibility:visible; transition:opacity .5s ease-in-out,visibility 0s; }
+.historical-flight__year { font:700 11px/1.2 var(--font-body); letter-spacing:.3em; margin:0 0 21px; }
+
+/* 1790, over sky and stone while the bond falls on the other side. */
+.historical-flight__bonds { z-index:8; top:46%; width:min(410px,26vw); color:#fffdf7; text-shadow:0 1px 2px #0d162680,0 0 22px #0d1626a6,0 0 44px #0d162673; transform:translate3d(0,-50%,0); }
+.historical-flight__bonds--left { left:clamp(64px,6vw,120px); }
+.historical-flight__bonds--right { right:clamp(28px,4vw,80px); }
+.historical-flight__bonds h2 { margin:0; font:800 clamp(34px,3.1vw,52px)/1 var(--font-display); letter-spacing:-.05em; text-wrap:balance; }
+.historical-flight__bonds > p:last-child { margin:20px 0 0; max-width:40ch; font-size:clamp(16px,1.3vw,19px); line-height:1.55; font-weight:600; text-wrap:pretty; }
+
+/* 1792, in the sky of the old street. */
+.historical-flight__agreement { z-index:9; left:22%; top:9%; width:min(580px,43vw); color:#162333; text-shadow:0 1px 2px #fff,0 0 18px #fffe,0 0 32px #fffb; }
+.historical-flight__agreement h2 { margin:0; font:800 clamp(42px,4.4vw,64px)/.98 var(--font-display); letter-spacing:-.055em; text-wrap:balance; }
+.historical-flight__agreement > p:last-child { margin-top:21px; max-width:min(390px,32vw); font-size:clamp(16px,1.35vw,19px); line-height:1.55; font-weight:700; text-wrap:pretty; }
+
+/* "The street became the market.", large, in the calm part of the Broad Street
+   render; JS moves it into the area the render reports. */
+.historical-flight__market { z-index:9; left:8%; right:8%; bottom:18%; display:flex; align-items:center; color:#fffdf7; text-shadow:0 1px 2px #0d162680,0 0 26px #0d1626a6,0 0 52px #0d162673; }
+.historical-flight__market[data-placed] { right:auto; bottom:auto; }
+.historical-flight__market h2 { margin:0; font:800 clamp(44px,5.4vw,90px)/.98 var(--font-display); letter-spacing:-.055em; text-wrap:balance; }
+
+@media (max-aspect-ratio:4/5) {
+  .historical-flight__market h2 { font-size:clamp(38px,11vw,60px); }
+  .historical-flight__year { font-size:10px; margin-bottom:17px; }
+  .historical-flight__bonds { left:7%; right:7%; width:auto; transform:none; }
+  .historical-flight__bonds--top,.historical-flight__bonds--left,.historical-flight__bonds--right { top:12%; }
+  .historical-flight__bonds--bottom { top:auto; bottom:calc(env(safe-area-inset-bottom) + 108px); }
+  .historical-flight__bonds h2 { font-size:clamp(32px,8.6vw,46px); }
+  .historical-flight__bonds > p:last-child { font-size:15px; margin-top:14px; }
+  .historical-flight__agreement { left:7%; top:15%; width:53%; }
+  .historical-flight__agreement h2 { font-size:clamp(31px,8.3vw,42px); }
+  .historical-flight__agreement > p:last-child { font-size:13px; line-height:1.45; margin-top:14px; max-width:180px; }
+}
+@media (max-height:520px) and (min-aspect-ratio:4/5) {
+  .historical-flight__bonds h2 { font-size:clamp(30px,8vh,48px); }
+  .historical-flight__bonds > p:last-child { font-size:13px; margin-top:12px; }
+  .historical-flight__agreement { top:11%; }
+  .historical-flight__agreement h2 { font-size:clamp(35px,10vh,54px); }
+  .historical-flight__agreement > p:last-child { font-size:13px; margin-top:11px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .historical-flight__photo { will-change:auto; }
+}

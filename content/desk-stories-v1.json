@@ -1,0 +1,194 @@
+{
+  "version": "desk-stories-v1",
+  "stories": [
+    {
+      "id": "the-group-chat",
+      "ordinal": 0,
+      "title": "The group chat is loud.",
+      "speaker": "wolf",
+      "body": "Everyone is talking about Aster. “It’s going up,” says Wolf. The screenshot has no source. Your coffee isn’t even cold yet.",
+      "choices": [
+        {
+          "id": "ask",
+          "label": "Ask for the source",
+          "outcome": "Wolf sends the original post. It is three months old. You put the excitement on pause and open the company update.",
+          "takeaway": "A screenshot is a starting point, not the whole story."
+        },
+        {
+          "id": "wait",
+          "label": "Watch for a while",
+          "outcome": "You leave Aster on your watchlist. Later, the chat gets quiet. You kept your options open without making a trade.",
+          "takeaway": "Waiting is a decision too."
+        },
+        {
+          "id": "follow",
+          "label": "Follow the crowd",
+          "outcome": "In this story, you rush in. A second message contradicts the first. Now you have a position, but no reason you trust.",
+          "takeaway": "Before following a crowd, write down what would change your mind."
+        }
+      ]
+    },
+    {
+      "id": "a-red-morning",
+      "ordinal": 1,
+      "title": "A red morning.",
+      "speaker": "sal",
+      "body": "Aster is down 6% in this desk story. Sal drops a note beside your screen: “Price moved. What else changed?”",
+      "choices": [
+        {
+          "id": "read",
+          "label": "Read the company update",
+          "outcome": "Revenue is steady, but costs rose. You now have a fact to compare with your original plan.",
+          "takeaway": "Price and business performance are different pieces of evidence."
+        },
+        {
+          "id": "plan",
+          "label": "Open my original plan",
+          "outcome": "Your note says you would review after the next results. You set the headline beside that plan before making a new call.",
+          "takeaway": "A plan gives you something to revisit when emotions get loud."
+        },
+        {
+          "id": "panic",
+          "label": "Sell because it is red",
+          "outcome": "You react to the colour before reading the update. The story pauses there; selling may fit a plan, but red alone does not explain one.",
+          "takeaway": "Ask what changed before choosing your response."
+        }
+      ]
+    },
+    {
+      "id": "one-big-position",
+      "ordinal": 2,
+      "title": "One very big position.",
+      "speaker": "oracle",
+      "body": "One company now makes up 70% of your fictional desk. Oracle turns the monitor towards you: “A good week made this desk very lopsided.”",
+      "choices": [
+        {
+          "id": "inspect",
+          "label": "Look at the whole desk",
+          "outcome": "You compare how much depends on this one company. A small move there could now dominate everything else.",
+          "takeaway": "Look at position size as well as performance."
+        },
+        {
+          "id": "trim",
+          "label": "Consider trimming it",
+          "outcome": "You work through a smaller position on paper before acting. You are deciding how much uncertainty to carry.",
+          "takeaway": "Reducing concentration is a risk decision, not a prediction."
+        },
+        {
+          "id": "leave",
+          "label": "Leave it for now",
+          "outcome": "You keep the position, and write down why you are comfortable with the concentration. You also choose when to review it.",
+          "takeaway": "Keeping a position still deserves a deliberate reason."
+        }
+      ]
+    },
+    {
+      "id": "the-cheap-share",
+      "ordinal": 3,
+      "title": "“That share is cheaper.”",
+      "speaker": "shark",
+      "body": "Shark points at two fictional companies: one share costs 5, the other 100. “Five is a bargain, right?”",
+      "choices": [
+        {
+          "id": "compare",
+          "label": "Ask how many shares exist",
+          "outcome": "The 5-priced company has far more shares. Share price alone did not tell you which whole business was cheaper.",
+          "takeaway": "Price per share and the value of a company are different."
+        },
+        {
+          "id": "business",
+          "label": "Look at the businesses",
+          "outcome": "You put earnings, debt and expectations beside the price. There is more work to do before calling either a bargain.",
+          "takeaway": "A low share price is not an investment case."
+        },
+        {
+          "id": "cheap",
+          "label": "Pick the lower number",
+          "outcome": "The low price catches your eye. Sal slides over the share counts; that single number was missing most of the comparison.",
+          "takeaway": "The smallest number is not automatically the best value."
+        }
+      ]
+    },
+    {
+      "id": "the-friday-close",
+      "ordinal": 4,
+      "title": "Before you close the laptop.",
+      "speaker": "sal",
+      "body": "It has been a noisy week. Sal leaves one empty note on your desk. You have time for one useful thing.",
+      "choices": [
+        {
+          "id": "review",
+          "label": "Review one decision",
+          "outcome": "You compare your reason with what happened. A good result can follow a weak process, and a careful decision can still lose.",
+          "takeaway": "Review the reasoning as well as the result."
+        },
+        {
+          "id": "write",
+          "label": "Write next week’s plan",
+          "outcome": "You note one company to research and one question you still cannot answer. Monday now has a starting point.",
+          "takeaway": "An unanswered question can be a useful next step."
+        },
+        {
+          "id": "stop",
+          "label": "Take the evening off",
+          "outcome": "You close the desk without forcing one more trade. The market will still be there when you return.",
+          "takeaway": "You do not need a trade for every visit."
+        }
+      ]
+    },
+    {
+      "id": "know-what-you-hold",
+      "ordinal": 5,
+      "title": "Same company. Different token.",
+      "speaker": "oracle",
+      "body": "Two tokens follow the same company. Their names look familiar. Oracle puts their issuer pages side by side.",
+      "choices": [
+        {
+          "id": "rights",
+          "label": "Read the issuer terms",
+          "outcome": "The pages describe different rights and redemption routes. You check the token itself, not just the company name.",
+          "takeaway": "A token linked to a share does not automatically give you every shareholder right."
+        },
+        {
+          "id": "market",
+          "label": "Compare the markets",
+          "outcome": "You notice different liquidity and prices. You add issuer terms to your checks before treating them as interchangeable.",
+          "takeaway": "Company identity, token terms and trading conditions all matter."
+        },
+        {
+          "id": "logo",
+          "label": "Trust the matching logo",
+          "outcome": "The logos match, but the contracts and terms do not. You stop before assuming that the pictures prove equivalence.",
+          "takeaway": "A familiar logo does not verify an asset."
+        }
+      ]
+    },
+    {
+      "id": "the-weekend-note",
+      "ordinal": 6,
+      "title": "A quieter desk.",
+      "speaker": "sal",
+      "body": "No rush today. Sal asks you to pick one thing you want to understand better before the next busy day.",
+      "choices": [
+        {
+          "id": "company",
+          "label": "How one company makes money",
+          "outcome": "You make a short list: who pays, what they buy, and what it costs to deliver. You have a research plan for your next visit.",
+          "takeaway": "Start with the business behind the symbol."
+        },
+        {
+          "id": "risk",
+          "label": "What could go wrong",
+          "outcome": "You name one assumption in your plan and what evidence would challenge it. Uncertainty is easier to discuss when it is specific.",
+          "takeaway": "A risk is more useful when you can explain it."
+        },
+        {
+          "id": "journal",
+          "label": "What I changed my mind about",
+          "outcome": "You reread an old reason and add what you see differently now. Changing your mind can be part of a careful process.",
+          "takeaway": "Keep a record of how your thinking changes."
+        }
+      ]
+    }
+  ]
+}

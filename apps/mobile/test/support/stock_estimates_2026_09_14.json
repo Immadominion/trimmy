@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "source": "artifacts/verification/STOCK_ESTIMATE_SMOKE.json",
+  "observedAt": "2026-09-14T17:34:52.734Z",
+  "scope": "Frozen normalized public buy/sell estimates; no execution or current-price claim.",
+  "buy": {
+    "schemaVersion": 1,
+    "kind": "indicative",
+    "network": "solana:mainnet-beta",
+    "provider": "jupiter-swap-v2",
+    "executable": false,
+    "walletChecked": false,
+    "networkFees": null,
+    "input": {
+      "symbol": "USDC",
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "decimals": 6,
+      "amountRaw": "10000000"
+    },
+    "output": {
+      "symbol": "AAPLx",
+      "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+      "decimals": 8,
+      "estimatedAmountRaw": "2972350",
+      "quotedMinimumAmountRaw": "2972350"
+    },
+    "slippageBps": 0,
+    "swapFee": {
+      "basisPoints": 10,
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    },
+    "router": "metis",
+    "requestedAt": "2026-09-14T17:34:52.865Z",
+    "receivedAt": "2026-09-14T17:34:54.278Z",
+    "refreshAfter": "2026-09-14T17:35:02.865Z",
+    "providerExpiresAt": null,
+    "assetId": "apple",
+    "variantMint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+    "side": "buy",
+    "executionEnabled": false,
+    "eligibility": "unverified",
+    "amountUnits": "raw_token_units"
+  },
+  "sell": {
+    "schemaVersion": 1,
+    "kind": "indicative",
+    "network": "solana:mainnet-beta",
+    "provider": "jupiter-swap-v2",
+    "executable": false,
+    "walletChecked": false,
+    "networkFees": null,
+    "input": {
+      "symbol": "AAPLx",
+      "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+      "decimals": 8,
+      "amountRaw": "2972350"
+    },
+    "output": {
+      "symbol": "USDC",
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "decimals": 6,
+      "estimatedAmountRaw": "9967990",
+      "quotedMinimumAmountRaw": "9967990"
+    },
+    "slippageBps": 0,
+    "swapFee": {
+      "basisPoints": 10,
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    },
+    "router": "metis",
+    "requestedAt": "2026-09-14T17:34:56.481Z",
+    "receivedAt": "2026-09-14T17:34:56.826Z",
+    "refreshAfter": "2026-09-14T17:35:06.481Z",
+    "providerExpiresAt": null,
+    "assetId": "apple",
+    "variantMint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+    "side": "sell",
+    "executionEnabled": false,
+    "eligibility": "unverified",
+    "amountUnits": "raw_token_units"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-09-13",
+  "checks": [
+    "stdlib WAV header/frame validation",
+    "byte-for-byte deterministic regeneration",
+    "ffmpeg decode and ebur128 true-peak analysis"
+  ],
+  "listeningApproved": false,
+  "files": [
+    {
+      "file": "arrival.wav",
+      "truePeakDbtp": -23.0,
+      "decodedSuccessfully": true,
+      "deterministicRegeneration": true,
+      "notes": "Integrated loudness is not used as an acceptance metric for these short cues."
+    },
+    {
+      "file": "paper_open.wav",
+      "truePeakDbtp": -27.0,
+      "decodedSuccessfully": true,
+      "deterministicRegeneration": true,
+      "notes": "Integrated loudness is not used as an acceptance metric for these short cues."
+    },
+    {
+      "file": "soft_tap.wav",
+      "truePeakDbtp": -25.0,
+      "decodedSuccessfully": true,
+      "deterministicRegeneration": true,
+      "notes": "Integrated loudness is not used as an acceptance metric for these short cues."
+    }
+  ]
+}

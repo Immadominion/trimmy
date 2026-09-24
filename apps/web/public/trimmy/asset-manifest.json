@@ -1,0 +1,349 @@
+{
+  "copied_on": "2026-09-24",
+  "purpose": "Current mobile-style runtime assets for apps/web; no regeneration, resizing, font conversion, or image re-encoding.",
+  "source_files_unchanged": true,
+  "file_count": 34,
+  "total_bytes": 6347815,
+  "records": [
+    {
+      "file": "sal-chair-welcome-v3.webp",
+      "public_url": "/trimmy/sal-chair-welcome-v3.webp",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/sal-chair-welcome-v3.webp",
+      "bytes": 1229330,
+      "sha256": "d6e0baf84fd2914f38075a43f12717e3af62c44a3927ed83f01022e63cb6c962",
+      "category": "hero",
+      "provenance": "Current mobile runtime q92 animation/poster pair. Authored Tripo Sal chair take; source and export validation in art/studies/parallel-ui-iphone/sal-fal-pilot-2026-09-24/sign-in-chair-v3/.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "sal-chair-welcome-v3-still.png",
+      "public_url": "/trimmy/sal-chair-welcome-v3-still.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/sal-chair-welcome-v3-still.png",
+      "bytes": 263522,
+      "sha256": "8eec3ccc6149c9d7e951d6b14350153a55cdeadeacd140623bdd2fc886158e4f",
+      "category": "hero",
+      "provenance": "Current mobile runtime q92 animation/poster pair. Authored Tripo Sal chair take; source and export validation in art/studies/parallel-ui-iphone/sal-fal-pilot-2026-09-24/sign-in-chair-v3/.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "sal-neutral-v2.png",
+      "public_url": "/trimmy/sal-neutral-v2.png",
+      "source": "trimmy/apps/mobile/assets/images/cast/sal-neutral-v2.png",
+      "bytes": 159077,
+      "sha256": "a6af452570b16ab0b65a5d970b266aeaeca12391857adb29de2fe2184addc606",
+      "category": "character",
+      "provenance": "Canonical Sal identity reference used by the current mobile art direction and Fal pilot.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "persona-wolf-avatar-v1.png",
+      "public_url": "/trimmy/persona-wolf-avatar-v1.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/persona-wolf-avatar-v1.png",
+      "bytes": 837413,
+      "sha256": "adb8b390fcc863dcce82d7cb8e6c3cf12304c00854c907dea85e713acc9ad441",
+      "category": "persona",
+      "provenance": "Generated portrait. Prompt/original in art/studies/parallel-ui-iphone/character-animation-2026-09-24/avatars/; mobile copy recorded in parallel-ui-seeker/desk-persona-pfps-2026-09-24.md.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "persona-oracle-avatar-v1.png",
+      "public_url": "/trimmy/persona-oracle-avatar-v1.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/persona-oracle-avatar-v1.png",
+      "bytes": 980982,
+      "sha256": "5578c1a4596f99aeee420b281a735bd107a6bdad58787a46141e39617828c03c",
+      "category": "persona",
+      "provenance": "Generated portrait. Prompt/original in art/studies/parallel-ui-iphone/character-animation-2026-09-24/avatars/; mobile copy recorded in parallel-ui-seeker/desk-persona-pfps-2026-09-24.md.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "persona-shark-avatar-v1.png",
+      "public_url": "/trimmy/persona-shark-avatar-v1.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/persona-shark-avatar-v1.png",
+      "bytes": 994607,
+      "sha256": "4d90d12d1c4b11e055a6cf64c2ecc73fde3d913d9c344daba01f8c13f3eff826",
+      "category": "persona",
+      "provenance": "Generated portrait. Prompt/original in art/studies/parallel-ui-iphone/character-animation-2026-09-24/avatars/; mobile copy recorded in parallel-ui-seeker/desk-persona-pfps-2026-09-24.md.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "rookie-briefcase-v1.png",
+      "public_url": "/trimmy/rookie-briefcase-v1.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/rookie-briefcase-v1.png",
+      "bytes": 1263922,
+      "sha256": "fab95e2dc262ba505eef9ab1d16b862b7323072d33fbb596c6489eed7165bf4e",
+      "category": "career",
+      "provenance": "Built-in image generation; source/prompt recorded in art/studies/parallel-ui-seeker/profile-rank-2026-09-24/ASSETS.md.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/nav-plumpy-market-shop.png",
+      "public_url": "/trimmy/icons/nav-plumpy-market-shop.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/nav-plumpy-market-shop.png",
+      "bytes": 970,
+      "sha256": "44a75a1e840678c714a3b2aa689a4a666a98fb759df57dfa445afdeaa0dc0857",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/nav-plumpy-desk.png",
+      "public_url": "/trimmy/icons/nav-plumpy-desk.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/nav-plumpy-desk.png",
+      "bytes": 809,
+      "sha256": "813a86eaf57f4654e3313c19d0695289a19c532e160ce920f005fc01c6414dd6",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/nav-plumpy-career.png",
+      "public_url": "/trimmy/icons/nav-plumpy-career.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/nav-plumpy-career.png",
+      "bytes": 909,
+      "sha256": "8217d3e9e715b7972059dbff5868ba6148b1547169599d5d9b3a870c7f1672bf",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/nav-plumpy-profile.png",
+      "public_url": "/trimmy/icons/nav-plumpy-profile.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/nav-plumpy-profile.png",
+      "bytes": 976,
+      "sha256": "6f97671b33a40044d0323220526b075814beca06c502d73407ff5f772154267d",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/nav-plumpy-desk.gif",
+      "public_url": "/trimmy/icons/nav-plumpy-desk.gif",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/nav-plumpy-desk.gif",
+      "bytes": 27059,
+      "sha256": "16f2ef0e40fb0d9138104f189cc7e3b34d8db864fcbe04145e3f09b7e1fb10c6",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/nav-plumpy-profile.gif",
+      "public_url": "/trimmy/icons/nav-plumpy-profile.gif",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/nav-plumpy-profile.gif",
+      "bytes": 22988,
+      "sha256": "00c9a7b77ff3401647d010977df67fc3f02cbed5041ebe2153b6887531f47d27",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/account-apple-rounded.png",
+      "public_url": "/trimmy/icons/account-apple-rounded.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/account-apple-rounded.png",
+      "bytes": 1230,
+      "sha256": "fd57a2ad2760f7fcf01c5925247d52ec21173fa17d82dc5530f8dd0a8428cca3",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/account-google-rounded.png",
+      "public_url": "/trimmy/icons/account-google-rounded.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/account-google-rounded.png",
+      "bytes": 1488,
+      "sha256": "73150054630ef3a23d83157f31e0d6f78293256c815d582f312e7e97dc87fca6",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/account-email-rounded.png",
+      "public_url": "/trimmy/icons/account-email-rounded.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/account-email-rounded.png",
+      "bytes": 834,
+      "sha256": "4d806496460ffcd918a49101224cd0ad3a0e90a445098d701e27d246116a0ae4",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/account-x-standalone-rounded.png",
+      "public_url": "/trimmy/icons/account-x-standalone-rounded.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/account-x-standalone-rounded.png",
+      "bytes": 1332,
+      "sha256": "e3ffa82c27b8e82f2e5233128397e777d57aa13a0cfc7ffe1e38989eb002220f",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/settings-gear.png",
+      "public_url": "/trimmy/icons/settings-gear.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/settings-gear.png",
+      "bytes": 1214,
+      "sha256": "8706596828e7b0f0ccbc0fbbf3da96a2a30fef56483c79b2617746db1f877b7e",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/settings-sound.png",
+      "public_url": "/trimmy/icons/settings-sound.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/settings-sound.png",
+      "bytes": 803,
+      "sha256": "82f8a3fe976b5629781d22740f45a0b897b92eabc88bf8204a275c00edfeda3c",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/settings-haptics.png",
+      "public_url": "/trimmy/icons/settings-haptics.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/settings-haptics.png",
+      "bytes": 1452,
+      "sha256": "7f16aa4c7f5ea7c3b7964e830b852060f0945b06063dc3c8bff183a239b7f068",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/settings-lock.png",
+      "public_url": "/trimmy/icons/settings-lock.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/settings-lock.png",
+      "bytes": 1063,
+      "sha256": "e1c9a6e9518e684a4520e3873c3f0fe731083102b93e566d74583747b3d16d94",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/profile-edit.png",
+      "public_url": "/trimmy/icons/profile-edit.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/profile-edit.png",
+      "bytes": 1015,
+      "sha256": "f2525d8a1497e03cc86f4b87a4f618d9fabb978b7d9b0cf9d1b8daa06cbdcb1e",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "icons/plumpy-forward.png",
+      "public_url": "/trimmy/icons/plumpy-forward.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/icons8/plumpy-forward.png",
+      "bytes": 835,
+      "sha256": "53f07df3bd42ab0d4deddf9dde70c50df83bdd43afa6fc24f7b9f7c042ab6e34",
+      "category": "icons8",
+      "provenance": "Unmodified current mobile Icons8 asset. Attribution/license entitlement is not established by a catalogue URL; see ASSETS.md records.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "fonts/DejanireSans-Regular.otf",
+      "public_url": "/trimmy/fonts/DejanireSans-Regular.otf",
+      "source": "trimmy/apps/mobile/assets/fonts/dejanire/DejanireSans-Regular.otf",
+      "bytes": 103120,
+      "sha256": "4ef2d18012b3d88ed9303bc77cb2b6ef12ed8019aef9855ee822a5943af4dc4c",
+      "category": "font-dejanire",
+      "provenance": "User-supplied local font for mobile UI trial. No Dejanire license or web-embedding grant found in supplied repository notes.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "fonts/DejanireSans-Medium.otf",
+      "public_url": "/trimmy/fonts/DejanireSans-Medium.otf",
+      "source": "trimmy/apps/mobile/assets/fonts/dejanire/DejanireSans-Medium.otf",
+      "bytes": 102032,
+      "sha256": "9af600242ff0f544c32c1c4f9a43c17e66a75dccf6c2ec6fbd5aef8c41096287",
+      "category": "font-dejanire",
+      "provenance": "User-supplied local font for mobile UI trial. No Dejanire license or web-embedding grant found in supplied repository notes.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "fonts/DejanireSans-Bold.otf",
+      "public_url": "/trimmy/fonts/DejanireSans-Bold.otf",
+      "source": "trimmy/apps/mobile/assets/fonts/dejanire/DejanireSans-Bold.otf",
+      "bytes": 104520,
+      "sha256": "3891907d0bf7c1a86f0056cb901f3faaf7b43ca82ec056d8298cf6fe50fb02b3",
+      "category": "font-dejanire",
+      "provenance": "User-supplied local font for mobile UI trial. No Dejanire license or web-embedding grant found in supplied repository notes.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "fonts/BricolageGrotesque-Latin.woff2",
+      "public_url": "/trimmy/fonts/BricolageGrotesque-Latin.woff2",
+      "source": "trimmy/apps/site-v2/public/fonts/BricolageGrotesque-Latin.woff2",
+      "bytes": 82332,
+      "sha256": "50fe1039eb3ff208d027a4867d3f53bd288bba76273a718578f7b3ec0feec388",
+      "category": "font-bricolage",
+      "provenance": "Unmodified site-v2 self-hosted webfont and its accompanying SIL OFL1.1 notice.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "fonts/BricolageGrotesque-OFL.txt",
+      "public_url": "/trimmy/fonts/BricolageGrotesque-OFL.txt",
+      "source": "trimmy/apps/site-v2/public/fonts/BricolageGrotesque-OFL.txt",
+      "bytes": 4403,
+      "sha256": "4b5a7d8f37f5602621c8a8d7358a6a2e71317e6c231c661e15aef0275d3e07ba",
+      "category": "font-bricolage",
+      "provenance": "Unmodified site-v2 self-hosted webfont and its accompanying SIL OFL1.1 notice.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "trimmy-mark.png",
+      "public_url": "/trimmy/trimmy-mark.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/trimmy-mark.png",
+      "bytes": 106701,
+      "sha256": "10e9a0e429582af09896d803f9cd7c5525d0d75d8c018a60a6404657922c02d6",
+      "category": "brand",
+      "provenance": "Current mobile Trimmy mark,512\u00d7512 transparent PNG. Visual identity matches existing site-v2 mark; mobile original copied unchanged. No separate asset license grant located in this pass.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "curly-arrow.png",
+      "public_url": "/trimmy/curly-arrow.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/curly-arrow.png",
+      "bytes": 9252,
+      "sha256": "39f99d95a0f3bcc68752f1fd92348defe8411b0ede7ac621a52f6c15179f8d71",
+      "category": "onboarding-note",
+      "provenance": "Existing mobile pinned-note decoration used by lib/ui_review/review_welcome_note.dart and actual ProductIntroduction. SESSION_HANDOFF.md records repository curly-arrow.png and raster copy of ruby-pin-1.svg as originals. Copied existing runtime PNG unchanged; no SVG rasterization or asset regeneration in this pass.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "ruby-pin-1.png",
+      "public_url": "/trimmy/ruby-pin-1.png",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/ruby-pin-1.png",
+      "bytes": 33015,
+      "sha256": "0c91cdb349cb043a6bf84fcfbcac3cd603ac1abb8492ec6e5b414558e65cea37",
+      "category": "onboarding-note",
+      "provenance": "Existing mobile pinned-note decoration used by lib/ui_review/review_welcome_note.dart and actual ProductIntroduction. SESSION_HANDOFF.md records repository curly-arrow.png and raster copy of ruby-pin-1.svg as originals. Copied existing runtime PNG unchanged; no SVG rasterization or asset regeneration in this pass.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "token-AAPLx.webp",
+      "public_url": "/trimmy/token-AAPLx.webp",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/wall-street-orbit/token-AAPLx.webp",
+      "bytes": 1578,
+      "sha256": "bd8d24b623585e72dd0f317d50b5c4e5ff1a67a8baba1eb839d85f4c4ca95e36",
+      "category": "company-token",
+      "provenance": "Existing mobile Wall Street orbit identity image for Tokens.xyz Apple variant AAPLx, mint XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp. Pinned source URL/SHA in trimmy/art/studies/welcome-orbit-2026-09-23/token-sources/manifest.json. Copied unchanged; provider provenance does not establish a separate brand-image license grant.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "token-TSLAx.webp",
+      "public_url": "/trimmy/token-TSLAx.webp",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/wall-street-orbit/token-TSLAx.webp",
+      "bytes": 3172,
+      "sha256": "0724237d5386ce7eba1a9f59ea1b5b4fda7cd4c904c05868ced64432bf2db946",
+      "category": "company-token",
+      "provenance": "Existing mobile Wall Street orbit identity image for Tokens.xyz Tesla variant TSLAx, mint XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB. Pinned source URL/SHA in trimmy/art/studies/welcome-orbit-2026-09-23/token-sources/manifest.json. Copied unchanged; provider provenance does not establish a separate brand-image license grant.",
+      "copied_unmodified": true
+    },
+    {
+      "file": "token-METAx.webp",
+      "public_url": "/trimmy/token-METAx.webp",
+      "source": "trimmy/apps/mobile/assets/images/ui_review/wall-street-orbit/token-METAx.webp",
+      "bytes": 3860,
+      "sha256": "f01dfdf631640e31cf76ad2c04ea0a457f125469d22dcb070fbbaa3159197db6",
+      "category": "company-token",
+      "provenance": "Existing mobile Wall Street orbit identity image for Tokens.xyz Meta variant METAx, mint Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu. Pinned source URL/SHA in trimmy/art/studies/welcome-orbit-2026-09-23/token-sources/manifest.json. Copied unchanged; provider provenance does not establish a separate brand-image license grant.",
+      "copied_unmodified": true
+    }
+  ]
+}

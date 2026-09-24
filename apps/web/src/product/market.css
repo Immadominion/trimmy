@@ -1,0 +1,145 @@
+/* A compact company list on the open Trimmy canvas. */
+.market-shell .product-main {
+  padding-top: 34px;
+  padding-bottom: 20px;
+}
+
+.product-main .market-screen {
+  max-width: 960px;
+  --market-columns: minmax(200px, 1fr) 148px 120px 28px;
+}
+
+.market-screen .market-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+
+.market-heading .page-intro {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.market-heading h1 {
+  font-size: 40px;
+  letter-spacing: -1.5px;
+}
+
+.market-heading .market-status {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #75647f;
+}
+
+.market-heading .market-tools {
+  width: 350px;
+  max-width: 55%;
+  margin: 0;
+  padding: 0;
+}
+
+.market-screen .market-search input {
+  height: 48px;
+  padding: 0 44px;
+  background: #f6f3fb;
+  border-radius: 15px;
+  font-size: 14px;
+}
+
+.market-screen .market-search input::placeholder { color: #756c82; }
+.market-screen .market-search input::-webkit-search-cancel-button { display: none; }
+.market-screen .market-search button { top: 2px; right: 2px; min-width: 44px; }
+.market-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 15px;
+  width: 18px;
+  height: 18px;
+  stroke: #8264b0;
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.market-screen .stock-list-head,
+.market-screen .stock-row {
+  grid-template-columns: var(--market-columns);
+  column-gap: 22px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.market-screen .stock-list-head {
+  min-height: 36px;
+  padding-top: 0;
+  padding-bottom: 14px;
+  margin-right: 19px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #756c82;
+}
+
+.market-screen .stock-row {
+  min-height: 72px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  margin: 0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.market-screen .stock-row:nth-child(even) { background: #fbfafe; }
+.market-screen .stock-row:hover,
+.market-screen .stock-row:focus-visible { background: #f0e9fc; }
+.market-screen .stock-row:focus-visible { outline-offset: -3px; }
+.market-screen .stock-row:active { background: #e9ddfa; }
+.market-screen .stock-company { gap: 13px; }
+.market-screen .company-logo { width: 44px; height: 44px; border-radius: 15px; }
+.market-screen .company-logo img { width: 30px; height: 30px; }
+.market-screen .stock-company-text strong { font-size: 16px; font-weight: 600; }
+.market-screen .stock-company-text small { margin-top: 4px; font-size: 11px; color: #80748d; }
+.market-screen .stock-price { font-size: 17px; font-weight: 500; letter-spacing: -.3px; }
+.market-screen .stock-change { font-size: 13px; font-weight: 500; }
+.market-screen .stock-change.neutral { color: #80748d; }
+.market-screen .stock-open { display: grid; place-items: center; color: #b3a3c6; }
+.market-screen .stock-open svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.market-screen .stock-row:hover .stock-open,
+.market-screen .stock-row:focus-visible .stock-open { color: #6745cf; }
+.market-screen .market-results:focus-visible { outline-color: #7455e8; }
+
+@media (min-width: 701px) and (max-width: 1000px) {
+  .product-main .market-screen { --market-columns: minmax(180px, 1fr) 120px 100px 20px; }
+  .market-screen .stock-list-head, .market-screen .stock-row { column-gap: 16px; }
+  .market-heading .market-tools { width: 310px; }
+}
+
+@media (max-width: 700px) {
+  .market-shell .product-main { padding: 25px 18px 12px; }
+  .product-main .market-screen { --market-columns: minmax(0, 1fr) 100px; }
+  .market-screen .market-heading { display: block; margin-bottom: 20px; }
+  .market-heading .page-intro { display: flex; align-items: center; gap: 14px; }
+  .market-heading h1 { font-size: 34px; letter-spacing: -1.1px; }
+  .market-heading .market-status { margin: 0 0 0 auto; font-size: 11px; }
+  .market-heading .market-tools { max-width: none; width: 100%; margin-top: 20px; }
+  .market-screen .stock-list-head { margin-right: 0; min-height: 31px; padding: 0 8px 11px; font-size: 11px; }
+  .market-screen .stock-row { min-height: 74px; padding: 12px 8px; column-gap: 12px; }
+  .market-screen .stock-company { gap: 11px; }
+  .market-screen .company-logo { width: 40px; height: 40px; border-radius: 14px; }
+  .market-screen .company-logo img { width: 28px; height: 28px; }
+  .market-screen .stock-company-text strong { font-size: 14px; }
+  .market-screen .stock-company-text small { font-size: 11px; }
+  .market-screen .stock-price { font-size: 15px; padding-top: 2px; }
+  .market-screen .stock-change { font-size: 11px; right: 8px; bottom: 12px; }
+  .market-screen .stock-open { display: none; }
+}
+
+@media (max-width: 360px) {
+  .market-shell .product-main { padding-left: 12px; padding-right: 12px; }
+  .market-screen .stock-company { gap: 8px; }
+  .market-screen .stock-company-text strong { font-size: 13px; }
+}

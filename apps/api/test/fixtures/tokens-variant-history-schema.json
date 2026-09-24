@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "provider": "tokens-xyz-v1",
+  "endpointMode": "solana_variant",
+  "documentedContract": "GET /v1/assets/:assetId/ohlcv",
+  "sourceUrl": "https://api.tokens.xyz/v1/assets/apple/ohlcv?mint=XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp&interval=1H&from=1788808076&to=1789412876",
+  "requestedAt": "2026-09-14T19:07:56.064Z",
+  "request": {
+    "assetId": "apple",
+    "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+    "interval": "1H",
+    "from": 1788808076,
+    "to": 1789412876
+  },
+  "providerCalls": 1,
+  "credentialSource": {
+    "valueStored": false
+  },
+  "walletUsed": false,
+  "transactionBuilt": false,
+  "transactionSigned": false,
+  "transactionBroadcast": false,
+  "financialMutation": false,
+  "passed": true,
+  "httpStatus": 200,
+  "observation": {
+    "topLevel": [
+      {
+        "name": "assetId",
+        "type": "string"
+      },
+      {
+        "name": "candles",
+        "type": "array"
+      },
+      {
+        "name": "from",
+        "type": "integer"
+      },
+      {
+        "name": "interval",
+        "type": "string"
+      },
+      {
+        "name": "mint",
+        "type": "string"
+      },
+      {
+        "name": "to",
+        "type": "integer"
+      }
+    ],
+    "requestEchoes": {
+      "assetId": {
+        "present": true,
+        "type": "string",
+        "matchesRequest": true
+      },
+      "mint": {
+        "present": true,
+        "type": "string",
+        "matchesRequest": true
+      },
+      "interval": {
+        "present": true,
+        "type": "string",
+        "matchesRequest": true
+      },
+      "from": {
+        "present": true,
+        "type": "integer",
+        "matchesRequest": true
+      },
+      "to": {
+        "present": true,
+        "type": "integer",
+        "matchesRequest": true
+      }
+    },
+    "candles": {
+      "count": 163,
+      "itemKinds": [
+        "object"
+      ],
+      "distinctKeySets": [
+        "close,high,low,open,time,volume"
+      ],
+      "fields": [
+        {
+          "name": "close",
+          "presentCount": 163,
+          "types": [
+            "number"
+          ]
+        },
+        {
+          "name": "high",
+          "presentCount": 163,
+          "types": [
+            "number"
+          ]
+        },
+        {
+          "name": "low",
+          "presentCount": 163,
+          "types": [
+            "number"
+          ]
+        },
+        {
+          "name": "open",
+          "presentCount": 163,
+          "types": [
+            "number"
+          ]
+        },
+        {
+          "name": "time",
+          "presentCount": 163,
+          "types": [
+            "integer"
+          ]
+        },
+        {
+          "name": "volume",
+          "presentCount": 163,
+          "types": [
+            "number"
+          ]
+        }
+      ],
+      "timeFields": [
+        {
+          "field": "time",
+          "establishedUnit": "unix_seconds",
+          "minimum": "1788811200",
+          "maximum": "1789394400",
+          "ordering": "strictly_ascending",
+          "unique": true
+        }
+      ]
+    },
+    "rawBodyBytes": 24414,
+    "rawBodySha256": "4d52722fc9ad84866a62404c10e444f051dd2ca95890c2e1a7926e6312c9ef31",
+    "structuralSha256": "214a8654c0493f9a9b0376f8568db1d230c4175f992b24f20fdddc177d3194c0"
+  },
+  "providerContract": "observed_not_execution_qualified",
+  "finishedAt": "2026-09-14T19:07:59.386Z"
+}

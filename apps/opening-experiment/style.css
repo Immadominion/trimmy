@@ -1,0 +1,30 @@
+@font-face{font-family:Bricolage;src:url('/fonts/BricolageGrotesque-Latin.woff2') format('woff2');font-display:swap;font-weight:100 900}
+@font-face{font-family:Manrope;src:url('/fonts/Manrope-Variable.ttf') format('truetype');font-display:swap;font-weight:200 800}
+:root{color-scheme:dark;font-family:Manrope,Arial,sans-serif;font-synthesis:none}
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{margin:0;background:#edf3fb}
+.scroll-route{height:420svh}
+.stage{position:sticky;top:0;height:100svh;width:100%;overflow:hidden;isolation:isolate;background:#6d82a1}
+.sky,.sky-light,.architecture,.cloud,.fog{position:absolute;inset:0;pointer-events:none}
+.sky{z-index:0;background:#5e7293 url('/assets/sky.webp') center center/cover no-repeat;will-change:transform}
+.sky-light{z-index:1;background:radial-gradient(ellipse at 50% 32%,rgba(230,231,225,.08),transparent 44%)}
+.architecture{overflow:hidden}
+.plate{position:absolute;top:50%;left:50%;width:max(100vw,160svh);aspect-ratio:1586/992;transform:translate3d(-50%,-50%,0);will-change:transform;backface-visibility:hidden}
+.plate img{display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none;mask-image:linear-gradient(to bottom,transparent 0,#000 var(--edge-feather,0%));-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 var(--edge-feather,0%))}
+.plate--far{z-index:2}.plate--mid{z-index:4}.plate--near{z-index:6}.plate--front{z-index:7}
+.title{position:absolute;z-index:5;top:38%;left:50%;width:min(760px,90vw);transform:translate(-50%,-50%);text-align:center;color:#fffdf8;will-change:transform,opacity;pointer-events:none;text-shadow:0 2px 16px rgba(15,27,48,.36);animation:ink-in 1.1s cubic-bezier(.17,.67,.25,1) both}
+@keyframes ink-in{from{clip-path:inset(0 0 100% 0);filter:blur(5px)}to{clip-path:inset(0 0 0 0);filter:blur(0)}}
+.year{margin:0 0 20px;font:700 11px/1.2 Manrope,Arial,sans-serif;letter-spacing:.34em}
+.title h1{margin:0;font:800 clamp(48px,5vw,79px)/.98 Bricolage,Arial,sans-serif;letter-spacing:-.055em;text-wrap:balance}
+.title h1 span{display:block}
+.cloud{z-index:9;top:0;bottom:auto;height:132svh;will-change:transform;background:linear-gradient(to bottom,transparent 0%,transparent 46%,#f1f5fd 88%)}
+.cloud img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.fog{z-index:10;background:#f1f5fd;opacity:0;will-change:opacity}
+.next-story{position:absolute;z-index:11;top:46%;left:50%;width:min(850px,82vw);transform:translate(-50%,-45%);color:#152338;text-align:center;opacity:0;pointer-events:none;will-change:transform,opacity}
+.next-story h2{margin:0;font:800 clamp(45px,5.3vw,78px)/1 Bricolage,Arial,sans-serif;letter-spacing:-.055em;text-wrap:balance}
+.next-story>p:last-child{max-width:620px;margin:22px auto 0;font-size:clamp(15px,1.4vw,18px);font-weight:600;line-height:1.6}
+.scroll-cue{position:absolute;z-index:12;bottom:calc(env(safe-area-inset-bottom) + 27px);left:50%;display:flex;align-items:center;gap:14px;transform:translateX(-50%);padding:6px 6px 6px 19px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(24,32,50,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:.25em;pointer-events:none}
+.scroll-cue__arrow{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#fff;color:#182236;font-size:19px;line-height:1;letter-spacing:0}
+@media(max-aspect-ratio:4/5){.plate{width:160svh}.title{top:33%;width:91vw}.title h1{font-size:clamp(42px,10vw,68px)}.next-story{width:85vw}.next-story h2{font-size:clamp(40px,9vw,62px)}.next-story>p:last-child{font-size:14px}.cloud{height:115svh}}
+@media(prefers-reduced-motion:reduce){.scroll-route{height:300svh}.plate,.sky,.title,.cloud,.fog,.next-story{will-change:auto}.title{animation:none}}

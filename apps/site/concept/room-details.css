@@ -1,0 +1,18 @@
+/* Floor scenes remain readable at the small phone map size. The large shapes
+   carry the meaning; the marks on evidence sheets are deliberately symbolic. */
+.room-details-original { display: none; }
+.room-details-ready .tower-room { opacity: .48; }
+.room-details-ready .tower-room.room-details-active { opacity: 1; }
+.room-details-interior { pointer-events: none; }
+.room-details-interior .room-light-pool { opacity: .14; }
+.room-details-active .room-light-pool { opacity: .32; }
+.room-details-interior .room-lamp-bulb { opacity: .35; }
+.room-details-active .room-lamp-bulb { opacity: 1; }
+.room-details-interior .room-report { transform-box: fill-box; transform-origin: 20% 100%; }
+.room-door-left { transform: translateX(-22px); }
+.room-door-right { transform: translateX(22px); }
+.room-lift-dot { fill: #8a779a; }
+.room-lift-dot.is-current { fill: #f8f37b; }
+.room-details-cup { transform-origin: 50% 100%; }
+.room-details-reduced .tower-room,
+.room-details-reduced .lift { transition: none !important; }

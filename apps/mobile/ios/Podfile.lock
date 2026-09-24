@@ -1,0 +1,60 @@
+PODS:
+  - audioplayers_darwin (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - Factory (2.4.3)
+  - Flutter (1.0.0)
+  - flutter_secure_storage_darwin (10.0.0):
+    - Flutter
+    - FlutterMacOS
+  - integration_test (0.0.1):
+    - Flutter
+  - privy_flutter (0.0.1):
+    - Factory (= 2.4.3)
+    - Flutter
+    - PrivySDK (= 2.16.2)
+  - PrivySDK (2.16.2)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - audioplayers_darwin (from `.symlinks/plugins/audioplayers_darwin/darwin`)
+  - Flutter (from `Flutter`)
+  - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - privy_flutter (from `.symlinks/plugins/privy_flutter/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - Factory
+    - PrivySDK
+
+EXTERNAL SOURCES:
+  audioplayers_darwin:
+    :path: ".symlinks/plugins/audioplayers_darwin/darwin"
+  Flutter:
+    :path: Flutter
+  flutter_secure_storage_darwin:
+    :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+  privy_flutter:
+    :path: ".symlinks/plugins/privy_flutter/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+
+SPEC CHECKSUMS:
+  audioplayers_darwin: 835ced6edd4c9fc8ebb0a7cc9e294a91d99917d5
+  Factory: 9d20d8cb56fc44b341d6dad1cf67dc93e9ae7788
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_secure_storage_darwin: 46e401699982ee74142909676535e0f6a7321e58
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  privy_flutter: 5596a3da3f77360c092699d95e5e6dfc9fecc960
+  PrivySDK: 16d402c35855bfd4521cd57b53ed1ca6f70c8c25
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+
+PODFILE CHECKSUM: 912e34f102da91123e38965ab4e5b3fb21e195f0
+
+COCOAPODS: 1.16.2

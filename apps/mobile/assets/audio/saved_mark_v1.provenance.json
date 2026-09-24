@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "audio.saved_mark_v1",
+  "file": "saved_mark_v1.wav",
+  "origin": "original_deterministic_synthesis",
+  "sourceScript": "../../../../tool/audio/generate_saved_mark_v1.py",
+  "sourceScriptSha256": "61cebaa549e5f141161d602bbe542f0fcdfa8b497fd33c925de77facf0df5f6b",
+  "sha256": "d515580d168b8b80e9d25e9bdbbf5b71b26bfb2a3c68ebbed1dc1cc45971cee7",
+  "seed": 1396790853,
+  "thirdPartySamples": [],
+  "rights": "Original oscillators and seeded noise; no external sample attribution. Distribution follows the project's chosen license; no exclusive copyright claim is made.",
+  "description": "One muted wooden stamp and short paper-fibre transient for a successfully saved practice answer.",
+  "bytes": 13484,
+  "sampleRate": 48000,
+  "channels": 1,
+  "bitDepth": 16,
+  "durationMs": 140,
+  "samplePeakDbfs": -24.0,
+  "firstSample": 0,
+  "lastSample": 0,
+  "status": "audition_candidate",
+  "listeningApproved": false,
+  "playback": {
+    "defaultEnabled": false,
+    "loop": false,
+    "trigger": "successful_progress_write_only"
+  }
+}

@@ -1,0 +1,19 @@
+Built-in image generation; edit using the user-attached Trimmy logo.
+Generated 14 September 2026. Proposed material study, not approved brand art.
+
+Use case: precise-object-edit / logo-brand material study. Edit the attached
+existing Trimmy lavender liquid logo. Preserve the exact recognizable asymmetric
+three-lobed rounded triangular silhouette and proportions, with the top-left
+taller lobe and a concave bottom notch; preserve the lavender-to-violet color
+identity. Evolve it into a beautiful sculpted liquid token, a thick softly beveled
+token with a restrained inset rim following the same irregular shape, and a very
+subtle recessed lowercase t centered on the front face. This is an original brand
+object, not a circular cryptocurrency coin and no currency symbol. Material is
+glossy lavender enamel with soft pearlescent highlights, violet at the lower edge,
+tactile premium not glass-transparent. Very slight 3/4 front perspective,
+near-frontal so the outline remains legible. One single isolated object, complete
+uncropped, centered with 14% breathing room on all sides. Real transparent
+background with alpha, no black backdrop, no checkerboard printed into artwork,
+no external cast shadow. No extra objects, no captions, no UI. Asset will sit on
+sunny yellow or pale lilac in an art-directed investing game website. Output
+high-quality square asset.

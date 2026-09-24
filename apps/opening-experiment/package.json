@@ -1,0 +1,10 @@
+{
+  "name": "@trimmy/opening-experiment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "../site-v2/node_modules/.bin/vite --host 0.0.0.0 --port 5174",
+    "build": "../site-v2/node_modules/.bin/vite build",
+    "preview": "../site-v2/node_modules/.bin/vite preview --host 0.0.0.0 --port 4174"
+  }
+}

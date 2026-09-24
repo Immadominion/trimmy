@@ -1,0 +1,37 @@
+# Upload only what the API image builds from. The mobile app, website, design
+# sources and verification artifacts ship separately and are large.
+node_modules/
+**/node_modules/
+**/dist/
+**/build/
+**/.dart_tool/
+**/*.tsbuildinfo
+
+# The office also builds for the browser, so its Dart sources and assets are
+# uploaded. Everything platform-specific or generated stays out.
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/macos/
+apps/mobile/linux/
+apps/mobile/windows/
+apps/mobile/test/
+apps/mobile/tool/
+apps/mobile/art/
+apps/site/
+art/
+tool/art/
+artifacts/
+docs/
+tool/testing/
+tool/test/
+
+infra/.test-runtime/
+infra/.practice-runtime/
+infra/.migration-runtime/
+infra/.deployment-runtime/
+
+.env
+.env.*
+!.env.example
+**/*.log
+**/.DS_Store

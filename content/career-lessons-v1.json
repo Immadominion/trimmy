@@ -1,0 +1,421 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "2026-09-20.1",
+  "lessons": [
+    {
+      "id": "ticker-basics",
+      "order": 1,
+      "title": "Read a ticker",
+      "summary": "Use a ticker to identify a market listing.",
+      "salIntro": "Read the label before you read the noise.",
+      "salComplete": "Good. A familiar ticker is a clue, not proof.",
+      "rewardTrims": 10,
+      "steps": [
+        {
+          "id": "ticker-short-label",
+          "order": 1,
+          "prompt": "What is a ticker?",
+          "choices": [
+            {
+              "id": "short-listing-label",
+              "label": "A short label for a market listing"
+            },
+            {
+              "id": "company-password",
+              "label": "A private password for the company"
+            }
+          ],
+          "correctChoiceId": "short-listing-label",
+          "correctFeedback": "Right. A ticker is a short label used for a market listing.",
+          "incorrectFeedback": "A ticker is a short label used for a market listing."
+        },
+        {
+          "id": "ticker-match",
+          "order": 2,
+          "prompt": "Which pair matches a company and its exchange ticker?",
+          "choices": [
+            {
+              "id": "apple-aapl",
+              "label": "Apple and AAPL"
+            },
+            {
+              "id": "apple-market",
+              "label": "Apple and MARKET"
+            }
+          ],
+          "correctChoiceId": "apple-aapl",
+          "correctFeedback": "Yes. AAPL is Apple's exchange ticker.",
+          "incorrectFeedback": "AAPL is Apple's exchange ticker."
+        },
+        {
+          "id": "ticker-listing",
+          "order": 3,
+          "prompt": "What does a ticker identify most precisely?",
+          "choices": [
+            {
+              "id": "market-listing",
+              "label": "A particular market listing"
+            },
+            {
+              "id": "every-company-product",
+              "label": "Every product a company sells"
+            }
+          ],
+          "correctChoiceId": "market-listing",
+          "correctFeedback": "Correct. A ticker points to a listing, so the market still matters.",
+          "incorrectFeedback": "A ticker identifies a market listing, not a company's products."
+        },
+        {
+          "id": "ticker-token-symbol",
+          "order": 4,
+          "prompt": "AAPLx appears in a wallet. Is AAPL alone enough to verify it?",
+          "choices": [
+            {
+              "id": "check-issuer-mint",
+              "label": "No, check the issuer and mint"
+            },
+            {
+              "id": "ticker-is-enough",
+              "label": "Yes, the ticker is enough"
+            }
+          ],
+          "correctChoiceId": "check-issuer-mint",
+          "correctFeedback": "Exactly. A token symbol can resemble a ticker. Verify the issuer and mint.",
+          "incorrectFeedback": "A familiar ticker does not verify a token. Check the issuer and mint."
+        }
+      ]
+    },
+    {
+      "id": "price-moves",
+      "order": 2,
+      "title": "Why prices move",
+      "summary": "Connect price changes to buyers, sellers and changing expectations.",
+      "salIntro": "Find what changed before you chase the move.",
+      "salComplete": "Good. Prices move on expectations, not headlines alone.",
+      "rewardTrims": 10,
+      "steps": [
+        {
+          "id": "price-buyers-sellers",
+          "order": 1,
+          "prompt": "What can move a stock price?",
+          "choices": [
+            {
+              "id": "buyers-and-sellers",
+              "label": "Buyers and sellers changing their offers"
+            },
+            {
+              "id": "fixed-company-rule",
+              "label": "A fixed price chosen by the company"
+            }
+          ],
+          "correctChoiceId": "buyers-and-sellers",
+          "correctFeedback": "Right. Trades meet where buyers and sellers agree.",
+          "incorrectFeedback": "Market prices respond to the offers buyers and sellers make."
+        },
+        {
+          "id": "price-expectations",
+          "order": 2,
+          "prompt": "A company reports stronger sales than expected. Why might its price move?",
+          "choices": [
+            {
+              "id": "expectations-changed",
+              "label": "Expectations about the company changed"
+            },
+            {
+              "id": "ticker-got-longer",
+              "label": "Its ticker became longer"
+            }
+          ],
+          "correctChoiceId": "expectations-changed",
+          "correctFeedback": "Yes. New information can change what buyers and sellers expect.",
+          "incorrectFeedback": "Prices can move when new information changes expectations."
+        },
+        {
+          "id": "price-market-context",
+          "order": 3,
+          "prompt": "Can a healthy company fall when the wider market falls?",
+          "choices": [
+            {
+              "id": "yes-market-context",
+              "label": "Yes, wider market moves can affect it"
+            },
+            {
+              "id": "no-only-company-news",
+              "label": "No, only company news matters"
+            }
+          ],
+          "correctChoiceId": "yes-market-context",
+          "correctFeedback": "Correct. Sector and market moves can affect an individual stock.",
+          "incorrectFeedback": "A stock can move with its sector or the wider market."
+        },
+        {
+          "id": "price-no-guarantee",
+          "order": 4,
+          "prompt": "Does good news guarantee the next price move?",
+          "choices": [
+            {
+              "id": "no-guarantee",
+              "label": "No, the market may have expected it already"
+            },
+            {
+              "id": "always-rises",
+              "label": "Yes, good news always makes it rise"
+            }
+          ],
+          "correctChoiceId": "no-guarantee",
+          "correctFeedback": "Exactly. News, expectations and positioning all matter.",
+          "incorrectFeedback": "Good news does not guarantee a rise. Expectations may already include it."
+        }
+      ]
+    },
+    {
+      "id": "tokenized-stocks",
+      "order": 3,
+      "title": "Know the token",
+      "summary": "Check what a tokenized stock represents and who issued it.",
+      "salIntro": "Check the wrapper before you call it a stock.",
+      "salComplete": "Good. You checked the product, not just the logo.",
+      "rewardTrims": 10,
+      "steps": [
+        {
+          "id": "token-read-terms",
+          "order": 1,
+          "prompt": "How do you know what a tokenized stock represents?",
+          "choices": [
+            {
+              "id": "read-issuer-terms",
+              "label": "Read the issuer's product terms"
+            },
+            {
+              "id": "trust-the-logo",
+              "label": "Trust the company logo"
+            }
+          ],
+          "correctChoiceId": "read-issuer-terms",
+          "correctFeedback": "Right. The issuer's terms define the token and its holder rights.",
+          "incorrectFeedback": "The issuer's terms define what the token represents."
+        },
+        {
+          "id": "token-not-brokerage-share",
+          "order": 2,
+          "prompt": "Should you assume every stock token is a share in a brokerage account?",
+          "choices": [
+            {
+              "id": "no-check-structure",
+              "label": "No, check its legal structure"
+            },
+            {
+              "id": "yes-same-rights",
+              "label": "Yes, every token has the same rights"
+            }
+          ],
+          "correctChoiceId": "no-check-structure",
+          "correctFeedback": "Correct. Products differ in backing, claims and holder rights.",
+          "incorrectFeedback": "Tokenized stock products can have different legal structures and rights."
+        },
+        {
+          "id": "token-hours",
+          "order": 3,
+          "prompt": "Can an on-chain stock token trade while its reference exchange is closed?",
+          "choices": [
+            {
+              "id": "yes-price-can-differ",
+              "label": "Yes, and its price can differ"
+            },
+            {
+              "id": "no-chain-closes",
+              "label": "No, the chain closes too"
+            }
+          ],
+          "correctChoiceId": "yes-price-can-differ",
+          "correctFeedback": "Yes. On-chain trading can continue while the reference market is closed.",
+          "incorrectFeedback": "On-chain trading can continue, and the price may differ while the reference market is closed."
+        },
+        {
+          "id": "token-verify-mint",
+          "order": 4,
+          "prompt": "What should you verify before choosing a stock token?",
+          "choices": [
+            {
+              "id": "issuer-mint-terms",
+              "label": "Issuer, mint and product terms"
+            },
+            {
+              "id": "symbol-color",
+              "label": "Symbol color and profile picture"
+            }
+          ],
+          "correctChoiceId": "issuer-mint-terms",
+          "correctFeedback": "Exactly. Verify the exact product, issuer and on-chain mint.",
+          "incorrectFeedback": "Verify the issuer, exact mint and product terms."
+        }
+      ]
+    },
+    {
+      "id": "red-days",
+      "order": 4,
+      "title": "Read a red day",
+      "summary": "Understand what a red move says and what it does not say.",
+      "salIntro": "A red number needs a baseline.",
+      "salComplete": "Good. One red day is data, not a verdict.",
+      "rewardTrims": 10,
+      "steps": [
+        {
+          "id": "red-comparison",
+          "order": 1,
+          "prompt": "What does a red daily move usually mean?",
+          "choices": [
+            {
+              "id": "below-comparison",
+              "label": "The price is below its comparison point"
+            },
+            {
+              "id": "company-is-broken",
+              "label": "The company is broken"
+            }
+          ],
+          "correctChoiceId": "below-comparison",
+          "correctFeedback": "Right. Red describes a price change against a chosen baseline.",
+          "incorrectFeedback": "Red usually means the price is below a comparison point, often the prior close."
+        },
+        {
+          "id": "red-baseline",
+          "order": 2,
+          "prompt": "What should you check before reading a red percentage?",
+          "choices": [
+            {
+              "id": "check-baseline",
+              "label": "The time period and comparison baseline"
+            },
+            {
+              "id": "check-logo",
+              "label": "The company logo"
+            }
+          ],
+          "correctChoiceId": "check-baseline",
+          "correctFeedback": "Correct. A percentage needs a starting point and time period.",
+          "incorrectFeedback": "Check the starting point and time period behind the percentage."
+        },
+        {
+          "id": "red-not-verdict",
+          "order": 3,
+          "prompt": "Is one red day a verdict on the company?",
+          "choices": [
+            {
+              "id": "no-one-data-point",
+              "label": "No, it is one data point"
+            },
+            {
+              "id": "yes-final-verdict",
+              "label": "Yes, it settles the decision"
+            }
+          ],
+          "correctChoiceId": "no-one-data-point",
+          "correctFeedback": "Exactly. Look at the reason, your plan and the wider context.",
+          "incorrectFeedback": "One red day is one data point, not a final verdict."
+        },
+        {
+          "id": "red-plan",
+          "order": 4,
+          "prompt": "What helps before a red day arrives?",
+          "choices": [
+            {
+              "id": "position-plan",
+              "label": "A position size and exit plan you can follow"
+            },
+            {
+              "id": "certain-prediction",
+              "label": "A promise that the price cannot fall"
+            }
+          ],
+          "correctChoiceId": "position-plan",
+          "correctFeedback": "Yes. A clear plan makes a price move easier to evaluate calmly.",
+          "incorrectFeedback": "Use a position size and exit plan you can follow. No price is guaranteed."
+        }
+      ]
+    },
+    {
+      "id": "trimming-a-position",
+      "order": 5,
+      "title": "Trim a position",
+      "summary": "Sell part of a position while keeping the rest.",
+      "salIntro": "Keep some. Sell some. Know why.",
+      "salComplete": "Good. A trim changes exposure without closing the position.",
+      "rewardTrims": 10,
+      "steps": [
+        {
+          "id": "trim-definition",
+          "order": 1,
+          "prompt": "What does trimming a position mean?",
+          "choices": [
+            {
+              "id": "sell-part",
+              "label": "Sell part and keep part"
+            },
+            {
+              "id": "sell-everything",
+              "label": "Sell the entire position"
+            }
+          ],
+          "correctChoiceId": "sell-part",
+          "correctFeedback": "Right. A trim reduces a position without closing it.",
+          "incorrectFeedback": "A trim sells part of a position while keeping the rest."
+        },
+        {
+          "id": "trim-exposure",
+          "order": 2,
+          "prompt": "What happens to your exposure after a trim?",
+          "choices": [
+            {
+              "id": "exposure-falls",
+              "label": "It falls because you hold fewer shares"
+            },
+            {
+              "id": "exposure-doubles",
+              "label": "It doubles automatically"
+            }
+          ],
+          "correctChoiceId": "exposure-falls",
+          "correctFeedback": "Correct. Holding less reduces how much that position can move your portfolio.",
+          "incorrectFeedback": "A trim lowers exposure because fewer shares remain."
+        },
+        {
+          "id": "trim-realized",
+          "order": 3,
+          "prompt": "Which part of a profitable trim becomes a realized gain?",
+          "choices": [
+            {
+              "id": "sold-part",
+              "label": "The part that was sold"
+            },
+            {
+              "id": "unsold-part",
+              "label": "Every share still held"
+            }
+          ],
+          "correctChoiceId": "sold-part",
+          "correctFeedback": "Yes. The sold portion realizes its gain or loss. The rest stays invested.",
+          "incorrectFeedback": "Only the sold portion realizes its gain or loss."
+        },
+        {
+          "id": "trim-decision",
+          "order": 4,
+          "prompt": "Is trimming always the best decision after a gain?",
+          "choices": [
+            {
+              "id": "depends-on-plan",
+              "label": "No, it depends on your plan and risk"
+            },
+            {
+              "id": "always-best",
+              "label": "Yes, always trim after a gain"
+            }
+          ],
+          "correctChoiceId": "depends-on-plan",
+          "correctFeedback": "Exactly. Trimming is a tool, not a rule for every position.",
+          "incorrectFeedback": "Trimming is one risk tool. Whether to use it depends on your plan."
+        }
+      ]
+    }
+  ]
+}

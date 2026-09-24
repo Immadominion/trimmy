@@ -1,0 +1,111 @@
+import { useRef, useState, type ReactNode } from "react";
+import { useFrame } from "@/lib/useFrame";
+import { getPosition, goTo, jumpTo, isReducedMotion } from "@/lib/stepper";
+import { clamp01, smoothstep } from "@/lib/math";
+import "./product.css";
+
+const STOCKS = [
+  { name: "Apple", ticker: "AAPL", image: "apple", price: "225.00", change: "+1.24%" },
+  { name: "Nvidia", ticker: "NVDA", image: "nvidia", price: "125.00", change: "+2.18%" },
+  { name: "Meta", ticker: "META", image: "meta", price: "510.00", change: "+0.86%" },
+];
+const RANKS = ["Rookie", "Analyst", "Trader", "Senior Trader", "Partner", "Legend"];
+
+function Icon({ kind }: { kind: "desk" | "market" | "floor" | "profile" | "check" }) {
+  const paths = {
+    desk: "M4 4h6v16H4zM14 4h6v7h-6zM14 15h6v5h-6z",
+    market: "M6 3v18M3 8h6v7H3zM17 3v18M14 6h6v6h-6z",
+    floor: "M4 20v-5h5v-5h5V5h6v15z",
+    profile: "M8 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0M4 21v-3a8 6 0 0 1 16 0v3z",
+    check: "m5 12 4 4L19 6",
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true" fill={kind === "check" ? "none" : "currentColor"} stroke={kind === "check" ? "currentColor" : "none"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={paths[kind]} /></svg>;
+}
+
+function Tabs({ active = "desk" }: { active?: "desk" | "market" | "floor" | "profile" }) {
+  return <div className="product-tabs" aria-hidden="true">{(["desk", "market", "floor", "profile"] as const).map((tab) => <div className={active === tab ? "is-active" : ""} key={tab}><span><Icon kind={tab} /></span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</div>)}</div>;
+}
+
+function Chart({ small = false }: { small?: boolean }) {
+  return <svg className={small ? "product-chart product-chart--small" : "product-chart"} viewBox="0 0 280 86" preserveAspectRatio="none" aria-hidden="true"><path className="product-chart-grid" d="M0 20H280M0 50H280M0 80H280" /><path className="product-chart-fill" d="M0 70 18 67 29 73 43 56 60 62 76 45 89 52 102 42 120 49 137 25 151 37 164 24 180 31 195 12 210 19 231 5 247 13 263 7 280 0V86H0Z" /><path className="product-chart-line" d="m0 70 18-3 11 6 14-17 17 6 16-17 13 7 13-10 18 7 17-24 14 12 13-13 16 7 15-19 15 7 21-14 16 8 16-6 17-7" /></svg>;
+}
+
+function Brand() {
+  return <div className="product-brand"><img src="/mark.png" alt="" width="28" height="28" />trimmy</div>;
+}
+
+function Pane({ children, title, active }: { children: ReactNode; title?: string; active?: "desk" | "market" | "floor" | "profile" }) {
+  return <><div className="product-pane-content">{title && <h3 className="product-pane-title">{title}</h3>}{children}</div><Tabs active={active} /></>;
+}
+
+function Welcome({ closing = false }: { closing?: boolean }) {
+  return <div className="product-welcome"><Brand /><div className="product-welcome-art"><img className="product-welcome-sal" src="/product/sal-teaching.png" alt="Sal, your guide to the trading floor" /><span className="product-float-stock product-float-stock--apple"><img src="/product/apple.webp" alt="" /></span><span className="product-float-stock product-float-stock--nvidia"><img src="/product/nvidia.webp" alt="" /></span><span className="product-float-star" aria-hidden="true">✦</span></div><h3>Start your<br />Wall Street career.</h3><p>{closing ? "A first trade. A little practice. A whole career ahead." : "Your first 10,000 in virtual money is waiting."}</p><button type="button" className="product-button" onClick={() => closing ? jumpTo(10) : goTo(10)}>Explore the demo <span aria-hidden="true">→</span></button><span className="product-demo-note">A preview of the Trimmy app</span></div>;
+}
+
+function Desk() {
+  return <Pane><div className="product-user"><div className="product-avatar">Y</div><div><strong>Your desk</strong><span>Rookie · Day 1</span></div><span className="product-user-badge">✦ 0 Trims</span></div><div className="product-balance"><span>Virtual money</span><strong>10,000<span>.00</span></strong><p>Ready for your first trade</p><div className="product-balance-rule" /><div><span>Invested</span><b>0.00</b><span>Available</span><b>10,000.00</b></div></div><div className="product-section-heading"><h4>Your stocks</h4><span>0 holdings</span></div><div className="product-empty"><span aria-hidden="true">↗</span><p>Your first stock goes here.</p><button type="button" onClick={() => goTo(11)}>Explore stocks <span aria-hidden="true">→</span></button></div><div className="product-sal-message"><img src="/product/sal-teaching.png" alt="" /><div><b>A note from Sal</b><p>“Pick a company you know. Let’s start there.”</p></div></div></Pane>;
+}
+
+function Market() {
+  const [selected, setSelected] = useState(0);
+  const stock = STOCKS[selected] ?? STOCKS[0]!;
+  return <Pane title="Market" active="market"><span className="product-chip">Companies you know</span><div className="product-stock-picker">{STOCKS.map((item, i) => <button type="button" key={item.ticker} onClick={() => setSelected(i)} aria-pressed={selected === i}><img src={`/product/${item.image}.webp`} alt="" /><span>{item.name}</span></button>)}</div><div className="product-stock-detail"><div><div><span>{stock.ticker} · Example price</span><h4>{stock.name}</h4></div><img src={`/product/${stock.image}.webp`} alt="" /></div><strong>{stock.price}</strong><span className="product-gain">↗ {stock.change} today</span><Chart /><div className="product-chart-periods"><b>1D</b><span>1W</span><span>1M</span><span>1Y</span></div></div><p className="product-demo-note">Illustrative prices, not a live feed.</p><button type="button" className="product-button" onClick={() => goTo(12)}>Meet your guide <span aria-hidden="true">→</span></button></Pane>;
+}
+
+function Missions() {
+  return <Pane title="Your first mission" active="floor"><div className="product-mission-sal"><img src="/product/sal-teaching.png" alt="Sal" /><div>“You don’t need to know everything. Start with one stock.”<span>Sal · Your boss</span></div></div><span className="product-chip">CHAPTER 1 · ROOKIE</span><div className="product-mission"><span className="product-mission-number">01</span><div><h4>Make your first trade</h4><p>Choose a stock and make a practice purchase.</p><b>+20 Trims <span>points</span></b></div></div><div className="product-mission product-mission--next"><span className="product-mission-number">02</span><div><h4>Tell us why</h4><p>Write down what made you choose it.</p></div></div><button type="button" className="product-button" onClick={() => goTo(11)}>Pick a stock <span aria-hidden="true">→</span></button></Pane>;
+}
+
+function TrimDemo() {
+  const [sold, setSold] = useState(false);
+  return <Pane title="A little off the top." active="market"><span className="product-chip">TRY A TRIM</span><div className="product-trim-stock"><img src="/product/nvidia.webp" alt="" /><div><h4>Nvidia</h4><span>Example investment</span></div><b>+25%</b></div><Chart small /><div className="product-trim-explanation">You bought at 100 a share.<br />Now each share is worth 125.</div><div className="product-trim-stats" aria-live="polite"><div><span>Shares you keep</span><strong>{sold ? "6" : "8"}</strong></div><div><span>Gain you’ve taken</span><strong className={sold ? "product-gain" : ""}>{sold ? "50" : "0"}</strong></div></div><div className={`product-trim-result ${sold ? "is-sold" : ""}`} aria-live="polite">{sold ? <><Icon kind="check" /><span>You sold 2 shares for 250 in virtual money. You still own 6.</span></> : <span>Sell 2 of your 8 shares. Keep the other 6 invested.</span>}</div><button className="product-button" type="button" onClick={() => setSold(!sold)}>{sold ? "Try again" : "Try selling 25%"}<span aria-hidden="true">{sold ? "↺" : "→"}</span></button><p className="product-demo-note">Example only. No trade is placed.</p></Pane>;
+}
+
+function Career() {
+  return <Pane title="Your career" active="profile"><div className="product-rank-hero"><span aria-hidden="true">✦</span><h4>Rookie</h4><p>Every legend starts somewhere.</p></div><div className="product-rank-points"><b>20 <span>Trims</span></b><span>Points earned from missions</span></div><div className="product-rank-path">{RANKS.map((rank, i) => <div className={i === 0 ? "is-current" : ""} key={rank}><span>{i + 1}</span><b>{rank}</b>{i === 0 ? <em>You start here</em> : <span className="product-rank-lock" aria-label="Locked">◇</span>}</div>)}</div></Pane>;
+}
+
+function Build() {
+  return <Pane title="Built for your first trade."><div className="product-build-brand"><img src="/mark.png" alt="Trimmy" /></div><div className="product-build-label">IN THE APP TODAY</div><div className="product-built-list">{["Practice buying & selling", "Live stock prices", "First missions from Sal"].map((item) => <div key={item}><Icon kind="check" /><span>{item}</span></div>)}</div><div className="product-coming"><b>More is on the way</b><p>Friends’ activity, leagues and trading with your own money.</p></div><span className="product-demo-note">You’re viewing a website demo.</span></Pane>;
+}
+
+/** One phone remains in the composition from the floor reveal to the close. */
+export function ProductShowcase() {
+  const stage = useRef<HTMLDivElement>(null);
+  const panes = useRef<(HTMLDivElement | null)[]>([]);
+  const visible = useRef(false);
+  const active = useRef(-1);
+
+  useFrame(() => {
+    const el = stage.current;
+    if (!el) return;
+    const position = getPosition();
+    const reveal = smoothstep(clamp01((position - 8.55) / 0.45));
+    el.style.opacity = String(reveal);
+    el.style.setProperty("--phone-arrival", isReducedMotion() ? "0" : String(1 - reveal));
+    const shown = reveal > 0.01;
+    if (shown !== visible.current) {
+      visible.current = shown;
+      el.style.visibility = shown ? "visible" : "hidden";
+      el.setAttribute("aria-hidden", String(!shown));
+      el.inert = !shown;
+    }
+    const selected = Math.max(0, Math.min(7, Math.round(position - 9)));
+    for (let i = 0; i < panes.current.length; i++) {
+      const pane = panes.current[i];
+      if (!pane) continue;
+      const opacity = smoothstep(clamp01(1 - Math.abs(position - (i + 9))));
+      pane.style.opacity = String(opacity);
+      pane.style.visibility = opacity > 0.01 ? "visible" : "hidden";
+      if (selected !== active.current) {
+        pane.inert = i !== selected;
+        pane.setAttribute("aria-hidden", String(i !== selected));
+      }
+    }
+    active.current = selected;
+  });
+
+  const content = [<Welcome />, <Desk />, <Market />, <Missions />, <TrimDemo />, <Career />, <Build />, <Welcome closing />];
+
+  return <div ref={stage} className="product-showcase" aria-label="Interactive Trimmy app preview" aria-hidden="true" inert style={{ opacity: 0, visibility: "hidden" }}><div className="product-phone"><div className="product-phone-screen"><div className="product-phone-status"><span>9:41</span><span className="product-demo-badge">Demo</span><span className="product-phone-signal" aria-hidden="true">▮▮▮ <i /></span></div><div className="product-phone-island" aria-hidden="true" />{content.map((child, i) => <div key={i} ref={(node) => { panes.current[i] = node; }} className="product-pane" inert={i !== 0} aria-hidden={i !== 0} style={{ opacity: i === 0 ? 1 : 0, visibility: i === 0 ? "visible" : "hidden" }}>{child}</div>)}<span className="product-phone-home" aria-hidden="true" /></div></div><p className="product-showcase-caption">An interactive look inside Trimmy</p></div>;
+}

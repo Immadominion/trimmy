@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-14T16:49:39.735Z",
+  "network": "mainnet-beta",
+  "rpcUrl": "https://api.mainnet-beta.solana.com",
+  "walletUsed": false,
+  "transactionBuilt": false,
+  "transactionSigned": false,
+  "transactionBroadcast": false,
+  "eligibility": "unverified",
+  "executionEnabled": false,
+  "decoder": {
+    "token2022": "@solana-program/token-2022@0.6.1",
+    "clock": "@solana/sysvars@5.5.1"
+  },
+  "passed": true,
+  "publisher": {
+    "sourceUrl": "https://api.xstocks.fi/api/v2/public/assets/AAPLx",
+    "assetId": "9e43a778-fdc8-44f1-87de-f2e7420bb7f7",
+    "symbol": "AAPLx",
+    "name": "Apple xStock",
+    "isin": "CH1436219187",
+    "network": "Solana",
+    "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+    "provenance": "publisher_listed",
+    "eligibility": "unverified"
+  },
+  "genesisHash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "contextSlot": 447026231,
+  "chainClock": {
+    "slot": "447026231",
+    "epochStartTimestamp": "1789297792",
+    "epoch": "1034",
+    "leaderScheduleEpoch": "1035",
+    "unixTimestamp": "1789404581"
+  },
+  "accounts": [
+    {
+      "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+      "executable": false,
+      "data": [
+        "AQAAAGVqQkIv6okUBqQZ0dHeCPQqhHlBtaGulevOYZrDFyk07i87FvwNAAAIAQEAAAD/3+wbzSzTg5PITaoIyRzA041nf/jQq3tdAz8A9zLMMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARIAQABD+fHuLje4B+pFy3TmAJcivsAJKWAm5ORVi0NeJKXpxgfooHtWzpJmuZKqX9ZEXDx3mLLrtzM8Hn7eBixrhgflDAAgAEP58e4uN7gH6kXLdOYAlyK+wAkpYCbk5FWLQ14kpenGBgABAAEZADgABm9ZIlHMR3R4JaWa0UIupDVz9SjaXe4q94ErMU+ZReNQdcef6QrwP4h4dmoAAAAABS7fzmMN8D8aACEA/9/sG80s04OTyE2qCMkcwNONZ3/40Kt7XQM/APcyzDAABABBAEP58e4uN7gH6kXLdOYAlyK+wAkpYCbk5FWLQ14kpenGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgBAAEP58e4uN7gH6kXLdOYAlyK+wAkpYCbk5FWLQ14kpenGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATAKUAQ/nx7i43uAfqRct05gCXIr7ACSlgJuTkVYtDXiSl6cYH6KB7Vs6SZrmSql/WRFw8d5iy67czPB5+3gYsa4YH5QwAAABBcHBsZSB4U3RvY2sFAAAAQUFQTHhEAAAAaHR0cHM6Ly94c3RvY2tzLW1ldGFkYXRhLmJhY2tlZC5maS90b2tlbnMvU29sYW5hL0FBUEx4L21ldGFkYXRhLmpzb24AAAAA",
+        "base64"
+      ],
+      "space": 678
+    },
+    {
+      "owner": "Sysvar1111111111111111111111111111111111111",
+      "executable": false,
+      "data": [
+        "NxSlGgAAAACAhKZqAAAAAAoEAAAAAAAACwQAAAAAAAClJahqAAAAAA==",
+        "base64"
+      ],
+      "space": 40
+    }
+  ],
+  "inspection": {
+    "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+    "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "accountBytes": 678,
+    "rawAccountSha256": "a11c2f730809a1b823cf1940706369bb98e3f22f0ba0862219b8b3ae219ac8fa",
+    "decimals": 8,
+    "rawSupply": "15376355897326",
+    "mintAuthority": "7pt9tkctJPK7PPNQJ77GKg8ZffSF6QxoMiCFYHxrtaCj",
+    "freezeAuthority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+    "initialized": true,
+    "extensions": [
+      {
+        "__kind": "MetadataPointer",
+        "authority": "5aMNNLQJwAEeoemTEMkv5NVjqKwvvefRYCQ5Z67HFvEq",
+        "metadataAddress": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp"
+      },
+      {
+        "__kind": "PermanentDelegate",
+        "delegate": "5aMNNLQJwAEeoemTEMkv5NVjqKwvvefRYCQ5Z67HFvEq"
+      },
+      {
+        "__kind": "DefaultAccountState",
+        "state": 1
+      },
+      {
+        "__kind": "ScaledUiAmountConfig",
+        "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+        "multiplier": 1.0026642075893797,
+        "newMultiplierEffectiveTimestamp": "1786149000",
+        "newMultiplier": 1.0032690125398187
+      },
+      {
+        "__kind": "PausableConfig",
+        "authority": "JDq14BWvqCRFNu1krb12bcRpbGtJZ1FLEakMw6FdxJNs",
+        "paused": false
+      },
+      {
+        "__kind": "ConfidentialTransferMint",
+        "authority": "5aMNNLQJwAEeoemTEMkv5NVjqKwvvefRYCQ5Z67HFvEq",
+        "autoApproveNewAccounts": false,
+        "auditorElgamalPubkey": null
+      },
+      {
+        "__kind": "TransferHook",
+        "authority": "5aMNNLQJwAEeoemTEMkv5NVjqKwvvefRYCQ5Z67HFvEq",
+        "programId": "11111111111111111111111111111111"
+      },
+      {
+        "__kind": "TokenMetadata",
+        "updateAuthority": "5aMNNLQJwAEeoemTEMkv5NVjqKwvvefRYCQ5Z67HFvEq",
+        "mint": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+        "name": "Apple xStock",
+        "symbol": "AAPLx",
+        "uri": "https://xstocks-metadata.backed.fi/tokens/Solana/AAPLx/metadata.json",
+        "additionalMetadata": []
+      }
+    ],
+    "scaledUi": {
+      "authority": "S7vYFFWH6BjJyEsdrPQpqpYTqLTrPRK6KW3VwsJuRaS",
+      "storedMultiplier": 1.0026642075893797,
+      "nextMultiplier": 1.0032690125398187,
+      "nextEffectiveUnixTimestamp": "1786149000",
+      "observedChainUnixTimestamp": "1789404581",
+      "activeField": "newMultiplier",
+      "effectiveMultiplier": 1.0032690125398187,
+      "changesRawSupply": false,
+      "numericRepresentation": "IEEE-754-f64; not an exact decimal conversion"
+    },
+    "extensionReviewRequired": [
+      "PermanentDelegate",
+      "DefaultAccountState",
+      "PausableConfig",
+      "ConfidentialTransferMint",
+      "TransferHook"
+    ],
+    "eligibility": "unverified",
+    "executionEnabled": false,
+    "limitations": [
+      "Publisher listing and decoding do not establish user eligibility or issuer backing.",
+      "No pool, token-account restrictions, route, transfer, quote, redemption or authority-control proof is tested.",
+      "Raw supply is preserved as an integer string; no floating-point supply or holding conversion is produced."
+    ]
+  },
+  "finishedAt": "2026-09-14T16:49:42.079Z"
+}

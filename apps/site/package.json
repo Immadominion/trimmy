@@ -1,0 +1,10 @@
+{
+  "name": "@trimmy/site",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Trimmy public website. Static pages with no account or financial actions.",
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "python3 -m http.server 4174 --directory dist --bind 127.0.0.1"
+  }
+}

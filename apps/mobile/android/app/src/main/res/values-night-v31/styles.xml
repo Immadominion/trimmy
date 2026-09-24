@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ owns the launch splash; use the same office and paper surface. -->
+    <style name="LaunchTheme" parent="TrimmyWindowTheme">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/trimmy_paper</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_trimmy_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/trimmy_pine</item>
+    </style>
+</resources>

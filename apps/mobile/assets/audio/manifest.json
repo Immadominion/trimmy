@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-13",
+  "origin": "original_deterministic_synthesis",
+  "sourceScript": "../../../../tool/audio/generate_cues.py",
+  "sourceScriptSha256": "fe52a8ece8f61936d367e2934321d859e066b9abf12241ff7b7584dfe95d344b",
+  "seed": 1414678861,
+  "thirdPartySamples": [],
+  "rightsFile": "PROVENANCE.md",
+  "playback": {
+    "defaultEnabled": false,
+    "requiresUserGestureOnWeb": true,
+    "maxConcurrentVoices": 2,
+    "triggerFromConfirmedStateOnly": [
+      "audio.arrival"
+    ]
+  },
+  "assets": [
+    {
+      "id": "audio.soft_tap",
+      "file": "soft_tap.wav",
+      "bytes": 8204,
+      "sha256": "44d73ebe44e8b0182323b3bfe5514602a1f1218bba9ef7e7560ff45b220e4a08",
+      "sampleRate": 48000,
+      "channels": 1,
+      "bitDepth": 16,
+      "durationMs": 85,
+      "samplePeakDbfs": -25.0,
+      "truePeakDbtp": null,
+      "status": "audition_candidate",
+      "listeningApproved": false,
+      "preload": false,
+      "description": "Original damped additive oscillator; quiet wooden tap."
+    },
+    {
+      "id": "audio.paper_open",
+      "file": "paper_open.wav",
+      "bytes": 27884,
+      "sha256": "f0b295573980302352e584ed52da50a19eed764fec4f4bda7eb5d1629677d10e",
+      "sampleRate": 48000,
+      "channels": 1,
+      "bitDepth": 16,
+      "durationMs": 290,
+      "samplePeakDbfs": -27.0,
+      "truePeakDbtp": null,
+      "status": "audition_candidate",
+      "listeningApproved": false,
+      "preload": false,
+      "description": "Original seeded filtered noise; two soft paper rustles."
+    },
+    {
+      "id": "audio.arrival",
+      "file": "arrival.wav",
+      "bytes": 50924,
+      "sha256": "23cc6f4a28813a3f88838551dc4bd586c6f1369242d21aa3893c3f5f9e82d4e0",
+      "sampleRate": 48000,
+      "channels": 1,
+      "bitDepth": 16,
+      "durationMs": 530,
+      "samplePeakDbfs": -23.0,
+      "truePeakDbtp": null,
+      "status": "audition_candidate",
+      "listeningApproved": false,
+      "preload": false,
+      "description": "Original additive D5/A5 felted two-note arrival cue."
+    }
+  ]
+}

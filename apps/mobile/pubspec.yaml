@@ -1,0 +1,72 @@
+name: trimmy
+description: Trimmy is a gamified stock investing app for learning with paper trades.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+  flutter: '>=3.44.2'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: 2.5.5
+  audioplayers: 6.6.0
+  cupertino_icons: 1.0.8
+  http: 1.6.0
+  privy_flutter: 0.10.2
+  flutter_secure_storage: 11.2.0
+  url_launcher: 6.3.2
+  qr_flutter: 4.1.0
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+
+flutter:
+  uses-material-design: true
+  shaders:
+    - shaders/coin_edge_smear.frag
+  assets:
+    - assets/images/career_world/
+    - assets/images/ada-graphic-v2.webp
+    - assets/images/ada-acting-v1.webp
+    - assets/images/office-scene-v4.webp
+    - assets/images/office-desk-v5.webp
+    - assets/images/cast/
+    - assets/images/ui_review/
+    - assets/images/ui_review/icons8/
+    - assets/images/ui_review/wall-street-orbit/
+    - assets/images/ui_review/sal/
+    - assets/audio/soft_tap.wav
+    - assets/audio/wall_street_orbit_v4.wav
+    - assets/audio/welcome_press_v1.wav
+    - assets/audio/paper_open.wav
+    - assets/audio/arrival.wav
+    - assets/audio/saved_mark_v1.wav
+    - assets/fonts/manrope/OFL.txt
+    - assets/fonts/rubik/OFL.txt
+    - assets/fonts/bricolage/OFL.txt
+  fonts:
+    - family: Dejanire Sans
+      fonts:
+        - asset: assets/fonts/dejanire/DejanireSans-Regular.otf
+          weight: 400
+        - asset: assets/fonts/dejanire/DejanireSans-Medium.otf
+          weight: 500
+        - asset: assets/fonts/dejanire/DejanireSans-Bold.otf
+          weight: 700
+        - asset: assets/fonts/dejanire/DejanireSans-ExtraBold.otf
+          weight: 800
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/manrope/Manrope-Variable.ttf
+    - family: Rubik
+      fonts:
+        - asset: assets/fonts/rubik/Rubik-Variable.ttf
+    - family: Bricolage Grotesque
+      fonts:
+        - asset: assets/fonts/bricolage/BricolageGrotesque-Variable.ttf

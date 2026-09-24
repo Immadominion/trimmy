@@ -1,0 +1,17 @@
+/* Feedback is printed onto the evidence. Its text stays in the native live region. */
+.practice[data-activity-enhanced] .answer-seal{background:none;border:0;border-radius:0;width:116px;height:104px;right:-23px;top:59px;gap:0;color:#23563f;opacity:0;transform:rotate(12deg);transform-origin:100% 0;transition:none;pointer-events:none;font-size:10px;isolation:isolate}
+.practice[data-activity-enhanced][data-activity-outcome=correct] .answer-seal{opacity:1;transform:rotate(12deg);transition:none}
+.practice[data-activity-enhanced] .answer-seal .activity-stamp-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;overflow:visible;fill:none;stroke:none}
+.activity-stamp-paper{fill:#ccebd4}
+.activity-stamp-edge{fill:none;stroke:#337150;stroke-width:2.3;stroke-linecap:square;stroke-linejoin:round;opacity:.92}
+.activity-stamp-wear{fill:none;stroke:#ccebd4;stroke-width:2.8;stroke-linecap:round}
+.practice[data-activity-enhanced] .answer-seal .activity-stamp-check{width:39px;height:39px;margin-top:3px;transform:rotate(-3deg);stroke-width:3.2}
+.activity-stamp-check path,.activity-date-ink path{stroke-dasharray:1;stroke-dashoffset:0}
+.practice[data-activity-enhanced] .answer-seal>span{position:relative;margin-top:-1px;letter-spacing:.015em}
+.practice[data-activity-enhanced] .report-date [data-date]{position:relative;text-decoration:none}
+.activity-date-ink{position:absolute;left:-4%;bottom:-6px;width:108%;height:9px;overflow:visible;opacity:0;pointer-events:none}
+.activity-date-ink path{fill:none;stroke:#7455b8;stroke-width:2.7;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.activity-publication-ink path{stroke:#b84b65}
+.practice[data-activity-enhanced][data-activity-outcome=retry] .activity-date-ink{opacity:1}
+@media(max-width:700px){.practice[data-activity-enhanced] .answer-seal{width:98px;height:88px;right:0;top:49px;font-size:9px}.practice[data-activity-enhanced] .answer-seal .activity-stamp-check{width:33px;height:33px;margin-top:2px}}
+@media(max-width:380px){.practice[data-activity-enhanced] .answer-seal{top:2px}.practice[data-activity-enhanced] .paper-clip{right:114px}}

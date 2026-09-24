@@ -1,0 +1,47 @@
+{
+  "status": "candidate in isolated mobile layout study",
+  "family": "Rubik",
+  "license": "OFL-1.1",
+  "sourceLedger": "../../../../../art/studies/fonts/SOURCES.json",
+  "sourceRecords": [
+    {
+      "family": "rubik",
+      "file": "rubik/Variable.ttf",
+      "sourceUrl": "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/rubik/Rubik%5Bwght%5D.ttf",
+      "upstreamCommit": "8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5",
+      "bytes": 359804,
+      "sha256": "1b3a7437ba2af80e465e773ed60c5036d1ba6ace492d89046dbcf18fb31e4e88",
+      "license": "OFL-1.1",
+      "licenseFile": "rubik/OFL.txt",
+      "modified": false
+    },
+    {
+      "family": "rubik",
+      "file": "rubik/OFL.txt",
+      "sourceUrl": "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/rubik/OFL.txt",
+      "upstreamCommit": "8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5",
+      "bytes": 4384,
+      "sha256": "472cbe7c25441df63e9c7864b43eb3c0f4b3df950c66a76224e6cfe1eae843fb",
+      "license": "OFL-1.1",
+      "licenseFile": "rubik/OFL.txt",
+      "modified": false
+    },
+    {
+      "family": "rubik",
+      "file": "rubik/METADATA.pb",
+      "sourceUrl": "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/rubik/METADATA.pb",
+      "upstreamCommit": "8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5",
+      "bytes": 1310,
+      "sha256": "2e81cc9a038e89bcf9a14cd4e2d4513c1b5959e8b9189b835d4ecf4af11968a6",
+      "license": "OFL-1.1",
+      "licenseFile": "rubik/OFL.txt",
+      "modified": false
+    }
+  ],
+  "runtime": {
+    "path": "apps/mobile/assets/fonts/rubik/Rubik-Variable.ttf",
+    "bytes": 359804,
+    "sha256": "1b3a7437ba2af80e465e773ed60c5036d1ba6ace492d89046dbcf18fb31e4e88"
+  },
+  "coverageNote": "This acquired file has no U+20A6 Naira sign; use an explicit appropriate fallback or NGN label if needed."
+}

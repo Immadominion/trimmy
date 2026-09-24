@@ -1,0 +1,61 @@
+/* Mirrors mobile CompanyLogo: one full-bleed face, clipped into its coin rim. */
+.product-shell .company-logo.company-coin {
+  --company-coin-size: 49px;
+  width: var(--company-coin-size);
+  height: var(--company-coin-size);
+  flex: 0 0 var(--company-coin-size);
+  padding: calc(var(--company-coin-size) * .047);
+  border: 0;
+  border-radius: 32%;
+  background: linear-gradient(135deg, #fff 0%, #fff 44%, #b4afb9 100%);
+  box-shadow: none;
+  display: block;
+  overflow: hidden;
+  color: #171918;
+  font-family: Bricolage, Dejanire, sans-serif;
+  font-size: calc(var(--company-coin-size) * .38);
+  font-weight: 800;
+  line-height: 1;
+}
+.company-logo.company-coin .company-logo-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 29%;
+  background: #fff;
+}
+.company-logo.company-coin .company-logo-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, #ffffff26 0%, #ffffff00 45%, #26193730 100%);
+}
+.company-logo.company-coin .company-logo-face > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  max-width: none;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.company-logo.company-coin .company-logo-initial {position: relative; z-index: 1;}
+.product-shell .company-logo.company-coin.large {--company-coin-size: 66px;}
+.market-screen .company-logo.company-coin {--company-coin-size: 44px;}
+.desk-screen .company-logo.company-coin {--company-coin-size: 40px;}
+.intro-company .company-logo.company-coin {--company-coin-size: 42px;}
+@supports (corner-shape: squircle) {
+  .product-shell .company-logo.company-coin,
+  .company-logo.company-coin .company-logo-face {corner-shape: squircle;}
+}
+@media (max-width: 940px) {
+  .product-shell .company-logo.company-coin.large {--company-coin-size: 52px;}
+}
+@media (max-width: 700px) {
+  .product-shell .company-logo.company-coin {--company-coin-size: 40px;}
+  .product-shell .company-logo.company-coin.large {--company-coin-size: 57px;}
+}

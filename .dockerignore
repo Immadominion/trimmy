@@ -1,0 +1,38 @@
+# Keep the build context small and never ship local state, secrets or builds.
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+# The office image builds from apps/mobile, so only its heavy generated and
+# platform directories are excluded. The API image simply does not COPY it.
+apps/mobile/build
+apps/mobile/.dart_tool
+apps/mobile/android
+apps/mobile/ios
+apps/mobile/macos
+apps/mobile/linux
+apps/mobile/windows
+apps/mobile/art
+apps/site
+apps/web/dist
+art
+artifacts
+docs
+content
+contracts
+infra/.practice-runtime
+infra/.migration-runtime
+infra/tests
+tool/testing
+**/*.test.ts
+**/*.test.mjs
+**/test
+.env
+.env.*
+!.env.example
+**/*.log
+**/.DS_Store
+Dockerfile
+.dockerignore

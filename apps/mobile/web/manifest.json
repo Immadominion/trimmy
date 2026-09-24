@@ -1,0 +1,19 @@
+{
+  "name": "Trimmy",
+  "short_name": "Trimmy",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FAF9F6",
+  "theme_color": "#006344",
+  "description": "An illustrated practice office for exploring investing together.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

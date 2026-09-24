@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 2,
+  "contentVersion": "2026-09-15.1",
+  "payloadVersion": 6,
+  "floors": [
+    { "number": 1, "title": "Read the evidence" },
+    { "number": 2, "title": "Understand the numbers" },
+    { "number": 3, "title": "Work with the team" },
+    { "number": 4, "title": "Make the plan" }
+  ],
+  "activities": [
+    {
+      "id": "check-the-date",
+      "floor": 1,
+      "title": "Check the date",
+      "correctChoiceId": "add-year",
+      "acceptedChoiceIds": ["add-year"],
+      "choiceIds": ["add-year", "keep-headline"],
+      "introducedIn": 1,
+      "prerequisiteId": null
+    },
+    {
+      "id": "sales-and-profit",
+      "floor": 1,
+      "title": "Sales and profit",
+      "correctChoiceId": "check-costs",
+      "acceptedChoiceIds": ["check-costs"],
+      "choiceIds": ["check-costs", "sales-mean-profit"],
+      "introducedIn": 1,
+      "prerequisiteId": "check-the-date"
+    },
+    {
+      "id": "check-the-sample",
+      "floor": 1,
+      "title": "Check the sample",
+      "correctChoiceId": "eight-of-ten-testers",
+      "acceptedChoiceIds": ["eight-of-ten-testers"],
+      "choiceIds": ["eight-of-ten-testers", "all-testers", "eight-of-ten-customers", "all-customers"],
+      "introducedIn": 2,
+      "prerequisiteId": "sales-and-profit"
+    },
+    {
+      "id": "prepare-the-update",
+      "floor": 1,
+      "title": "Prepare the update",
+      "correctChoiceId": "dated-growth+lower-profit+trial-result",
+      "acceptedChoiceIds": ["dated-growth+lower-profit+trial-result"],
+      "choiceIds": [
+        "dated-growth+lower-profit+trial-result",
+        "dated-growth+lower-profit+current-growth",
+        "dated-growth+lower-profit+all-customers",
+        "dated-growth+trial-result+current-growth",
+        "dated-growth+trial-result+all-customers",
+        "dated-growth+current-growth+all-customers",
+        "lower-profit+trial-result+current-growth",
+        "lower-profit+trial-result+all-customers",
+        "lower-profit+current-growth+all-customers",
+        "trial-result+current-growth+all-customers"
+      ],
+      "introducedIn": 3,
+      "prerequisiteId": "check-the-sample"
+    },
+    {
+      "id": "compare-company-value",
+      "floor": 2,
+      "title": "Compare company value",
+      "correctChoiceId": "compare-total-value",
+      "acceptedChoiceIds": ["compare-total-value"],
+      "choiceIds": ["compare-total-value", "lower-price-means-smaller"],
+      "introducedIn": 4,
+      "prerequisiteId": "prepare-the-update"
+    },
+    {
+      "id": "count-the-fees",
+      "floor": 2,
+      "title": "Count the fees",
+      "correctChoiceId": "nine-dollars-invested",
+      "acceptedChoiceIds": ["nine-dollars-invested"],
+      "choiceIds": ["nine-dollars-invested", "ten-dollars-invested"],
+      "introducedIn": 4,
+      "prerequisiteId": "compare-company-value"
+    },
+    {
+      "id": "check-concentration",
+      "floor": 2,
+      "title": "Check concentration",
+      "correctChoiceId": "eighty-percent-aster",
+      "acceptedChoiceIds": ["eighty-percent-aster"],
+      "choiceIds": ["eighty-percent-aster", "three-equal-companies"],
+      "introducedIn": 4,
+      "prerequisiteId": "count-the-fees"
+    },
+    {
+      "id": "prepare-the-comparison",
+      "floor": 2,
+      "title": "Prepare the comparison",
+      "correctChoiceId": "include-value-fees-and-risk",
+      "acceptedChoiceIds": ["include-value-fees-and-risk"],
+      "choiceIds": ["include-value-fees-and-risk", "choose-cheapest-share", "ignore-the-fee"],
+      "introducedIn": 4,
+      "prerequisiteId": "check-concentration"
+    },
+    {
+      "id": "review-team-update",
+      "floor": 3,
+      "title": "Review the team’s update",
+      "correctChoiceId": "share-qualified-sales",
+      "acceptedChoiceIds": ["share-qualified-sales", "request-missing-costs"],
+      "choiceIds": ["share-qualified-sales", "request-missing-costs"],
+      "introducedIn": 5,
+      "prerequisiteId": "prepare-the-comparison"
+    },
+    {
+      "id": "read-returned-costs",
+      "floor": 3,
+      "title": "Read the returned costs",
+      "correctChoiceId": "compare-sales-and-costs",
+      "acceptedChoiceIds": ["compare-sales-and-costs"],
+      "choiceIds": ["compare-sales-and-costs", "repeat-sales-only"],
+      "introducedIn": 5,
+      "prerequisiteId": "review-team-update"
+    },
+    {
+      "id": "finish-team-update",
+      "floor": 3,
+      "title": "Finish the team’s update",
+      "correctChoiceId": "apply-returned-figures",
+      "acceptedChoiceIds": ["apply-returned-figures"],
+      "choiceIds": ["apply-returned-figures", "leave-earlier-action"],
+      "introducedIn": 5,
+      "prerequisiteId": "read-returned-costs"
+    },
+    {
+      "id": "set-a-loss-limit",
+      "floor": 4,
+      "title": "Set a loss limit",
+      "correctChoiceId": "commit-spare-only",
+      "acceptedChoiceIds": ["commit-spare-only"],
+      "choiceIds": ["commit-spare-only", "commit-everything"],
+      "introducedIn": 6,
+      "prerequisiteId": "finish-team-update"
+    },
+    {
+      "id": "plan-not-a-promise",
+      "floor": 4,
+      "title": "A plan is not a promise",
+      "correctChoiceId": "state-actions-and-limits",
+      "acceptedChoiceIds": ["state-actions-and-limits"],
+      "choiceIds": ["state-actions-and-limits", "promise-a-return"],
+      "introducedIn": 6,
+      "prerequisiteId": "set-a-loss-limit"
+    },
+    {
+      "id": "write-the-plan",
+      "floor": 4,
+      "title": "Write the plan",
+      "correctChoiceId": "keep-limit-and-no-promise",
+      "acceptedChoiceIds": ["keep-limit-and-no-promise"],
+      "choiceIds": ["keep-limit-and-no-promise", "drop-the-limit", "promise-the-gain"],
+      "introducedIn": 6,
+      "prerequisiteId": "plan-not-a-promise"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://trimmy.xyz/sitemap.xml

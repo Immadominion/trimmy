@@ -1,0 +1,103 @@
+/* Profile uses mobile's chosen trader, real career record and working preferences. */
+.web-profile{max-width:1000px;width:100%;margin:0 auto;padding-bottom:22px}
+.web-profile .page-intro{margin:0 0 27px}
+.web-profile .page-intro h1{font-size:40px;letter-spacing:-1.5px}
+.web-profile-overview{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);gap:28px;align-items:stretch}
+.web-profile-identity{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:20px;padding:23px 0}
+.web-profile-person{display:flex;align-items:center;gap:20px;min-width:0}
+.web-profile-avatar{width:98px;height:98px;flex:0 0 98px;overflow:hidden;border-radius:50%;background:#f1ecfb;display:grid;place-items:center}
+.web-profile-avatar img{width:43px;height:43px;object-fit:contain}
+.web-profile-avatar.chosen img{width:100%;height:100%;object-fit:cover}
+.web-profile-name{min-width:0}
+.web-profile-name h2{font-size:24px;letter-spacing:-.6px;overflow-wrap:anywhere}
+.web-profile-name p{font-size:13px;color:#81768f;margin-top:6px}
+.web-profile-rank{display:inline-block;background:#ece4fc;color:#6442bd;padding:5px 9px;border-radius:7px;font-size:11px;font-weight:600;margin-top:12px}
+.web-profile .text-button{min-height:44px;font-size:12px;display:inline-flex;align-items:center;gap:7px;color:#6745bd;white-space:normal}
+.web-profile-edit{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:500;min-height:44px;padding:9px 12px;border-radius:13px;background:#f7f4fc;color:#67577e}
+.web-profile-edit:hover:not(:disabled){background:#eee6fc;color:#6745bd}
+.web-profile-edit .web-profile-icon{width:19px;height:19px}
+.web-profile-progress{border-radius:22px;background:#f4f0fc;padding:21px 25px 23px;min-width:0}
+.web-profile-section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;margin-top:-5px}
+.web-profile-section-title h2,.web-profile-group h2{font-size:18px;letter-spacing:-.3px}
+.web-profile-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:18px 0 0;gap:16px}
+.web-profile-stats div{display:flex;flex-direction:column-reverse;gap:7px;min-width:0}
+.web-profile-stats dt{font-size:11px;color:#7d6f90}
+.web-profile-stats dd{margin:0;color:#483167;font-size:30px;line-height:1;letter-spacing:-1px;font-weight:600;font-variant-numeric:tabular-nums}
+.web-profile-stats dd small{font-size:15px;letter-spacing:0;color:#927fab;font-weight:400}
+.web-profile-promotion{margin-top:22px}
+.web-profile-promotion>div{display:flex;justify-content:space-between;gap:14px;font-size:10px;color:#79678f;margin-bottom:7px}
+.web-profile-promotion progress{display:block;appearance:none;-webkit-appearance:none;width:100%;height:5px;border:0;border-radius:10px;overflow:hidden;background:#e2d8f4;color:#8060d7}
+.web-profile-promotion progress::-webkit-progress-bar{background:#e2d8f4}
+.web-profile-promotion progress::-webkit-progress-value{background:#8060d7;border-radius:10px}
+.web-profile-promotion progress::-moz-progress-bar{background:#8060d7;border-radius:10px}
+.web-profile-promotion p,.web-profile-progress-note{font-size:11px;color:#7d6f90;margin-top:8px;line-height:1.5}
+.web-profile-progress-empty{display:flex;align-items:center;gap:17px;margin-top:10px;min-height:130px}
+.web-profile-progress-empty img{width:65px;height:70px;object-fit:contain;flex:0 0 65px}
+.web-profile-progress-empty strong{font-size:14px;font-weight:500}
+.web-profile-progress-empty p{font-size:12px;color:#7d6f90;margin-top:5px;max-width:210px}
+.web-profile-progress-error{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#8c4359}
+.web-profile-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px;margin:35px 0 28px}
+.web-profile-group{min-width:0}
+.web-profile-group>h2{padding-bottom:15px;border-bottom:1px solid #eee9f3;margin-bottom:19px}
+.web-profile-setting-row{display:flex;align-items:flex-start;gap:12px}
+.web-profile-icon{flex:0 0 25px;object-fit:contain;width:25px;height:25px}
+.web-profile-setting-row>div,.web-profile-setting-row>label{flex:1;min-width:0}
+.web-profile-setting-row strong{font-size:13px;font-weight:500;line-height:1.5;display:block}
+.web-profile-setting-row p,.web-profile-setting-row label>span{display:block;font-size:12px;color:#81768f;line-height:1.55;margin-top:5px;max-width:315px}
+.web-profile-account-action{margin:18px 0 0 37px}
+.web-profile .primary{min-height:44px;font-size:12px;padding:11px 17px;border-radius:13px;box-shadow:none}
+.web-profile .primary:active:not(:disabled){box-shadow:none;transform:none}
+.web-profile-switch{flex:0 0 36px;appearance:none;-webkit-appearance:none;width:36px;height:22px;border-radius:20px;background:#d6cfdf;position:relative;margin:1px 0 0;cursor:pointer}
+.web-profile-switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.web-profile-switch:checked{background:#7455e8}
+.web-profile-switch:checked::after{transform:translateX(14px)}
+.web-profile-help{display:flex;align-items:center;gap:8px;min-height:44px;margin:12px 0 0 37px;color:#6745bd;text-decoration:none;font-size:12px;font-weight:500;width:fit-content}
+.web-profile-help:hover{text-decoration:underline}
+.web-profile .intro-mobile-prompt{max-width:none;margin:0;padding:20px 24px;border-radius:18px;background:#f8f6fb}
+.web-profile .intro-mobile-prompt>div:first-child{max-width:370px}
+.web-profile .intro-mobile-prompt strong{font-size:14px}
+.web-profile .intro-mobile-prompt p{font-size:12px}
+.web-profile .intro-mobile-prompt .secondary{font-size:12px;min-height:44px;padding:10px 15px;border-radius:12px}
+.web-profile-persona-editor{margin:25px 0 0;padding:22px 24px 20px;background:#faf8fd;border-radius:22px}
+.web-profile-persona-editor fieldset{padding:0;margin:0;border:0;min-width:0}
+.web-profile-persona-editor legend{font-size:19px;font-weight:600;letter-spacing:-.4px;padding:0}
+.web-profile-persona-editor fieldset>p{font-size:12px;color:#81768f;margin-top:5px}
+.web-profile-traders{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:19px}
+.web-profile-trader{position:relative;display:flex;align-items:center;gap:12px;padding:14px 12px;border:2px solid transparent;border-radius:17px;background:#fff;cursor:pointer;min-width:0}
+.web-profile-trader.selected{border-color:#8d6adc;background:#f0e9fc}
+.web-profile-trader:focus-within{outline:3px solid #7455e8;outline-offset:3px}
+.web-profile-trader input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.web-profile-trader img{height:51px;width:51px;flex:0 0 51px;border-radius:50%;object-fit:cover}
+.web-profile-trader strong{font-size:13px;font-weight:600;display:block}
+.web-profile-trader small{display:block;font-size:10px;color:#81768f;line-height:1.5;margin-top:4px}
+.web-profile-editor-actions{display:flex;justify-content:flex-end;align-items:center;gap:22px;margin-top:19px}
+.web-profile-save-error{font-size:12px;color:#a2445e;margin-top:15px}
+@media(max-width:1000px){
+  .web-profile-overview{gap:23px;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+  .web-profile-avatar{width:78px;height:78px;flex-basis:78px}
+  .web-profile-person{gap:15px}
+  .web-profile-name h2{font-size:21px}
+  .web-profile-progress{padding:20px}
+  .web-profile-traders{grid-template-columns:minmax(0,1fr)}
+  .web-profile-trader small{font-size:11px}
+}
+@media(max-width:700px){
+  .web-profile .page-intro{margin-bottom:21px}
+  .web-profile .page-intro h1{font-size:32px;letter-spacing:-1px}
+  .web-profile-overview{grid-template-columns:minmax(0,1fr);gap:23px}
+  .web-profile-identity{padding:3px 0 0;gap:16px}
+  .web-profile-avatar{width:84px;height:84px;flex-basis:84px}
+  .web-profile-name h2{font-size:24px}
+  .web-profile-person{gap:19px}
+  .web-profile-progress{padding:19px 21px 22px;border-radius:20px}
+  .web-profile-stats{gap:12px;margin-top:15px}
+  .web-profile-stats dd{font-size:29px}
+  .web-profile-stats dt{font-size:10px}
+  .web-profile-settings{grid-template-columns:minmax(0,1fr);gap:27px;margin:28px 0 24px}
+  .web-profile-group>h2{margin-bottom:17px;padding-bottom:13px}
+  .web-profile-setting-row p,.web-profile-setting-row label>span{max-width:none}
+  .web-profile .intro-mobile-prompt{padding:20px;border-radius:17px}
+  .web-profile-persona-editor{padding:20px 17px;margin-top:23px}
+  .web-profile-trader{padding:12px;gap:15px}
+  .web-profile-trader img{width:53px;height:53px;flex-basis:53px}
+}

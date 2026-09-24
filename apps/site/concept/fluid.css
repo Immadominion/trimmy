@@ -1,0 +1,16 @@
+/* Continuity effects enhance the approved composition without moving reading surfaces. */
+.report-flight{position:fixed!important;left:0;top:0;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform,opacity;box-shadow:0 18px 65px #251b382a;contain:layout paint}
+.report-flight .answer-seal{display:none}
+.report[data-report-in-transit]{opacity:0}
+.office-stage.is-handing-over .envelope-paper{transform:translateY(-63px);opacity:.3}
+.office-stage.is-handing-over .envelope{transition:transform .6s cubic-bezier(.2,.8,.2,1);transform:rotate(-8deg) translateY(5px)}
+.world-enhanced>.world-building,.world-enhanced>.world-phone,.world-enhanced>.world-orbit{visibility:hidden}
+.origin-scene{position:absolute;inset:0;pointer-events:none}
+.origin-scene svg{width:100%;height:100%;overflow:visible}
+@media(max-width:700px){.header{gap:9px}.header .nav-play{font-size:12px}.report-flight{box-shadow:0 12px 30px #251b3820}}
+@media(prefers-reduced-motion:reduce){html:not([data-motion='on']) .report-flight{display:none}}
+html[data-motion='off'] .report-flight{display:none}
+.closing-token{position:absolute;right:0;top:0;width:26%;aspect-ratio:1;display:block;transform:rotate(22deg)}
+.closing-token img,.closing-token canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:none}
+.closing-token canvas{display:block}
+@media(max-width:700px){.closing-token{width:27%}}

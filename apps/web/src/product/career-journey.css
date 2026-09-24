@@ -1,0 +1,43 @@
+.career-shell .product-main{display:flex;flex-direction:column;overflow:hidden;scrollbar-gutter:auto;padding-bottom:0}
+.career-shell .product-main:has(>.career-journey){padding-top:0}
+.career-journey{--career-header-space:96px;--career-header-top:34px;position:relative;display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:1120px;margin:auto}
+/* The header floats over the street; only the frame clips the scrolling path. */
+.career-journey>.page-intro{position:absolute;inset:var(--career-header-top) 0 auto;z-index:4;margin:0;background:transparent;pointer-events:none}
+.career-journey>.page-intro .career-header-actions{pointer-events:auto}
+.career-journey .career-world-scroll{scroll-padding-top:calc(var(--career-header-space) + 24px)}
+.career-journey .career-world-street{padding-top:var(--career-header-space)}
+.career-journey .career-world-road svg{overflow:visible;transform:translateY(var(--career-header-space))}
+.career-journey>.work-recovery{margin-top:var(--career-header-space)}
+.career-journey:has(>.work-recovery) .career-journey-layout{--career-header-space:0px}
+.career-journey .career-world-error{margin-top:var(--career-header-space)}
+.career-journey .career-world:has(>.career-world-error) .career-world-scroll{--career-header-space:0px}
+.career-journey>.career-journey-layout>.career-world-empty{padding-top:var(--career-header-space)}
+.career-header-actions{display:flex;align-items:center;gap:20px}
+.career-sound{display:flex;align-items:center;gap:7px;font-size:11px;color:#8b7e9b;min-height:44px}
+.career-sound img{width:20px;height:20px;object-fit:contain}
+.career-sound[aria-pressed=false] img{opacity:.4}
+.career-journey-layout{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:40px;flex:1;min-height:0}
+.career-current{align-self:start;padding:calc(var(--career-header-space) + 28px) 5px 25px;max-height:100%;overflow:auto;scrollbar-width:thin;scroll-padding-top:var(--career-header-space)}
+.career-current-art{width:140px;height:140px;object-fit:contain;margin:0 auto 22px}
+.career-current h2{font-size:26px;line-height:1.2;margin:8px 0 14px}
+.career-current>p:not(.daily-label){font-size:13px;color:#82748e;line-height:1.6}
+.career-current .primary{width:100%;font-size:13px;min-height:49px;margin-top:9px}
+.work-stage-list{list-style:none;padding:0;margin:24px 0 20px;display:grid;gap:15px}
+.work-stage-list li{display:flex;align-items:center;gap:12px;color:#a79bb5;font-size:13px}
+.work-stage-list li>span:first-child{display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#f6f2fa;font-size:12px}
+.work-stage-list li.active{color:#7251cd;font-weight:600}.work-stage-list li.active>span:first-child{background:#ebe2fa}
+.work-stage-list li.done{color:#357d62}.work-stage-list li.done>span:first-child{background:#e6f3ec}
+.career-current .career-filed-count{font-size:11px;margin-top:20px;text-align:center}
+.work-recovery{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#855466;background:#fcf4f6;padding:10px 17px;border-radius:13px;margin-bottom:12px;flex-shrink:0}
+.work-recovery .text-button{font-size:12px}
+.workday-entry .workday-entry-brief{font-size:13px;color:#81718f;margin:8px 0 7px}
+.career-rank-dialog{border:0;border-radius:28px;padding:0;max-width:480px;width:calc(100% - 32px);max-height:85dvh;overflow:auto;background:white;color:var(--ink)}
+.career-rank-dialog::backdrop{background:#22132d40}
+.career-rank-content{padding:24px}.career-rank-content>.section-line{margin:0 0 20px}
+.career-rank-content>.section-line h2{font-size:21px}.rank-close{font-size:27px;min-height:44px;min-width:44px;color:#8b779d}
+.career-rank-content .career-milestones h3{font-size:14px}.career-rank-content .career-milestones article{gap:10px}
+.career-rank-content .career-milestones .milestone-status{white-space:normal;font-size:10px}
+.career-rank-content .career-streak-line{margin-top:18px}
+@media(max-width:1080px){.career-journey-layout{grid-template-columns:minmax(0,1fr) 235px;gap:20px}.career-current h2{font-size:23px}}
+@media(max-width:850px){.career-journey-layout{display:flex}.career-current{display:none}.career-header-actions{gap:10px}.career-sound span{display:none}}
+@media(max-width:700px){.career-shell .product-main{padding:24px 15px 0}.career-journey{--career-header-space:77px;--career-header-top:24px}.career-journey>.page-intro{padding:0 4px}.career-rank-link{font-size:13px;gap:7px}.career-rank-link>img{width:22px;height:22px}.career-rank-content{padding:20px}.workday-entry h2{font-size:22px}.workday-entry>img{width:70px;height:80px}}
