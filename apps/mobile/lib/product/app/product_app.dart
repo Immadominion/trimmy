@@ -1406,12 +1406,14 @@ class _ProductExperienceState extends State<ProductExperience>
               real: _realMoney,
               onSwitchMode: _switchMoneyMode,
               realBalance: realCashBalance(widget.account),
+              realSolBalance: realSolBalance(widget.account),
               realBalanceNote:
                   widget.account?.portfolioState?.portfolioIsFresh == true
-                  ? 'USDC · Solana'
+                  ? 'USDC available'
                   : 'Updating balance…',
               realHoldings: RealHoldings(
                 account: widget.account,
+                appleLogoUrl: _knownCompany('apple')?.logoUrl,
                 onAddMoney: _openFunding,
                 onApple: () => _openAssetId('apple'),
               ),

@@ -3,7 +3,7 @@ import '../design/paper_format.dart';
 import '../design/product_theme.dart';
 import '../design/product_motion_icon.dart';
 import '../money/wallet_stack.dart';
-import '../market/market_craft.dart';
+import 'holding_tile.dart';
 import '../onboarding/onboarding_models.dart';
 import 'desk_models.dart';
 
@@ -30,11 +30,12 @@ class DeskScreen extends StatelessWidget {
     this.real = false,
     this.realBalance,
     this.realBalanceNote,
+    this.realSolBalance,
     this.realHoldings,
     this.onSwitchMode,
   });
   final bool real;
-  final String? realBalance, realBalanceNote;
+  final String? realBalance, realBalanceNote, realSolBalance;
   final Widget? realHoldings;
   final VoidCallback? onSwitchMode;
   final DeskSnapshot snapshot;
@@ -140,6 +141,7 @@ class DeskScreen extends StatelessWidget {
                 const SizedBox(height: 17),
                 Wrap(
                   key: const ValueKey('desk-career-counters'),
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 22,
                   runSpacing: 8,
                   children: [
@@ -191,19 +193,17 @@ class DeskScreen extends StatelessWidget {
                 _empty(context)
               else
                 for (final holding in snapshot.holdings)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: const Color(0xFFF7F6FA),
-                      shape: productSquircle(24),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: onOpenHolding == null
-                            ? null
-                            : () => onOpenHolding!(holding),
-                        child: _HoldingRow(holding),
-                      ),
-                    ),
+                  HoldingTile(
+                    name: holding.name,
+                    logoUrl: holding.logoUrl,
+                    quantity: '${holding.quantity} shares',
+                    value: holding.valuePaper == null
+                        ? '—'
+                        : formatPaperForDisplay(holding.valuePaper!),
+                    changePercent: holding.changePercent,
+                    onTap: onOpenHolding == null
+                        ? null
+                        : () => onOpenHolding!(holding),
                   ),
               if (onChoosePersona != null) ...[
                 const SizedBox(height: 14),
@@ -253,6 +253,7 @@ class DeskScreen extends StatelessWidget {
     paper: snapshot,
     balance: realBalance,
     balanceNote: realBalanceNote,
+    solBalance: realSolBalance,
     onSwitch: onSwitchMode ?? () {},
     onBuy: onFastBuy ?? onOpenMarket,
     onAddMoney: onAddMoney,
@@ -312,30 +313,36 @@ class DeskScreen extends StatelessWidget {
     String label,
     Key key,
     bool streak,
-  ) => Wrap(
-    crossAxisAlignment: WrapCrossAlignment.center,
-    children: [
-      if (streak)
-        Image.asset(
-          'assets/images/ui_review/icons8/career-streak.png',
-          width: 22,
-          height: 22,
-          color: const Color(0xFFF47B35),
-          colorBlendMode: BlendMode.srcIn,
-        )
-      else
-        const SizedBox(width: 5),
-      const SizedBox(width: 5),
-      Text(
-        value,
-        key: key,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(color: ProductColor.ink),
+  ) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 28),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
+        children: [
+          if (streak)
+            Image.asset(
+              'assets/images/ui_review/icons8/career-streak.png',
+              width: 22,
+              height: 22,
+              color: const Color(0xFFF47B35),
+              colorBlendMode: BlendMode.srcIn,
+            ),
+          Text(
+            value,
+            key: key,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: ProductColor.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ],
       ),
-      const SizedBox(width: 4),
-      Text(label, style: Theme.of(context).textTheme.bodySmall),
-    ],
+    ),
   );
 
   Widget _empty(BuildContext context) => Container(
@@ -391,70 +398,4 @@ class DeskScreen extends StatelessWidget {
       ),
     ),
   );
-}
-
-Widget _coin(DeskHolding holding, double size) => CompanyLogo(
-  name: holding.name,
-  logoUrl: holding.logoUrl,
-  color: Colors.white,
-  size: size,
-);
-
-class _HoldingRow extends StatelessWidget {
-  const _HoldingRow(this.holding);
-  final DeskHolding holding;
-  @override
-  Widget build(BuildContext context) {
-    final change = holding.changePercent;
-    return Padding(
-      padding: const EdgeInsets.all(15),
-      child: Row(
-        children: [
-          _coin(holding, 42),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  holding.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${holding.quantity} shares',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  holding.valuePaper == null
-                      ? 'Price unavailable'
-                      : formatPaperForDisplay(holding.valuePaper!),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                if (change != null)
-                  Text(
-                    signedPercent(change),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: change >= 0
-                          ? ProductColor.gain
-                          : ProductColor.loss,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

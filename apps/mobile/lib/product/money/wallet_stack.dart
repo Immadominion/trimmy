@@ -14,12 +14,13 @@ class WalletStack extends StatefulWidget {
     required this.onBuy,
     this.balance,
     this.balanceNote,
+    this.solBalance,
     this.onAddMoney,
     this.onHistory,
   });
   final bool real;
   final DeskSnapshot paper;
-  final String? balance, balanceNote;
+  final String? balance, balanceNote, solBalance;
   final VoidCallback onSwitch, onBuy;
   final VoidCallback? onAddMoney, onHistory;
   @override
@@ -54,81 +55,100 @@ class _WalletStackState extends State<WalletStack>
   @override
   Widget build(BuildContext context) {
     final tall = MediaQuery.textScalerOf(context).scale(14) > 20;
-    return Column(
-      children: [
-        SizedBox(
-          height: tall ? 500 : 270,
-          child: AnimatedBuilder(
-            animation: _motion,
-            builder: (context, _) {
-              final t = _motion.value;
-              Widget layer(bool real) {
-                final front = real ? t : 1 - t;
-                final split = math.sin(t * math.pi);
-                return Positioned.fill(
-                  top: 20,
-                  child: Transform.translate(
-                    offset: Offset(
-                      (real ? 1 : -1) * split * 35,
-                      -18 * (1 - front) - split * 20,
-                    ),
-                    child: Transform.rotate(
-                      angle: (real ? 1 : -1) * split * .055,
-                      child: Transform.scale(
-                        scale: .94 + front * .06,
-                        child: IgnorePointer(
-                          ignoring: real != widget.real,
-                          child: ExcludeSemantics(
-                            excluding: real != widget.real,
-                            child: _card(real),
+    return AnimatedContainer(
+      key: const ValueKey('desk-wallet-widget'),
+      duration: productDuration(context, 300),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+      decoration: ShapeDecoration(
+        color: widget.real ? const Color(0xFFE3F1E9) : const Color(0xFFF0EAFB),
+        shape: productSquircle(34),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: tall ? 500 : 284,
+            child: AnimatedBuilder(
+              animation: _motion,
+              builder: (context, _) {
+                final t = _motion.value;
+                Widget layer(bool real) {
+                  final front = real ? t : 1 - t;
+                  final split = math.sin(t * math.pi);
+                  return Positioned.fill(
+                    top: 20,
+                    child: Transform.translate(
+                      offset: Offset(
+                        (real ? 1 : -1) * split * 35,
+                        -18 * (1 - front) - split * 20,
+                      ),
+                      child: Transform.rotate(
+                        angle: (real ? 1 : -1) * split * .055,
+                        child: Transform.scale(
+                          scale: .94 + front * .06,
+                          child: IgnorePointer(
+                            ignoring: real != widget.real,
+                            child: ExcludeSemantics(
+                              excluding: real != widget.real,
+                              child: _card(real),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }
+                  );
+                }
 
-              return Stack(
-                clipBehavior: Clip.none,
-                children: t < .5
-                    ? [layer(true), layer(false)]
-                    : [layer(false), layer(true)],
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextButton.icon(
-                onPressed: widget.onBuy,
-                icon: const Icon(Icons.add_rounded, size: 21),
-                label: const Text('Fast buy'),
-              ),
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: t < .5
+                      ? [layer(true), layer(false)]
+                      : [layer(false), layer(true)],
+                );
+              },
             ),
-            if (widget.real)
+          ),
+          const SizedBox(height: 6),
+          Row(
+            key: const ValueKey('desk-wallet-actions'),
+            children: [
               Expanded(
                 child: TextButton.icon(
-                  onPressed: widget.onAddMoney,
-                  icon: const Icon(Icons.south_west_rounded, size: 20),
-                  label: const Text('Add money'),
-                ),
-              )
-            else
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: widget.onHistory,
-                  icon: const Icon(Icons.history_rounded, size: 20),
-                  label: const Text('History'),
+                  style: _actionStyle(),
+                  onPressed: widget.onBuy,
+                  icon: const Icon(Icons.add_rounded, size: 21),
+                  label: const Text('Fast buy'),
                 ),
               ),
-          ],
-        ),
-      ],
+              if (widget.real)
+                Expanded(
+                  child: TextButton.icon(
+                    style: _actionStyle(),
+                    onPressed: widget.onAddMoney,
+                    icon: const Icon(Icons.south_west_rounded, size: 20),
+                    label: const Text('Add money'),
+                  ),
+                )
+              else
+                Expanded(
+                  child: TextButton.icon(
+                    style: _actionStyle(),
+                    onPressed: widget.onHistory,
+                    icon: const Icon(Icons.history_rounded, size: 20),
+                    label: const Text('History'),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
+
+  ButtonStyle _actionStyle() => TextButton.styleFrom(
+    foregroundColor: widget.real ? ProductColor.pine : ProductColor.violetDark,
+    minimumSize: const Size(48, 52),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+  );
 
   Widget _card(bool real) {
     final type = Theme.of(context).textTheme;
@@ -220,20 +240,38 @@ class _WalletStackState extends State<WalletStack>
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    real
-                        ? widget.balanceNote ?? 'USDC · Solana'
-                        : (widget.paper.paperValueIsComplete
-                              ? '${widget.paper.holdings.length} positions'
-                              : widget.paper.paperValueState ==
-                                    DeskPaperValueState.partial
-                              ? 'Some prices unavailable'
-                              : 'Position prices unavailable'),
-                    style: type.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: .85),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        real
+                            ? widget.balanceNote ?? 'USDC available'
+                            : (widget.paper.paperValueIsComplete
+                                  ? '${widget.paper.holdings.length} positions'
+                                  : widget.paper.paperValueState ==
+                                        DeskPaperValueState.partial
+                                  ? 'Some prices unavailable'
+                                  : 'Position prices unavailable'),
+                        style: type.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: .85),
+                        ),
+                      ),
+                      if (real) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.solBalance == null
+                              ? 'Checking SOL…'
+                              : '${widget.solBalance} SOL for fees',
+                          key: const ValueKey('real-sol-balance'),
+                          style: type.bodySmall?.copyWith(
+                            color: Colors.white.withValues(alpha: .85),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
+                if (real) const CashAssetMarks(),
                 if (!real && latest.isNotEmpty)
                   SizedBox(
                     width: 40 + (latest.length - 1) * 26,
@@ -270,4 +308,44 @@ class _WalletStackState extends State<WalletStack>
       ),
     );
   }
+}
+
+/// Cash assets share the card, visually paired without merging their units.
+class CashAssetMarks extends StatelessWidget {
+  const CashAssetMarks({super.key});
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'USDC and SOL',
+    image: true,
+    child: ExcludeSemantics(
+      child: SizedBox(
+        width: 68,
+        height: 44,
+        child: Stack(
+          children: [
+            for (final item in [(0.0, 'usdc'), (25.0, 'sol')])
+              Positioned(
+                left: item.$1,
+                child: Container(
+                  key: ValueKey('cash-logo-${item.$2}'),
+                  width: 43,
+                  height: 43,
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/ui_review/cash-${item.$2}.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

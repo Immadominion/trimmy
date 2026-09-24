@@ -124,6 +124,7 @@ void main() {
                 real: real,
                 paper: DeskSnapshot.newRookie(handle: ''),
                 balance: r'$25.00',
+                solBalance: '0.01',
                 onSwitch: () => setState(() => real = !real),
                 onBuy: () {},
                 onAddMoney: () {},
@@ -144,6 +145,22 @@ void main() {
       );
       expect(find.text(r'$25.00').hitTestable(), findsOneWidget);
       expect(find.text('Add money').hitTestable(), findsOneWidget);
+      final shell = find.byKey(const ValueKey('desk-wallet-widget'));
+      expect(
+        find.descendant(of: shell, matching: find.text('Fast buy')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: shell, matching: find.text('Add money')),
+        findsOneWidget,
+      );
+      expect(find.text('0.01 SOL for fees').hitTestable(), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('cash-logo-sol'))).dx,
+        lessThan(
+          tester.getTopRight(find.byKey(const ValueKey('cash-logo-usdc'))).dx,
+        ),
+      );
       expect(tester.takeException(), isNull);
     },
   );

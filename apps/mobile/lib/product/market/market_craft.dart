@@ -199,16 +199,18 @@ class CompanyLogo extends StatelessWidget {
     required this.logoUrl,
     required this.color,
     this.size = 48,
+    this.fallbackAsset,
   });
 
   final String name;
+  final String? fallbackAsset;
   final String? logoUrl;
   final Color color;
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final fallback = Center(
+    final initial = Center(
       child: Text(
         name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
         style: TextStyle(
@@ -218,6 +220,13 @@ class CompanyLogo extends StatelessWidget {
         ),
       ),
     );
+    final fallback = fallbackAsset == null
+        ? initial
+        : Image.asset(
+            fallbackAsset!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => initial,
+          );
     return Semantics(
       label: '$name logo',
       image: true,

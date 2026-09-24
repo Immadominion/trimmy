@@ -237,6 +237,13 @@ void main() {
     );
     expect(streakText.style?.color, ProductColor.ink);
     expect(trimsText.style?.color, ProductColor.ink);
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('desk-streak-count'))).dy,
+      closeTo(
+        tester.getCenter(find.byKey(const ValueKey('desk-trims-count'))).dy,
+        .1,
+      ),
+    );
   });
 
   testWidgets('guest can reach sign in without a disabled money control', (

@@ -15,3 +15,7 @@ A font licence for application use does not automatically grant the right to pub
 The application uses [Icons8](https://icons8.com/) assets alongside custom artwork. Preserve required attribution and use an appropriate Icons8 licence for distribution. Mixkit-derived intro cues and crowd recordings are excluded from Git because the [Mixkit licence](https://mixkit.co/license/modal/sfxFree/) prohibits redistribution with source files. Public asset setup substitutes original Trimmy cues on mobile and a silent crowd preview track on the marketing site. The credited Kevin MacLeod piano recording remains under CC BY 4.0. Original sound provenance is recorded under `apps/mobile/assets/audio/`; web asset credits are in `apps/web/public/trimmy/` and the marketing bundle's provenance files.
 
 Source-art studies, reference collections, After Effects working files, raw recordings and internal production notes remain local and are excluded from this source publication.
+
+## Cash asset marks
+
+The USDC mark comes from the [Solana token list](https://github.com/solana-labs/token-list/blob/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png); the SOL mark comes from the [Trust Wallet asset collection](https://github.com/trustwallet/assets/blob/master/blockchains/solana/info/logo.png). They identify the wallet's supported cash assets; the marks are not modified.
