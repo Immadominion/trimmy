@@ -2,7 +2,6 @@ import '../design/product_notice.dart';
 import '../../ui_review/review_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../markets/followed_stocks_controller.dart';
 import '../../markets/followed_stocks.dart';
@@ -363,7 +362,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                         selected: list == _activeList,
                         onTap: () {
                           if (ReviewFeedback.shared.haptics) {
-                            HapticFeedback.selectionClick();
+                            ReviewFeedback.shared.impact(selection: true);
                           }
                           setState(() => _list = list);
                           _loadFollowed();

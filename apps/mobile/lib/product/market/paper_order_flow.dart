@@ -1,7 +1,6 @@
 import '../../ui_review/review_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../design/product_notice.dart';
 import '../design/product_success_mark.dart';
 import '../design/paper_format.dart';
@@ -120,7 +119,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
   void _key(String key) {
     if (_busy) return;
     if (ReviewFeedback.shared.haptics) {
-      HapticFeedback.selectionClick();
+      ReviewFeedback.shared.impact(selection: true);
     }
     setState(() {
       _message = null;
@@ -169,7 +168,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
   void _switchUnit(PaperQuantityUnit value) {
     if (_busy || value == _unit) return;
     if (ReviewFeedback.shared.haptics) {
-      HapticFeedback.selectionClick();
+      ReviewFeedback.shared.impact(selection: true);
     }
     setState(() {
       _input = _price == null
@@ -336,7 +335,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
       _step = _OrderStep.report;
     });
     if (ReviewFeedback.shared.haptics) {
-      HapticFeedback.lightImpact();
+      ReviewFeedback.shared.impact();
     }
     try {
       widget.onConfirmed?.call(receipt);
@@ -838,7 +837,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                 ? null
                 : () {
                     if (ReviewFeedback.shared.haptics) {
-                      HapticFeedback.selectionClick();
+                      ReviewFeedback.shared.impact(selection: true);
                     }
                     // Percentages and Max always sell exact shares, never a rounded
                     // cash equivalent that can oversell or leave fractional dust.

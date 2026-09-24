@@ -34,6 +34,7 @@ import '../design/product_notice.dart';
 import '../design/product_state_page.dart';
 import '../design/product_components.dart';
 import '../design/product_theme.dart';
+import '../design/product_feedback_scope.dart';
 import '../desk/desk_models.dart';
 import '../desk/desk_portfolio_projection.dart';
 import '../desk/desk_screen.dart';
@@ -99,6 +100,7 @@ class _TrimmyProductAppState extends State<TrimmyProductApp> {
       title: 'Trimmy',
       debugShowCheckedModeBanner: false,
       theme: productTheme(),
+      builder: (context, child) => ProductFeedbackScope(child: child!),
       home: Stack(
         fit: StackFit.expand,
         children: [

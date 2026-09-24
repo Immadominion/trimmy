@@ -1,7 +1,6 @@
 import '../../ui_review/review_feedback.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../design/product_theme.dart';
 import 'stock_facts.dart';
 import 'market_craft.dart';
@@ -62,7 +61,7 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
     }
     if (_selected != closest) {
       if (ReviewFeedback.shared.haptics) {
-        HapticFeedback.selectionClick();
+        ReviewFeedback.shared.impact(selection: true);
       }
       setState(() {
         _selected = closest;
@@ -191,7 +190,7 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
                       if (ReviewFeedback.shared.haptics) {
-                        HapticFeedback.selectionClick();
+                        ReviewFeedback.shared.impact(selection: true);
                       }
                       setState(() {
                         _selected = null;

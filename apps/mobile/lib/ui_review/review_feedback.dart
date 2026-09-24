@@ -32,6 +32,10 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   Future<void>? _preparingWork;
   int _workGeneration = 0;
   bool _disposed = false;
+  int _cueRevision = 0;
+  int get cueRevision => _cueRevision;
+  final _feedbackClock = Stopwatch()..start();
+  int? _lastImpactMicros;
 
   Future<void> prepareWork() => _preparingWork ??= _prepareWork();
   Future<void> _prepareWork() async {
@@ -73,6 +77,7 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void workCue(WorkSound cue) {
+    _cueRevision++;
     impact(selection: cue == WorkSound.select);
     final player = _workPlayers[cue];
     if (!sound || !_foreground || volume == 0 || player == null) return;
@@ -163,6 +168,7 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _prepareTap() async {
     await load();
+    if (_disposed) return;
     _observeLifecycle();
     try {
       final context = AudioContext(
@@ -177,9 +183,14 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
       await player.setAudioContext(context);
       await player.setReleaseMode(ReleaseMode.stop);
       await player.setVolume(volume);
-      await player.setSource(AssetSource('audio/welcome_press_v1.wav'));
+      await player.setSource(AssetSource('audio/soft_tap.wav'));
+      if (_disposed) {
+        await player.dispose();
+        return;
+      }
       _tapReady = true;
     } catch (error) {
+      _preparingTap = null;
       debugPrint('Trimmy button audio could not prepare: $error');
       // Feedback is optional. Never delay the action or queue late taps.
     }
@@ -238,7 +249,10 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void impact({bool selection = false}) {
-    if (!_foreground || !haptics) return;
+    if (_disposed || !_foreground || !haptics) return;
+    final now = _feedbackClock.elapsedMicroseconds;
+    if (_lastImpactMicros != null && now - _lastImpactMicros! < 80000) return;
+    _lastImpactMicros = now;
     if (selection) {
       unawaited(HapticFeedback.selectionClick());
     } else {
@@ -247,8 +261,11 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void press({bool selection = false}) {
+    _cueRevision++;
     impact(selection: selection);
-    if (!sound || volume == 0 || !_foreground || !_tapReady) return;
+    if (_disposed || !sound || volume == 0 || !_foreground || !_tapReady) {
+      return;
+    }
     final generation = ++_playGeneration;
     unawaited(() async {
       try {

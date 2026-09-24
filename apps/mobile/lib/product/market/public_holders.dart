@@ -297,7 +297,7 @@ class _PublicHoldersViewState extends State<PublicHoldersView> {
     await Clipboard.setData(ClipboardData(text: holder.owner));
     if (!mounted) return;
     if (ReviewFeedback.shared.haptics) {
-      HapticFeedback.selectionClick();
+      ReviewFeedback.shared.impact(selection: true);
     }
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
