@@ -1,6 +1,7 @@
 import '../money/money_mode.dart';
 import '../money/real_holdings.dart';
 import '../onboarding/first_stock_followup.dart';
+import '../notifications/notification_permission.dart';
 import '../workdays/workdays.dart';
 import '../workdays/workday_screen.dart';
 import '../workdays/career_world.dart';
@@ -284,6 +285,22 @@ class _ProductExperienceState extends State<ProductExperience>
   String? _promotionStorageKey;
   CareerRank? _promotionTarget;
   bool _promotionPreparing = false;
+  bool _reminderCareerPending = false;
+
+  void _onReminderCareer() {
+    if (!mounted) return;
+    setState(() => _reminderCareerPending = true);
+  }
+
+  Future<void> _consumeReminderCareer() async {
+    if (await ProductNotificationPermission.consumeOpenCareer() && mounted) {
+      _onReminderCareer();
+    }
+  }
+
+  void _syncReminder() {
+    unawaited(ReminderPreferences.sync(widget.preferences, _paperPrincipalKey));
+  }
 
   bool get _realMoney => MoneyModeScope.isReal(context);
 
@@ -348,6 +365,10 @@ class _ProductExperienceState extends State<ProductExperience>
     _reasonPrivacy.addListener(_reasonPrivacyChanged);
     widget.account?.addListener(_realPortfolioChanged);
     unawaited(_refreshLiveCapabilities());
+    ProductNotificationPermission.setOnOpenCareer(() {
+      unawaited(_consumeReminderCareer());
+    });
+    unawaited(_consumeReminderCareer());
   }
 
   void _reasonPrivacyChanged() {
@@ -357,6 +378,8 @@ class _ProductExperienceState extends State<ProductExperience>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+    _syncReminder();
+    unawaited(_consumeReminderCareer());
     if (_dailyDesk != null) unawaited(_dailyDesk!.refresh());
     _expirePortfolioValuation();
     unawaited(_refreshPortfolio());
@@ -569,6 +592,7 @@ class _ProductExperienceState extends State<ProductExperience>
     _portfolioFailure = null;
     _guestDeskRecovery = null;
     _paperPrincipalKey = null;
+    _syncReminder();
     _accountEntryFailed = false;
     _accountEntryRunning = false;
     _forgetPendingPromotion();
@@ -703,6 +727,7 @@ class _ProductExperienceState extends State<ProductExperience>
         final binding = _portfolioSession.bind(principalKey);
         _portfolioBinding = binding;
         _paperPrincipalKey = principalKey;
+        _syncReminder();
         _httpOrders = orders;
         _httpPortfolio = portfolio;
         _httpPaperReset = paperResetRepository;
@@ -1202,6 +1227,7 @@ class _ProductExperienceState extends State<ProductExperience>
     _latestCompany = null;
     _reasonedOrderIds.clear();
     _paperPrincipalKey = null;
+    _syncReminder();
     _accountEntryFailed = false;
     _accountEntryRunning = false;
     _forgetPendingPromotion();
@@ -1219,6 +1245,7 @@ class _ProductExperienceState extends State<ProductExperience>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.account?.removeListener(_realPortfolioChanged);
+    ProductNotificationPermission.setOnOpenCareer(null);
     _careerDateTimer?.cancel();
     _portfolioValuationTimer?.cancel();
     _market?.removeListener(_marketChanged);
@@ -1473,6 +1500,21 @@ class _ProductExperienceState extends State<ProductExperience>
 
   Widget _shell(OnboardingProfile profile) {
     _ensureDailyDesk();
+    if (_reminderCareerPending) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            !_reminderCareerPending ||
+            _needsAccountChoice ||
+            widget.session.launchStep != ProductLaunchStep.app) {
+          return;
+        }
+        final shell = _shellKey.currentState;
+        if (shell == null) return;
+        _reminderCareerPending = false;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        shell.select(ProductTab.floor);
+      });
+    }
     return ProductShell(
       key: _shellKey,
       onTabChanged: _productTabChanged,

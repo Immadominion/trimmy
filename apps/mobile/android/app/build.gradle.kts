@@ -1,15 +1,24 @@
 import java.io.FileInputStream
 import java.util.Properties
 
-// Release signing material lives outside the repository. Without it the build
-// falls back to the debug key, so a fresh checkout and CI still build, but a
-// release signed that way is not distributable and is not treated as if it were.
+// Release signing material lives outside the repository. A development device
+// update may explicitly retain its debug certificate without clearing user data.
+// Distributable releases must never silently fall back to that certificate.
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) FileInputStream(keystorePropertiesFile).use { load(it) }
 }
 val hasReleaseSigning = keystorePropertiesFile.exists() &&
     listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { keystoreProperties[it] != null }
+
+val deviceDebugSigning = System.getenv("TRIMMY_DEVICE_DEBUG_SIGNING") == "true"
+
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.name.contains("Release", ignoreCase = true) } &&
+        !hasReleaseSigning && !deviceDebugSigning) {
+        throw GradleException("Release signing is missing. Configure android/key.properties, or explicitly set TRIMMY_DEVICE_DEBUG_SIGNING=true for a local device build.")
+    }
+}
 
 plugins {
     id("com.android.application")
@@ -68,10 +77,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseSigning) {
+            signingConfig = if (hasReleaseSigning && !deviceDebugSigning) {
                 signingConfigs.getByName("release")
             } else {
-                // Keeps `flutter run --release` working without the keystore.
+                // Explicit local-device build; never a store/release artifact.
                 signingConfigs.getByName("debug")
             }
         }
