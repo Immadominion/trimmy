@@ -6,6 +6,7 @@ import '../workdays/workday_screen.dart';
 import '../workdays/career_world.dart';
 import '../market/fast_buy_sheet.dart';
 import '../market/live_order_flow.dart';
+import '../market/live_trading.dart';
 import '../community/community.dart';
 import '../desk/desk_activity.dart';
 import '../../social/relationship.dart';
@@ -167,6 +168,79 @@ class _ProductExperienceState extends State<ProductExperience>
   );
   Timer? _careerDateTimer;
   ProductMarketSession? _market;
+  LiveTradingCapabilities? _liveCapabilities;
+  Future<void>? _liveCapabilitiesRequest;
+  bool _liveCapabilitiesFailed = false;
+
+  Future<void> _refreshLiveCapabilities() {
+    return _liveCapabilitiesRequest ??= _readLiveCapabilities().whenComplete(
+      () {
+        _liveCapabilitiesRequest = null;
+      },
+    );
+  }
+
+  Future<void> _readLiveCapabilities() async {
+    final origin = PracticeAccountConfig.fromEnvironment().apiUri;
+    if (origin == null) return;
+    try {
+      final capabilities = await fetchLiveTradingCapabilities(
+        origin,
+        client: _http,
+      );
+      if (!mounted) return;
+      setState(() {
+        _liveCapabilities = capabilities;
+        _liveCapabilitiesFailed = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _liveCapabilities = null;
+        _liveCapabilitiesFailed = true;
+      });
+    }
+    if (mounted) _portfolioViewRevision.value++;
+  }
+
+  Future<List<MarketCompany>> _availableLiveCompanies() async {
+    await _refreshLiveCapabilities();
+    final caps = _liveCapabilities;
+    if (caps == null) throw const FormatException('Trading unavailable');
+    if (!caps.enabled) return const [];
+    final companies = await Future.wait(
+      caps.assets.map((asset) async {
+        try {
+          return _knownCompany(asset.assetId) ??
+              await _market?.findCompany(asset.assetId);
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
+    final available = <MarketCompany>[];
+    for (final company in companies) {
+      if (company == null) continue;
+      final asset = caps.forCompany(company);
+      if (asset != null) available.add(company.withVariant(asset.mint));
+    }
+    if (available.isEmpty && caps.assets.isNotEmpty) {
+      throw const FormatException('Market unavailable');
+    }
+    return available;
+  }
+
+  void _realPortfolioChanged() {
+    if (!mounted) return;
+    _portfolioViewRevision.value++;
+    unawaited(_resolveHoldingCompanies());
+  }
+
+  Future<void> _refreshRealPortfolio() async {
+    await widget.account?.refreshPortfolio();
+    if (mounted) _portfolioViewRevision.value++;
+  }
+
   http.Client? _stockFactsTransport;
   HttpStockFactsRepository? _httpStockFacts;
   MarketFactsController? _marketFacts;
@@ -272,6 +346,8 @@ class _ProductExperienceState extends State<ProductExperience>
     _missions.addListener(_careerChanged);
     _careerDayContext.addListener(_careerDayContextChanged);
     _reasonPrivacy.addListener(_reasonPrivacyChanged);
+    widget.account?.addListener(_realPortfolioChanged);
+    unawaited(_refreshLiveCapabilities());
   }
 
   void _reasonPrivacyChanged() {
@@ -284,6 +360,7 @@ class _ProductExperienceState extends State<ProductExperience>
     if (_dailyDesk != null) unawaited(_dailyDesk!.refresh());
     _expirePortfolioValuation();
     unawaited(_refreshPortfolio());
+    unawaited(_refreshLiveCapabilities());
     unawaited(_refreshCareerDayContext(refreshDependents: true));
   }
 
@@ -415,6 +492,10 @@ class _ProductExperienceState extends State<ProductExperience>
   @override
   void didUpdateWidget(covariant ProductExperience oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.account != widget.account) {
+      oldWidget.account?.removeListener(_realPortfolioChanged);
+      widget.account?.addListener(_realPortfolioChanged);
+    }
     _syncPaperRepositories();
   }
 
@@ -1137,6 +1218,7 @@ class _ProductExperienceState extends State<ProductExperience>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.account?.removeListener(_realPortfolioChanged);
     _careerDateTimer?.cancel();
     _portfolioValuationTimer?.cancel();
     _market?.removeListener(_marketChanged);
@@ -1415,9 +1497,11 @@ class _ProductExperienceState extends State<ProductExperience>
                   : 'Updating balance…',
               realHoldings: RealHoldings(
                 account: widget.account,
-                appleLogoUrl: _knownCompany('apple')?.logoUrl,
+                logoForAsset: (holding) =>
+                    _knownCompany(holding.assetId)?.logoUrl,
                 onAddMoney: _openFunding,
-                onApple: () => _openAssetId('apple'),
+                onAsset: (holding) => unawaited(_openAssetId(holding.assetId)),
+                onExplore: _openFastBuy,
               ),
               dailyDesk: _dailyDesk == null
                   ? null
@@ -1460,7 +1544,10 @@ class _ProductExperienceState extends State<ProductExperience>
               onRefresh: () async {
                 await Future.wait([
                   if (_dailyDesk != null) _dailyDesk!.refresh(),
-                  _retryPaperDesk(),
+                  if (_realMoney)
+                    _refreshRealPortfolio()
+                  else
+                    _retryPaperDesk(),
                   _career.refresh(),
                   _missions.refresh(),
                 ]);
@@ -1607,6 +1694,10 @@ class _ProductExperienceState extends State<ProductExperience>
     if (!mounted || !_signedIn) return;
     ReviewFeedback.shared.press(selection: true);
     await mode.select(!mode.real);
+    if (mode.real) {
+      unawaited(_refreshLiveCapabilities());
+      unawaited(_refreshRealPortfolio());
+    }
   }
 
   Future<void> _openLiveAsset(
@@ -1651,6 +1742,7 @@ class _ProductExperienceState extends State<ProductExperience>
       shape: productSquircle(30),
       builder: (_) => FundWalletSheet(account: widget.account!),
     );
+    if (mounted) await _refreshRealPortfolio();
   }
 
   Future<void> _openFastBuy() async {
@@ -1688,6 +1780,14 @@ class _ProductExperienceState extends State<ProductExperience>
             removeBottom: true,
             child: FastBuySheet(
               gateway: market.search,
+              loadAvailableCompanies: _realMoney
+                  ? _availableLiveCompanies
+                  : null,
+              canSelect: _realMoney
+                  ? (company) =>
+                        _liveCapabilities?.enabled == true &&
+                        _liveCapabilities?.forCompany(company) != null
+                  : null,
               companies: market.companies.isEmpty
                   ? market.starterCompanies
                   : market.companies,
@@ -1743,6 +1843,7 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   Future<void> _openCompany(MarketCompany company) async {
+    if (_realMoney) unawaited(_refreshLiveCapabilities());
     final generation = _portfolioGeneration;
     final principalKey = _paperPrincipalKey;
     final orderRepository = _httpOrders;
@@ -1752,7 +1853,15 @@ class _ProductExperienceState extends State<ProductExperience>
         builder: (context, revision, _) {
           // Keep an already-open asset route aligned with mode changes made in Settings.
           MoneyModeScope.of(context);
-          final primaryMint = company.primaryVariant?.mint;
+          final liveAsset = _liveCapabilities?.forCompany(company);
+          final selectedCompany = _realMoney && liveAsset != null
+              ? company.withVariant(liveAsset.mint)
+              : company;
+          final liveHolding = realWalletHoldings(widget.account)
+              ?.holdingForMint(
+                liveAsset?.mint ?? company.primaryVariant?.mint ?? '',
+              );
+          final primaryMint = selectedCompany.primaryVariant?.mint;
           final receipt =
               _latestReceipt?.assetId == company.assetId &&
                   _latestReceipt?.variantMint == primaryMint
@@ -1773,7 +1882,7 @@ class _ProductExperienceState extends State<ProductExperience>
                 );
           return CompanyStockPage(
             details: MarketStockDetails(
-              company: company,
+              company: selectedCompany,
               position: _realMoney ? null : position,
               versions: company.asset.variants.map(_version).toList(),
             ),
@@ -1782,17 +1891,19 @@ class _ProductExperienceState extends State<ProductExperience>
             availablePaper:
                 _latestReceipt?.cashAfterPaper ?? _portfolio?.cashPaper ?? '0',
             availableShares: _realMoney
-                ? (company.primaryVariant?.mint == liveAppleMint
-                      ? widget
-                                .account
-                                ?.portfolioState
-                                ?.portfolio
-                                ?.holdings
-                                .aaplx
-                                .amountUnits ??
-                            '0'
-                      : '0')
+                ? liveHolding == null
+                      ? '0'
+                      : liveDecimal(
+                          liveHolding.availableToTradeRaw,
+                          liveHolding.decimals,
+                        )
                 : receipt?.positionShares ?? persisted?.quantity ?? '0',
+            realPositionLabel: liveHolding == null
+                ? null
+                : '${liveHolding.displayAmount ?? liveHolding.rawTokenUnits} ${liveHolding.symbol}',
+            onRetryTrading: _realMoney && _liveCapabilitiesFailed
+                ? () => unawaited(_refreshLiveCapabilities())
+                : null,
             recentOrders: _realMoney
                 ? const []
                 : _portfolio?.recentOrders ?? const [],
@@ -1822,8 +1933,20 @@ class _ProductExperienceState extends State<ProductExperience>
                 ? (side) =>
                       _openLiveAsset(company, sell: side == PaperOrderSide.sell)
                 : null,
-            tradingAvailable: _realMoney || _paperDeskReady,
-            tradingMessage: _realMoney || _paperDeskReady
+            tradingAvailable: _realMoney
+                ? _liveCapabilities?.enabled == true && liveAsset != null
+                : _paperDeskReady,
+            tradingMessage: _realMoney
+                ? _liveCapabilitiesFailed
+                      ? 'Trading could not connect.'
+                      : _liveCapabilities == null
+                      ? 'Checking trading…'
+                      : !_liveCapabilities!.enabled
+                      ? 'Trading is temporarily paused.'
+                      : liveAsset == null
+                      ? 'This stock isn’t available to trade yet.'
+                      : null
+                : _paperDeskReady
                 ? null
                 : _paperDeskMessage,
           );
@@ -1961,6 +2084,7 @@ class _ProductExperienceState extends State<ProductExperience>
   void _productTabChanged(ProductTab tab) {
     if (_dailyDesk != null) unawaited(_dailyDesk!.refresh());
     if (tab == ProductTab.desk) {
+      if (_realMoney) unawaited(_refreshRealPortfolio());
       unawaited(_refreshPortfolio());
       unawaited(_career.refresh());
       unawaited(_missions.refresh());
@@ -2335,8 +2459,10 @@ class _ProductExperienceState extends State<ProductExperience>
 
   Future<void> _resolveHoldingCompanies() async {
     final generation = _portfolioGeneration;
-    final ids =
-        _portfolio?.positions.map((p) => p.assetId).toSet() ?? <String>{};
+    final ids = <String>{
+      ...?_portfolio?.positions.map((p) => p.assetId),
+      ...?realWalletHoldings(widget.account)?.stockTokens.map((p) => p.assetId),
+    };
     await Future.wait(
       ids.map((id) async {
         if (_knownCompany(id)?.logoUrl != null || !_resolvingHoldings.add(id)) {

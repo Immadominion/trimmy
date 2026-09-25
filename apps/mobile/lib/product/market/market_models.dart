@@ -53,6 +53,7 @@ final class MarketCompany {
   MarketCompany({
     required this.asset,
     this.logoUrl,
+    this.preferredVariantMint,
     this.description,
     this.sector,
     this.priceUsd,
@@ -103,6 +104,7 @@ final class MarketCompany {
   }
 
   final StockDiscoveryAsset asset;
+  final String? preferredVariantMint;
   final String? logoUrl;
   final String? description;
   final String? sector;
@@ -119,8 +121,26 @@ final class MarketCompany {
   String get name => asset.name ?? asset.assetId;
   String get symbol => asset.symbol ?? asset.assetId.toUpperCase();
 
+  /// Display the exact executable token, without borrowing another issuer's price.
+  MarketCompany withVariant(String mint) {
+    if (primaryVariant?.mint == mint) return this;
+    final variant = asset.variants.where((v) => v.mint == mint).firstOrNull;
+    if (variant == null) throw ArgumentError('Unknown stock variant');
+    return MarketCompany(
+      asset: asset,
+      preferredVariantMint: mint,
+      logoUrl: logoUrl,
+      description: description,
+      sector: sector,
+      priceUsd: variant.market?.priceUsd?.toDouble(),
+      asOf: asOf,
+      lists: lists,
+      brandColor: brandColor,
+    );
+  }
+
   StockVariant? get primaryVariant {
-    final mint = asset.providerPrimaryVariantMint;
+    final mint = preferredVariantMint ?? asset.providerPrimaryVariantMint;
     if (mint == null) return asset.variants.firstOrNull;
     return asset.variants.where((variant) => variant.mint == mint).firstOrNull;
   }

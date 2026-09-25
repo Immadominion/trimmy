@@ -15,7 +15,11 @@ class FastBuySheet extends StatefulWidget {
     required this.gateway,
     required this.companies,
     required this.orderBuilder,
+    this.loadAvailableCompanies,
+    this.canSelect,
   });
+  final Future<List<MarketCompany>> Function()? loadAvailableCompanies;
+  final bool Function(MarketCompany company)? canSelect;
   final MarketSearchGateway gateway;
   final List<MarketCompany> companies;
   final Widget Function(MarketCompany company, VoidCallback back) orderBuilder;
@@ -27,10 +31,32 @@ class _FastBuySheetState extends State<FastBuySheet> {
   final _query = TextEditingController();
   Timer? _debounce;
   MarketCompany? _selected;
+  List<MarketCompany>? _available;
+  bool _loadingAvailable = false;
+  bool _availabilityFailed = false;
+
+  Future<void> _loadAvailable() async {
+    final load = widget.loadAvailableCompanies;
+    if (load == null || _loadingAvailable) return;
+    setState(() {
+      _loadingAvailable = true;
+      _availabilityFailed = false;
+    });
+    try {
+      final rows = await load();
+      if (mounted) setState(() => _available = rows);
+    } catch (_) {
+      if (mounted) setState(() => _availabilityFailed = true);
+    } finally {
+      if (mounted) setState(() => _loadingAvailable = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     widget.gateway.addListener(_changed);
+    unawaited(_loadAvailable());
   }
 
   void _changed() {
@@ -59,7 +85,10 @@ class _FastBuySheetState extends State<FastBuySheet> {
   }
 
   void _choose(MarketCompany company) {
-    if (company.primaryVariant == null) return;
+    if (company.primaryVariant == null ||
+        widget.canSelect?.call(company) == false) {
+      return;
+    }
     _debounce?.cancel();
     FocusScope.of(context).unfocus();
     ReviewFeedback.shared.press(selection: true);
@@ -80,11 +109,14 @@ class _FastBuySheetState extends State<FastBuySheet> {
     final searching =
         query.isNotEmpty &&
         (!matching || state.phase == MarketSearchPhase.loading);
-    final rows = query.isEmpty
-        ? widget.companies
+    final candidates = query.isEmpty
+        ? _available ?? widget.companies
         : matching
         ? state.companies
         : <MarketCompany>[];
+    final rows = candidates
+        .where((c) => widget.canSelect?.call(c) ?? true)
+        .toList();
     return Material(
       color: Colors.white,
       child: SafeArea(
@@ -147,21 +179,28 @@ class _FastBuySheetState extends State<FastBuySheet> {
               ),
             ),
             Expanded(
-              child: searching
+              child: searching || _loadingAvailable
                   ? const Center(child: TrimmyLiquidMark(size: 52))
-                  : rows.isEmpty
+                  : _availabilityFailed || rows.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            query.isEmpty
-                                ? 'Find your next stock.'
-                                : state.message ?? 'No matches yet.',
+                            _availabilityFailed
+                                ? 'Trading could not connect.'
+                                : query.isEmpty
+                                ? 'No stocks available to buy right now.'
+                                : state.message ??
+                                      (widget.canSelect == null
+                                          ? 'No matches yet.'
+                                          : 'This stock isn’t available to buy yet.'),
                           ),
-                          if (state.message != null)
+                          if (_availabilityFailed || state.message != null)
                             TextButton(
-                              onPressed: () => widget.gateway.search(query),
+                              onPressed: _availabilityFailed
+                                  ? _loadAvailable
+                                  : () => widget.gateway.search(query),
                               child: const Text('Retry'),
                             ),
                         ],
