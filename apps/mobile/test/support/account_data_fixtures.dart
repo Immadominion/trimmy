@@ -114,6 +114,7 @@ Map<String, Object?> holdingsEnvelopeV2() {
   final holdings = envelope['holdings'] as Map<String, Object?>;
   final balances = Map<String, Object?>.from(holdings['balances'] as Map);
   holdings['balances'] = balances;
+  (balances['usdc'] as Map<String, Object?>)['availableToTradeRaw'] = '0';
   balances['tokens'] = <Map<String, Object?>>[
     {
       'assetId': 'apple',
@@ -126,6 +127,7 @@ Map<String, Object?> holdingsEnvelopeV2() {
         slot: 447040361,
       ),
       'displayAmount': '90071992.54741000',
+      'availableToTradeRaw': '9007199254741000',
       'displayResolution': 'rpc_ui_amount',
       'displayUnits': 'token_units',
     },
@@ -138,8 +140,11 @@ Map<String, Object?> holdingsEnvelopeV2() {
         decimals: 8,
         amountRaw: '123456789',
         slot: 447040361,
+        accountCount: 2,
+        topology: 'associated_with_ancillary',
       ),
       'displayAmount': '2.46913578',
+      'availableToTradeRaw': '100000000',
       'displayResolution': 'rpc_ui_amount',
       'displayUnits': 'token_units',
     },

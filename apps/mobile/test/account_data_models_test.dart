@@ -25,6 +25,8 @@ void main() {
       final nvidia = value.holdingForMint(nvidiaMint)!;
       expect(nvidia.assetId, 'nvidia');
       expect(nvidia.amountRaw, '123456789');
+      expect(nvidia.availableToTradeRaw, '100000000');
+      expect(value.usdc.availableToTradeRaw, '0');
       expect(nvidia.rawTokenUnits, '1.23456789');
       expect(nvidia.displayAmount, '2.46913578');
       expect(nvidia.displayUnits, 'token_units');
@@ -45,6 +47,8 @@ void main() {
       final mutations = <void Function(List<Map<String, Object?>>)>[
         (tokens) => tokens.add({...tokens.first}),
         (tokens) => tokens.last['amountRaw'] = '0',
+        (tokens) => tokens.last['availableToTradeRaw'] = '123456790',
+        (tokens) => tokens.last['accountTopology'] = 'multiple_ancillary',
         (tokens) => tokens.last['amountRaw'] = '18446744073709551616',
         (tokens) => tokens.last['mint'] = 'not-a-mint',
         (tokens) => tokens.last['mint'] =

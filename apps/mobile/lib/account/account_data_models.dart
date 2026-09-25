@@ -224,6 +224,7 @@ final class StockTokenBalance {
     required this.accountCount,
     required this.accountTopology,
     required this.hasFrozenAccounts,
+    required this.availableToTradeRaw,
   });
 
   final String symbol;
@@ -234,6 +235,7 @@ final class StockTokenBalance {
   final int accountCount;
   final TokenAccountTopology accountTopology;
   final bool hasFrozenAccounts;
+  final String availableToTradeRaw;
   String get amountUnits => 'raw_token_units';
   String get aggregation => 'all_valid_owner_token_accounts';
 
@@ -242,9 +244,10 @@ final class StockTokenBalance {
     required String symbol,
     required String mint,
     required int decimals,
+    bool requireAvailability = false,
   }) {
     final data = _object(value);
-    _exactKeys(data, const {
+    _exactKeys(data, {
       'symbol',
       'mint',
       'decimals',
@@ -255,6 +258,7 @@ final class StockTokenBalance {
       'accountTopology',
       'aggregation',
       'hasFrozenAccounts',
+      if (requireAvailability) 'availableToTradeRaw',
     });
     return _parseTokenFields(
       data,
@@ -336,6 +340,7 @@ final class WalletStockBalance {
   String get mint => _balance.mint;
   int get decimals => _balance.decimals;
   String get amountRaw => _balance.amountRaw;
+  String get availableToTradeRaw => _balance.availableToTradeRaw;
   int get observedSlot => _balance.observedSlot;
   int get accountCount => _balance.accountCount;
   TokenAccountTopology get accountTopology => _balance.accountTopology;
@@ -371,6 +376,7 @@ final class WalletStockBalance {
       'mint',
       'decimals',
       'amountRaw',
+      'availableToTradeRaw',
       'amountUnits',
       'observedSlot',
       'accountCount',
@@ -443,12 +449,27 @@ StockTokenBalance _parseTokenFields(
     'multiple_ancillary' => TokenAccountTopology.multipleAncillary,
     _ => null,
   };
+  final available = data.containsKey('availableToTradeRaw')
+      ? data['availableToTradeRaw']
+      : topology == TokenAccountTopology.associatedOnly &&
+            data['hasFrozenAccounts'] == false
+      ? amount
+      : '0';
   if (data['symbol'] != symbol ||
       data['mint'] != mint ||
       data['decimals'] is! int ||
       data['decimals'] != decimals ||
       amount is! String ||
       !_unsignedDecimal(amount, max: _maxU64) ||
+      available is! String ||
+      !_unsignedDecimal(available, max: _maxU64) ||
+      BigInt.parse(available) > BigInt.parse(amount) ||
+      (topology == TokenAccountTopology.none ||
+              topology == TokenAccountTopology.ancillaryOnly ||
+              topology == TokenAccountTopology.multipleAncillary ||
+              (topology == TokenAccountTopology.associatedOnly &&
+                  data['hasFrozenAccounts'] == true)) &&
+          available != '0' ||
       data['amountUnits'] != 'raw_token_units' ||
       !_safeInteger(slot) ||
       count is! int ||
@@ -470,6 +491,7 @@ StockTokenBalance _parseTokenFields(
     accountCount: count,
     accountTopology: topology,
     hasFrozenAccounts: data['hasFrozenAccounts'],
+    availableToTradeRaw: available,
   );
 }
 
@@ -600,6 +622,7 @@ final class AccountHoldingsSnapshot {
       symbol: 'USDC',
       mint: _usdcMint,
       decimals: 6,
+      requireAvailability: version == 2,
     );
     final aaplx = AaplxTokenBalance._fromJson(balances['aaplx']);
     final List<WalletStockBalance> stockTokens;
