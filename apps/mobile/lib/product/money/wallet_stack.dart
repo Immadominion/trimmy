@@ -55,92 +55,103 @@ class _WalletStackState extends State<WalletStack>
   @override
   Widget build(BuildContext context) {
     final tall = MediaQuery.textScalerOf(context).scale(14) > 20;
-    return AnimatedContainer(
+    final cardHeight = tall ? 500.0 : 284.0;
+    return Stack(
       key: const ValueKey('desk-wallet-widget'),
-      duration: productDuration(context, 300),
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
-      decoration: ShapeDecoration(
-        color: widget.real ? const Color(0xFFE3F1E9) : const Color(0xFFF0EAFB),
-        shape: productSquircle(34),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: tall ? 500 : 284,
-            child: AnimatedBuilder(
-              animation: _motion,
-              builder: (context, _) {
-                final t = _motion.value;
-                Widget layer(bool real) {
-                  final front = real ? t : 1 - t;
-                  final split = math.sin(t * math.pi);
-                  return Positioned.fill(
-                    top: 20,
-                    child: Transform.translate(
-                      offset: Offset(
-                        (real ? 1 : -1) * split * 35,
-                        -18 * (1 - front) - split * 20,
-                      ),
-                      child: Transform.rotate(
-                        angle: (real ? 1 : -1) * split * .055,
-                        child: Transform.scale(
-                          scale: .94 + front * .06,
-                          child: IgnorePointer(
-                            ignoring: real != widget.real,
-                            child: ExcludeSemantics(
-                              excluding: real != widget.real,
-                              child: _card(real),
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          top: cardHeight - 30,
+          child: AnimatedContainer(
+            duration: productDuration(context, 300),
+            decoration: ShapeDecoration(
+              color: widget.real
+                  ? const Color(0xFFE3F1E9)
+                  : const Color(0xFFF0EAFB),
+              shape: productSquircle(30),
+            ),
+          ),
+        ),
+        Column(
+          children: [
+            SizedBox(
+              height: cardHeight,
+              child: AnimatedBuilder(
+                animation: _motion,
+                builder: (context, _) {
+                  final t = _motion.value;
+                  Widget layer(bool real) {
+                    final front = real ? t : 1 - t;
+                    final split = math.sin(t * math.pi);
+                    return Positioned.fill(
+                      top: 20,
+                      child: Transform.translate(
+                        offset: Offset(
+                          (real ? 1 : -1) * split * 35,
+                          -18 * (1 - front) - split * 20,
+                        ),
+                        child: Transform.rotate(
+                          angle: (real ? 1 : -1) * split * .055,
+                          child: Transform.scale(
+                            scale: .94 + front * .06,
+                            child: IgnorePointer(
+                              ignoring: real != widget.real,
+                              child: ExcludeSemantics(
+                                excluding: real != widget.real,
+                                child: _card(real),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: t < .5
-                      ? [layer(true), layer(false)]
-                      : [layer(false), layer(true)],
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            key: const ValueKey('desk-wallet-actions'),
-            children: [
-              Expanded(
-                child: TextButton.icon(
-                  style: _actionStyle(),
-                  onPressed: widget.onBuy,
-                  icon: const Icon(Icons.add_rounded, size: 21),
-                  label: const Text('Fast buy'),
-                ),
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: t < .5
+                        ? [layer(true), layer(false)]
+                        : [layer(false), layer(true)],
+                  );
+                },
               ),
-              if (widget.real)
+            ),
+            const SizedBox(height: 6),
+            Row(
+              key: const ValueKey('desk-wallet-actions'),
+              children: [
                 Expanded(
                   child: TextButton.icon(
                     style: _actionStyle(),
-                    onPressed: widget.onAddMoney,
-                    icon: const Icon(Icons.south_west_rounded, size: 20),
-                    label: const Text('Add money'),
-                  ),
-                )
-              else
-                Expanded(
-                  child: TextButton.icon(
-                    style: _actionStyle(),
-                    onPressed: widget.onHistory,
-                    icon: const Icon(Icons.history_rounded, size: 20),
-                    label: const Text('History'),
+                    onPressed: widget.onBuy,
+                    icon: const Icon(Icons.add_rounded, size: 21),
+                    label: const Text('Fast buy'),
                   ),
                 ),
-            ],
-          ),
-        ],
-      ),
+                if (widget.real)
+                  Expanded(
+                    child: TextButton.icon(
+                      style: _actionStyle(),
+                      onPressed: widget.onAddMoney,
+                      icon: const Icon(Icons.south_west_rounded, size: 20),
+                      label: const Text('Add money'),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: TextButton.icon(
+                      style: _actionStyle(),
+                      onPressed: widget.onHistory,
+                      icon: const Icon(Icons.history_rounded, size: 20),
+                      label: const Text('History'),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ],
     );
   }
 
