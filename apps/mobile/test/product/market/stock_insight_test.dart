@@ -6,6 +6,7 @@ import 'package:trimmy/product/market/market.dart';
 import 'package:trimmy/product/market/asset_price_chart.dart';
 import 'package:trimmy/ui_review/review_animated_splash.dart';
 import 'market_test_support.dart';
+import 'market_variant_test_support.dart';
 import '../../stock_facts_models_test.dart' as fixtures;
 
 Map<String, Object?> payload(String period) => {
@@ -32,9 +33,13 @@ Map<String, Object?> payload(String period) => {
 
 class Reader implements StockFactsRepository, StockInsightReader {
   final calls = <String, Completer<StockInsight>>{};
+  final mints = <String>[];
   @override
-  Future<StockInsight> insight(String assetId, String mint, String period) =>
-      (calls[period] = Completer<StockInsight>()).future;
+  Future<StockInsight> insight(String assetId, String mint, String period) {
+    mints.add(mint);
+    return (calls[period] = Completer<StockInsight>()).future;
+  }
+
   @override
   Future<StockFacts> facts(String id) =>
       throw StateError('Must use mint-bound insight');
@@ -44,6 +49,51 @@ class Reader implements StockFactsRepository, StockInsightReader {
 }
 
 void main() {
+  testWidgets(
+    'changing issuer clears the prior token chart and reloads its mint',
+    (tester) async {
+      final reader = Reader();
+      final facts = MarketFactsController(repository: reader);
+      addTearDown(facts.dispose);
+      Widget screen(MarketCompany company) => MaterialApp(
+        theme: productTheme(),
+        home: CompanyStockPage(
+          details: MarketStockDetails(company: company),
+          factsController: facts,
+          orderRepository: FakePaperOrderRepository(),
+          clientOrderId: () => 'test',
+          availablePaper: '1000',
+          availableShares: '0',
+        ),
+      );
+      final company = twoVariantCompany();
+      await tester.pumpWidget(screen(company));
+      await tester.pump();
+      expect(reader.mints, [otherIssuerMint]);
+      reader.calls['day']!.complete(
+        StockInsight.fromJson({
+          ...payload('day'),
+          'mint': otherIssuerMint,
+          'priceUsd': 111,
+        }),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(r'$111.00'), findsOneWidget);
+
+      await tester.pumpWidget(screen(company.withVariant(testMint)));
+      await tester.pump();
+      expect(reader.mints, [otherIssuerMint, testMint]);
+      expect(find.text(r'$111.00'), findsNothing);
+      reader.calls['day']!.complete(
+        StockInsight.fromJson({...payload('day'), 'priceUsd': 222}),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(r'$222.00'), findsOneWidget);
+      expect(find.text(r'$111.00'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   test(
     'rejects duplicate timestamps, non-integer holders and inconsistent empty status',
     () {

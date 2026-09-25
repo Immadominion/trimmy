@@ -54,6 +54,8 @@ class CompanyStockPage extends StatefulWidget {
     this.onReasonSaved,
     this.now,
     this.onRealTrade,
+    this.realPositionLabel,
+    this.onRetryTrading,
   });
 
   final Future<void> Function(PaperOrderSide side)? onRealTrade;
@@ -62,6 +64,8 @@ class CompanyStockPage extends StatefulWidget {
   final String Function() clientOrderId;
   final String availablePaper;
   final String availableShares;
+  final String? realPositionLabel;
+  final VoidCallback? onRetryTrading;
   final List<PaperPortfolioOrder> recentOrders;
   final bool tradingAvailable;
   final String? tradingMessage;
@@ -213,12 +217,17 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
     );
     final assetChanged =
         oldWidget.details.company.assetId != widget.details.company.assetId;
+    final variantChanged =
+        oldWidget.details.company.primaryVariant?.mint !=
+        widget.details.company.primaryVariant?.mint;
+    final modeChanged =
+        (oldWidget.onRealTrade != null) != (widget.onRealTrade != null);
     if (factsChanged) {
       oldWidget.factsController?.removeListener(_factsChanged);
       widget.factsController?.addListener(_factsChanged);
     }
-    if (factsChanged || assetChanged) {
-      if (assetChanged) {
+    if (factsChanged || assetChanged || variantChanged || modeChanged) {
+      if (assetChanged || variantChanged || modeChanged) {
         _confirmed = null;
         _sessionTrades.clear();
       }
@@ -391,7 +400,8 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${widget.availableShares} ${_company.symbol} units',
+                          widget.realPositionLabel ??
+                              '${widget.availableShares} ${_company.symbol} units',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                       ],
@@ -932,6 +942,11 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              if (widget.onRetryTrading != null)
+                TextButton(
+                  onPressed: widget.onRetryTrading,
+                  child: const Text('Retry'),
+                ),
               const SizedBox(height: 9),
             ],
             Row(

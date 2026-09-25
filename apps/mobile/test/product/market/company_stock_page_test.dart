@@ -74,6 +74,7 @@ void main() {
     MarketStockDetails value, {
     double textScale = 1,
     MarketFactsController? factsController,
+    Future<void> Function(PaperOrderSide)? onRealTrade,
   }) => MaterialApp(
     theme: ThemeData(useMaterial3: true, fontFamily: 'Manrope'),
     builder: (context, child) => MediaQuery(
@@ -89,6 +90,7 @@ void main() {
       availablePaper: '10000',
       availableShares: value.position?.shares ?? '0',
       factsController: factsController,
+      onRealTrade: onRealTrade,
     ),
   );
 
@@ -178,6 +180,41 @@ void main() {
     expect(sell.getSemanticsData().hasAction(SemanticsAction.tap), isFalse);
     semantics.dispose();
   });
+
+  testWidgets(
+    'switching to real money clears paper fills and sell availability',
+    (tester) async {
+      await tester.pumpWidget(app(details(position: false)));
+      await tester.tap(find.byKey(const ValueKey('stock-buy-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('paper-preset-500')));
+      await tester.tap(find.byKey(const ValueKey('paper-order-review-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('paper-order-confirm-button')),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('paper-order-done')),
+      );
+      await tester.tap(find.byKey(const ValueKey('paper-order-done')));
+      await tester.pumpAndSettle();
+      expect(find.text('2.1605 shares'), findsOneWidget);
+
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        app(details(position: false), onRealTrade: (_) async {}),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('2.1605 shares'), findsNothing);
+      expect(find.text('Your position'), findsNothing);
+      final sell = tester.getSemantics(
+        find.byKey(const ValueKey('stock-sell-button')),
+      );
+      expect(sell.getSemanticsData().hasAction(SemanticsAction.tap), isFalse);
+      semantics.dispose();
+    },
+  );
 
   testWidgets('empty social data stays unavailable and uses singular grammar', (
     tester,

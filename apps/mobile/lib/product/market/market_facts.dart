@@ -30,6 +30,7 @@ MarketCompany applyCardFacts(MarketCompany company, StockCardFacts facts) {
   if (facts.assetId != company.assetId) return company;
   return MarketCompany(
     asset: company.asset,
+    preferredVariantMint: company.preferredVariantMint,
     logoUrl: facts.logoUrl ?? company.logoUrl,
     description: company.description,
     sector: company.sector,
@@ -51,6 +52,7 @@ MarketCompany applyStockFacts(MarketCompany company, StockFacts facts) {
   if (facts.assetId != company.assetId) return company;
   return MarketCompany(
     asset: company.asset,
+    preferredVariantMint: company.preferredVariantMint,
     logoUrl: facts.imageUrl ?? company.logoUrl,
     description: facts.description ?? company.description,
     sector: company.sector,
@@ -176,6 +178,7 @@ final class MarketFactsController extends ChangeNotifier {
 
   static MarketCompany applyBrandColor(MarketCompany company) => MarketCompany(
     asset: company.asset,
+    preferredVariantMint: company.preferredVariantMint,
     logoUrl: company.logoUrl,
     description: company.description,
     sector: company.sector,

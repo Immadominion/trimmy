@@ -6,6 +6,8 @@ import 'package:trimmy/product/market/market_models.dart';
 import 'package:trimmy/product/market/stock_facts.dart';
 
 import 'stock_facts_models_test.dart' as fixtures;
+import 'product/market/market_variant_test_support.dart';
+import 'product/market/market_test_support.dart' show testMint;
 
 final class _FakeRepository implements StockFactsRepository {
   _FakeRepository(this.handler);
@@ -34,6 +36,30 @@ StockDiscoveryAsset asset() => StockDiscoveryAsset.fromJson({
 });
 
 void main() {
+  test('every enrichment copy preserves the chosen issuer mint', () async {
+    final company = twoVariantCompany().withVariant(testMint);
+    expect(company.asset.providerPrimaryVariantMint, otherIssuerMint);
+    final controller = MarketFactsController(
+      repository: _FakeRepository(
+        (_) async => StockFacts.fromJson(fixtures.facts()),
+      ),
+    );
+    addTearDown(controller.dispose);
+    final copies = [
+      MarketFactsController.applyBrandColor(company),
+      applyCardFacts(company, StockCardFacts.fromJson(fixtures.card())),
+      applyStockFacts(company, StockFacts.fromJson(fixtures.facts())),
+      controller.enrich(company),
+    ];
+    await controller.load('apple');
+    copies.add(controller.enrich(company));
+    for (final copy in copies) {
+      expect(copy.preferredVariantMint, testMint);
+      expect(copy.primaryVariant?.mint, testMint);
+      expect(copy.asset, same(company.asset));
+    }
+  });
+
   test(
     'facts are loaded once, shared while in flight and applied to a company',
     () async {
