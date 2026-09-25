@@ -51,6 +51,13 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/career/reason-privacy': Object.freeze(['GET', 'PUT']),
   '/v1/career/promotions': Object.freeze(['POST']),
   '/v1/career/day-context': Object.freeze(['GET', 'PUT']),
+  '/v1/career/workdays': Object.freeze(['GET']),
+  '/v1/career/workdays/step': Object.freeze(['POST']),
+  '/v1/career/workdays/draft': Object.freeze(['POST']),
+  '/v1/career/daily-desk': Object.freeze(['GET']),
+  '/v1/career/daily-desk/complete': Object.freeze(['POST']),
+  '/v1/community': Object.freeze(['GET']),
+  '/v1/community/following/:socialId': Object.freeze(['PUT']),
   '/v1/practice/progress': Object.freeze(['GET', 'PUT']),
   '/v1/config': Object.freeze(['GET']),
   '/v1/practice/catalog': Object.freeze(['GET']),
@@ -126,9 +133,13 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       '/v1/markets/stocks/quotes/raydium',
       '/v1/social/x/profile',
       '/v1/career/trade-reasons',
+      '/v1/community',
     ].includes(route) &&
       request.raw.url?.split('?')[0] === route;
-    if (!methods || (request.raw.url !== route && !queryRoute) || typeof method !== 'string' || !methods.includes(method) ||
+    const communityFollowRoute = route === '/v1/community/following/:socialId' &&
+      /^\/v1\/community\/following\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
+    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute) ||
+        typeof method !== 'string' || !methods.includes(method) ||
         headers === undefined || (headers.includes('x-trimmy-guest') && route !== '/v1/guest/claim') ||
         request.headers['access-control-request-private-network'] !== undefined) {
       return deny(reply, request, 'BROWSER_PREFLIGHT_DENIED', 'This browser request is not allowed.');

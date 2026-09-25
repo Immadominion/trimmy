@@ -229,6 +229,46 @@ describe('explicit browser origin configuration and preflight', () => {
     } finally { await app.close(); }
   });
 
+  it('allows native career and community actions in browsers without expanding their methods or paths', async () => {
+    const app = buildApp({logger: false, browserOrigins: [origin]});
+    const target = '/v1/community/following/10000000-0000-4000-a000-000000000001';
+    try {
+      for (const [url, method] of [
+        ['/v1/career/workdays', 'GET'], ['/v1/career/workdays/step', 'POST'],
+        ['/v1/career/workdays/draft', 'POST'], ['/v1/career/daily-desk', 'GET'],
+        ['/v1/career/daily-desk/complete', 'POST'], ['/v1/community', 'GET'],
+        ['/v1/community?scope=following', 'GET'],
+        ['/v1/community?scope=everyone&at=2026-09-25T00%3A00%3A00.000Z&id=10000000-0000-4000-a000-000000000001', 'GET'],
+        [target, 'PUT'],
+      ]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!, headers: {
+          origin, 'access-control-request-method': method!, 'access-control-request-headers': 'Authorization, Content-Type',
+        }});
+        assert.equal(response.statusCode, 204, `${url} ${method}: ${response.body}`);
+        assert.equal(response.headers['access-control-allow-methods'], method);
+        assert.equal(response.headers['access-control-allow-headers'], 'authorization, content-type');
+      }
+      for (const [url, method, requested] of [
+        ['/v1/career/workdays?userId=x', 'GET', 'authorization'],
+        ['/v1/career/workdays', 'POST', 'authorization'],
+        ['/v1/career/workdays/step', 'PUT', 'authorization'],
+        ['/v1/career/daily-desk/complete?date=x', 'POST', 'authorization'],
+        ['/v1/community', 'POST', 'authorization'],
+        [target, 'POST', 'authorization'], [target, 'DELETE', 'authorization'],
+        [`${target}?notifications=true`, 'PUT', 'authorization'],
+        ['/v1/community/following/not-a-uuid', 'PUT', 'authorization'],
+        [target.replace('10000000', '%310000000'), 'PUT', 'authorization'],
+        [target, 'PUT', 'x-trimmy-guest'], [target, 'PUT', 'x-trimmy-holdings-version'],
+      ]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!, headers: {
+          origin, 'access-control-request-method': method!, 'access-control-request-headers': requested!,
+        }});
+        assert.equal(response.statusCode, 403, `${url} ${method}: ${response.body}`);
+        assert.equal(response.headers['access-control-allow-methods'], undefined);
+      }
+    } finally { await app.close(); }
+  });
+
   it('keeps exact allowed origins on authenticated successes and safe errors without cookies', async () => {
     const configured = [origin, other];
     const app = buildApp({logger: false, browserOrigins: configured, watchlist: watchlist()});
