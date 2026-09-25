@@ -17,6 +17,9 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   Future<void>? _loading;
   Future<void>? _preparingTap;
   Future<void>? _preparingEntrance;
+  bool _tapRequested = false;
+  bool _entranceRequested = false;
+  bool _workRequested = false;
   AudioPlayer? _tap;
   AudioPlayer? _entrance;
   bool _tapReady = false;
@@ -37,7 +40,14 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   final _feedbackClock = Stopwatch()..start();
   int? _lastImpactMicros;
 
-  Future<void> prepareWork() => _preparingWork ??= _prepareWork();
+  Future<void> prepareWork() {
+    if (_disposed) return Future<void>.value();
+    _workRequested = true;
+    return _preparingWork ??= _prepareWork().whenComplete(
+      () => _preparingWork = null,
+    );
+  }
+
   Future<void> _prepareWork() async {
     await load();
     if (_disposed) return;
@@ -50,6 +60,7 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
     };
     for (final entry in sources.entries) {
       if (_disposed) return;
+      if (_workPlayers.containsKey(entry.key)) continue;
       final player = AudioPlayer();
       try {
         await player.setAudioContext(
@@ -66,12 +77,12 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
         await player.setVolume(volume);
         await player.setSource(AssetSource('audio/${entry.value}'));
         if (_disposed) {
-          await player.dispose();
+          await _disposePlayer(player);
           return;
         }
         _workPlayers[entry.key] = player;
       } catch (_) {
-        await player.dispose();
+        await _disposePlayer(player);
       }
     }
   }
@@ -80,7 +91,9 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
     _cueRevision++;
     impact(selection: cue == WorkSound.select);
     final player = _workPlayers[cue];
-    if (!sound || !_foreground || volume == 0 || player == null) return;
+    if (_disposed || !sound || !_foreground || volume == 0 || player == null) {
+      return;
+    }
     final generation = ++_workGeneration;
     unawaited(() async {
       try {
@@ -109,6 +122,7 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _load() async {
     try {
       final preferences = await SharedPreferences.getInstance();
+      if (_disposed) return;
       _preferences = preferences;
       sound = preferences.getBool('${_prefix}sound') ?? true;
       haptics = preferences.getBool('${_prefix}haptics') ?? true;
@@ -156,9 +170,21 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
         .catchError((Object _) => false);
   }
 
-  Future<void> prepareTap() => _preparingTap ??= _prepareTap();
+  Future<void> prepareTap() {
+    if (_disposed || _tapReady) return Future<void>.value();
+    _tapRequested = true;
+    return _preparingTap ??= _prepareTap().whenComplete(
+      () => _preparingTap = null,
+    );
+  }
 
-  Future<void> prepareEntrance() => _preparingEntrance ??= _prepareEntrance();
+  Future<void> prepareEntrance() {
+    if (_disposed || _entranceReady) return Future<void>.value();
+    _entranceRequested = true;
+    return _preparingEntrance ??= _prepareEntrance().whenComplete(
+      () => _preparingEntrance = null,
+    );
+  }
 
   void _observeLifecycle() {
     if (_observing) return;
@@ -170,6 +196,7 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
     await load();
     if (_disposed) return;
     _observeLifecycle();
+    final player = AudioPlayer();
     try {
       final context = AudioContext(
         android: const AudioContextAndroid(
@@ -179,18 +206,18 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
         ),
         iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
       );
-      final player = _tap = AudioPlayer();
       await player.setAudioContext(context);
       await player.setReleaseMode(ReleaseMode.stop);
       await player.setVolume(volume);
       await player.setSource(AssetSource('audio/soft_tap.wav'));
       if (_disposed) {
-        await player.dispose();
+        await _disposePlayer(player);
         return;
       }
+      _tap = player;
       _tapReady = true;
     } catch (error) {
-      _preparingTap = null;
+      await _disposePlayer(player);
       debugPrint('Trimmy button audio could not prepare: $error');
       // Feedback is optional. Never delay the action or queue late taps.
     }
@@ -198,9 +225,10 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _prepareEntrance() async {
     await load();
+    if (_disposed) return;
     _observeLifecycle();
+    final player = AudioPlayer();
     try {
-      final player = _entrance = AudioPlayer();
       await player.setAudioContext(
         AudioContext(
           android: const AudioContextAndroid(
@@ -216,15 +244,23 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
       // Never fall back to v3/v2: both contain the two pop accents the user
       // rejected. A pre-v4 bundle stays quiet until the next full app run.
       await player.setSource(AssetSource('audio/wall_street_orbit_v4.wav'));
+      if (_disposed) {
+        await _disposePlayer(player);
+        return;
+      }
+      _entrance = player;
       _entranceReady = true;
     } catch (error) {
+      await _disposePlayer(player);
       debugPrint('Trimmy entrance audio could not prepare: $error');
       // An unavailable audio device never blocks the visual entrance.
     }
   }
 
   void playEntrance() {
-    if (!sound || volume == 0 || !_foreground || !_entranceReady) return;
+    if (_disposed || !sound || volume == 0 || !_foreground || !_entranceReady) {
+      return;
+    }
     final generation = ++_entranceGeneration;
     unawaited(() async {
       try {
@@ -232,7 +268,10 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
         // later visit. Seeking here can wait for a native event and miss the
         // first visible frame of the coin entrance.
         await _entrance!.resume();
-        if (generation != _entranceGeneration || !sound || !_foreground) {
+        if (_disposed ||
+            generation != _entranceGeneration ||
+            !sound ||
+            !_foreground) {
           await _entrance!.stop();
         }
       } catch (error) {
@@ -279,12 +318,27 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_disposed) return;
     _foreground = state == AppLifecycleState.resumed;
     if (!_foreground) {
       _stopWork();
       _playGeneration++;
       unawaited(_tap?.stop().catchError((Object _) {}) ?? Future<void>.value());
       stopEntrance();
+    } else {
+      // Recover a temporarily unavailable audio device without replaying cues
+      // that were missed while loading or while the app was in the background.
+      if (_tapRequested) unawaited(prepareTap());
+      if (_entranceRequested) unawaited(prepareEntrance());
+      if (_workRequested) unawaited(prepareWork());
+    }
+  }
+
+  Future<void> _disposePlayer(AudioPlayer player) async {
+    try {
+      await player.dispose();
+    } catch (_) {
+      // A failed native player may also refuse cleanup. Keep feedback optional.
     }
   }
 
@@ -293,12 +347,13 @@ class ReviewFeedback extends ChangeNotifier with WidgetsBindingObserver {
     _disposed = true;
     _stopWork();
     for (final player in _workPlayers.values) {
-      unawaited(player.dispose());
+      unawaited(_disposePlayer(player));
     }
     _playGeneration++;
+    _entranceGeneration++;
     if (_observing) WidgetsBinding.instance.removeObserver(this);
-    unawaited(_tap?.dispose() ?? Future<void>.value());
-    unawaited(_entrance?.dispose() ?? Future<void>.value());
+    if (_tap != null) unawaited(_disposePlayer(_tap!));
+    if (_entrance != null) unawaited(_disposePlayer(_entrance!));
     super.dispose();
   }
 }
