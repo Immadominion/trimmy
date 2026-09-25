@@ -24,4 +24,12 @@ Status checked September 25, 2026. Trimmy has a working game and a guarded Solan
 
 Live sells currently spend the canonical token account. Tokens in other owned accounts still count toward holdings but require a separately reviewed transfer before they become spendable; no automatic consolidation is implemented.
 
+## Valuation contract still needed
+
+The current Tokens adapter does not establish whether a variant price is per unscaled token or scaled display unit, and preserves undeclared provider timestamp units. Canonical company prices describe the underlying stock. Neither can safely be multiplied by RPC `displayAmount`: a 10× display multiplier could produce a 10× valuation error. [Solana recommends](https://solana.com/docs/tokens/extensions/scaled-ui-amount/integration-guide) calculating with unscaled amounts and matching unscaled prices, then converting at the display boundary.
+
+[Jupiter Price V3](https://developers.jup.ag/docs/price) documents mint-keyed `usdPrice`, `decimals` and `blockId`, but the reviewed documentation does not establish its Token-2022 scaling basis. Unauthenticated Price/Tokens reads returned 403; a few authenticated samples would not prove that contract. Existing exact-amount sell quotes can establish indicative **USDC proceeds**, not a USD market price. Their shared 2.1-second request gate and 10-second freshness window make background per-holding quotes unsuitable for portfolio polling.
+
+A feasible provider option is [Birdeye's documented price API](https://bds-support.birdeye.so/hc/en-us/articles/48443824197785-Birdeye-Now-Supports-Scaled-UI-Amounts-for-Solana-Token-2022), which explicitly supports `ui_amount_mode=raw|scaled|both` and supplies `updateUnixTime`. Access and coverage still need validation. Normalize a bounded, cached server price feed to `{network, mint, decimals, priceUsdMicros, unitBasis: "unscaled_token", providerAsOf, observedAt, expiresAt, status}`. Compute `amountRaw × priceUsdMicros / 10^decimals` with fixed-point arithmetic, without multiplying `displayAmount` again. Include SOL and USDC market prices before calling an aggregate USD equity; missing, stale or ambiguous prices must keep the total unavailable.
+
 For distributable Android builds, use release signing. Keep development certificate overrides local and never uninstall a funded app to bypass an update mismatch. See [Development](DEVELOPMENT.md#android-signing-and-the-development-seeker) and [Crossmint funding](architecture/CROSSMINT_ONRAMP.md).
