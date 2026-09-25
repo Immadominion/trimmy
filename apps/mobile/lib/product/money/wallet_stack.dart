@@ -68,7 +68,11 @@ class _WalletStackState extends State<WalletStack>
               color: widget.real
                   ? const Color(0xFFE3F1E9)
                   : const Color(0xFFF0EAFB),
-              shape: productSquircle(30),
+              shape: const RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(30),
+                ),
+              ),
             ),
           ),
         ),
