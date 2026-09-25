@@ -9,9 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="#your-first-day"><strong>Meet Trimmy</strong></a>
+  <a href="https://trimmy-submission.vercel.app/"><strong>Watch the demo</strong></a>
   &nbsp;·&nbsp;
-  <a href="#under-the-hood"><strong>How it works</strong></a>
+  <a href="https://trimmy-submission.vercel.app/try"><strong>Try Trimmy</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://trimmy-submission.vercel.app/pitch"><strong>Pitch &amp; deck</strong></a>
   &nbsp;·&nbsp;
   <a href="docs/DEVELOPMENT.md"><strong>Run it locally</strong></a>
 </p>
@@ -52,7 +54,7 @@ When a player chooses Real mode, the Desk changes to the wallet's cash balance. 
 
 The Solana execution path uses Privy for the user's wallet and Jupiter for a reviewed stock-token trade. The server validates the transaction before the user signs, then checks its result onchain.
 
-**Current build:** the game, paper trading, market research, and wallet reads are implemented. Live execution is feature-gated and currently disabled; its initial supported stock is AAPLx. Crossmint card funding is in staging. A completed card payment and end-to-end live purchase are not claimed as verified. The Real balance currently reports Solana USDC cash, with supported token holdings shown separately.
+**Current build:** the game, paper trading, market research, and wallet reads are implemented. Live Solana trading is enabled for the supported AAPLx ↔ USDC route. The demo records a $2 AAPLx buy, confirmation, and updated holdings; this verifies the recorded buy, not every asset or trade direction. Crossmint card checkout remains in staging and does not fund a mainnet purchase. Funded crypto purchases use the Solana wallet. Real wallet balances and stock holdings remain separate from the practice ledger.
 
 ## Under the hood
 
@@ -77,7 +79,7 @@ flowchart LR
 | **PostgreSQL** | Paper ledger, saved decisions, workdays, rewards and account state |
 | **Privy** | Sign-in and embedded wallet; server code does not receive the wallet's private key |
 | **Tokens.xyz + Solana RPC** | Stock discovery, charts, wallet balances and public token accounts |
-| **Jupiter + Crossmint** | Gated Solana execution and staging card funding |
+| **Jupiter + Crossmint** | Supported Solana execution and staging card funding |
 
 Solana is the implemented chain for this submission. Sui, Base and BNB are expansion plans, not shipped trading integrations.
 
