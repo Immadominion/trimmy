@@ -3,6 +3,7 @@ import { it } from 'node:test';
 import { address, getAddressDecoder, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
 import type { Address } from '@solana/kit';
 import { JUPITER_QUOTE_ASSETS } from '../src/jupiter-quote-reader.js';
+import {STOCK_TRADING_ASSETS} from '../src/stock-trading-catalog.js';
 import {
   admitServerVerifiedStockOwner,
   SolanaStockHoldingsReader,
@@ -89,6 +90,8 @@ interface TransportOptions {
   readonly sol?: unknown;
   readonly usdc?: readonly Record<string, unknown>[];
   readonly aaplx?: readonly Record<string, unknown>[];
+  readonly token2022?: readonly Record<string, unknown>[];
+  readonly legacy?: readonly Record<string, unknown>[];
   readonly envelope?: (request: RpcRequest, result: unknown) => unknown;
 }
 
@@ -112,9 +115,11 @@ function transport(options: TransportOptions = {}) {
     if (request.method === 'getGenesisHash') result = options.genesis ?? STOCK_HOLDINGS_MAINNET_GENESIS;
     else if (request.method === 'getBalance') result = {context: {slot: 101}, value: options.sol ?? 5_000_000};
     else if (request.method === 'getTokenAccountsByOwner') {
-      const filter = request.params[1] as {mint: string};
-      result = {context: {slot: filter.mint === JUPITER_QUOTE_ASSETS.USDC.mint ? 102 : 103},
-        value: filter.mint === JUPITER_QUOTE_ASSETS.USDC.mint ? options.usdc ?? [] : options.aaplx ?? []};
+      const filter = request.params[1] as {mint?: string; programId?: string};
+      const legacy = filter.mint === JUPITER_QUOTE_ASSETS.USDC.mint || filter.programId === STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy;
+      result = {context: {slot: legacy ? 102 : 103},
+        value: filter.programId ? (legacy ? options.legacy ?? options.usdc ?? [] : options.token2022 ?? options.aaplx ?? [])
+          : legacy ? options.usdc ?? [] : options.aaplx ?? []};
     } else throw new Error('Unexpected method in test transport.');
     const payload = options.envelope?.(request, result) ?? {jsonrpc: '2.0', id: request.id, result};
     return Response.json(payload);
@@ -448,3 +453,81 @@ function info(value: Record<string, unknown>): Record<string, unknown> {
 function tokenAmount(value: Record<string, unknown>): Record<string, unknown> {
   return info(value)['tokenAmount'] as Record<string, unknown>;
 }
+
+function stockAccount(assetId: string, pubkey: Address, amount: string, display: unknown) {
+  const asset = STOCK_TRADING_ASSETS.find(item => item.assetId === assetId)!;
+  const value = tokenAccount({pubkey, mint: address(asset.mint), tokenProgram: address(asset.tokenProgramAddress),
+    parsedProgram: 'spl-token-2022', decimals: asset.decimals, amount, space: 170});
+  tokenAmount(value)['uiAmountString'] = display;
+  return value;
+}
+
+it('v2 aggregates multiple supported stocks, using exact mint-adjusted display strings and keeping cash separate', async () => {
+  const apple = STOCK_TRADING_ASSETS.find(item => item.assetId === 'apple')!;
+  const appleAta = await associated(ownerAddress, address(apple.mint), address(apple.tokenProgramAddress));
+  const unknown = stockAccount('apple', getAddressDecoder().decode(new Uint8Array(32).fill(9)), '100', '1');
+  info(unknown)['mint'] = ancillaryTwo;
+  const rpc = transport({token2022: [
+    stockAccount('apple', appleAta, '9007199254740993', '90366425.48085670000001'),
+    stockAccount('apple', ancillaryOne, '7', '0.00000007'),
+    stockAccount('netflix', ancillaryTwo, '123456789', '12.3456789'),
+    stockAccount('tesla', getAddressDecoder().decode(new Uint8Array(32).fill(10)), '0', '0'),
+    unknown,
+  ]});
+  const result = await reader(rpc.fetch).read(verifiedOwner(), 2);
+  assert.deepEqual(result.balances.tokens?.map(token => token.assetId), ['apple', 'netflix']);
+  const [aapl, netflix] = result.balances.tokens!;
+  assert.equal(aapl?.amountRaw, '9007199254741000');
+  assert.equal(aapl?.displayAmount, '90366425.48085677');
+  assert.equal(aapl?.displayResolution, 'rpc_ui_amount');
+  assert.equal(aapl?.displayUnits, 'token_units');
+  assert.equal(aapl?.accountTopology, 'associated_with_ancillary');
+  assert.equal(netflix?.amountRaw, '123456789');
+  assert.equal(netflix?.displayAmount, '12.3456789');
+  assert.equal(result.balances.usdc.amountRaw, '0');
+  assert.equal(result.balances.aaplx.amountRaw, aapl?.amountRaw);
+  assert.equal(result.balances.aaplx.displayAmount, null);
+  assert.deepEqual(rpc.calls.slice(2).map(call => call.params[1]), [
+    {programId: STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy}, {programId: STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022},
+  ]);
+});
+
+it('v2 keeps verified raw holdings when optional UI amounts are unavailable instead of inventing zero', async () => {
+  for (const display of [undefined, null, 'NaN', '-1', '1e4', 'secret-provider-text']) {
+    const rpc = transport({token2022: [stockAccount('netflix', ancillaryOne, '123456789', display)]});
+    const result = await reader(rpc.fetch).read(verifiedOwner(), 2);
+    assert.equal(result.balances.tokens?.[0]?.amountRaw, '123456789');
+    assert.equal(result.balances.tokens?.[0]?.displayAmount, null);
+    assert.equal(result.balances.tokens?.[0]?.displayResolution, 'unavailable');
+    assert.ok(!JSON.stringify(result).includes('secret-provider-text'));
+  }
+});
+
+it('v2 rejects duplicate accounts, incorrect owner/program and false catalog decimals', async () => {
+  const base = stockAccount('netflix', ancillaryOne, '123', '0.0000123');
+  for (const change of [
+    (value: Record<string, unknown>) => { info(value)['owner'] = otherOwnerAddress; },
+    (value: Record<string, unknown>) => { tokenAmount(value)['decimals'] = 6; },
+    (value: Record<string, unknown>) => { (value['account'] as Record<string, unknown>)['owner'] = STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy; },
+  ]) {
+    const candidate = structuredClone(base);
+    change(candidate);
+    await assert.rejects(reader(transport({token2022: [candidate]}).fetch).read(verifiedOwner(), 2),
+      errorIs('STOCK_HOLDINGS_RPC_RESPONSE_INVALID'));
+  }
+  await assert.rejects(reader(transport({token2022: [base, structuredClone(base)]}).fetch).read(verifiedOwner(), 2),
+    errorIs('STOCK_HOLDINGS_RPC_RESPONSE_INVALID'));
+});
+
+it('v1 and v2 caches cannot substitute different response coverage', async () => {
+  const rpc = transport({token2022: [stockAccount('netflix', ancillaryOne, '100000000', '10')]});
+  const api = reader(rpc.fetch);
+  const legacy = await api.read(verifiedOwner());
+  const portfolio = await api.read(verifiedOwner(), 2);
+  assert.equal(legacy.balances.tokens, undefined);
+  assert.equal(portfolio.balances.tokens?.[0]?.assetId, 'netflix');
+  assert.equal(rpc.calls.length, 8);
+  assert.equal(await api.read(verifiedOwner()), legacy);
+  assert.equal(await api.read(verifiedOwner(), 2), portfolio);
+  assert.equal(rpc.calls.length, 8);
+});

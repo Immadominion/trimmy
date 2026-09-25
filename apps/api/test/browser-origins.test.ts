@@ -144,6 +144,36 @@ describe('explicit browser origin configuration and preflight', () => {
     } finally { await app.close(); }
   });
 
+  it('permits the holdings version header only on the exact read-only holdings route', async () => {
+    const app = buildApp({logger: false, browserOrigins: [origin]});
+    const headers = {origin, 'access-control-request-method': 'GET',
+      'access-control-request-headers': 'Authorization, Content-Type, X-Trimmy-Holdings-Version'};
+    try {
+      const accepted = await app.inject({method: 'OPTIONS', url: '/v1/account/holdings', headers});
+      assert.equal(accepted.statusCode, 204, accepted.body);
+      assert.equal(accepted.headers['access-control-allow-headers'], 'authorization, content-type, x-trimmy-holdings-version');
+      assert.equal(accepted.headers['access-control-allow-methods'], 'GET');
+      assert.equal(accepted.headers['vary'], 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+      for (const [url, method] of [
+        ['/v1/account/context', 'GET'], ['/v1/config', 'GET'], ['/v1/watchlist', 'PUT'],
+        ['/v1/account/holdings?wallet=x', 'GET'], ['/v1/account/holdings', 'POST'],
+        ['/v1/guest/claim', 'POST'], ['/v1/account/paper/orders/commit', 'POST'],
+      ]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!,
+          headers: {...headers, 'access-control-request-method': method!}});
+        assert.equal(response.statusCode, 403, `${url} ${method}: ${response.body}`);
+        assert.equal(response.json().error.code, 'BROWSER_PREFLIGHT_DENIED');
+        assert.equal(response.headers['access-control-allow-headers'], undefined);
+      }
+      for (const names of ['X-Trimmy-Holdings-Version, x-trimmy-holdings-version',
+        'Authorization, Content-Type, X-Trimmy-Guest, X-Trimmy-Holdings-Version']) {
+        const response = await app.inject({method: 'OPTIONS', url: '/v1/account/holdings',
+          headers: {...headers, 'access-control-request-headers': names}});
+        assert.equal(response.statusCode, 403, response.body);
+      }
+    } finally { await app.close(); }
+  });
+
   it('rejects unknown or alias origins without reflecting them or calling authentication', async () => {
     let calls = 0;
     const app = buildApp({logger: false, browserOrigins: [origin], watchlist: watchlist(() => { calls++; })});

@@ -10,6 +10,7 @@ import type {
   AccountHoldingsReader,
 } from '../src/account-holdings-route.js';
 import {JUPITER_QUOTE_ASSETS} from '../src/jupiter-quote-reader.js';
+import {STOCK_TRADING_ASSETS} from '../src/stock-trading-catalog.js';
 import type {PracticeIdentity} from '../src/practice-identity.js';
 import {
   createPracticeAccountContextAuthenticator,
@@ -418,4 +419,148 @@ test('CORS grants only the exact read-only holdings preflight', async () => {
     assert.equal(providerCalls, 1);
     assert.equal(holdingsCalls, 1);
   } finally { await instance.close(); }
+});
+
+function portfolioSnapshot() {
+  const asset = STOCK_TRADING_ASSETS.find(item => item.assetId === 'netflix')!;
+  const stock = {
+    ...tokenBalance('AAPLx'), assetId: asset.assetId, name: asset.name, symbol: asset.symbol, mint: asset.mint,
+    amountRaw: '123456789',
+    accounts: [{address: otherWalletAddress, amountRaw: '123456789', state: 'initialized', associated: false,
+      displayAmount: '12.3456789'}],
+    accountTopology: 'ancillary_only', displayAmount: '12.3456789', displayResolution: 'rpc_ui_amount',
+    displayUnits: 'token_units',
+  };
+  return {...snapshot, balances: {...snapshot.balances, tokens: [stock]}} as unknown as StockHoldingsSnapshot;
+}
+
+test('version 2 exposes validated multi-stock holdings only to opted-in clients', async () => {
+  const versions: unknown[] = [];
+  const value = portfolioSnapshot();
+  const instance = buildApp({logger: false, accountHoldings: adapters({
+    read: async (_owner, version) => { versions.push(version); return value; },
+  })});
+  try {
+    const legacy = await instance.inject(ACCOUNT_HOLDINGS_ROUTE);
+    assert.equal(legacy.statusCode, 200, legacy.body);
+    assert.equal(legacy.json().schemaVersion, 1);
+    assert.deepEqual(Object.keys(legacy.json().holdings.balances), ['nativeSol', 'usdc', 'aaplx']);
+    const response = await instance.inject({url: ACCOUNT_HOLDINGS_ROUTE,
+      headers: {'x-trimmy-holdings-version': '2'}});
+    assert.equal(response.statusCode, 200, response.body);
+    const body = response.json();
+    assert.equal(body.schemaVersion, 2);
+    assert.deepEqual(body.holdings.balances.tokens, [{
+      assetId: 'netflix', name: STOCK_TRADING_ASSETS.find(item => item.assetId === 'netflix')!.name,
+      symbol: 'NFLXx', mint: STOCK_TRADING_ASSETS.find(item => item.assetId === 'netflix')!.mint,
+      decimals: 8, amountRaw: '123456789', amountUnits: 'raw_token_units', observedSlot: 102,
+      accountCount: 1, accountTopology: 'ancillary_only', aggregation: 'all_valid_owner_token_accounts',
+      hasFrozenAccounts: false, displayAmount: '12.3456789', displayResolution: 'rpc_ui_amount', displayUnits: 'token_units',
+      availableToTradeRaw: '0',
+    }]);
+    assert.equal(body.holdings.balances.usdc.availableToTradeRaw, '0');
+    assert.equal(response.headers['vary'], 'Origin, X-Trimmy-Holdings-Version');
+    assert.deepEqual(versions, [1, 2]);
+    for (const forbidden of ['accounts', 'associatedTokenAccount', 'tokenProgram', otherWalletAddress]) {
+      assert.ok(!response.body.includes(`"${forbidden}"`), forbidden);
+    }
+  } finally { await instance.close(); }
+});
+
+test('version 2 rejects fabricated stock metadata, double-counts and unverified display totals', async () => {
+  const original = portfolioSnapshot();
+  const tokens = original.balances.tokens!;
+  const first = tokens[0]!;
+  for (const changedTokens of [
+    undefined, [first, first], [{...first, assetId: 'caller-stock'}], [{...first, name: 'Fake Netflix'}],
+    [{...first, decimals: 6}], [{...first, displayAmount: '123.456789'}],
+    [{...first, displayResolution: 'unavailable'}], [{...first, displayUnits: 'shares'}],
+    [{...first, mint: JUPITER_QUOTE_ASSETS.USDC.mint}],
+    [{...first, amountRaw: '0', accounts: []}],
+  ]) {
+    const value = {...original, balances: {...original.balances, tokens: changedTokens}} as unknown as StockHoldingsSnapshot;
+    const instance = buildApp({logger: false, accountHoldings: adapters({read: async () => value})});
+    try {
+      const response = await instance.inject({url: ACCOUNT_HOLDINGS_ROUTE,
+        headers: {'x-trimmy-holdings-version': '2'}});
+      assert.equal(response.statusCode, 502, response.body);
+      assert.equal(response.json().error.code, 'STOCK_HOLDINGS_RPC_RESPONSE_INVALID');
+    } finally { await instance.close(); }
+  }
+});
+
+test('unknown holdings versions stop before authentication and provider reads', async () => {
+  let called = false;
+  const instance = buildApp({logger: false, accountHoldings: adapters(undefined, undefined,
+    async () => { called = true; return {userId, identity}; })});
+  try {
+    for (const version of ['3', '02', '2, 1', '']) {
+      const response = await instance.inject({url: ACCOUNT_HOLDINGS_ROUTE,
+        headers: {'x-trimmy-holdings-version': version}});
+      assert.equal(response.statusCode, 400, response.body);
+    }
+    assert.equal(called, false);
+  } finally { await instance.close(); }
+});
+
+test('v2 distinguishes a known empty stock portfolio from an unavailable display amount', async () => {
+  const original = portfolioSnapshot();
+  const first = original.balances.tokens![0]!;
+  for (const tokens of [[], [{...first, displayAmount: null, displayResolution: 'unavailable',
+    accounts: first.accounts.map(account => ({...account, displayAmount: null}))}]]) {
+    const value = {...original, balances: {...original.balances, tokens}} as unknown as StockHoldingsSnapshot;
+    const instance = buildApp({logger: false, accountHoldings: adapters({read: async () => value})});
+    try {
+      const response = await instance.inject({url: ACCOUNT_HOLDINGS_ROUTE,
+        headers: {'x-trimmy-holdings-version': '2'}});
+      assert.equal(response.statusCode, 200, response.body);
+      const actual = response.json().holdings.balances.tokens;
+      assert.equal(actual.length, tokens.length);
+      if (actual.length) {
+        assert.equal(actual[0].amountRaw, '123456789');
+        assert.equal(actual[0].displayAmount, null);
+        assert.equal(actual[0].displayResolution, 'unavailable');
+      }
+    } finally { await instance.close(); }
+  }
+});
+
+test('v2 keeps total ownership while limiting trading availability to an initialized canonical account', async () => {
+  for (const state of ['initialized', 'frozen'] as const) {
+    const original = portfolioSnapshot();
+    const first = original.balances.tokens![0]!;
+    const stock = {...first, amountRaw: '100000000', displayAmount: '10',
+      accountTopology: 'associated_with_ancillary', hasFrozenAccounts: state === 'frozen',
+      associatedTokenAccount: {address: walletAddress, status: 'present'},
+      // A forged availability claim from an adapter must never cross HTTP.
+      availableToTradeRaw: '100000000',
+      accounts: [
+        {address: walletAddress, amountRaw: '60000000', state, associated: true, displayAmount: '6'},
+        {address: otherWalletAddress, amountRaw: '40000000', state: 'initialized', associated: false, displayAmount: '4'},
+      ].sort((a, b) => a.address.localeCompare(b.address))};
+    const usdc = {...original.balances.usdc, amountRaw: '100000000',
+      accountTopology: 'associated_with_ancillary', hasFrozenAccounts: state === 'frozen',
+      associatedTokenAccount: {address: JUPITER_QUOTE_ASSETS.USDC.mint, status: 'present'},
+      availableToTradeRaw: '100000000',
+      accounts: [
+        {address: JUPITER_QUOTE_ASSETS.USDC.mint, amountRaw: '60000000', state, associated: true},
+        {address: JUPITER_QUOTE_ASSETS.AAPLx.mint, amountRaw: '40000000', state: 'initialized', associated: false},
+      ].sort((a, b) => a.address.localeCompare(b.address))};
+    const value = {...original, balances: {...original.balances, usdc, tokens: [stock]}} as unknown as StockHoldingsSnapshot;
+    const instance = buildApp({logger: false, accountHoldings: adapters({read: async () => value})});
+    try {
+      const response = await instance.inject({url: ACCOUNT_HOLDINGS_ROUTE, headers: {'x-trimmy-holdings-version': '2'}});
+      assert.equal(response.statusCode, 200, response.body);
+      const balances = response.json().holdings.balances;
+      assert.equal(balances.usdc.amountRaw, '100000000');
+      assert.equal(balances.tokens[0].amountRaw, '100000000');
+      assert.equal(balances.tokens[0].displayAmount, '10');
+      const available = state === 'initialized' ? '60000000' : '0';
+      assert.equal(balances.usdc.availableToTradeRaw, available);
+      assert.equal(balances.tokens[0].availableToTradeRaw, available);
+      const legacy = await instance.inject(ACCOUNT_HOLDINGS_ROUTE);
+      assert.equal(legacy.statusCode, 200, legacy.body);
+      assert.equal(legacy.json().holdings.balances.usdc.availableToTradeRaw, undefined);
+    } finally { await instance.close(); }
+  }
 });

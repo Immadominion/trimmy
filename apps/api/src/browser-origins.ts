@@ -84,11 +84,12 @@ function deny(reply: FastifyReply, request: FastifyRequest, code: string, messag
   return reply.code(status).send({error: {code, message, requestId: request.id}});
 }
 
-function requestedHeaders(input: unknown): readonly string[] | undefined {
+function requestedHeaders(input: unknown, route: string | undefined): readonly string[] | undefined {
   if (input === undefined) return [];
   if (typeof input !== 'string' || input.length > 128) return undefined;
   const names = input.split(',').map(name => name.trim().toLowerCase());
-  if (names.length > 3 || new Set(names).size !== names.length || names.some(name => !allowedHeaders.has(name))) return undefined;
+  if (names.length > 3 || new Set(names).size !== names.length || names.some(name =>
+    !allowedHeaders.has(name) && !(route === '/v1/account/holdings' && name === 'x-trimmy-holdings-version'))) return undefined;
   return names;
 }
 
@@ -118,7 +119,7 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
     const route = request.routeOptions.url;
     const methods = route ? methodsByRoute[route] : undefined;
     const method = request.headers['access-control-request-method'];
-    const headers = requestedHeaders(request.headers['access-control-request-headers']);
+    const headers = requestedHeaders(request.headers['access-control-request-headers'], route);
     const queryRoute = route !== undefined && [
       '/v1/markets/estimate', '/v1/markets/stocks/search', '/v1/markets/stocks/variants', '/v1/markets/stocks/estimate',
       '/v1/markets/stocks/history',

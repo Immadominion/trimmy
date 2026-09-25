@@ -1,6 +1,7 @@
 import {address, getAddressEncoder, isOffCurveAddress} from '@solana/kit';
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
 import {JUPITER_QUOTE_ASSETS} from './jupiter-quote-reader.js';
+import {STOCK_TRADING_ASSETS, findStockTradingAssetByMint} from './stock-trading-catalog.js';
 import {parsePracticeIdentity} from './practice-identity.js';
 import type {PracticeIdentity} from './practice-identity.js';
 import {parsePracticeUserId} from './practice-repository.js';
@@ -18,6 +19,8 @@ import {
   STOCK_HOLDINGS_MAINNET_GENESIS,
   STOCK_HOLDINGS_TOKEN_PROGRAMS,
   StockHoldingsError,
+  canonicalTokenDisplayAmount,
+  sumTokenDisplayAmounts,
 } from './stock-holdings.js';
 import type {
   ServerVerifiedStockOwner,
@@ -33,7 +36,7 @@ export interface AccountHoldingsIdentityResolver {
 }
 
 export interface AccountHoldingsReader {
-  read(owner: ServerVerifiedStockOwner): Promise<StockHoldingsSnapshot>;
+  read(owner: ServerVerifiedStockOwner, version?: 1 | 2): Promise<StockHoldingsSnapshot>;
 }
 
 export interface AccountHoldingsAdapters {
@@ -51,9 +54,9 @@ export function accountHoldingsEnabled(value?: AccountHoldingsAdapters): value i
 }
 
 export interface AccountHoldingsTokenBalance {
-  readonly symbol: 'USDC' | 'AAPLx';
+  readonly symbol: string;
   readonly mint: string;
-  readonly decimals: 6 | 8;
+  readonly decimals: number;
   readonly amountRaw: string;
   readonly amountUnits: 'raw_token_units';
   readonly observedSlot: number;
@@ -61,10 +64,21 @@ export interface AccountHoldingsTokenBalance {
   readonly accountTopology: StockTokenAccountTopology;
   readonly aggregation: 'all_valid_owner_token_accounts';
   readonly hasFrozenAccounts: boolean;
+  /** v2 only: the initialized canonical source account accepted by execution. */
+  readonly availableToTradeRaw?: string;
+}
+
+export interface AccountHoldingsStockBalance extends AccountHoldingsTokenBalance {
+  readonly assetId: string;
+  readonly name: string;
+  readonly displayAmount: string | null;
+  readonly displayResolution: 'rpc_ui_amount' | 'unavailable';
+  readonly displayUnits: 'token_units';
+  readonly availableToTradeRaw: string;
 }
 
 export interface AccountHoldingsResponse {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 1 | 2;
   readonly userId: string;
   readonly wallet: Readonly<{
     address: string;
@@ -99,6 +113,7 @@ export interface AccountHoldingsResponse {
         eligibility: 'unverified';
         executionEnabled: false;
       }>;
+      readonly tokens?: readonly AccountHoldingsStockBalance[];
     }>;
     consistency: Readonly<{
       kind: 'independent_confirmed_reads';
@@ -119,6 +134,7 @@ const tokenProperties = {
   accountTopology: topologySchema, aggregation: {const: 'all_valid_owner_token_accounts'},
   hasFrozenAccounts: {type: 'boolean'},
 } as const;
+
 const responseSchema = {
   type: 'object', additionalProperties: false, required: ['schemaVersion', 'userId', 'wallet', 'holdings'],
   properties: {
@@ -161,6 +177,46 @@ const responseSchema = {
             properties: {nativeSol: slotSchema, usdc: slotSchema, aaplx: slotSchema}},
         }},
       }},
+  },
+} as const;
+
+const responseSchemaV2 = {
+  ...responseSchema,
+  properties: {
+    ...responseSchema.properties,
+    schemaVersion: {const: 2},
+    holdings: {
+      ...responseSchema.properties.holdings,
+      properties: {
+        ...responseSchema.properties.holdings.properties,
+        balances: {
+          ...responseSchema.properties.holdings.properties.balances,
+          required: ['nativeSol', 'usdc', 'aaplx', 'tokens'],
+          properties: {
+            ...responseSchema.properties.holdings.properties.balances.properties,
+            usdc: {
+              ...responseSchema.properties.holdings.properties.balances.properties.usdc,
+              required: [...responseSchema.properties.holdings.properties.balances.properties.usdc.required, 'availableToTradeRaw'],
+              properties: {...responseSchema.properties.holdings.properties.balances.properties.usdc.properties,
+                availableToTradeRaw: rawAmountSchema},
+            },
+            tokens: {type: 'array', maxItems: 256, items: {
+              type: 'object', additionalProperties: false,
+              required: ['assetId', 'name', 'symbol', 'mint', 'decimals', 'amountRaw', 'amountUnits', 'observedSlot',
+                'accountCount', 'accountTopology', 'aggregation', 'hasFrozenAccounts', 'displayAmount',
+                'displayResolution', 'displayUnits', 'availableToTradeRaw'],
+              properties: {
+                ...tokenProperties, assetId: {type: 'string'}, name: {type: 'string'}, symbol: {type: 'string'},
+                decimals: {type: 'integer', minimum: 0, maximum: 18},
+                displayAmount: {anyOf: [{type: 'string', maxLength: 80}, {type: 'null'}]},
+                displayResolution: {enum: ['rpc_ui_amount', 'unavailable']}, displayUnits: {const: 'token_units'},
+                availableToTradeRaw: rawAmountSchema,
+              },
+            }},
+          },
+        },
+      },
+    },
   },
 } as const;
 
@@ -253,9 +309,9 @@ function projectNativeBalance(value: unknown): AccountHoldingsResponse['holdings
 }
 
 interface TokenProjectionExpectation {
-  readonly symbol: 'USDC' | 'AAPLx';
+  readonly symbol: string;
   readonly mint: string;
-  readonly decimals: 6 | 8;
+  readonly decimals: number;
   readonly tokenProgram: string;
 }
 
@@ -316,7 +372,48 @@ function projectTokenBalance(value: unknown, expected: TokenProjectionExpectatio
   });
 }
 
-function projectSnapshot(value: unknown, expectedOwner: string): AccountHoldingsResponse['holdings'] {
+function projectStockBalances(value: unknown): readonly AccountHoldingsStockBalance[] {
+  if (!Array.isArray(value) || value.length > STOCK_TRADING_ASSETS.length) return responseInvalid();
+  const seenMints = new Set<string>();
+  const seenAccounts = new Set<string>();
+  return Object.freeze(value.map(item => {
+    const balance = plainRecord(item);
+    const mint = balance && ownData(balance, 'mint');
+    const asset = typeof mint === 'string' ? findStockTradingAssetByMint(mint) : undefined;
+    if (!balance || !asset || seenMints.has(asset.mint) || ownData(balance, 'assetId') !== asset.assetId ||
+        ownData(balance, 'name') !== asset.name || ownData(balance, 'displayUnits') !== 'token_units') return responseInvalid();
+    seenMints.add(asset.mint);
+    const base = projectTokenBalance(balance, {
+      symbol: asset.symbol, mint: asset.mint, decimals: asset.decimals, tokenProgram: asset.tokenProgramAddress,
+    });
+    if (base.amountRaw === '0') return responseInvalid();
+    const accounts = ownData(balance, 'accounts') as readonly Record<string, unknown>[];
+    const displays = accounts.map(account => {
+      const accountAddress = ownData(account, 'address') as string;
+      if (seenAccounts.has(accountAddress)) return responseInvalid();
+      seenAccounts.add(accountAddress);
+      return canonicalTokenDisplayAmount(ownData(account, 'displayAmount'), asset.decimals,
+        ownData(account, 'amountRaw') as string);
+    });
+    const displayAmount = sumTokenDisplayAmounts(displays, asset.decimals);
+    const displayResolution = displayAmount === null ? 'unavailable' : 'rpc_ui_amount';
+    if (ownData(balance, 'displayAmount') !== displayAmount ||
+        ownData(balance, 'displayResolution') !== displayResolution) return responseInvalid();
+    return Object.freeze({...base, assetId: asset.assetId, name: asset.name,
+      displayAmount, displayResolution, displayUnits: 'token_units' as const,
+      availableToTradeRaw: availableToTradeRaw(balance)});
+  }));
+}
+
+/** Call only after projectTokenBalance has verified every account and its ATA binding. */
+function availableToTradeRaw(balance: Record<string, unknown>): string {
+  const accounts = ownData(balance, 'accounts') as readonly Record<string, unknown>[];
+  const source = accounts.find(account => ownData(account, 'associated') === true &&
+    ownData(account, 'state') === 'initialized');
+  return source ? ownData(source, 'amountRaw') as string : '0';
+}
+
+function projectSnapshot(value: unknown, expectedOwner: string, version: 1 | 2): AccountHoldingsResponse['holdings'] {
   const snapshot = plainRecord(value);
   const observedAt = snapshot && canonicalDate(ownData(snapshot, 'observedAt'));
   const balances = snapshot && plainRecord(ownData(snapshot, 'balances'));
@@ -356,10 +453,19 @@ function projectSnapshot(value: unknown, expectedOwner: string): AccountHoldings
   if (slots.nativeSol === undefined || slots.usdc === undefined || slots.aaplx === undefined ||
       slots.nativeSol !== nativeSol.observedSlot || slots.usdc !== usdc.observedSlot ||
       slots.aaplx !== aaplx.observedSlot) return responseInvalid();
+  const tokens = version === 2 ? projectStockBalances(ownData(balances, 'tokens')) : undefined;
+  if (tokens) {
+    const apple = tokens.find(token => token.mint === aaplx.mint);
+    if (apple ? apple.amountRaw !== aaplx.amountRaw || apple.observedSlot !== aaplx.observedSlot
+      : aaplx.amountRaw !== '0') return responseInvalid();
+  }
   return Object.freeze({
     network: 'solana:mainnet-beta', genesisHash: STOCK_HOLDINGS_MAINNET_GENESIS, commitment: 'confirmed', observedAt,
     readOnly: true, transactionBuilt: false, transactionSigned: false, transactionBroadcast: false,
-    balances: Object.freeze({nativeSol, usdc, aaplx}),
+    balances: Object.freeze({nativeSol,
+      usdc: version === 2 ? Object.freeze({...usdc,
+        availableToTradeRaw: availableToTradeRaw(plainRecord(ownData(balances, 'usdc'))!)}) : usdc,
+      aaplx, ...(tokens ? {tokens} : {})}),
     consistency: Object.freeze({kind: 'independent_confirmed_reads', atomic: false,
       slots: slots as {nativeSol: number; usdc: number; aaplx: number}}),
   });
@@ -420,11 +526,17 @@ export function registerAccountHoldingsRoute(app: FastifyInstance, options?: Acc
     exposeHeadRoute: false,
     schema: {
       querystring: {type: 'object', additionalProperties: false, properties: {}},
-      response: {200: responseSchema},
+      response: {200: {anyOf: [responseSchema, responseSchemaV2]}},
     },
     onRequest: async (request, reply) => {
       reply.header('cache-control', 'no-store');
+      const vary = reply.getHeader('vary');
+      reply.header('vary', vary ? `${String(vary)}, X-Trimmy-Holdings-Version` : 'X-Trimmy-Holdings-Version');
       if (!adapters) return unavailable(request, reply);
+      const version = request.headers['x-trimmy-holdings-version'];
+      if (version !== undefined && version !== '1' && version !== '2') {
+        return problem(request, reply, 400, 'ACCOUNT_HOLDINGS_INVALID_REQUEST', 'Choose a supported holdings version.');
+      }
       if (request.raw.url !== ACCOUNT_HOLDINGS_ROUTE ||
           request.headers['transfer-encoding'] !== undefined ||
           request.headers['content-length'] !== undefined && request.headers['content-length'] !== '0') {
@@ -460,9 +572,10 @@ export function registerAccountHoldingsRoute(app: FastifyInstance, options?: Acc
         address: walletAddress,
         verification: 'authenticated_privy_embedded_wallet',
       });
-      const holdings = projectSnapshot(await adapters.holdings.read(owner), walletAddress);
+      const version = request.headers['x-trimmy-holdings-version'] === '2' ? 2 : 1;
+      const holdings = projectSnapshot(await adapters.holdings.read(owner, version), walletAddress, version);
       return Object.freeze({
-        schemaVersion: 1,
+        schemaVersion: version,
         userId: account.userId,
         wallet: Object.freeze({
           address: walletAddress,

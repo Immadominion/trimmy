@@ -2,6 +2,7 @@ import { address, getAddressEncoder, getProgramDerivedAddress } from '@solana/ki
 import type { Address } from '@solana/kit';
 import {BoundedProviderRead} from './bounded-provider-read.js';
 import { JUPITER_QUOTE_ASSETS } from './jupiter-quote-reader.js';
+import {STOCK_TRADING_ASSETS} from './stock-trading-catalog.js';
 
 export const STOCK_HOLDINGS_MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
 export const STOCK_HOLDINGS_TOKEN_PROGRAMS = Object.freeze({
@@ -41,6 +42,8 @@ export interface StockTokenAccountBalance {
   readonly amountRaw: string;
   readonly state: 'initialized' | 'frozen';
   readonly associated: boolean;
+  /** v2 only: RPC's mint-adjusted UI amount, never a transaction input. */
+  readonly displayAmount?: string | null;
 }
 
 export type StockTokenAccountTopology =
@@ -52,10 +55,10 @@ export type StockTokenAccountTopology =
 
 export interface StockTokenHolding {
   readonly kind: 'spl_token';
-  readonly symbol: 'USDC' | 'AAPLx';
+  readonly symbol: string;
   readonly mint: Address;
   readonly tokenProgram: Address;
-  readonly decimals: 6 | 8;
+  readonly decimals: number;
   readonly amountRaw: string;
   readonly amountUnits: 'raw_token_units';
   readonly observedSlot: number;
@@ -67,6 +70,14 @@ export interface StockTokenHolding {
   readonly accountTopology: StockTokenAccountTopology;
   readonly aggregation: 'all_valid_owner_token_accounts';
   readonly hasFrozenAccounts: boolean;
+}
+
+export interface StockPortfolioTokenHolding extends StockTokenHolding {
+  readonly assetId: string;
+  readonly name: string;
+  readonly displayAmount: string | null;
+  readonly displayResolution: 'rpc_ui_amount' | 'unavailable';
+  readonly displayUnits: 'token_units';
 }
 
 export interface StockHoldingsSnapshot {
@@ -98,6 +109,8 @@ export interface StockHoldingsSnapshot {
       eligibility: 'unverified';
       executionEnabled: false;
     }>;
+    /** Present only when the caller opts in to holdings version 2. */
+    tokens?: readonly StockPortfolioTokenHolding[];
   }>;
   readonly consistency: Readonly<{
     kind: 'independent_confirmed_reads';
@@ -336,9 +349,9 @@ class ReadOnlyHoldingsRpc {
 }
 
 interface TokenDefinition {
-  readonly symbol: 'USDC' | 'AAPLx';
+  readonly symbol: string;
   readonly mint: Address;
-  readonly decimals: 6 | 8;
+  readonly decimals: number;
   readonly tokenProgram: Address;
   readonly parsedProgram: 'spl-token' | 'spl-token-2022';
 }
@@ -374,7 +387,7 @@ function accountTopology(accounts: readonly StockTokenAccountBalance[]): StockTo
 }
 
 function tokenHolding(result: unknown, owner: Address, token: TokenDefinition,
-  associatedAddress: Address): StockTokenHolding {
+  associatedAddress: Address, includeDisplay = false): StockTokenHolding {
   const response = plainRecord(result);
   const slot = contextSlot(response['context']);
   const values = response['value'];
@@ -414,6 +427,8 @@ function tokenHolding(result: unknown, owner: Address, token: TokenDefinition,
       amountRaw,
       state: info['state'] as 'initialized' | 'frozen',
       associated: accountAddress === associatedAddress,
+      ...(includeDisplay ? {displayAmount: canonicalTokenDisplayAmount(tokenAmount['uiAmountString'], token.decimals,
+        amountRaw)} : {}),
     }));
   }
   accounts.sort((left, right) => left.address.localeCompare(right.address));
@@ -431,6 +446,70 @@ function tokenHolding(result: unknown, owner: Address, token: TokenDefinition,
     aggregation: 'all_valid_owner_token_accounts',
     hasFrozenAccounts: frozenAccounts.some((item) => item.state === 'frozen'),
   });
+}
+
+/**
+ * Solana's jsonParsed UI amount applies the mint's current scaled-UI multiplier.
+ * Keep it separate from integer transaction amounts. Truncate to mint precision,
+ * as recommended by the scaled-UI integration guide; never use floating point.
+ */
+export function canonicalTokenDisplayAmount(value: unknown, decimals: number, amountRaw?: string): string | null {
+  if (typeof value !== 'string' || value.length > 80 ||
+      !/^(?:0|[1-9][0-9]{0,39})(?:\.[0-9]{1,36})?$/.test(value) ||
+      !Number.isInteger(decimals) || decimals < 0 || decimals > 18) return null;
+  const [whole = '0', fraction = ''] = value.split('.');
+  const scaled = BigInt(whole) * 10n ** BigInt(decimals) +
+    BigInt(fraction.slice(0, decimals).padEnd(decimals, '0') || '0');
+  if (amountRaw === '0' && scaled !== 0n) return null;
+  return decimalUnits(scaled, decimals);
+}
+
+function decimalUnits(amount: bigint, decimals: number): string {
+  if (decimals === 0) return amount.toString();
+  const text = amount.toString().padStart(decimals + 1, '0');
+  const fraction = text.slice(-decimals).replace(/0+$/, '');
+  return `${text.slice(0, -decimals)}${fraction ? `.${fraction}` : ''}`;
+}
+
+export function sumTokenDisplayAmounts(values: readonly (string | null | undefined)[], decimals: number): string | null {
+  let total = 0n;
+  for (const value of values) {
+    const canonical = canonicalTokenDisplayAmount(value, decimals);
+    if (canonical === null) return null;
+    const [whole = '0', fraction = ''] = canonical.split('.');
+    total += BigInt(whole) * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, '0') || '0');
+  }
+  return decimalUnits(total, decimals);
+}
+
+function programTokenAccounts(result: unknown, owner: Address, tokenProgram: Address): Readonly<{
+  context: unknown; byMint: ReadonlyMap<string, readonly unknown[]>;
+}> {
+  const response = plainRecord(result);
+  contextSlot(response['context']);
+  const values = response['value'];
+  if (!Array.isArray(values) || values.length > MAX_TOKEN_ACCOUNTS) return fail('STOCK_HOLDINGS_RPC_RESPONSE_INVALID');
+  const seen = new Set<string>();
+  const byMint = new Map<string, unknown[]>();
+  for (const value of values) {
+    const entry = plainRecord(value);
+    const pubkey = responseAddress(entry['pubkey']);
+    const account = plainRecord(entry['account']);
+    const data = plainRecord(account['data']);
+    const parsed = plainRecord(data['parsed']);
+    const info = plainRecord(parsed['info']);
+    const mint = responseAddress(info['mint']);
+    if (seen.has(pubkey) || account['owner'] !== tokenProgram || account['executable'] !== false ||
+        parsed['type'] !== 'account' || info['owner'] !== owner ||
+        data['program'] !== (tokenProgram === STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy ? 'spl-token' : 'spl-token-2022')) {
+      return fail('STOCK_HOLDINGS_RPC_RESPONSE_INVALID');
+    }
+    seen.add(pubkey);
+    const accounts = byMint.get(mint) ?? [];
+    accounts.push(value);
+    byMint.set(mint, accounts);
+  }
+  return {context: response['context'], byMint};
 }
 
 function nativeBalance(result: unknown): StockHoldingsSnapshot['balances']['nativeSol'] {
@@ -497,9 +576,10 @@ export class SolanaStockHoldingsReader {
     });
   }
 
-  async #load(owner: ServerVerifiedStockOwner, observed: number): Promise<StockHoldingsSnapshot> {
+  async #load(owner: ServerVerifiedStockOwner, observed: number, version: 1 | 2): Promise<StockHoldingsSnapshot> {
     const genesis = await this.#rpc.call('getGenesisHash', []);
     if (genesis !== STOCK_HOLDINGS_MAINNET_GENESIS) return fail('STOCK_HOLDINGS_WRONG_NETWORK');
+    if (version === 2) return this.#loadPortfolio(owner, observed);
     const [usdcAssociated, aaplxAssociated] = await Promise.all([
       associatedTokenAddress(owner.address, USDC), associatedTokenAddress(owner.address, AAPLX),
     ]);
@@ -539,11 +619,58 @@ export class SolanaStockHoldingsReader {
     });
   }
 
-  async read(owner: ServerVerifiedStockOwner): Promise<StockHoldingsSnapshot> {
+  async #loadPortfolio(owner: ServerVerifiedStockOwner, observed: number): Promise<StockHoldingsSnapshot> {
+    const [solResult, legacyResult, token2022Result] = await Promise.all([
+      this.#rpc.call('getBalance', [owner.address, {commitment: 'confirmed'}]),
+      this.#rpc.call('getTokenAccountsByOwner', [owner.address, {programId: STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy},
+        {encoding: 'jsonParsed', commitment: 'confirmed'}]),
+      this.#rpc.call('getTokenAccountsByOwner', [owner.address, {programId: STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022},
+        {encoding: 'jsonParsed', commitment: 'confirmed'}]),
+    ]);
+    const nativeSol = nativeBalance(solResult);
+    const legacy = programTokenAccounts(legacyResult, owner.address, address(STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy));
+    const token2022 = programTokenAccounts(token2022Result, owner.address, address(STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022));
+    const usdc = tokenHolding({context: legacy.context, value: legacy.byMint.get(USDC.mint) ?? []},
+      owner.address, USDC, await associatedTokenAddress(owner.address, USDC));
+    const allStocks = await Promise.all(STOCK_TRADING_ASSETS.map(async asset => {
+      const token: TokenDefinition = {
+        symbol: asset.symbol, mint: address(asset.mint), decimals: asset.decimals,
+        tokenProgram: address(asset.tokenProgramAddress),
+        parsedProgram: asset.tokenProgram === 'token_2022' ? 'spl-token-2022' : 'spl-token',
+      };
+      const program = asset.tokenProgram === 'token_2022' ? token2022 : legacy;
+      const holding = tokenHolding({context: program.context, value: program.byMint.get(asset.mint) ?? []},
+        owner.address, token, await associatedTokenAddress(owner.address, token), true);
+      const displayAmount = sumTokenDisplayAmounts(holding.accounts.map(account => account.displayAmount), asset.decimals);
+      return Object.freeze({...holding, assetId: asset.assetId, name: asset.name, displayAmount,
+        displayResolution: displayAmount === null ? 'unavailable' as const : 'rpc_ui_amount' as const,
+        displayUnits: 'token_units' as const});
+    }));
+    const rawAaplx = allStocks.find(token => token.mint === AAPLX.mint);
+    if (!rawAaplx) return fail('STOCK_HOLDINGS_CONFIGURATION_INVALID');
+    // Keep the exact legacy alias contract. New consumers use tokens, not its
+    // historical execution/display flags, which are not trading capability data.
+    const aaplx = Object.freeze({...rawAaplx,
+      displayResolution: 'token_2022_scaled_ui_unresolved' as const, displayAmount: null, shareAmount: null,
+      eligibility: 'unverified' as const, executionEnabled: false as const});
+    const tokens = Object.freeze(allStocks.filter(token => token.amountRaw !== '0'));
+    return Object.freeze({
+      schemaVersion: 1, network: 'solana:mainnet-beta', genesisHash: STOCK_HOLDINGS_MAINNET_GENESIS,
+      commitment: 'confirmed', owner: owner.address, ownerBinding: 'trusted_server_capability',
+      observedAt: new Date(observed).toISOString(), readOnly: true,
+      transactionBuilt: false, transactionSigned: false, transactionBroadcast: false,
+      balances: Object.freeze({nativeSol, usdc, aaplx, tokens}),
+      consistency: Object.freeze({kind: 'independent_confirmed_reads', atomic: false,
+        slots: Object.freeze({nativeSol: nativeSol.observedSlot, usdc: usdc.observedSlot, aaplx: aaplx.observedSlot})}),
+    });
+  }
+
+  async read(owner: ServerVerifiedStockOwner, version: 1 | 2 = 1): Promise<StockHoldingsSnapshot> {
     if (owner === null || typeof owner !== 'object' || !verifiedOwners.has(owner)) {
       return fail('STOCK_HOLDINGS_OWNER_UNVERIFIED');
     }
-    return this.#protectedRead.read(owner.address, owner.authenticatedUserId,
-      async observed => this.#load(owner, observed));
+    if (version !== 1 && version !== 2) return fail('STOCK_HOLDINGS_CONFIGURATION_INVALID');
+    return this.#protectedRead.read(`${owner.address}:${version}`, owner.authenticatedUserId,
+      async observed => this.#load(owner, observed, version));
   }
 }
