@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { buildApp } from '../src/app.js';
 import { ReadinessConfigurationError, ReadinessReporter } from '../src/readiness.js';
 import type { ReadinessProbe } from '../src/readiness.js';
+import type { LiveStockAdapters } from '../src/live-stock-orders.js';
 
 function counting(behaviour: (call: number) => Promise<void>): ReadinessProbe & {calls: number} {
   const probe = {
@@ -88,10 +89,33 @@ describe('readiness is separate from liveness', () => {
     assert.throws(() => new ReadinessReporter({ttlMs: 60_001}), ReadinessConfigurationError);
     assert.throws(() => new ReadinessReporter({ttlMs: 1.5}), ReadinessConfigurationError);
     assert.throws(() => new ReadinessReporter({probe: {} as ReadinessProbe}), ReadinessConfigurationError);
+    assert.throws(() => new ReadinessReporter({financialOperationsEnabled: 'true' as unknown as boolean}), ReadinessConfigurationError);
   });
 });
 
 describe('GET /ready', () => {
+  it('reports the same execution gate as health and trading capabilities without calling a provider', async () => {
+    for (const enabled of [true, false]) {
+      let probes = 0;
+      const liveStocks = {
+        executionEnabled: enabled,
+        authenticate: async () => { throw new Error('Readiness must not authenticate'); },
+        identities: {resolveFresh: async () => { throw new Error('Readiness must not call identity providers'); }},
+        service: {},
+      } as unknown as LiveStockAdapters;
+      const app = buildApp({logger: false, liveStocks, readiness: {probe: async () => {probes++;}}});
+      try {
+        const ready = await app.inject('/ready');
+        assert.equal(ready.statusCode, 200);
+        assert.equal(ready.json().database, 'ok');
+        assert.equal(ready.json().financialOperationsEnabled, enabled);
+        assert.equal((await app.inject('/health')).json().financialOperationsEnabled, enabled);
+        assert.equal((await app.inject('/v1/trading/capabilities')).json().enabled, enabled);
+        assert.equal(probes, 1);
+      } finally { await app.close(); }
+    }
+  });
+
   it('answers 200 with no database configured, and refuses a query string', async () => {
     const app = buildApp({logger: false});
     try {

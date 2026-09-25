@@ -256,7 +256,10 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   // Liveness and readiness are separate answers on purpose. A restart policy
   // wants the first; a load balancer wants the second, and routing traffic to an
   // instance that cannot reach its database is the failure this prevents.
-  const readiness = new ReadinessReporter(options.readiness ? {probe: options.readiness} : {});
+  const readiness = new ReadinessReporter({
+    ...(options.readiness ? {probe: options.readiness} : {}),
+    financialOperationsEnabled: liveStockExecutionEnabled(options.liveStocks),
+  });
   app.get('/ready', {schema: {querystring: noQuery}}, async (_request, reply) => {
     const report = await readiness.report();
     return reply.code(report.status === 'ready' ? 200 : 503).send(report);

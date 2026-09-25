@@ -20,8 +20,8 @@ export interface ReadinessReport {
   readonly status: 'ready' | 'not_ready';
   readonly database: ReadinessDatabaseState;
   readonly checkedAt: string;
-  /** Repeated here so a readiness probe alone proves the money boundary holds. */
-  readonly financialOperationsEnabled: false;
+  /** Configured execution gate, not a claim of provider availability or settlement. */
+  readonly financialOperationsEnabled: boolean;
 }
 
 /** One bounded round trip to this instance's own storage. Rejects when it fails. */
@@ -35,6 +35,8 @@ const DEFAULT_TTL_MS = 1_000;
 
 export interface ReadinessReporterOptions {
   readonly probe?: ReadinessProbe;
+  /** Report the same gate used by financial routes; this never enables a route. */
+  readonly financialOperationsEnabled?: boolean;
   /** How long one answer is reused. Short, so recovery is noticed quickly. */
   readonly ttlMs?: number;
   readonly now?: () => number;
@@ -54,6 +56,7 @@ export class ReadinessReporter {
   readonly #probe: ReadinessProbe | null;
   readonly #ttlMs: number;
   readonly #now: () => number;
+  readonly #financialOperationsEnabled: boolean;
   #cached: {report: ReadinessReport; at: number} | null = null;
   #inFlight: Promise<ReadinessReport> | null = null;
 
@@ -62,12 +65,14 @@ export class ReadinessReporter {
     if (options === null || typeof options !== 'object' ||
         (options.probe !== undefined && typeof options.probe?.probe !== 'function') ||
         (options.now !== undefined && typeof options.now !== 'function') ||
+        (options.financialOperationsEnabled !== undefined && typeof options.financialOperationsEnabled !== 'boolean') ||
         !Number.isInteger(ttlMs) || ttlMs < MIN_TTL_MS || ttlMs > MAX_TTL_MS) {
       throw new ReadinessConfigurationError();
     }
     this.#probe = options.probe ?? null;
     this.#ttlMs = ttlMs;
     this.#now = options.now ?? Date.now;
+    this.#financialOperationsEnabled = options.financialOperationsEnabled ?? false;
   }
 
   async report(): Promise<ReadinessReport> {
@@ -119,7 +124,7 @@ export class ReadinessReporter {
       status: database === 'unavailable' ? 'not_ready' : 'ready',
       database,
       checkedAt,
-      financialOperationsEnabled: false,
+      financialOperationsEnabled: this.#financialOperationsEnabled,
     } as const);
   }
 }
