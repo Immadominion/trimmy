@@ -1,5 +1,6 @@
 import '../money/money_mode.dart';
 import '../money/real_holdings.dart';
+import '../money/live_trade_history.dart';
 import '../onboarding/first_stock_followup.dart';
 import '../notifications/notification_permission.dart';
 import '../workdays/workdays.dart';
@@ -2526,7 +2527,7 @@ class _ProductExperienceState extends State<ProductExperience>
     );
   }
 
-  Future<void> _openAssetId(String id) async {
+  Future<void> _openAssetId(String id, {String? variantMint}) async {
     final generation = _portfolioGeneration;
     try {
       final company = _knownCompany(id) ?? await _market?.findCompany(id);
@@ -2535,14 +2536,40 @@ class _ProductExperienceState extends State<ProductExperience>
         _message('This stock couldn’t open. Try again.');
         return;
       }
-      await _openCompany(company);
+      await _openCompany(
+        variantMint == null ? company : company.withVariant(variantMint),
+      );
     } catch (_) {
       if (mounted) _message('This stock couldn’t open. Try again.');
     }
   }
 
   void _openHistory() {
-    if (_realMoney) return;
+    if (_realMoney) {
+      final account = widget.account;
+      final origin = PracticeAccountConfig.fromEnvironment().apiUri;
+      if (!_signedIn || account == null) {
+        unawaited(_openSignIn());
+        return;
+      }
+      if (origin == null) {
+        _message('History couldn’t connect. Try again.');
+        return;
+      }
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (pageContext) => LiveTradeHistoryScreen(
+            account: account,
+            origin: origin,
+            onBack: () => Navigator.pop(pageContext),
+            logoForAsset: (assetId, mint) => _knownCompany(assetId)?.logoUrl,
+            onOpenAsset: (assetId, mint) =>
+                _openAssetId(assetId, variantMint: mint),
+          ),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => Scaffold(

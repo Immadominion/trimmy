@@ -179,6 +179,12 @@ class DeskScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
+                  if (real && onOpenPortfolio != null)
+                    TextButton(
+                      key: const ValueKey('real-trade-history'),
+                      onPressed: onOpenPortfolio,
+                      child: const Text('History'),
+                    ),
                   if (!real && snapshot.holdings.isNotEmpty)
                     TextButton(
                       onPressed: onOpenMarket,

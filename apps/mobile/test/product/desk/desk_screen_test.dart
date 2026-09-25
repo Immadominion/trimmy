@@ -6,6 +6,37 @@ import 'package:trimmy/product/desk/desk_screen.dart';
 import 'package:trimmy/product/market/market_craft.dart';
 
 void main() {
+  testWidgets('real desk keeps funding and history independently reachable', (
+    tester,
+  ) async {
+    var funding = 0;
+    var history = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: DeskScreen(
+          real: true,
+          realBalance: r'$3.00',
+          snapshot: DeskSnapshot.newRookie(handle: 'rookie'),
+          onOpenMarket: () {},
+          onAddMoney: () => funding++,
+          onOpenPortfolio: () => history++,
+        ),
+      ),
+    );
+    await tester.tap(find.text('Add money'));
+    expect(funding, 1);
+    final action = find.byKey(const ValueKey('real-trade-history'));
+    await tester.scrollUntilVisible(
+      action,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(action);
+    expect(history, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('portfolio overlaps only the latest three holding logos', (
     tester,
   ) async {
