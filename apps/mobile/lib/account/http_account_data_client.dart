@@ -159,6 +159,9 @@ class HttpAccountDataClient {
           ..headers['accept'] = 'application/json'
           ..headers['authorization'] = 'Bearer $token';
     if (fresh) request.headers['cache-control'] = 'no-cache';
+    if (endpoint == _Endpoint.holdings) {
+      request.headers['x-trimmy-holdings-version'] = '2';
+    }
     try {
       final response = await _client.send(request);
       if (operation.stopped != null) {

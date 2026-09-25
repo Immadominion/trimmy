@@ -87,6 +87,10 @@ void main() {
         );
         expect(request.headers['authorization'], 'Bearer fresh-$tokenCalls');
         expect(request.headers['accept'], 'application/json');
+        expect(
+          request.headers['x-trimmy-holdings-version'],
+          request.url.path.endsWith('/holdings') ? '2' : null,
+        );
         expect(request.headers.containsKey('content-type'), isFalse);
         expect(request.followRedirects, isFalse);
         expect(request.maxRedirects, 0);
@@ -115,6 +119,24 @@ void main() {
       reader.close();
       expect(client.closed, isFalse);
       await expectLater(reader.readContext(), fails(AccountDataFailure.closed));
+    },
+  );
+
+  test(
+    'holdings V2 preserves all held stock tokens after version negotiation',
+    () async {
+      final client = _Client((request) async {
+        expect(request.headers['x-trimmy-holdings-version'], '2');
+        return reply(holdingsEnvelopeV2());
+      });
+      final reader = _accountClient(client);
+      final holdings = await reader.readHoldings();
+      expect(holdings.stockTokens.map((token) => token.symbol), [
+        'AAPLx',
+        'NVDAx',
+      ]);
+      expect(holdings.holdingForMint(nvidiaMint)?.amountRaw, '123456789');
+      reader.close();
     },
   );
 

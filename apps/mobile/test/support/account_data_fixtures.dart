@@ -106,3 +106,43 @@ Map<String, Object?> holdingsEnvelope() => {
     },
   },
 };
+
+const nvidiaMint = 'Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh';
+
+Map<String, Object?> holdingsEnvelopeV2() {
+  final envelope = holdingsEnvelope()..['schemaVersion'] = 2;
+  final holdings = envelope['holdings'] as Map<String, Object?>;
+  final balances = Map<String, Object?>.from(holdings['balances'] as Map);
+  holdings['balances'] = balances;
+  balances['tokens'] = <Map<String, Object?>>[
+    {
+      'assetId': 'apple',
+      'name': 'Apple',
+      ...tokenBalance(
+        symbol: 'AAPLx',
+        mint: 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',
+        decimals: 8,
+        amountRaw: '9007199254741000',
+        slot: 447040361,
+      ),
+      'displayAmount': '90071992.54741000',
+      'displayResolution': 'rpc_ui_amount',
+      'displayUnits': 'token_units',
+    },
+    {
+      'assetId': 'nvidia',
+      'name': 'NVIDIA',
+      ...tokenBalance(
+        symbol: 'NVDAx',
+        mint: nvidiaMint,
+        decimals: 8,
+        amountRaw: '123456789',
+        slot: 447040361,
+      ),
+      'displayAmount': '2.46913578',
+      'displayResolution': 'rpc_ui_amount',
+      'displayUnits': 'token_units',
+    },
+  ];
+  return envelope;
+}

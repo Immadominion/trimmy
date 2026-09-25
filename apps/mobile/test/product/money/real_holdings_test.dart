@@ -8,6 +8,8 @@ import 'package:trimmy/product/design/product_theme.dart';
 import '../../support/account_data_fixtures.dart' as fixtures;
 
 class Reader implements AccountPortfolioReader {
+  Reader({this.envelope});
+  final Map<String, Object?>? envelope;
   @override
   String get accountId => fixtures.account;
   @override
@@ -19,7 +21,7 @@ class Reader implements AccountPortfolioReader {
   @override
   Future<AccountHoldingsSnapshot> readHoldings() async =>
       AccountHoldingsSnapshot.fromEnvelope(
-        fixtures.holdingsEnvelope(),
+        envelope ?? fixtures.holdingsEnvelope(),
         expectedUserId: fixtures.account,
       );
   @override
@@ -38,6 +40,72 @@ class Account extends ChangeNotifier implements AccountController {
 }
 
 void main() {
+  testWidgets('renders and opens every V2 holding with its own identity', (
+    tester,
+  ) async {
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: fixtures.holdingsEnvelopeV2()),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    await repository.refresh();
+    WalletStockBalance? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: Scaffold(
+          body: RealHoldings(
+            account: account,
+            onAddMoney: () {},
+            onAsset: (holding) => selected = holding,
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(HoldingTile), findsNWidgets(2));
+    expect(find.text('NVIDIA'), findsOneWidget);
+    expect(find.text('2.46913578 NVDAx'), findsOneWidget);
+    expect(find.textContaining('shares'), findsNothing);
+    await tester.tap(find.text('NVIDIA'));
+    expect(selected?.assetId, 'nvidia');
+    expect(selected?.mint, fixtures.nvidiaMint);
+    expect(tester.takeException(), isNull);
+    repository.dispose();
+  });
+
+  testWidgets('empty V2 holdings explore the market without picking Apple', (
+    tester,
+  ) async {
+    final envelope = fixtures.holdingsEnvelopeV2();
+    ((envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: envelope),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    await repository.refresh();
+    var explored = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: Scaffold(
+          body: RealHoldings(
+            account: account,
+            onAddMoney: () {},
+            onExplore: () => explored = true,
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(HoldingTile), findsNothing);
+    expect(find.text('No stocks yet'), findsOneWidget);
+    await tester.tap(find.text('Explore stocks'));
+    expect(explored, isTrue);
+    repository.dispose();
+  });
+
   testWidgets(
     'real holdings use the shared stock row and keep cash out of the list',
     (tester) async {

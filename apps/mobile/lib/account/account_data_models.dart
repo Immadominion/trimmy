@@ -318,6 +318,113 @@ final class AaplxTokenBalance {
   }
 }
 
+/// An observed stock balance. RPC display amounts may include a Token-2022
+/// multiplier, so trading uses [amountRaw] and never a rounded display value.
+final class WalletStockBalance {
+  const WalletStockBalance._(
+    this._balance, {
+    required this.assetId,
+    required this.name,
+    required this.displayAmount,
+  });
+
+  final String assetId;
+  final String name;
+  final StockTokenBalance _balance;
+  final String? displayAmount;
+  String get symbol => _balance.symbol;
+  String get mint => _balance.mint;
+  int get decimals => _balance.decimals;
+  String get amountRaw => _balance.amountRaw;
+  int get observedSlot => _balance.observedSlot;
+  int get accountCount => _balance.accountCount;
+  TokenAccountTopology get accountTopology => _balance.accountTopology;
+  bool get hasFrozenAccounts => _balance.hasFrozenAccounts;
+  String get displayUnits => 'token_units';
+
+  /// Exact base token units, without grouping separators. This is suitable for
+  /// an amount field; [displayAmount] is only for portfolio presentation.
+  String get rawTokenUnits {
+    if (decimals == 0) return amountRaw;
+    final padded = amountRaw.padLeft(decimals + 1, '0');
+    final whole = padded.substring(0, padded.length - decimals);
+    final fraction = padded
+        .substring(padded.length - decimals)
+        .replaceFirst(RegExp(r'0+$'), '');
+    return fraction.isEmpty ? whole : '$whole.$fraction';
+  }
+
+  static WalletStockBalance _fromLegacy(AaplxTokenBalance value) =>
+      WalletStockBalance._(
+        value._raw,
+        assetId: 'apple',
+        name: 'Apple',
+        displayAmount: null,
+      );
+
+  static WalletStockBalance _fromJson(Object? value) {
+    final data = _object(value);
+    _exactKeys(data, const {
+      'assetId',
+      'name',
+      'symbol',
+      'mint',
+      'decimals',
+      'amountRaw',
+      'amountUnits',
+      'observedSlot',
+      'accountCount',
+      'accountTopology',
+      'aggregation',
+      'hasFrozenAccounts',
+      'displayAmount',
+      'displayResolution',
+      'displayUnits',
+    });
+    final assetId = data['assetId'];
+    final name = data['name'];
+    final symbol = data['symbol'];
+    final mint = data['mint'];
+    final decimals = data['decimals'];
+    final display = data['displayAmount'];
+    if (assetId is! String ||
+        !_exactMatch(RegExp(r'[a-z0-9][a-z0-9_-]{0,127}'), assetId) ||
+        name is! String ||
+        name.isEmpty ||
+        name.length > 160 ||
+        name.contains(RegExp(r'[\x00-\x1f\x7f]')) ||
+        symbol is! String ||
+        symbol.isEmpty ||
+        symbol.length > 32 ||
+        symbol.contains(RegExp(r'[\x00-\x20\x7f]')) ||
+        mint is! String ||
+        !_validNonzeroSolanaAddress(mint) ||
+        mint == _usdcMint ||
+        decimals is! int ||
+        decimals < 0 ||
+        decimals > 18 ||
+        data['amountRaw'] == '0' ||
+        data['displayUnits'] != 'token_units' ||
+        (display == null
+            ? data['displayResolution'] != 'unavailable'
+            : display is! String ||
+                  display.length > 80 ||
+                  !_exactMatch(
+                    RegExp(r'(?:0|[1-9][0-9]*)(?:\.[0-9]+)?'),
+                    display,
+                  ) ||
+                  data['displayResolution'] != 'rpc_ui_amount')) {
+      invalidAccountDataResponse();
+    }
+    return WalletStockBalance._(
+      _parseTokenFields(data, symbol: symbol, mint: mint, decimals: decimals),
+      assetId: assetId,
+      name: name,
+      displayAmount: display as String?,
+    );
+  }
+}
+
 StockTokenBalance _parseTokenFields(
   Map<String, dynamic> data, {
   required String symbol,
@@ -410,6 +517,7 @@ final class AccountHoldingsSnapshot {
     required this.nativeSol,
     required this.usdc,
     required this.aaplx,
+    required this.stockTokens,
   });
 
   final String userId;
@@ -420,6 +528,14 @@ final class AccountHoldingsSnapshot {
   final NativeSolBalance nativeSol;
   final StockTokenBalance usdc;
   final AaplxTokenBalance aaplx;
+  final List<WalletStockBalance> stockTokens;
+
+  WalletStockBalance? holdingForMint(String mint) {
+    for (final token in stockTokens) {
+      if (token.mint == mint) return token;
+    }
+    return null;
+  }
 
   String get commitment => 'confirmed';
   bool get readOnly => true;
@@ -440,7 +556,8 @@ final class AccountHoldingsSnapshot {
       'wallet',
       'holdings',
     });
-    if (envelope['schemaVersion'] is! int || envelope['schemaVersion'] != 1) {
+    final version = envelope['schemaVersion'];
+    if (version is! int || (version != 1 && version != 2)) {
       invalidAccountDataResponse();
     }
     final userId = _boundUserId(envelope['userId'], expectedUserId);
@@ -471,7 +588,12 @@ final class AccountHoldingsSnapshot {
     }
     final observedAt = _exactUtcMilliseconds(rawTime);
     final balances = _object(holdings['balances']);
-    _exactKeys(balances, const {'nativeSol', 'usdc', 'aaplx'});
+    _exactKeys(balances, {
+      'nativeSol',
+      'usdc',
+      'aaplx',
+      if (version == 2) 'tokens',
+    });
     final nativeSol = NativeSolBalance._fromJson(balances['nativeSol']);
     final usdc = StockTokenBalance._fromJson(
       balances['usdc'],
@@ -480,6 +602,23 @@ final class AccountHoldingsSnapshot {
       decimals: 6,
     );
     final aaplx = AaplxTokenBalance._fromJson(balances['aaplx']);
+    final List<WalletStockBalance> stockTokens;
+    if (version == 2) {
+      final tokens = balances['tokens'];
+      if (tokens is! List || tokens.length > 256) invalidAccountDataResponse();
+      final mints = <String>{};
+      stockTokens = List.unmodifiable(
+        tokens.map((value) {
+          final token = WalletStockBalance._fromJson(value);
+          if (!mints.add(token.mint)) invalidAccountDataResponse();
+          return token;
+        }),
+      );
+    } else {
+      stockTokens = List.unmodifiable([
+        if (aaplx.amountRaw != '0') WalletStockBalance._fromLegacy(aaplx),
+      ]);
+    }
     _validateConsistency(
       holdings['consistency'],
       nativeSol: nativeSol.observedSlot,
@@ -495,6 +634,7 @@ final class AccountHoldingsSnapshot {
       nativeSol: nativeSol,
       usdc: usdc,
       aaplx: aaplx,
+      stockTokens: stockTokens,
     );
   }
 }

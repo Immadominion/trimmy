@@ -14,6 +14,86 @@ Matcher fails([
 );
 
 void main() {
+  test(
+    'V2 stock balances preserve raw and scaled display quantities separately',
+    () {
+      final value = AccountHoldingsSnapshot.fromEnvelope(
+        holdingsEnvelopeV2(),
+        expectedUserId: account,
+      );
+      expect(value.stockTokens.length, 2);
+      final nvidia = value.holdingForMint(nvidiaMint)!;
+      expect(nvidia.assetId, 'nvidia');
+      expect(nvidia.amountRaw, '123456789');
+      expect(nvidia.rawTokenUnits, '1.23456789');
+      expect(nvidia.displayAmount, '2.46913578');
+      expect(nvidia.displayUnits, 'token_units');
+      expect(value.holdingForMint(wallet), isNull);
+      expect(() => value.stockTokens.clear(), throwsUnsupportedError);
+      final legacy = AccountHoldingsSnapshot.fromEnvelope(
+        holdingsEnvelope(),
+        expectedUserId: account,
+      );
+      expect(legacy.stockTokens.single.rawTokenUnits, '90071992.54741');
+      expect(legacy.stockTokens.single.displayAmount, isNull);
+    },
+  );
+
+  test(
+    'V2 rejects duplicate, malformed, cash and contradictory token balances',
+    () {
+      final mutations = <void Function(List<Map<String, Object?>>)>[
+        (tokens) => tokens.add({...tokens.first}),
+        (tokens) => tokens.last['amountRaw'] = '0',
+        (tokens) => tokens.last['amountRaw'] = '18446744073709551616',
+        (tokens) => tokens.last['mint'] = 'not-a-mint',
+        (tokens) => tokens.last['mint'] =
+            'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        (tokens) => tokens.last['decimals'] = 19,
+        (tokens) => tokens.last['displayAmount'] = '-1',
+        (tokens) => tokens.last['displayAmount'] = '1e9',
+        (tokens) => tokens.last['displayAmount'] = null,
+        (tokens) => tokens.last['displayResolution'] = 'unavailable',
+        (tokens) => tokens.last['displayUnits'] = 'shares',
+        (tokens) => tokens.last['accountCount'] = 0,
+        (tokens) => tokens.last['observedSlot'] = -1,
+        (tokens) => tokens.last['executionEnabled'] = true,
+      ];
+      for (final mutate in mutations) {
+        final envelope = holdingsEnvelopeV2();
+        final balances = (envelope['holdings'] as Map)['balances'] as Map;
+        mutate(balances['tokens'] as List<Map<String, Object?>>);
+        expect(
+          () => AccountHoldingsSnapshot.fromEnvelope(
+            envelope,
+            expectedUserId: account,
+          ),
+          fails(),
+        );
+      }
+    },
+  );
+
+  test('V2 supports unavailable display amounts and an empty portfolio', () {
+    final envelope = holdingsEnvelopeV2();
+    final balances = (envelope['holdings'] as Map)['balances'] as Map;
+    final tokens = balances['tokens'] as List<Map<String, Object?>>;
+    tokens.last['displayAmount'] = null;
+    tokens.last['displayResolution'] = 'unavailable';
+    var value = AccountHoldingsSnapshot.fromEnvelope(
+      envelope,
+      expectedUserId: account,
+    );
+    expect(value.stockTokens.last.displayAmount, isNull);
+    expect(value.stockTokens.last.rawTokenUnits, '1.23456789');
+    balances['tokens'] = <Map<String, Object?>>[];
+    value = AccountHoldingsSnapshot.fromEnvelope(
+      envelope,
+      expectedUserId: account,
+    );
+    expect(value.stockTokens, isEmpty);
+  });
+
   test('account context preserves verified identity and wallet candidate', () {
     final value = AccountContextSnapshot.fromEnvelope(
       contextEnvelope(),

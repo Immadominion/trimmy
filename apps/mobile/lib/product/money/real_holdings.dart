@@ -44,11 +44,17 @@ class RealHoldings extends StatelessWidget {
     required this.onAddMoney,
     this.onApple,
     this.appleLogoUrl,
+    this.onAsset,
+    this.logoForAsset,
+    this.onExplore,
   });
   final AccountController? account;
   final VoidCallback onAddMoney;
   final VoidCallback? onApple;
   final String? appleLogoUrl;
+  final void Function(WalletStockBalance holding)? onAsset;
+  final String? Function(WalletStockBalance holding)? logoForAsset;
+  final VoidCallback? onExplore;
   @override
   Widget build(BuildContext context) {
     final state = account?.portfolioState;
@@ -73,7 +79,7 @@ class RealHoldings extends StatelessWidget {
         ),
       );
     }
-    if (h.aaplx.amountRaw == '0') {
+    if (h.stockTokens.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: ShapeDecoration(
@@ -89,20 +95,38 @@ class RealHoldings extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text('Your first stock starts here.'),
-            TextButton(onPressed: onApple, child: const Text('Explore stocks')),
+            TextButton(
+              onPressed: onExplore ?? onApple,
+              child: const Text('Explore stocks'),
+            ),
           ],
         ),
       );
     }
-    return HoldingTile(
-      name: 'Apple',
-      logoUrl: appleLogoUrl,
-      logoAsset: 'assets/images/ui_review/wall-street-orbit/token-AAPLx.webp',
-      quantity: '${formatRawUnits(h.aaplx.amountRaw, 8)} AAPLx',
-      // The holdings API intentionally leaves the scaled share amount
-      // unresolved. Do not multiply raw units by a market share price.
-      value: '—',
-      onTap: onApple,
+    return Column(
+      children: [
+        for (final holding in h.stockTokens)
+          HoldingTile(
+            key: ValueKey('real-holding-${holding.mint}'),
+            name: holding.name,
+            logoUrl:
+                logoForAsset?.call(holding) ??
+                (holding.assetId == 'apple' ? appleLogoUrl : null),
+            logoAsset: holding.assetId == 'apple'
+                ? 'assets/images/ui_review/wall-street-orbit/token-AAPLx.webp'
+                : null,
+            quantity:
+                '${holding.displayAmount ?? formatRawUnits(holding.amountRaw, holding.decimals)} ${holding.symbol}',
+            // A market share price must not be multiplied by raw token units:
+            // token-to-share resolution and valuation are separate facts.
+            value: '—',
+            onTap: onAsset != null
+                ? () => onAsset!(holding)
+                : holding.assetId == 'apple'
+                ? onApple
+                : null,
+          ),
+      ],
     );
   }
 }
