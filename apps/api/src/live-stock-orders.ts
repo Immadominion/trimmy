@@ -43,6 +43,11 @@ export class PostgresLiveOrderStore implements LiveOrderStore {
 
 export class LiveTradeError extends Error {constructor(readonly code:string){super(code);}}
 function fail(code:string):never {throw new LiveTradeError(code);}
+// Jupiter automatically sponsors low-SOL takers. This execution path verifies
+// one wallet signer and self-paid fees, so admit that path before requesting an
+// order rather than surfacing Jupiter's generic HTTP 400 as LIVE_UNAVAILABLE.
+// This is a provider balance threshold, not a transaction fee estimate.
+export const LIVE_STOCK_MIN_SOL_LAMPORTS = 10_000_000;
 export function verifyReviewedSignature(order:LiveOrder,encoded:string):string {
  try {
   if(encoded.length>1644 || Buffer.from(encoded,'base64').toString('base64')!==encoded) return fail('INVALID_SIGNATURE');
@@ -99,6 +104,9 @@ export class LiveStockOrders {
    const previous=await this.status(user);
    if(previous?.status==='pending')fail('ORDER_PENDING');
    const observation=await this.chain();
+   const balance=await this.rpc('getBalance',[wallet,{commitment:'confirmed'}]);
+   if(!Number.isSafeInteger(balance?.value)||balance.value<0)fail('LIVE_UNAVAILABLE');
+   if(balance.value<LIVE_STOCK_MIN_SOL_LAMPORTS)fail('ADD_SOL');
    const buying=input.side==='buy';const pair={inputAsset:buying?'USDC':'AAPLx',outputAsset:buying?'AAPLx':'USDC',amountRaw:input.amountRaw} as const;
    const url=new URL('https://api.jup.ag/swap/v2/order');
    url.search=new URLSearchParams({inputMint:JUPITER_QUOTE_ASSETS[pair.inputAsset].mint,outputMint:JUPITER_QUOTE_ASSETS[pair.outputAsset].mint,amount:input.amountRaw,taker:wallet,slippageBps:'50',excludeRouters:'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
@@ -183,7 +191,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
   }
  }
- app.get('/v1/trading/capabilities',{schema:{querystring:noQuery}},async()=>({enabled:!!adapters,network:'solana:mainnet-beta',assets:[{assetId:'apple',mint:JUPITER_QUOTE_ASSETS.AAPLx.mint,symbol:'AAPLx',decimals:8}],maxBuyUsdc:'100'}));
+ app.get('/v1/trading/capabilities',{schema:{querystring:noQuery}},async()=>({enabled:!!adapters,network:'solana:mainnet-beta',assets:[{assetId:'apple',mint:JUPITER_QUOTE_ASSETS.AAPLx.mint,symbol:'AAPLx',decimals:8}],maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)}));
  app.get<{Params:{id:string}}>('/v1/trading/order/:id',{schema:{querystring:noQuery,params:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string',format:'uuid'}}}}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user,request.params.id)));
  app.get('/v1/trading/order',{schema:{querystring:noQuery}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user)));
  app.post<{Body:StockEstimateInput}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{const:'apple'},variantMint:{const:JUPITER_QUOTE_ASSETS.AAPLx.mint},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,8}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body)));

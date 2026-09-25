@@ -36,3 +36,36 @@ test('a lost dispatch response stays pending; retry never sends a second trade',
  await service.execute('user',f.order.wallet,'test','a'.repeat(64),f.signed);assert.equal(dispatches,1);
  confirmed=true;assert.equal((await service.status('user','test'))?.status,'confirmed');assert.equal(dispatches,1);
 });
+
+test('low SOL reports the self-paid funding requirement before requesting a Jupiter order', async () => {
+ const wallet=fixture().order.wallet;
+ const store:LiveOrderStore={read:async()=>null,create:async()=>{throw Error('unexpected write');},begin:async()=>{throw Error('unexpected dispatch');},resolve:async()=>{throw Error('unexpected write');}};
+ for(const [balance,expected] of [[3_000_000,'ADD_SOL'],[9_999_999,'ADD_SOL'],[-1,'LIVE_UNAVAILABLE'],[null,'LIVE_UNAVAILABLE']] as const) {
+  let orderRequests=0;
+  const fake=async(url:URL|RequestInfo,options?:RequestInit)=>{
+   if(String(url).includes('/order')){orderRequests++;throw Error('unexpected order');}
+   const request=JSON.parse(String(options?.body));
+   const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{value:balance};
+   if(request.method==='getBalance')assert.deepEqual(request.params,[wallet,{commitment:'confirmed'}]);
+   return Response.json({jsonrpc:'2.0',id:1,result});
+  };
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
+  await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000'}),new RegExp(expected));
+  assert.equal(orderRequests,0);
+ }
+});
+
+test('the provider SOL threshold admits an order request without spending or reserving SOL',async()=>{
+ const wallet=fixture().order.wallet;let orderRequests=0;
+ const store:LiveOrderStore={read:async()=>null,create:async()=>{throw Error('unexpected write');},begin:async()=>{throw Error('unexpected dispatch');},resolve:async()=>{throw Error('unexpected write');}};
+ const fake=async(url:URL|RequestInfo,options?:RequestInit)=>{
+  if(String(url).includes('/order')){orderRequests++;return Response.json({transaction:'',router:'metis',errorCode:1});}
+  const request=JSON.parse(String(options?.body));
+  assert.ok(['getGenesisHash','getBlockHeight','getBalance'].includes(request.method));
+  const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{value:10_000_000};
+  return Response.json({jsonrpc:'2.0',id:1,result});
+ };
+ const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
+ await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000'}),/ADD_USDC/);
+ assert.equal(orderRequests,1);
+});
