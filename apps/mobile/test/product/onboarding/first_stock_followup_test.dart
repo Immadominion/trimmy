@@ -93,6 +93,7 @@ void main() {
     (tester) async {
       final prefs = await SharedPreferences.getInstance();
       var requests = 0, finished = 0;
+      final schedules = <String>[];
       await tester.pumpWidget(
         MaterialApp(
           theme: productTheme(),
@@ -106,6 +107,10 @@ void main() {
               requests++;
               return OnboardingNotificationStatus.granted;
             },
+            setReminder: (preference) async {
+              schedules.add(preference);
+              return true;
+            },
           ),
         ),
       );
@@ -115,11 +120,56 @@ void main() {
       await tester.pumpAndSettle();
       expect(requests, 0);
       expect(finished, 1);
+      expect(schedules, ['off']);
       expect(
         ReminderPreferences.read(prefs, 'account-a'),
         ReminderPreference.off,
       );
       expect(ReminderPreferences.read(prefs, 'account-b'), isNull);
+    },
+  );
+  testWidgets(
+    'daily opt-in schedules only after permission and retries native failure',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final actions = <String>[];
+      var finished = 0, scheduled = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          home: ReminderPreferencePage(
+            preferences: prefs,
+            principal: 'account-a',
+            requestPermission: () async {
+              actions.add('permission');
+              return OnboardingNotificationStatus.granted;
+            },
+            setReminder: (preference) async {
+              actions.add(preference);
+              return scheduled;
+            },
+            onDone: () async {
+              finished++;
+            },
+          ),
+        ),
+      );
+      expect(find.text('Around 7 PM, your time.'), findsOneWidget);
+      await tester.tap(find.text('Once a day'));
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(actions, ['permission', 'daily']);
+      expect(finished, 0);
+      expect(
+        find.text('Couldn’t set the reminder. Try again.'),
+        findsOneWidget,
+      );
+      scheduled = true;
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(actions, ['permission', 'daily', 'permission', 'daily']);
+      expect(finished, 1);
     },
   );
   testWidgets(
@@ -139,6 +189,10 @@ void main() {
             requestPermission: () async {
               requests++;
               return OnboardingNotificationStatus.denied;
+            },
+            setReminder: (preference) async {
+              expect(preference, 'off');
+              return true;
             },
           ),
         ),

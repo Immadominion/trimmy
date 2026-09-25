@@ -10,8 +10,8 @@ import '../notifications/notification_permission.dart';
 import 'onboarding_models.dart';
 
 enum ReminderPreference {
-  daily('Once a day', 'A nudge to check in.'),
-  occasional('A few times a week', 'A little breathing room.'),
+  daily('Once a day', 'Around 7 PM, your time.'),
+  occasional('A few times a week', 'Mon, Wed and Fri, around 7 PM.'),
   off('Keep it quiet', 'I’ll come back on my own.');
 
   const ReminderPreference(this.label, this.caption);
@@ -45,6 +45,15 @@ class ReminderPreferences {
       throw StateError('REMINDER_PREFERENCE_NOT_SAVED');
     }
   }
+
+  /// Reconciles the active profile without displaying an OS permission prompt.
+  /// A previous denial may have been changed in system Settings since saving.
+  static Future<bool> sync(SharedPreferences preferences, String? principal) =>
+      ProductNotificationPermission.setReminder(
+        principal == null
+            ? ReminderPreference.off.name
+            : (read(preferences, principal) ?? ReminderPreference.off).name,
+      );
 }
 
 /// Optional preferences never submit another order. The final callback commits
@@ -345,11 +354,13 @@ class ReminderPreferencePage extends StatefulWidget {
     required this.principal,
     required this.onDone,
     this.requestPermission = ProductNotificationPermission.request,
+    this.setReminder = ProductNotificationPermission.setReminder,
   });
   final SharedPreferences preferences;
   final String principal;
   final Future<void> Function() onDone;
   final RequestOnboardingNotificationPermission requestPermission;
+  final Future<bool> Function(String preference) setReminder;
   @override
   State<ReminderPreferencePage> createState() => _ReminderPreferencePageState();
 }
@@ -385,6 +396,11 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
         choice,
         permission,
       );
+      final scheduled = await widget.setReminder(
+        permission == OnboardingNotificationStatus.granted
+            ? choice.name
+            : ReminderPreference.off.name,
+      );
       if (!mounted) return;
       if (choice != ReminderPreference.off &&
           permission != OnboardingNotificationStatus.granted) {
@@ -394,6 +410,8 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
               ? 'Notifications are off. You can change this in your phone settings.'
               : 'Your preference is saved. Notifications aren’t available on this build yet.';
         });
+      } else if (!scheduled) {
+        setState(() => _message = 'Couldn’t set the reminder. Try again.');
       } else {
         await widget.onDone();
       }
