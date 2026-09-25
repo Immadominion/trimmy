@@ -62,6 +62,95 @@ Widget app(Widget child, {double scale = 1, double keyboard = 0}) =>
       ),
     );
 void main() {
+  test('a conflicting draft refreshes before an explicit retry', () async {
+    final revisions = <int>[];
+    var reads = 0;
+    final c = controller((request) {
+      if (request.method == 'GET') {
+        reads++;
+        return response(fixture(step: 2, revision: 3, draft: 'Remote note'));
+      }
+      final body = jsonDecode(request.body) as Map;
+      revisions.add(body['revision'] as int);
+      if (revisions.length == 1) {
+        return http.Response('{"code":"WORK_CHANGED"}', 409);
+      }
+      return response(fixture(step: 2, revision: 4, draft: body['draft']));
+    })..journey = WorkJourney.fromJson(fixture(step: 2, revision: 2));
+    addTearDown(c.dispose);
+
+    await expectLater(
+      c.draft('morning-brief', 'Local note'),
+      throwsA(
+        isA<WorkdayException>().having((e) => e.code, 'code', 'WORK_CHANGED'),
+      ),
+    );
+    expect(reads, 1);
+    expect(revisions, [2]);
+    expect(c.journey!.current!.draft, 'Remote note');
+    expect(c.journey!.current!.revision, 3);
+
+    await c.draft('morning-brief', 'Local note');
+    expect(revisions, [2, 3]);
+    expect(c.journey!.current!.draft, 'Local note');
+  });
+
+  test(
+    'a lost draft response recovers an already saved matching note',
+    () async {
+      var writes = 0;
+      final c = controller((request) {
+        if (request.method == 'GET') {
+          return response(fixture(step: 2, revision: 3, draft: 'Saved note'));
+        }
+        writes++;
+        return writes == 1
+            ? http.Response('{"code":"WORK_UNAVAILABLE"}', 503)
+            : http.Response('{"code":"WORK_CHANGED"}', 409);
+      })..journey = WorkJourney.fromJson(fixture(step: 2, revision: 2));
+      addTearDown(c.dispose);
+
+      await expectLater(
+        c.draft('morning-brief', 'Saved note'),
+        throwsA(isA<WorkdayException>()),
+      );
+      await c.draft('morning-brief', 'Saved note');
+      expect(c.journey!.current!.revision, 3);
+      expect(c.journey!.current!.draft, 'Saved note');
+      await c.draft('morning-brief', 'Saved note');
+      expect(writes, 2);
+    },
+  );
+
+  test(
+    'a remote stage change cannot report an unsaved draft as saved',
+    () async {
+      var writes = 0;
+      final c = controller((request) {
+        if (request.method == 'GET') {
+          return response(fixture(step: 3, revision: 3, draft: 'Filed note'));
+        }
+        writes++;
+        return http.Response('{"code":"WORK_CHANGED"}', 409);
+      })..journey = WorkJourney.fromJson(fixture(step: 2, revision: 2));
+      addTearDown(c.dispose);
+      for (var attempt = 0; attempt < 2; attempt++) {
+        await expectLater(
+          c.draft('morning-brief', 'Local note'),
+          throwsA(
+            isA<WorkdayException>().having(
+              (e) => e.code,
+              'code',
+              'WORK_CHANGED',
+            ),
+          ),
+        );
+      }
+      expect(writes, 1);
+      expect(c.journey!.current!.draft, 'Filed note');
+    },
+  );
+
   test(
     'draft and submission serialize revisions; sign-out discards a late read',
     () async {

@@ -206,13 +206,22 @@ class WorkdayController extends ChangeNotifier {
   });
   Future<void> draft(String id, String text) => _serial(() async {
     final latest = journey?.find(id);
-    if (latest == null ||
-        latest.step != 2 ||
-        latest.complete ||
-        latest.draft == text) {
-      return;
+    if (latest?.draft == text) return;
+    if (latest == null || latest.step != 2 || latest.complete) {
+      throw const WorkdayException('WORK_CHANGED');
     }
-    _accept(await repository.saveDraft(latest, text));
+    try {
+      _accept(await repository.saveDraft(latest, text));
+    } on WorkdayException catch (e) {
+      if (e.code == 'WORK_CHANGED') {
+        _accept(await repository.read());
+        // A previous save may have succeeded while its response was lost.
+        if (journey?.find(id)?.draft == text) return;
+        // Keep the caller's note intact. A retry uses the fresh revision;
+        // never silently overwrite a different note from another device.
+      }
+      rethrow;
+    }
   });
   @override
   void dispose() {
