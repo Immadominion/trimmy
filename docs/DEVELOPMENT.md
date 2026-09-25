@@ -47,6 +47,18 @@ flutter run --flavor production --dart-define-from-file=account-config.local.jso
 
 A physical phone needs an API endpoint reachable from the phone; `localhost` refers to the phone itself. Configure native auth callback schemes and provider origins for your own app. The default `main.dart` is the actual product. `ui_review.dart` and `design_study.dart` are separate historical review entries.
 
+### Android signing and the development Seeker
+
+For a local release-mode update to a Seeker already using your debug certificate, explicitly retain that certificate:
+
+```bash
+TRIMMY_DEVICE_DEBUG_SIGNING=true flutter run --flavor production --release --dart-define-from-file=account-config.local.json
+```
+
+This override is for that development device only. Distributable releases require release signing configured through ignored `apps/mobile/android/key.properties`, with the keystore kept outside the repository. Leave `TRIMMY_DEVICE_DEBUG_SIGNING` unset for distribution; release builds fail when signing is missing.
+
+Never uninstall or clear the funded app to resolve a signing mismatch. Stop and use the certificate that matches the installed app. The override does not make different debug certificates compatible.
+
 ## Web and marketing
 
 ```bash
