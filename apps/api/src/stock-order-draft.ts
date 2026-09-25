@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { inspect } from 'node:util';
 import { address, getAddressEncoder, isOffCurveAddress } from '@solana/kit';
 import { parseRawAmount } from '@trimmy/domain';
+import { findStockTradingAsset } from './stock-trading-catalog.js';
 import { JUPITER_QUOTE_ASSETS } from './jupiter-quote-reader.js';
 import { validateStockEstimateInput } from './stock-estimates.js';
 import type { StockEstimate, StockEstimateInput } from './stock-estimates.js';
@@ -61,7 +62,7 @@ export interface StockDraftSummary {
   readonly network: 'solana:mainnet-beta';
   readonly userId: string;
   readonly taker: string;
-  readonly assetId: 'apple';
+  readonly assetId: StockEstimateInput['assetId'];
   readonly variantMint: string;
   readonly side: 'buy' | 'sell';
   readonly input: StockEstimate['input'];
@@ -215,8 +216,9 @@ function expectedTerms(input: StockEstimate, requestStarted: number): StockEstim
   try { validateStockEstimateInput({assetId: q['assetId'], variantMint: q['variantMint'], side: q['side'], amountRaw: from['amountRaw']} as StockEstimateInput); }
   catch { fail('STOCK_DRAFT_CONTEXT_INVALID'); }
   const buying = q['side'] === 'buy';
-  const source = buying ? JUPITER_QUOTE_ASSETS.USDC : JUPITER_QUOTE_ASSETS.AAPLx;
-  const target = buying ? JUPITER_QUOTE_ASSETS.AAPLx : JUPITER_QUOTE_ASSETS.USDC;
+  const stock = findStockTradingAsset(q['assetId'], q['variantMint'])!;
+  const source = buying ? JUPITER_QUOTE_ASSETS.USDC : stock;
+  const target = buying ? stock : JUPITER_QUOTE_ASSETS.USDC;
   if (q['schemaVersion'] !== 1 || q['kind'] !== 'indicative' || q['provider'] !== 'jupiter-swap-v2' || q['network'] !== 'solana:mainnet-beta' ||
       q['executionEnabled'] !== false || q['executable'] !== false || q['eligibility'] !== 'unverified' || q['walletChecked'] !== false ||
       q['networkFees'] !== null || q['amountUnits'] !== 'raw_token_units' ||

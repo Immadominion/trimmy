@@ -5,6 +5,7 @@ import type {FastifyInstance, FastifyRequest, FastifyReply} from 'fastify';
 import type {ExistingPracticeAccountAuthentication} from './practice-session-routes.js';
 import type {PrivyLinkedIdentityResolution} from './privy-linked-identities.js';
 import type {PracticeIdentity} from './practice-identity.js';
+import {STOCK_TRADING_ASSETS,findStockTradingAsset} from './stock-trading-catalog.js';
 import {JUPITER_QUOTE_ASSETS, parseEstimate} from './jupiter-quote-reader.js';
 import {bindStockOrderDraft, copyStockDraftBytesForReview, STOCK_DRAFT_MAINNET_GENESIS} from './stock-order-draft.js';
 import {SolanaMainnetLookupTableResolver} from './stock-order-lookup-resolver.js';
@@ -43,11 +44,11 @@ export class PostgresLiveOrderStore implements LiveOrderStore {
 
 export class LiveTradeError extends Error {constructor(readonly code:string){super(code);}}
 function fail(code:string):never {throw new LiveTradeError(code);}
-// Jupiter automatically sponsors low-SOL takers. This execution path verifies
-// one wallet signer and self-paid fees, so admit that path before requesting an
-// order rather than surfacing Jupiter's generic HTTP 400 as LIVE_UNAVAILABLE.
-// This is a provider balance threshold, not a transaction fee estimate.
-export const LIVE_STOCK_MIN_SOL_LAMPORTS = 10_000_000;
+// One sole-signer transaction costs at least 5,000 lamports. The actual fee +
+// account rent are independently reconciled and simulated for each order below.
+// Jupiter's 0.01 SOL sponsorship heuristic is NOT a minimum trading balance:
+// self-paid orders can still be built below it. Never infer solvency from it.
+export const LIVE_STOCK_MIN_SOL_LAMPORTS = 5_000;
 export function verifyReviewedSignature(order:LiveOrder,encoded:string):string {
  try {
   if(encoded.length>1644 || Buffer.from(encoded,'base64').toString('base64')!==encoded) return fail('INVALID_SIGNATURE');
@@ -72,11 +73,11 @@ export class LiveStockOrders {
   const rpc={rpcUrl:options.rpcUrl,...(options.fetch?{fetch:options.fetch}:{}),now:this.#now};
   this.#stages=options.stages??{lookupResolver:new SolanaMainnetLookupTableResolver(rpc),lifetimeVerifier:new SolanaMainnetStockOrderLifetimeVerifier(rpc),semanticsReader:new SolanaMainnetStockOrderSemanticsReader(rpc),simulator:new SolanaMainnetStockOrderSimulator(rpc),now:this.#now};
  }
- private async json(url:string,init:RequestInit):Promise<any> {
+ private async json(url:string,init:RequestInit,acceptOrderError=false):Promise<any> {
   const abort=new AbortController();const timer=setTimeout(()=>abort.abort(),15000);
   try {
    const response=await this.#fetch(url,{...init,redirect:'error',signal:abort.signal});
-   if(!response.ok)fail(response.status===429?'LIVE_BUSY':'LIVE_UNAVAILABLE');
+   if(!response.ok && !(acceptOrderError && response.status===400))fail(response.status===429?'LIVE_BUSY':'LIVE_UNAVAILABLE');
    if(!response.body)fail('LIVE_UNAVAILABLE');
    const reader=response.body.getReader();const chunks:Uint8Array[]=[];let size=0;
    try {for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>524288)fail('LIVE_UNAVAILABLE');chunks.push(part.value);}}finally{await reader.cancel().catch(()=>{});}
@@ -107,11 +108,16 @@ export class LiveStockOrders {
    const balance=await this.rpc('getBalance',[wallet,{commitment:'confirmed'}]);
    if(!Number.isSafeInteger(balance?.value)||balance.value<0)fail('LIVE_UNAVAILABLE');
    if(balance.value<LIVE_STOCK_MIN_SOL_LAMPORTS)fail('ADD_SOL');
-   const buying=input.side==='buy';const pair={inputAsset:buying?'USDC':'AAPLx',outputAsset:buying?'AAPLx':'USDC',amountRaw:input.amountRaw} as const;
+   const stock=findStockTradingAsset(input.assetId,input.variantMint)!;
+   const buying=input.side==='buy';const pair={inputAsset:buying?'USDC':stock.symbol,outputAsset:buying?stock.symbol:'USDC',amountRaw:input.amountRaw} as const;
    const url=new URL('https://api.jup.ag/swap/v2/order');
    url.search=new URLSearchParams({inputMint:JUPITER_QUOTE_ASSETS[pair.inputAsset].mint,outputMint:JUPITER_QUOTE_ASSETS[pair.outputAsset].mint,amount:input.amountRaw,taker:wallet,slippageBps:'50',excludeRouters:'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
-   const started=this.#now();const payload=await this.json(url.toString(),{method:'GET',headers:this.headers()});const received=this.#now();
-   if(!payload?.transaction)fail(payload?.errorCode===1?'ADD_USDC':payload?.errorCode===2?'ADD_SOL':'NO_ROUTE');
+   const started=this.#now();const payload=await this.json(url.toString(),{method:'GET',headers:this.headers()},true);const received=this.#now();
+   if(payload?.router && payload.router!=='metis')fail('NO_ROUTE');
+   if(!payload?.transaction)fail(payload?.errorCode===1?(buying?'ADD_USDC':'INSUFFICIENT_HOLDINGS'):[2,3].includes(payload?.errorCode)?'ADD_SOL':'NO_ROUTE');
+   // Official opt-out: fee payer must be the taker. The draft decoder then
+   // independently proves there is exactly one signer and checks all fee payers.
+   if(payload.gasless===true || payload.signatureFeePayer!==wallet)fail('ADD_SOL');
    if(payload.router!=='metis')fail('NO_ROUTE');
    // This reference is only an unsigned candidate. The existing pipeline
    // independently decodes instructions, resolves accounts and simulates it.
@@ -120,7 +126,11 @@ export class LiveStockOrders {
    const expected:StockEstimate={...quote,...input,executionEnabled:false,eligibility:'unverified',amountUnits:'raw_token_units'};
    const draft=bindStockOrderDraft(payload,{authenticatedUserId:user,verifiedTaker:wallet,expected,requestStartedAt:new Date(received).toISOString(),chainObservation:observation,validityAuthority:{now:this.#now,readChainObservation:()=>this.chain()}});
    const binding={authenticatedUserId:user,verifiedTaker:wallet,requestId:draft.summary.requestId,transactionMessageHash:draft.summary.transactionMessageHash,bindingHash:draft.summary.bindingHash};
-   const reviewed=await reviewStockOrder(draft,binding,this.#stages);
+   const reviewed=await reviewStockOrder(draft,binding,this.#stages).catch(error=>{
+    if(error?.code==='RECONCILIATION_TAKER_SOL_INSUFFICIENT')fail('ADD_SOL');
+    if(error?.code==='RECONCILIATION_SOURCE_BALANCE_INSUFFICIENT')fail(buying?'ADD_USDC':'INSUFFICIENT_HOLDINGS');
+    throw error;
+   });
    if(BigInt(reviewed.intent.terms.totalLamportsUpperBound)>10000000n)fail('FEE_TOO_HIGH');
    return await this.options.store.create(user,randomUUID(),wallet,reviewed.intent,await copyStockDraftBytesForReview(draft,binding));
   }finally{this.#inFlight.delete(user);}
@@ -166,10 +176,13 @@ export class LiveStockOrders {
 }
 
 export interface LiveStockAdapters {
+ /** Disable new financial requests without hiding settlement of existing orders. */
+ readonly executionEnabled?:boolean;
  authenticate(request:FastifyRequest):Promise<ExistingPracticeAccountAuthentication|null>;
  identities:{resolveFresh(identity:PracticeIdentity):Promise<PrivyLinkedIdentityResolution>};
  service:LiveStockOrders;
 }
+export function liveStockExecutionEnabled(adapters?:LiveStockAdapters):boolean {return !!adapters && adapters.executionEnabled!==false;}
 function publicOrder(order:LiveOrder|null) {
  if(!order)return null;
  return {id:order.id,status:order.status,wallet:order.wallet,signature:order.signature,expiresAt:order.review.expiresAt,reviewDigest:order.review.reviewDigestSha256,
@@ -177,27 +190,35 @@ function publicOrder(order:LiveOrder|null) {
 }
 export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockAdapters) {
  const noQuery={type:'object',additionalProperties:false,properties:{}};
- async function run(request:FastifyRequest,reply:FastifyReply,operation:(user:string,wallet:string)=>Promise<LiveOrder|null>) {
+ async function run(request:FastifyRequest,reply:FastifyReply,operation:(user:string,wallet:string)=>Promise<LiveOrder|null>,financial=false) {
   reply.header('cache-control','no-store');
-  if(!adapters)return reply.code(503).send({code:'LIVE_UNAVAILABLE'});
+  if(!adapters || financial && !liveStockExecutionEnabled(adapters))return reply.code(503).send({code:'LIVE_UNAVAILABLE'});
   try {
    const account=await adapters.authenticate(request);if(!account)return reply.code(401).send({code:'ACCOUNT_REQUIRED'});
    const identity=await adapters.identities.resolveFresh(account.identity);
    if(identity.subject!==account.identity.subject||identity.embeddedSolanaWallet.status!=='candidate')fail('WALLET_REQUIRED');
    return {order:publicOrder(await operation(account.userId,identity.embeddedSolanaWallet.address))};
   }catch(error){
-   const code=error instanceof LiveTradeError?error.code:error instanceof Error?error.message:'';
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY'];
+   const rawCode=error instanceof Error && 'code' in error && typeof error.code==='string'?error.code:error instanceof Error?error.message:'';
+   // A provider can offer a route outside our reviewed instruction set, or a
+   // quote can stop meeting its floor before simulation. Neither is an outage
+   // or permission to skip review: decline this candidate with a useful retry.
+   const unavailableRoute=['SEMANTICS_PROGRAM_UNSUPPORTED','SEMANTICS_INSTRUCTION_UNSUPPORTED',
+    'RECONCILIATION_PROGRAM_UNEXPECTED','RECONCILIATION_UNEXPECTED_MOVEMENT','SIMULATION_EFFECTS_MISMATCH'];
+   const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
+    'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
+   const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
    request.log.warn({tradeFailure:reviewCode??(known.includes(code)?code:'LIVE_UNAVAILABLE')},'Live stock request failed');
-   return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
+   return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='MARKET_INPUT_INVALID'?400:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
   }
  }
- app.get('/v1/trading/capabilities',{schema:{querystring:noQuery}},async()=>({enabled:!!adapters,network:'solana:mainnet-beta',assets:[{assetId:'apple',mint:JUPITER_QUOTE_ASSETS.AAPLx.mint,symbol:'AAPLx',decimals:8}],maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)}));
+ app.get('/v1/trading/capabilities',{schema:{querystring:noQuery}},async()=>({enabled:liveStockExecutionEnabled(adapters),network:'solana:mainnet-beta',assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})),maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)}));
  app.get<{Params:{id:string}}>('/v1/trading/order/:id',{schema:{querystring:noQuery,params:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string',format:'uuid'}}}}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user,request.params.id)));
  app.get('/v1/trading/order',{schema:{querystring:noQuery}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user)));
- app.post<{Body:StockEstimateInput}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{const:'apple'},variantMint:{const:JUPITER_QUOTE_ASSETS.AAPLx.mint},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,8}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body)));
- app.post<{Body:{id:string;reviewDigest:string;signedTransaction:string}}>('/v1/trading/execute',{bodyLimit:4096,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['id','reviewDigest','signedTransaction'],properties:{id:{type:'string',format:'uuid'},reviewDigest:{type:'string',pattern:'^[0-9a-f]{64}$'},signedTransaction:{type:'string',minLength:88,maxLength:1644,pattern:'^[A-Za-z0-9+/]+={0,2}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.execute(user,wallet,request.body.id,request.body.reviewDigest,request.body.signedTransaction)));
+ app.post<{Body:StockEstimateInput}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.assetId)},variantMint:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.mint)},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,8}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body),true));
+ app.post<{Body:{id:string;reviewDigest:string;signedTransaction:string}}>('/v1/trading/execute',{bodyLimit:4096,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['id','reviewDigest','signedTransaction'],properties:{id:{type:'string',format:'uuid'},reviewDigest:{type:'string',pattern:'^[0-9a-f]{64}$'},signedTransaction:{type:'string',minLength:88,maxLength:1644,pattern:'^[A-Za-z0-9+/]+={0,2}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.execute(user,wallet,request.body.id,request.body.reviewDigest,request.body.signedTransaction),true));
 }

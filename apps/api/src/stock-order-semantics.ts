@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getCompiledTransactionMessageDecoder, getTransactionDecoder } from '@solana/kit';
 import type { ReadonlyUint8Array } from '@solana/kit';
+import { findStockTradingAssetByMint } from './stock-trading-catalog.js';
 import { JUPITER_QUOTE_ASSETS } from './jupiter-quote-reader.js';
 import { BoundedSolanaRpc } from './solana-rpc-client.js';
 import { decodeInstruction, InstructionDecodeError, KNOWN_PROGRAMS } from './solana-instruction-decoders.js';
@@ -189,7 +190,8 @@ function programName(address: string): keyof typeof KNOWN_PROGRAMS {
 }
 
 function tokenProgramFor(mint: string): TokenProgramKind {
-  if (mint === JUPITER_QUOTE_ASSETS.AAPLx.mint) return 'token_2022';
+  const stock = findStockTradingAssetByMint(mint);
+  if (stock) return stock.tokenProgram;
   if (mint === JUPITER_QUOTE_ASSETS.USDC.mint || mint === JUPITER_QUOTE_ASSETS.SOL.mint) return 'token';
   return fail('SEMANTICS_INPUT_INVALID');
 }

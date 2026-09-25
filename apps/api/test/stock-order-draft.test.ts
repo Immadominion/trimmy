@@ -5,6 +5,7 @@ import { it } from 'node:test';
 import { address, getAddressDecoder, getCompiledTransactionMessageEncoder, getTransactionEncoder } from '@solana/kit';
 import type { CompiledTransactionMessage, TransactionMessageBytes } from '@solana/kit';
 import { JUPITER_QUOTE_ASSETS } from '../src/jupiter-quote-reader.js';
+import { STOCK_TRADING_ASSETS } from '../src/stock-trading-catalog.js';
 import { STOCK_ESTIMATE_ASSET } from '../src/stock-estimates.js';
 import type { StockEstimate } from '../src/stock-estimates.js';
 import { bindStockOrderDraft, assertStockDraftBinding, copyStockDraftBytesForReview, assertStockDraftReadyForSimulation,
@@ -295,5 +296,24 @@ it('rejects provider errors and missing request ID using only safe static except
     {requestId: ''}, {requestId: 'request\n'}, {requestId: undefined}]) {
     assert.throws(() => bindStockOrderDraft(payload(change), context()), (e: unknown) =>
       errorIs('STOCK_DRAFT_PROVIDER_ERROR')(e) && e instanceof Error && !e.message.includes('private provider data'));
+  }
+});
+
+
+it('binds each catalog stock identity and rejects substituted company metadata', () => {
+  for (const stock of STOCK_TRADING_ASSETS.slice(1)) {
+    const reference = expected();
+    const quote: StockEstimate = {...reference, assetId: stock.assetId, variantMint: stock.mint,
+      output: {...reference.output, symbol: stock.symbol, mint: stock.mint, decimals: stock.decimals}};
+    const ctx = {...context(), expected: quote};
+    const candidate = payload({outputMint: stock.mint});
+    const draft = bindStockOrderDraft(candidate, ctx);
+    assert.equal(draft.summary.assetId, stock.assetId);
+    assert.equal(draft.summary.output.mint, stock.mint);
+    assert.throws(() => bindStockOrderDraft(candidate, {...ctx, expected: {...quote, assetId: 'apple'}}),
+      errorIs('STOCK_DRAFT_CONTEXT_INVALID'));
+    assert.throws(() => bindStockOrderDraft(candidate, {...ctx, expected: {...quote, output: {...quote.output, decimals: 6}}}),
+      errorIs('STOCK_DRAFT_CONTEXT_INVALID'));
+    assert.throws(() => bindStockOrderDraft(payload(), ctx), errorIs('STOCK_DRAFT_TERMS_MISMATCH'));
   }
 });

@@ -5,6 +5,7 @@ import { MarketEstimateError } from '../src/jupiter-quote-reader.js';
 import { registerRaydiumStockQuoteRoute, RAYDIUM_STOCK_QUOTE_ROUTE } from '../src/raydium-stock-quote-route.js';
 import { RAYDIUM_STOCK_QUOTE_CONFIGURATION, RaydiumStockQuoteReader, readRaydiumStockQuotes } from '../src/raydium-stock-quotes.js';
 import type { RaydiumStockQuotes } from '../src/raydium-stock-quotes.js';
+import { STOCK_TRADING_ASSETS } from '../src/stock-trading-catalog.js';
 import { STOCK_ESTIMATE_ASSET } from '../src/stock-estimates.js';
 import type { StockEstimateInput } from '../src/stock-estimates.js';
 
@@ -394,3 +395,23 @@ it('maps route errors explicitly and never exposes thrown provider details', asy
 function zeroAddress(): string {
   return '11111111111111111111111111111111';
 }
+
+
+it('comparison HTTP quotes preserve each admitted stock identity in both directions', async () => {
+  for (const stock of STOCK_TRADING_ASSETS.slice(1)) for (const side of ['buy', 'sell'] as const) {
+    const pair = side === 'buy' ? {inputMint: usdc, outputMint: stock.mint} : {inputMint: stock.mint, outputMint: usdc};
+    const payload = fixture(side, {...pair, routePlan: [route(side, {...pair, feeMint: pair.inputMint})]});
+    const app = testApp(client(payload, {fetch: async rawUrl => {
+      const url = new URL(String(rawUrl));
+      assert.equal(url.searchParams.get('inputMint'), pair.inputMint);
+      assert.equal(url.searchParams.get('outputMint'), pair.outputMint);
+      return Response.json(payload);
+    }}));
+    try {
+      const result = await app.inject(query({assetId: stock.assetId, variantMint: stock.mint, side}));
+      assert.equal(result.statusCode, 200);
+      assert.equal(result.json().assetId, stock.assetId);
+      assert.equal(side === 'buy' ? result.json().output.symbol : result.json().input.symbol, stock.symbol);
+    } finally {await app.close();}
+  }
+});

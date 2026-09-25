@@ -1,7 +1,9 @@
 import { address } from '@solana/kit';
 import { parseRawAmount } from '@trimmy/domain';
 import { MarketEstimateError } from './jupiter-quote-reader.js';
-import { STOCK_ESTIMATE_ASSET, validateStockEstimateInput } from './stock-estimates.js';
+import type { StockTradingSymbol } from './stock-trading-catalog.js';
+import { findStockTradingAsset } from './stock-trading-catalog.js';
+import { validateStockEstimateInput } from './stock-estimates.js';
 import type { StockEstimateInput } from './stock-estimates.js';
 
 export const RAYDIUM_STOCK_QUOTE_CONFIGURATION = Object.freeze({
@@ -17,12 +19,6 @@ const USDC = Object.freeze({
   mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   decimals: 6,
 });
-const AAPLX = Object.freeze({
-  symbol: 'AAPLx',
-  mint: STOCK_ESTIMATE_ASSET.variantMint,
-  decimals: STOCK_ESTIMATE_ASSET.decimals,
-});
-
 export interface RaydiumStockQuoteHop {
   readonly poolId: string;
   readonly inputMint: string;
@@ -46,8 +42,8 @@ export interface RaydiumStockQuote {
   readonly providerEndpoint: 'compute/swap-base-in';
   readonly quoteMode: 'BaseIn';
   readonly transactionVersionRequested: 'V0';
-  readonly assetId: 'apple';
-  readonly variantMint: typeof STOCK_ESTIMATE_ASSET.variantMint;
+  readonly assetId: StockEstimateInput['assetId'];
+  readonly variantMint: string;
   readonly side: 'buy' | 'sell';
   readonly executionEnabled: false;
   readonly executable: false;
@@ -56,7 +52,7 @@ export interface RaydiumStockQuote {
   readonly networkFees: null;
   readonly amountUnits: 'raw_token_units';
   readonly input: {
-    readonly symbol: 'USDC' | 'AAPLx';
+    readonly symbol: 'USDC' | StockTradingSymbol;
     readonly mint: string;
     readonly decimals: number;
     readonly amountRaw: string;
@@ -64,7 +60,7 @@ export interface RaydiumStockQuote {
     readonly providerActualAmountRaw: string | null;
   };
   readonly output: {
-    readonly symbol: 'USDC' | 'AAPLx';
+    readonly symbol: 'USDC' | StockTradingSymbol;
     readonly mint: string;
     readonly decimals: number;
     readonly estimatedAmountRaw: string;
@@ -217,8 +213,9 @@ function parseQuote(payload: unknown, input: StockEstimateInput, started: number
   if (envelope['success'] !== true || Object.keys(envelope).length !== 4 ||
       Object.keys(envelope).some((key) => !['id', 'success', 'version', 'data'].includes(key))) invalid();
   const data = record(envelope['data']);
-  const from = input.side === 'buy' ? USDC : AAPLX;
-  const to = input.side === 'buy' ? AAPLX : USDC;
+  const stock = findStockTradingAsset(input.assetId, input.variantMint)!;
+  const from = input.side === 'buy' ? USDC : stock;
+  const to = input.side === 'buy' ? stock : USDC;
   if (data['swapType'] !== 'BaseIn' || data['inputMint'] !== from.mint ||
       data['outputMint'] !== to.mint || data['inputAmount'] !== input.amountRaw ||
       data['slippageBps'] !== RAYDIUM_STOCK_QUOTE_CONFIGURATION.slippageBps ||
@@ -294,8 +291,9 @@ export class RaydiumStockQuoteReader implements RaydiumStockQuotes {
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     let response: Response | undefined;
     try {
-      const from = request.side === 'buy' ? USDC : AAPLX;
-      const to = request.side === 'buy' ? AAPLX : USDC;
+      const stock = findStockTradingAsset(request.assetId, request.variantMint)!;
+      const from = request.side === 'buy' ? USDC : stock;
+      const to = request.side === 'buy' ? stock : USDC;
       const url = new URL(RAYDIUM_STOCK_QUOTE_CONFIGURATION.endpoint);
       url.search = new URLSearchParams({
         inputMint: from.mint,

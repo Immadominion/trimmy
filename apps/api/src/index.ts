@@ -83,9 +83,10 @@ const raydiumStockQuotes = readRaydiumStockQuotes(process.env);
 const accountHoldings = linkedIdentities && practice.authenticateContext && holdingsReader
   ? {linkedIdentities, authenticate: practice.authenticateContext, holdings: holdingsReader} : undefined;
 const liveRpc = process.env['SOLANA_MAINNET_RPC_URL'];
-const liveStocks = process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet' && liveRpc &&
+const liveStocks = liveRpc &&
     practice.liveOrderStore && practice.authenticateContext && linkedIdentities
   ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
+      executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet',
       service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore,
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
   : undefined;

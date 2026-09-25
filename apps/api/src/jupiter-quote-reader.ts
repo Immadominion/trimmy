@@ -1,14 +1,15 @@
 import { parseRawAmount } from '@trimmy/domain';
 
-/** Pinned public mainnet research mints; this is not an approved trading catalog.
- * AAPLx issuer identity/8 decimals were inspected in STOCK_MINT_INSPECTION.json.
- * https://api.xstocks.fi/api/v2/public/assets/AAPLx
- * https://developers.circle.com/stablecoins/usdc-contract-addresses
- */
+import { STOCK_TRADING_ASSETS } from './stock-trading-catalog.js';
+import type { StockTradingSymbol } from './stock-trading-catalog.js';
+
+const stocks = Object.fromEntries(STOCK_TRADING_ASSETS.map(asset => [asset.symbol, Object.freeze({
+  symbol: asset.symbol, mint: asset.mint, decimals: asset.decimals, maxInputRaw: asset.maxSellInputRaw,
+})])) as Readonly<Record<StockTradingSymbol, Readonly<{symbol: StockTradingSymbol; mint: string; decimals: 8; maxInputRaw: string}>>>;
 export const JUPITER_QUOTE_ASSETS = Object.freeze({
   SOL: Object.freeze({symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112', decimals: 9, maxInputRaw: '1000000000'}),
   USDC: Object.freeze({symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6, maxInputRaw: '100000000'}),
-  AAPLx: Object.freeze({symbol: 'AAPLx', mint: 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', decimals: 8, maxInputRaw: '100000000'}),
+  ...stocks,
 });
 export interface JupiterQuoteInput {
   readonly inputAsset: keyof typeof JUPITER_QUOTE_ASSETS;

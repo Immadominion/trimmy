@@ -1,4 +1,4 @@
-import {registerLiveStockRoutes} from './live-stock-orders.js';
+import {liveStockExecutionEnabled,registerLiveStockRoutes} from './live-stock-orders.js';
 import {registerOnrampRoutes, type OnrampAdapters} from './crossmint-onramp.js';
 import type {LiveStockAdapters} from './live-stock-orders.js';
 import {registerDailyDeskRoutes, type DailyDeskAdapters} from './daily-desk-routes.js';
@@ -250,7 +250,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     service: 'trimmy-api',
     mode: 'foundation',
     // Process liveness only; there is no claim that providers or a database are ready.
-    financialOperationsEnabled: !!options.liveStocks,
+    financialOperationsEnabled: liveStockExecutionEnabled(options.liveStocks),
   }));
 
   // Liveness and readiness are separate answers on purpose. A restart policy
@@ -300,7 +300,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     schemaVersion: 1,
     assets: [],
     status: 'unverified',
-    financialOperationsEnabled: !!options.liveStocks,
+    financialOperationsEnabled: liveStockExecutionEnabled(options.liveStocks),
     reason: 'Issuer eligibility, market-data rights and individual mint verification are pending.',
   }));
 

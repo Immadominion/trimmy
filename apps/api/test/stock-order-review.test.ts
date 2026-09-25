@@ -11,6 +11,7 @@ import { getMintEncoder as getLegacyMintEncoder, getTokenEncoder as getLegacyTok
 import { getSetComputeUnitLimitInstructionDataEncoder,
   getSetComputeUnitPriceInstructionDataEncoder } from '@solana-program/compute-budget';
 import { JUPITER_QUOTE_ASSETS } from '../src/jupiter-quote-reader.js';
+import { STOCK_TRADING_ASSETS } from '../src/stock-trading-catalog.js';
 import { STOCK_ESTIMATE_ASSET } from '../src/stock-estimates.js';
 import type { StockEstimate } from '../src/stock-estimates.js';
 import { KNOWN_PROGRAMS } from '../src/solana-instruction-decoders.js';
@@ -168,8 +169,8 @@ function binding(draft: StockOrderDraft, changes: Partial<StockDraftBinding> = {
 }
 
 /** Static-only account map, exactly what the lookup resolver returns for this message. */
-function resolvedAccounts(structure: StockDraftStructuralInspection): ResolvedStockTransactionAccounts {
-  const accountIndexMap = STATIC_ACCOUNTS.map((value, accountIndex) => Object.freeze({
+function resolvedAccounts(structure: StockDraftStructuralInspection, staticAccounts = STATIC_ACCOUNTS): ResolvedStockTransactionAccounts {
+  const accountIndexMap = staticAccounts.map((value, accountIndex) => Object.freeze({
     accountIndex, address: value as string, signer: accountIndex === 0,
     writable: accountIndex <= 3, source: 'static' as const, staticAccountIndex: accountIndex,
   }));
@@ -273,7 +274,7 @@ function semanticsFetch(options: {values?: Record<string, unknown>; slot?: numbe
 }
 
 function simulationFetch(options: {postTaker?: number; postSource?: bigint; postDestination?: bigint;
-  err?: unknown; unitsConsumed?: number; slot?: number; genesis?: string; calls?: RpcCall[]} = {}): typeof globalThis.fetch {
+  err?: unknown; unitsConsumed?: number; slot?: number; genesis?: string; calls?: RpcCall[]; stockMint?: Address} = {}): typeof globalThis.fetch {
   return (async (_url: string | URL, init?: {body?: string}) => {
     const request = JSON.parse(String(init?.body)) as {id: string; method: string; params: unknown[]};
     options.calls?.push({method: request.method, params: request.params});
@@ -289,7 +290,7 @@ function simulationFetch(options: {postTaker?: number; postSource?: bigint; post
         state: LegacyAccountState.Initialized, isNative: null, delegatedAmount: 0n, closeAuthority: null,
       })), KNOWN_PROGRAMS.token, 2_039_280),
       rpcAccount(Uint8Array.from(getTokenEncoder().encode({
-        mint: aaplxMint, owner: taker, amount: options.postDestination ?? QUOTED_OUT, delegate: null,
+        mint: options.stockMint ?? aaplxMint, owner: taker, amount: options.postDestination ?? QUOTED_OUT, delegate: null,
         state: AccountState.Initialized, isNative: null, delegatedAmount: 0n, closeAuthority: null,
         extensions: [{__kind: 'ImmutableOwner'}],
       })), KNOWN_PROGRAMS.token2022, 2_157_600),
@@ -735,5 +736,41 @@ describe('current Jupiter order regressions', () => {
     const existing = {...semantics.accounts.find(a => a.address === sourceAta)!, address: wrapped};
     assert.throws(() => reconcileStockOrderTerms({...args, semantics: {...args.semantics, accounts: [...semantics.accounts, existing]}}),
       (e: unknown) => e instanceof StockOrderReconciliationError && e.code === 'RECONCILIATION_UNEXPECTED_MOVEMENT');
+  });
+});
+
+
+describe('multi-stock composed review', () => {
+  it('reviews every pinned mint with canonical account derivation and exact simulated outputs', async () => {
+    for (const stock of STOCK_TRADING_ASSETS.slice(1)) {
+      const stockMint = address(stock.mint);
+      const stockAta = await deriveAssociatedTokenAddress(taker, stock.mint, stock.tokenProgram);
+      const original = swapMessage();
+      const message = {...original, staticAccounts: original.staticAccounts.map(item =>
+        item === aaplxMint ? stockMint : item === destinationAta ? address(stockAta) : item)};
+      const ref = estimate();
+      const quote: StockEstimate = {...ref, assetId: stock.assetId, variantMint: stock.mint,
+        output: {...ref.output, symbol: stock.symbol, mint: stock.mint}};
+      const clock = {now: Date.parse(at(3))};
+      const draft = bindStockOrderDraft(payload({outputMint: stock.mint}, message), {...context(clock), expected: quote});
+      const bound = binding(draft);
+      const structure = inspectStockDraftStructure(draft, bound);
+      const values = accountValues();
+      values[stockMint] = values[aaplxMint]; delete values[aaplxMint];
+      delete values[destinationAta];
+      values[stockAta] = rpcAccount(Uint8Array.from(getTokenEncoder().encode({
+        mint: stockMint, owner: taker, amount: 0n, delegate: null, state: AccountState.Initialized,
+        isNative: null, delegatedAmount: 0n, closeAuthority: null, extensions: [{__kind: 'ImmutableOwner'}],
+      })), KNOWN_PROGRAMS.token2022, 2_157_600);
+      const {intent} = await reviewStockOrder(draft, bound, {
+        lookupResolver: {resolve: async () => resolvedAccounts(structure, message.staticAccounts)},
+        lifetimeVerifier: {verify: async () => lifetimeEvidence(structure)},
+        semanticsReader: semanticsReader(semanticsFetch({values}), clock),
+        simulator: simulator(simulationFetch({stockMint}), clock), now: () => clock.now,
+      });
+      assert.equal(intent.terms.outputMint, stock.mint);
+      assert.equal(intent.terms.simulatedOutputReceivedRaw, QUOTED_OUT.toString());
+      assert.equal(intent.approval.status, 'required');
+    }
   });
 });
