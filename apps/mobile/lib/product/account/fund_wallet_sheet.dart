@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../account/account_controller.dart';
 import '../../account/account_amounts.dart';
 import '../../account/account_data_models.dart';
+import '../../account/account_portfolio.dart';
 import '../../account/wallet_setup.dart';
 import '../../account/config.dart';
 import '../design/product_theme.dart';
@@ -23,6 +24,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
   bool _busy = false, _copied = false, _foreground = true, _refreshing = false;
   String? _message;
   bool _card = false;
+  bool _checked = false, _refreshFailed = false;
   Timer? _poll, _copyTimer;
   @override
   void initState() {
@@ -39,12 +41,15 @@ class _FundWalletSheetState extends State<FundWalletSheet>
       return;
     }
     _refreshing = true;
+    if (mounted) setState(() => _refreshFailed = false);
     try {
       await widget.account.refreshPortfolio();
     } catch (_) {
-      /* Retry automatically. */
+      _refreshFailed = true;
     } finally {
       _refreshing = false;
+      _checked = true;
+      if (mounted) setState(() {});
     }
   }
 
@@ -67,17 +72,24 @@ class _FundWalletSheetState extends State<FundWalletSheet>
       _busy = true;
       _message = null;
     });
-    final outcome = await widget.account.setUpWallet();
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _message =
-          outcome == WalletSetupOutcome.ready ||
-              outcome == WalletSetupOutcome.awaitingServer
-          ? null
-          : 'Couldn’t create your wallet. Try again.';
-    });
-    unawaited(_refresh());
+    try {
+      final outcome = await widget.account.setUpWallet();
+      if (!mounted) return;
+      setState(
+        () => _message =
+            outcome == WalletSetupOutcome.ready ||
+                outcome == WalletSetupOutcome.awaitingServer
+            ? null
+            : 'Couldn’t create your wallet. Try again.',
+      );
+      unawaited(_refresh());
+    } catch (_) {
+      if (mounted) {
+        setState(() => _message = 'Couldn’t create your wallet. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _copy(String address) async {
@@ -94,9 +106,18 @@ class _FundWalletSheetState extends State<FundWalletSheet>
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.account,
     builder: (context, _) {
-      final wallet =
-          widget.account.portfolioState?.context?.embeddedSolanaWallet;
+      final portfolio = widget.account.portfolioState;
+      final wallet = portfolio?.context?.embeddedSolanaWallet;
       final address = wallet?.isCandidate == true ? wallet!.address : null;
+      final walletIssue = wallet?.status == EmbeddedSolanaWalletStatus.ambiguous
+          ? 'We couldn’t confirm your wallet.'
+          : portfolio?.phase == AccountPortfolioPhase.offline
+          ? 'You’re offline. Reconnect to load your wallet.'
+          : _refreshFailed ||
+                (portfolio?.issue != null && !_refreshing) ||
+                (_checked && !_refreshing && wallet == null)
+          ? 'Couldn’t load your wallet.'
+          : null;
       final type = Theme.of(context).textTheme;
       return SafeArea(
         child: SingleChildScrollView(
@@ -189,6 +210,19 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                         ? null
                         : _setup,
                     child: Text(_busy ? 'Creating…' : 'Create wallet'),
+                  ),
+                ] else if (walletIssue != null) ...[
+                  Text(
+                    walletIssue,
+                    key: const ValueKey('fund-wallet-unavailable'),
+                    textAlign: TextAlign.center,
+                    style: type.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    key: const ValueKey('fund-wallet-retry'),
+                    onPressed: _refreshing ? null : _refresh,
+                    child: Text(_refreshing ? 'Checking…' : 'Try again'),
                   ),
                 ] else
                   const Center(child: TrimmyLiquidMark(size: 64)),
