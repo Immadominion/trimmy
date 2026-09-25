@@ -23,4 +23,4 @@ for migration in "$infra_dir"/migrations/*.sql; do
 done
 "$postgres_bin/psql" -X -v ON_ERROR_STOP=1 -h "$runtime_dir/socket" -p 65455 -U trimmy_daily_owner -d postgres -f "$infra_dir/tests/paper-reset-fixtures.sql" >/dev/null
 cd "$project_dir"
-TRIMMY_WORKDAYS_TEST_SOCKET="$runtime_dir/socket" node --import tsx --test apps/api/test/integration/workdays-postgres.test.ts apps/api/test/integration/live-orders-postgres.test.ts
+TRIMMY_WORKDAYS_TEST_SOCKET="$runtime_dir/socket" node --import tsx --test apps/api/test/integration/workdays-postgres.test.ts apps/api/test/integration/live-orders-postgres.test.ts apps/api/test/integration/live-history-postgres.test.ts

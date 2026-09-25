@@ -1,4 +1,6 @@
 import {liveStockExecutionEnabled,registerLiveStockRoutes} from './live-stock-orders.js';
+import {registerLiveTradeHistoryRoute} from './live-trade-history.js';
+import type {LiveTradeHistoryAdapters} from './live-trade-history.js';
 import {registerOnrampRoutes, type OnrampAdapters} from './crossmint-onramp.js';
 import type {LiveStockAdapters} from './live-stock-orders.js';
 import {registerDailyDeskRoutes, type DailyDeskAdapters} from './daily-desk-routes.js';
@@ -118,6 +120,7 @@ export interface ApiOptions {
   readonly dailyDesk?: DailyDeskAdapters;
   readonly workdays?: WorkdayAdapters;
   readonly liveStocks?: LiveStockAdapters;
+  readonly liveTradeHistory?: LiveTradeHistoryAdapters;
   /** Explicit social activation gate. Absence is always disabled. */
   readonly relationshipSafetyEnabled?: boolean;
   /** Live migration, grant and moderation readiness proof. */
@@ -319,6 +322,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   registerDailyDeskRoutes(app, options.dailyDesk);
   registerWorkdayRoutes(app, options.workdays);
   registerLiveStockRoutes(app, options.liveStocks);
+  registerLiveTradeHistoryRoute(app, options.liveTradeHistory);
   registerWatchlistRoutes(app, options.watchlist, WATCHLIST_ROUTE);
   // The same storage engine on a second table, so the fictional sample list and
   // the real one cannot merge.

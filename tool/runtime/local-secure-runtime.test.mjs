@@ -271,12 +271,14 @@ test('the public manifest names ports, roles and migrations but no secret', () =
 
 test('the migration list is ordered and ends at the newest released migration', () => {
   assert.deepEqual([...MIGRATIONS], [...MIGRATIONS].sort());
-  assert.equal(MIGRATIONS.at(-1), '0031_live_stock_orders');
+  assert.equal(MIGRATIONS.at(-1), '0032_live_stock_order_history');
   assert.equal(new Set(MIGRATIONS).size, MIGRATIONS.length);
 });
 
 test('the runtime grants stay narrow and never touch financial or user tables', () => {
   const grants = runtimeGrants();
+  assert.ok(grants.includes(`GRANT EXECUTE ON FUNCTION trimmy.live_order_history(uuid,integer,timestamptz,uuid) TO ${RUNTIME_ROLE}`));
+  assert.ok(!grants.includes('ON TABLE trimmy.live_stock_orders'));
   for (const table of ['trimmy.practice_progress', 'trimmy.practice_mutation_receipts', 'trimmy.watchlists',
     'trimmy.watchlist_mutation_receipts', 'trimmy.wallet_bindings', 'trimmy.stock_order_reviews',
     'trimmy.wallet_possession_challenges']) {

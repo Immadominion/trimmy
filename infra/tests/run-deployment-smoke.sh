@@ -120,10 +120,10 @@ migration_output="$(
     node tool/runtime/apply-migrations.mjs
 )"
 echo "$migration_output"
-grep -q 'Applied 31 migration(s)' <<<"$migration_output" \
-  || { echo 'FAIL: deployment smoke did not apply the current 31 migrations.' >&2; exit 1; }
-[[ "$(owner_psql -d trimmy -Atc "SELECT count(*)=31 AND max(version)='0031_live_stock_orders' FROM trimmy.schema_migrations")" == 't' ]] \
-  || { echo 'FAIL: deployment smoke did not record the current 31-migration history.' >&2; exit 1; }
+grep -q 'Applied 32 migration(s)' <<<"$migration_output" \
+  || { echo 'FAIL: deployment smoke did not apply the current 32 migrations.' >&2; exit 1; }
+[[ "$(owner_psql -d trimmy -Atc "SELECT count(*)=32 AND max(version)='0032_live_stock_order_history' FROM trimmy.schema_migrations")" == 't' ]] \
+  || { echo 'FAIL: deployment smoke did not record the current 32-migration history.' >&2; exit 1; }
 [[ "$(owner_psql -d trimmy -Atc "SELECT count(*)=4 FROM pg_roles WHERE rolname=ANY(ARRAY['$runtime_role','$red_day_capability_role','$red_day_worker_role','$social_moderator_role'])")" == 't' ]] \
   || { echo 'FAIL: deployment smoke did not provision all four isolated roles.' >&2; exit 1; }
 [[ "$(owner_psql -d trimmy -Atc "SELECT NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls FROM pg_roles WHERE rolname='$social_moderator_role'")" == 't' ]] \

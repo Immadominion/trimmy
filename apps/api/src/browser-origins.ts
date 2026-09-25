@@ -70,6 +70,8 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/social/x/profile': Object.freeze(['GET']),
   '/v1/account/context': Object.freeze(['GET']),
   '/v1/account/holdings': Object.freeze(['GET']),
+  '/v1/trading/history': Object.freeze(['GET']),
+  '/v1/trading/order/:id': Object.freeze(['GET']),
   '/v1/account/paper/portfolio': Object.freeze(['GET']),
   '/v1/account/paper/orders/preview': Object.freeze(['POST']),
   '/v1/account/paper/orders/commit': Object.freeze(['POST']),
@@ -134,11 +136,15 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       '/v1/social/x/profile',
       '/v1/career/trade-reasons',
       '/v1/community',
+      '/v1/trading/history',
     ].includes(route) &&
       request.raw.url?.split('?')[0] === route;
     const communityFollowRoute = route === '/v1/community/following/:socialId' &&
       /^\/v1\/community\/following\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
-    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute) ||
+    const tradeStatusRoute = route === '/v1/trading/order/:id' &&
+      /^\/v1\/trading\/order\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
+    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute && !tradeStatusRoute) ||
+        (route === '/v1/trading/order/:id' && !tradeStatusRoute) ||
         typeof method !== 'string' || !methods.includes(method) ||
         headers === undefined || (headers.includes('x-trimmy-guest') && route !== '/v1/guest/claim') ||
         request.headers['access-control-request-private-network'] !== undefined) {

@@ -47,6 +47,7 @@ export const MIGRATIONS = Object.freeze([
   '0029_daily_desk',
   '0030_intern_workdays',
   '0031_live_stock_orders',
+  '0032_live_stock_order_history',
 ]);
 export const OWNER_ROLE = 'trimmy_runtime_owner';
 export const RUNTIME_ROLE = 'trimmy_practice_runtime';
@@ -764,6 +765,7 @@ export function runtimeGrants(role = RUNTIME_ROLE) {
   return [
     `GRANT USAGE ON SCHEMA trimmy TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.practice_account_exists() TO ${role}`,
+    `GRANT EXECUTE ON FUNCTION trimmy.live_order_history(uuid,integer,timestamptz,uuid) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.practice_find_account(text, text), trimmy.practice_provision_account(text, text) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.guest_take_creation_attempt(text), trimmy.guest_create_session(text, bigint, text, text, uuid, text), trimmy.guest_authorize(text, text), trimmy.guest_refresh_session(text), trimmy.guest_claim_session(text, text, text, uuid) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.product_profile_get(uuid), trimmy.product_profile_has_confirmed_paper_trade(uuid), trimmy.product_profile_put(uuid, uuid, text, bigint, text, text, text, text, text, text), trimmy.product_launch_advance(uuid, uuid, text, bigint, text, uuid) TO ${role}`,

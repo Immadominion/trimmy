@@ -169,11 +169,11 @@ export TRIMMY_MIGRATION_DATABASE_URL="postgresql://$owner_role:$owner_password@l
 echo '--- first run applies every migration over verified TLS'
 first="$(node tool/runtime/apply-migrations.mjs)"
 echo "$first"
-grep -q 'Applied 31 migration(s)' <<<"$first" || { echo 'FAIL: expected 31 migrations applied.' >&2; exit 1; }
+grep -q 'Applied 32 migration(s)' <<<"$first" || { echo 'FAIL: expected 32 migrations applied.' >&2; exit 1; }
 grep -q 'Red-day evidence is locked' <<<"$first" || { echo 'FAIL: red-day evidence activated without the explicit gate.' >&2; exit 1; }
 
 recorded="$(owner_psql -d trimmy -Atc "SELECT string_agg(version, ',' ORDER BY version) FROM trimmy.schema_migrations")"
-expected='0001_foundation,0002_practice_progress,0003_practice_accounts,0004_watchlists,0005_practice_payload_v4,0006_practice_payload_v5,0007_wallet_possession_and_reviews,0008_practice_payload_v6,0009_invitations,0010_account_closure,0011_wallet_possession_challenges,0012_followed_stocks,0013_paper_trading,0014_guest_sessions,0015_product_profiles,0016_guest_creation_idempotency,0017_career_core,0018_career_missions_and_promotions,0019_career_local_day,0020_guest_creation_abuse_and_retention,0021_career_red_day_evidence,0022_product_launch_evidence,0023_paper_reset,0024_career_reason_sharing,0025_relationship_safety,0026_optional_introduction,0027_career_activity_week,0028_community_following,0029_daily_desk,0030_intern_workdays,0031_live_stock_orders'
+expected='0001_foundation,0002_practice_progress,0003_practice_accounts,0004_watchlists,0005_practice_payload_v4,0006_practice_payload_v5,0007_wallet_possession_and_reviews,0008_practice_payload_v6,0009_invitations,0010_account_closure,0011_wallet_possession_challenges,0012_followed_stocks,0013_paper_trading,0014_guest_sessions,0015_product_profiles,0016_guest_creation_idempotency,0017_career_core,0018_career_missions_and_promotions,0019_career_local_day,0020_guest_creation_abuse_and_retention,0021_career_red_day_evidence,0022_product_launch_evidence,0023_paper_reset,0024_career_reason_sharing,0025_relationship_safety,0026_optional_introduction,0027_career_activity_week,0028_community_following,0029_daily_desk,0030_intern_workdays,0031_live_stock_orders,0032_live_stock_order_history'
 [[ "$recorded" == "$expected" ]] || { echo "FAIL: recorded migrations mismatch: $recorded" >&2; exit 1; }
 [[ "$(owner_psql -d trimmy -Atc "SELECT NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls FROM pg_roles WHERE rolname='$social_moderator_role'")" == 't' ]] \
   || { echo 'FAIL: social moderator role is not safe NOLOGIN NOINHERIT.' >&2; exit 1; }

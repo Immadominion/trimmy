@@ -1,4 +1,5 @@
 import {PostgresLiveOrderStore} from './live-stock-orders.js';
+import {PostgresLiveTradeHistory} from './live-trade-history.js';
 import {postgresDailyDesk} from './daily-desk-routes.js';
 import {postgresWorkdays} from './workday-routes.js';
 import {postgresCommunity} from './community-routes.js';
@@ -136,7 +137,7 @@ export interface PracticeRuntime {
   readonly appId?: string;
   readonly options: Pick<ApiOptions, 'practice' | 'practiceSessions' | 'guestSessions' | 'productProfile' | 'watchlist' |
     'workdays' | 'dailyDesk' | 'community' | 'career' | 'careerReasonSharing' | 'socialRelationships' | 'invitations' | 'accountClosure' |
-    'browserOrigins' | 'readiness' | 'following'>;
+    'browserOrigins' | 'readiness' | 'following' | 'liveTradeHistory'>;
   readonly authenticate?: ReturnType<typeof createPracticeAuthenticator>;
   readonly authenticateContext?: ReturnType<typeof createPracticeAccountContextAuthenticator>;
   readonly invitationsRepository?: PostgresInvitationsRepository;
@@ -190,6 +191,7 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
     guestSessionRepository,
     liveOrderStore: new PostgresLiveOrderStore(pool),
     options: {
+      liveTradeHistory: {authenticate, repository: new PostgresLiveTradeHistory(pool)},
       browserOrigins: config.browserOrigins,
       practiceSessions: sessions,
       guestSessions: {repository: guestSessionRepository, verifier, source: guestSource},
