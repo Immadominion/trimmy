@@ -37,7 +37,7 @@ function key(label: string): Address {
   return getAddressDecoder().decode(Uint8Array.from(spki.subarray(spki.length - 32)));
 }
 const taker = key('taker');
-const eventAuthority = key('event-authority');
+const eventAuthority = address('D8cy77BBepLMngZx6ZukaTff5hCt1HrWyKk3Hnd9oitf');
 const poolAccount = key('pool');
 const usdcMint = address(JUPITER_QUOTE_ASSETS.USDC.mint);
 const aaplxMint = address(STOCK_ESTIMATE_ASSET.variantMint);
@@ -686,5 +686,54 @@ describe('composed review', () => {
     await assert.rejects(reviewStockOrder(base.draft, base.binding,
       stages(base, {simulationFetchOptions: {err: 'AccountNotFound'}})),
     (error: unknown) => error instanceof StockOrderSimulationError && error.code === 'SIMULATION_TRANSACTION_FAILED');
+  });
+});
+
+describe('current Jupiter order regressions', () => {
+  it('reviews V2 terms with a real-sized executable account response and rejects changed mints, output programs and excessive fees', async () => {
+    const instructions = [...swapMessage().instructions];
+    instructions[3] = {programAddressIndex: 6, accountIndices: [0, 1, 2, 9, 10, 7, 12, 6, 11, 6, 3],
+      data: Uint8Array.from([...anchor('route_v2'), ...u64(INPUT_RAW), ...u64(QUOTED_OUT), 50, 0, 0, 0, 0, 0, ...u32(1), 0, 16, 39, 0, 1])};
+    const base = prepared({message: swapMessage({instructions})});
+    const values = accountValues({[KNOWN_PROGRAMS.associatedToken]:
+      rpcAccount(new Uint8Array(220_000), 'BPFLoader2111111111111111111111111111111111', 1_000_000, true)});
+    const semantics = await semanticsReader(semanticsFetch({values}), base.clock).read({
+      draft: base.draft, binding: base.binding, structure: base.structure, resolvedAccounts: base.resolved});
+    const args = {summary: base.draft.summary, semantics, now: base.clock.now};
+    assert.equal(reconcileStockOrderTerms(args).swap.variant, 'route_v2');
+    for (const [mutation, code] of [
+      [{sourceMint: aaplxMint}, 'RECONCILIATION_MINT_MISMATCH'],
+      [{destinationTokenProgram: KNOWN_PROGRAMS.token}, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH'],
+      [{platformFeeBps: 300}, 'RECONCILIATION_FEE_CAP_EXCEEDED'],
+    ] as const) {
+      const changed = {...semantics, instructions: semantics.instructions.map(i => i.decoded.program === 'jupiter_v6'
+        ? {...i, decoded: {...i.decoded, ...mutation}} : i)};
+      assert.throws(() => reconcileStockOrderTerms({...args, semantics: changed}),
+        (e: unknown) => e instanceof StockOrderReconciliationError && e.code === code);
+    }
+  });
+
+  it('admits only a fresh canonical intermediate WSOL account closed back to its owner', async () => {
+    const base = prepared();
+    const semantics = await semanticsReader(semanticsFetch(), base.clock).read({
+      draft: base.draft, binding: base.binding, structure: base.structure, resolvedAccounts: base.resolved});
+    const wrapped = semantics.candidate.takerWrappedSolAssociatedAccount;
+    const create = {...semantics.instructions[2]!, decoded: {program: 'associated_token' as const, kind: 'create_idempotent' as const,
+      payer: taker, owner: taker, associatedAccount: wrapped, mint: JUPITER_QUOTE_ASSETS.SOL.mint, tokenProgram: KNOWN_PROGRAMS.token}};
+    const close = {...semantics.instructions[2]!, decoded: {program: 'token' as const, kind: 'close_account' as const,
+      account: wrapped, destination: taker, authority: taker}};
+    const instructions = [create, ...semantics.instructions, close];
+    const args = {summary: base.draft.summary, now: base.clock.now, semantics: {...semantics, instructions}};
+    const report = reconcileStockOrderTerms(args);
+    assert.deepEqual(report.effects.closedAccounts, [wrapped]);
+    assert.equal(report.cost.rentLamportsUpperBound, '2039280');
+    for (const changedInstructions of [instructions.slice(0, -1), [...instructions.slice(0, -1), {...close,
+      decoded: {...close.decoded, destination: poolAccount}}], [{...create, decoded: {...create.decoded, associatedAccount: poolAccount}}, ...instructions.slice(1)]]) {
+      assert.throws(() => reconcileStockOrderTerms({...args, semantics: {...semantics, instructions: changedInstructions}}),
+        (e: unknown) => e instanceof StockOrderReconciliationError && e.code === 'RECONCILIATION_UNEXPECTED_MOVEMENT');
+    }
+    const existing = {...semantics.accounts.find(a => a.address === sourceAta)!, address: wrapped};
+    assert.throws(() => reconcileStockOrderTerms({...args, semantics: {...args.semantics, accounts: [...semantics.accounts, existing]}}),
+      (e: unknown) => e instanceof StockOrderReconciliationError && e.code === 'RECONCILIATION_UNEXPECTED_MOVEMENT');
   });
 });

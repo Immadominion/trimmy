@@ -81,6 +81,7 @@ export interface StockOrderCandidateAccounts {
   readonly outputTokenProgram: TokenProgramKind;
   readonly takerInputAssociatedAccount: string;
   readonly takerOutputAssociatedAccount: string;
+  readonly takerWrappedSolAssociatedAccount: string;
 }
 
 export interface StockOrderSemantics {
@@ -209,6 +210,8 @@ export class SolanaMainnetStockOrderSemanticsReader {
     }
     this.#rpc = new BoundedSolanaRpc<RpcMethod, StockOrderSemanticsError>({
       rpcUrl: options.rpcUrl, methods: ['getGenesisHash', 'getMultipleAccounts'], errors: RPC_ERRORS,
+      // Real routes include executable ATA/Memo binaries; their base64 data alone exceeds 256 KiB.
+      maxBodyBytes: 1_048_576,
       ...(options.fetch ? {fetch: options.fetch} : {}), ...(options.timeoutMs !== undefined ? {timeoutMs: options.timeoutMs} : {}),
     });
     this.#now = options.now ?? Date.now;
@@ -411,12 +414,13 @@ async function candidateAccounts(taker: string, inputMint: string, outputMint: s
   const inputTokenProgram = tokenProgramFor(inputMint);
   const outputTokenProgram = tokenProgramFor(outputMint);
   try {
-    const [takerInputAssociatedAccount, takerOutputAssociatedAccount] = await Promise.all([
+    const [takerInputAssociatedAccount, takerOutputAssociatedAccount, takerWrappedSolAssociatedAccount] = await Promise.all([
       deriveAssociatedTokenAddress(taker, inputMint, inputTokenProgram),
       deriveAssociatedTokenAddress(taker, outputMint, outputTokenProgram),
+      deriveAssociatedTokenAddress(taker, JUPITER_QUOTE_ASSETS.SOL.mint, 'token'),
     ]);
     return Object.freeze({taker, inputMint, outputMint, inputTokenProgram, outputTokenProgram,
-      takerInputAssociatedAccount, takerOutputAssociatedAccount});
+      takerInputAssociatedAccount, takerOutputAssociatedAccount, takerWrappedSolAssociatedAccount});
   } catch {
     return fail('SEMANTICS_INPUT_INVALID');
   }

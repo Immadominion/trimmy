@@ -63,7 +63,7 @@ export interface ReconciledStockOrderTerms {
   readonly reconciledAt: string;
   readonly swap: Readonly<{
     readonly instructionIndex: number;
-    readonly variant: 'route' | 'shared_accounts_route';
+    readonly variant: 'route' | 'shared_accounts_route' | 'route_v2';
     readonly taker: string;
     readonly sourceTokenAccount: string;
     readonly destinationTokenAccount: string;
@@ -250,15 +250,22 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
       case 'associated_token': {
         const forInput = decoded.mint === candidate.inputMint;
         const forOutput = decoded.mint === candidate.outputMint;
-        const expectedAccount = forInput ? candidate.takerInputAssociatedAccount : forOutput ? candidate.takerOutputAssociatedAccount : null;
-        const expectedProgram = forInput ? candidate.inputTokenProgram : candidate.outputTokenProgram;
+        const forIntermediateSol = !forInput && !forOutput && decoded.mint === JUPITER_QUOTE_ASSETS.SOL.mint;
+        const expectedAccount = forIntermediateSol ? candidate.takerWrappedSolAssociatedAccount : forInput ? candidate.takerInputAssociatedAccount : forOutput ? candidate.takerOutputAssociatedAccount : null;
+        const expectedProgram = forIntermediateSol ? 'token' : forInput ? candidate.inputTokenProgram : candidate.outputTokenProgram;
         const programAddress = expectedProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
         if (expectedAccount === null || decoded.payer !== taker || decoded.owner !== taker ||
             decoded.associatedAccount !== expectedAccount || decoded.tokenProgram !== programAddress) {
           return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
         }
         const existing = accounts.get(expectedAccount);
+        // Only allow a newly created, empty intermediate WSOL account. Never close existing holdings.
+        if (forIntermediateSol && existing !== undefined && existing.state.kind !== 'missing') return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
         if (existing === undefined || existing.state.kind === 'missing') {
+          if (forIntermediateSol) {
+            createdAccounts.push({address: expectedAccount, mint: decoded.mint, rentLamportsUpperBound: rentExemptLamports(LEGACY_TOKEN_ACCOUNT_BYTES).toString()});
+            continue;
+          }
           const review = forInput ? inputMint : outputMint;
           createdAccounts.push({address: expectedAccount, mint: decoded.mint, rentLamportsUpperBound: associatedAccountRentUpperBound(review).toString()});
         }
@@ -278,7 +285,9 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
           continue;
         }
         if (decoded.kind === 'close_account') {
-          const wrapped = decoded.account === candidate.takerInputAssociatedAccount && nativeInput;
+          const wrapped = (decoded.account === candidate.takerInputAssociatedAccount && nativeInput) ||
+            (decoded.account === candidate.takerWrappedSolAssociatedAccount &&
+              createdAccounts.some(item => item.address === decoded.account && item.mint === JUPITER_QUOTE_ASSETS.SOL.mint));
           if (!wrapped || decoded.destination !== taker || decoded.authority !== taker) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
           closedAccounts.push(decoded.account);
           continue;
@@ -300,6 +309,9 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
         return fail('RECONCILIATION_PROGRAM_UNEXPECTED');
     }
   }
+  for (const item of createdAccounts) {
+    if (item.mint === JUPITER_QUOTE_ASSETS.SOL.mint && !nativeInput && !closedAccounts.includes(item.address)) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+  }
   if (swap === null) return fail('RECONCILIATION_SWAP_INSTRUCTION_MISSING');
   const route = swap.decoded;
 
@@ -310,11 +322,15 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   check('swap destination account', route.userDestinationTokenAccount === candidate.takerOutputAssociatedAccount,
     route.userDestinationTokenAccount, candidate.takerOutputAssociatedAccount, 'RECONCILIATION_DESTINATION_ACCOUNT_MISMATCH');
   check('swap destination mint', route.destinationMint === candidate.outputMint, route.destinationMint, candidate.outputMint, 'RECONCILIATION_MINT_MISMATCH');
-  if (route.kind === 'shared_accounts_route') {
+  if (route.sourceMint !== null) {
     check('swap source mint', route.sourceMint === candidate.inputMint, String(route.sourceMint), candidate.inputMint, 'RECONCILIATION_MINT_MISMATCH');
   }
   const inputProgramAddress = candidate.inputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
   check('swap token program', route.tokenProgram === inputProgramAddress, route.tokenProgram, inputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
+  if (route.kind === 'route_v2') {
+    const outputProgramAddress = candidate.outputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+    check('swap destination token program', route.destinationTokenProgram === outputProgramAddress, String(route.destinationTokenProgram), outputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
+  }
   const inputAmount = parseAmount(route.inAmount, 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
   const candidateInput = parseAmount(summary.input.amountRaw, 'RECONCILIATION_INPUT_INVALID');
   check('input amount', inputAmount === candidateInput, inputAmount.toString(), candidateInput.toString(), 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');

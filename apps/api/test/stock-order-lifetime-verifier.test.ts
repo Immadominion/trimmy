@@ -247,7 +247,6 @@ it('distinguishes an initially invalid blockhash from a validity observation tha
   for (const second of [
     {context: {slot: 501, apiVersion: '3.1.8'}, value: false},
     {context: {slot: 499, apiVersion: '3.1.8'}, value: true},
-    {context: {slot: 501, apiVersion: '3.1.9'}, value: true},
   ]) {
     const changed = transport({validities: [
       {context: {slot: 500, apiVersion: '3.1.8'}, value: true}, second,
@@ -484,4 +483,14 @@ it('exports no simulation, signing, sending, broadcasting, route or environment 
   for (const forbidden of ['sendTransaction', 'simulateTransaction', 'signTransaction', 'process.env']) {
     assert.equal(source.includes(forbidden), false);
   }
+});
+
+it('accepts mixed RPC software versions while enforcing finalized validity and monotonic heights', async () => {
+  const candidate = fixture();
+  const rpc = transport({validities: [
+    {context: {slot: 500, apiVersion: '3.1.8'}, value: true},
+    {context: {slot: 501, apiVersion: '4.3.0-rc.1'}, value: true},
+  ]});
+  const report = await verifier(rpc.fetch).verify(candidate.draft, candidate.binding, candidate.report);
+  assert.equal(report.provenance.rpcApiVersion, '4.3.0-rc.1');
 });

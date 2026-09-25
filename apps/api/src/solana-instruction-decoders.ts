@@ -91,18 +91,18 @@ export type DecodedInstruction =
   | {readonly program: 'compute_budget'; readonly kind: 'set_compute_unit_price'; readonly microLamports: bigint}
   | {readonly program: 'compute_budget'; readonly kind: 'request_heap_frame'; readonly bytes: number}
   | {readonly program: 'compute_budget'; readonly kind: 'set_loaded_accounts_data_size_limit'; readonly bytes: number}
-  | {readonly program: 'jupiter_v6'; readonly kind: 'route' | 'shared_accounts_route'; readonly tokenProgram: string;
+  | {readonly program: 'jupiter_v6'; readonly kind: 'route' | 'shared_accounts_route' | 'route_v2'; readonly tokenProgram: string;
       readonly programAuthority: string | null; readonly userTransferAuthority: string;
       readonly userSourceTokenAccount: string; readonly userDestinationTokenAccount: string;
       readonly programSourceTokenAccount: string | null; readonly programDestinationTokenAccount: string | null;
       readonly sourceMint: string | null; readonly destinationMint: string; readonly platformFeeAccount: string | null;
       readonly token2022Program: string | null; readonly eventAuthority: string; readonly routeAccounts: readonly string[];
       readonly inAmount: bigint; readonly quotedOutAmount: bigint; readonly slippageBps: number;
-      readonly platformFeeBps: number; readonly routePlanStepCount: number}
+      readonly platformFeeBps: number; readonly routePlanStepCount: number; readonly destinationTokenProgram?: string}
   | {readonly program: 'memo'; readonly kind: 'memo'; readonly byteLength: number};
 
 const MAX_EXTRA_ACCOUNTS = 32;
-const MAX_ROUTE_ACCOUNTS = 48;
+const MAX_ROUTE_ACCOUNTS = 243; // Repeated references across hops, not unique transaction accounts.
 const MAX_ROUTE_PLAN_STEPS = 64;
 const MAX_MEMO_BYTES = 566;
 const JUPITER_TAIL_BYTES = 19;
@@ -113,6 +113,7 @@ function anchorDiscriminator(name: string): Uint8Array {
 }
 const JUPITER_DISCRIMINATORS = Object.freeze({
   route: anchorDiscriminator('route'),
+  route_v2: anchorDiscriminator('route_v2'),
   shared_accounts_route: anchorDiscriminator('shared_accounts_route'),
   exact_out_route: anchorDiscriminator('exact_out_route'),
   shared_accounts_exact_out_route: anchorDiscriminator('shared_accounts_exact_out_route'),
@@ -146,7 +147,7 @@ function walletAddress(value: string): string {
 
 function validated(instruction: DecodableInstruction): DecodableInstruction {
   if (instruction === null || typeof instruction !== 'object' || !(instruction.data instanceof Uint8Array) ||
-      !Array.isArray(instruction.accountAddresses) || instruction.accountAddresses.length > 64) {
+      !Array.isArray(instruction.accountAddresses) || instruction.accountAddresses.length > 256) {
     return fail('INSTRUCTION_INVALID');
   }
   const programAddress = checkedAddress(instruction.programAddress);
@@ -355,10 +356,51 @@ function readU64(data: Uint8Array, offset: number): bigint {
   return value;
 }
 
+/**
+ * Jupiter's current ExactIn layout, verified against its mainnet Anchor IDL
+ * C88XWfp26heEmDkmfSzeXP7Fd7GQJ2j9dDTUsyiZbUTa (2026-09-25).
+ * V2 moves amounts ahead of the route vector and widens platform fees to u16.
+ * Positive-slippage fees and redirected destinations remain unsupported.
+ */
+function decodeJupiterRouteV2(instruction: DecodableInstruction): DecodedInstruction {
+  const {data, accountAddresses: list} = instruction;
+  if (data.length < 39 || list.length < 10) return fail('INSTRUCTION_INVALID');
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const inAmount = readU64(data, 8);
+  const quotedOutAmount = readU64(data, 16);
+  const slippageBps = view.getUint16(24, true);
+  const platformFeeBps = view.getUint16(26, true);
+  const positiveSlippageBps = view.getUint16(28, true);
+  const routePlanStepCount = view.getUint32(30, true);
+  if (inAmount <= 0n || quotedOutAmount <= 0n || slippageBps > 10_000 || platformFeeBps > 10_000 ||
+      routePlanStepCount < 1 || routePlanStepCount > MAX_ROUTE_PLAN_STEPS ||
+      data.length < 34 + routePlanStepCount * 5) return fail('INSTRUCTION_INVALID');
+  if (positiveSlippageBps !== 0) return fail('UNSUPPORTED_INSTRUCTION');
+  const [userTransferAuthority, userSourceTokenAccount, userDestinationTokenAccount, sourceMint,
+    destinationMint, tokenProgram, destinationTokenProgram, alternateDestination, eventAuthority, programSlot] = list;
+  if (programSlot !== KNOWN_PROGRAMS.jupiterV6 || eventAuthority !== 'D8cy77BBepLMngZx6ZukaTff5hCt1HrWyKk3Hnd9oitf' ||
+      alternateDestination !== KNOWN_PROGRAMS.jupiterV6) return fail('INSTRUCTION_INVALID');
+  // With a nonzero platform fee, the first remaining account is its recipient.
+  const platformFeeAccount = platformFeeBps > 0 ? list[10] : null;
+  if (platformFeeAccount === undefined || platformFeeAccount === KNOWN_PROGRAMS.jupiterV6) return fail('INSTRUCTION_INVALID');
+  const routeAccounts = list.slice(platformFeeBps > 0 ? 11 : 10);
+  if (routeAccounts.length < 1 || routeAccounts.length > MAX_ROUTE_ACCOUNTS) return fail('INSTRUCTION_INVALID');
+  return Object.freeze({program: 'jupiter_v6', kind: 'route_v2',
+    userTransferAuthority: walletAddress(userTransferAuthority!),
+    userSourceTokenAccount: checkedAddress(userSourceTokenAccount!),
+    userDestinationTokenAccount: checkedAddress(userDestinationTokenAccount!),
+    sourceMint: checkedAddress(sourceMint!), destinationMint: checkedAddress(destinationMint!),
+    tokenProgram: checkedAddress(tokenProgram!), destinationTokenProgram: checkedAddress(destinationTokenProgram!),
+    programAuthority: null, programSourceTokenAccount: null, programDestinationTokenAccount: null,
+    token2022Program: null, eventAuthority: checkedAddress(eventAuthority!), platformFeeAccount,
+    routeAccounts: Object.freeze(routeAccounts), inAmount, quotedOutAmount, slippageBps, platformFeeBps, routePlanStepCount});
+}
+
 function decodeJupiter(instruction: DecodableInstruction): DecodedInstruction {
   const data = instruction.data;
   if (data.length < 8) return fail('INSTRUCTION_INVALID');
   const discriminator = data.subarray(0, 8);
+  if (sameBytes(discriminator, JUPITER_DISCRIMINATORS.route_v2)) return decodeJupiterRouteV2(instruction);
   const shared = sameBytes(discriminator, JUPITER_DISCRIMINATORS.shared_accounts_route);
   if (!shared && !sameBytes(discriminator, JUPITER_DISCRIMINATORS.route)) {
     // Exact-out, token-ledger and every unknown entry point is out of scope.

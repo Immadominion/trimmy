@@ -330,3 +330,46 @@ describe('memo and unknown programs', () => {
     }
   });
 });
+
+// Captured unsigned mainnet /order instruction data, with deterministic test accounts.
+// No wallet secrets, signatures or executable transaction are part of this vector.
+describe('Jupiter route_v2', () => {
+  const data = Buffer.from('bb64facc31c4af1440420f0000000000e78404000000000032000a000000020000008d00102700012810270102', 'hex');
+  const list = [taker, source, destination, mint, outputMint, KNOWN_PROGRAMS.token,
+    KNOWN_PROGRAMS.token2022, KNOWN_PROGRAMS.jupiterV6,
+    'D8cy77BBepLMngZx6ZukaTff5hCt1HrWyKk3Hnd9oitf', KNOWN_PROGRAMS.jupiterV6, feeAccount, poolAccount];
+  it('reads the V2 header and fee recipient without interpreting the plan as the old trailing amounts', () => {
+    const decoded = decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, list, data));
+    assert.equal(decoded.program, 'jupiter_v6');
+    if (decoded.program !== 'jupiter_v6') return;
+    assert.equal(decoded.kind, 'route_v2');
+    assert.equal(decoded.inAmount, 1_000_000n);
+    assert.equal(decoded.quotedOutAmount, 296167n);
+    assert.equal(decoded.slippageBps, 50);
+    assert.equal(decoded.platformFeeBps, 10);
+    assert.equal(decoded.platformFeeAccount, feeAccount);
+    assert.equal(decoded.sourceMint, mint);
+    assert.equal(decoded.destinationTokenProgram, KNOWN_PROGRAMS.token2022);
+    assert.equal(decoded.routePlanStepCount, 2);
+    assert.deepEqual(decoded.routeAccounts, [poolAccount]);
+  });
+  it('rejects truncated plans, redirected output, positive-slippage fees and malformed program slots', () => {
+    for (const truncated of [data.subarray(0, 30), data.subarray(0, 38)]) {
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, list, truncated)), errorIs('INSTRUCTION_INVALID'));
+    }
+    for (const index of [7, 8, 9]) {
+      const changed = [...list]; changed[index] = poolAccount;
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, changed, data)), errorIs('INSTRUCTION_INVALID'));
+    }
+    const positiveFee = Buffer.from(data); positiveFee.writeUInt16LE(1, 28);
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, list, positiveFee)), errorIs('UNSUPPORTED_INSTRUCTION'));
+  });
+  it('preserves the widened fee value and handles no platform fee without consuming a route account', () => {
+    const largeFee = Buffer.from(data); largeFee.writeUInt16LE(300, 26);
+    const decoded = decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, list, largeFee));
+    assert.equal(decoded.program === 'jupiter_v6' && decoded.platformFeeBps, 300);
+    const noFee = Buffer.from(data); noFee.writeUInt16LE(0, 26);
+    const result = decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, [...list.slice(0, 10), poolAccount], noFee));
+    assert.equal(result.program === 'jupiter_v6' && result.platformFeeAccount, null);
+  });
+});

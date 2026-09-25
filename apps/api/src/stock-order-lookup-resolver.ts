@@ -373,7 +373,9 @@ function validateStructure(value: UnsignedV0TransactionStructure): Readonly<{
       'dataLengthBytes', 'dataSha256']);
     const programIndex = integer(instruction['programAddressIndex'], 1, total - 1, 'LOOKUP_STRUCTURE_INVALID');
     if (instruction['instructionIndex'] !== instructionIndex) return fail('LOOKUP_STRUCTURE_INVALID');
-    const accountIndices = ownArray(instruction['accountIndices'], 0, MAX_ACCOUNT_INDEXES,
+    // Instruction references may repeat an account across swap hops; the
+    // unique address space remains capped independently at 64.
+    const accountIndices = ownArray(instruction['accountIndices'], 0, 256,
       'LOOKUP_STRUCTURE_INVALID');
     accountIndices.forEach(index => integer(index, 0, total - 1, 'LOOKUP_STRUCTURE_INVALID'));
     integer(instruction['dataLengthBytes'], 0, MAX_TRANSACTION_BYTES, 'LOOKUP_STRUCTURE_INVALID');

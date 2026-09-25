@@ -518,8 +518,9 @@ export class SolanaMainnetStockOrderLifetimeVerifier {
       if (firstHeight >= snapshot.lastValidBlockHeight) return fail('LIFETIME_EXPIRED');
 
       const secondValidity = parseValidity(await this.#rpc.validity(snapshot.token, firstValidity.slot, deadline));
-      if (!secondValidity.valid || secondValidity.slot < firstValidity.slot ||
-          secondValidity.apiVersion !== firstValidity.apiVersion) return fail('LIFETIME_OBSERVATION_CHANGED');
+      // A load-balanced RPC may serve different validator software versions.
+      // Validity and monotonic finalized slots/heights are the chain evidence.
+      if (!secondValidity.valid || secondValidity.slot < firstValidity.slot) return fail('LIFETIME_OBSERVATION_CHANGED');
       const secondHeight = parseBlockHeight(await this.#rpc.blockHeight(secondValidity.slot, deadline));
       if (secondHeight < firstHeight) return fail('LIFETIME_OBSERVATION_CHANGED');
       if (secondHeight >= snapshot.lastValidBlockHeight) return fail('LIFETIME_EXPIRED');

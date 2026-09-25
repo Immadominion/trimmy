@@ -188,6 +188,10 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
   }catch(error){
    const code=error instanceof LiveTradeError?error.code:error instanceof Error?error.message:'';
    const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY'];
+   // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
+   const detail=error instanceof Error && 'code' in error ? error.code : null;
+   const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
+   request.log.warn({tradeFailure:reviewCode??(known.includes(code)?code:'LIVE_UNAVAILABLE')},'Live stock request failed');
    return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
   }
  }

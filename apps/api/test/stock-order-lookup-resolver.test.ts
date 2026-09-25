@@ -37,14 +37,14 @@ const errorIs = (code: string) => (error: unknown) =>
   error instanceof StockLookupResolutionError && error.code === code &&
   !error.message.includes('server-key') && !error.message.includes('private-upstream');
 
-function structure(withLookups = true): UnsignedV0TransactionStructure {
+function structure(withLookups = true, repeatedReferences = 1): UnsignedV0TransactionStructure {
   const message: CompiledTransactionMessage & {lifetimeToken: string} = {
     version: 0,
     header: {numSignerAccounts: 1, numReadonlySignerAccounts: 0, numReadonlyNonSignerAccounts: 1},
     staticAccounts: [wallet, program],
     lifetimeToken: lifetime,
     instructions: withLookups ? [{programAddressIndex: 5, accountIndices: [0, 2, 3, 4],
-      data: new Uint8Array([1, 2, 3])}] : [{programAddressIndex: 1, accountIndices: [0], data: new Uint8Array()}],
+      data: new Uint8Array([1, 2, 3])}] : [{programAddressIndex: 1, accountIndices: new Array<number>(repeatedReferences).fill(0), data: new Uint8Array()}],
     addressTableLookups: withLookups ? [
       {lookupTableAddress: lookupOne, writableIndexes: [0], readonlyIndexes: [2]},
       {lookupTableAddress: lookupTwo, writableIndexes: [1], readonlyIndexes: [0]},
@@ -530,4 +530,11 @@ it('fails closed on invalid endpoint, bounds, clock and response bodies', async 
 
   const digest = createHash('sha256').update(tableData([accountA, accountB, accountC])).digest('hex');
   assert.match(digest, /^[0-9a-f]{64}$/); // Fixture itself stays public and deterministic.
+});
+
+it('allows repeated instruction references without increasing the unique account space', async () => {
+  const rpc = transport();
+  const result = await resolver(rpc.fetch).resolve(structure(false, 80));
+  assert.equal(result.accountIndexMap.length, 2);
+  await assert.rejects(resolver(rpc.fetch).resolve(structure(false, 257)), errorIs('LOOKUP_STRUCTURE_INVALID'));
 });
