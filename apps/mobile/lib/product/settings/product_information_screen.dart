@@ -6,7 +6,8 @@ import '../design/product_theme.dart';
 
 enum ProductInformation { contact, terms, privacy }
 
-/// Legal text mirrors the existing published site source, dated 14 Sep 2026.
+/// In-app disclosures describe implemented features, not the marketing site.
+/// Keep these in sync when wallet capabilities or data handling change.
 class ProductInformationScreen extends StatelessWidget {
   const ProductInformationScreen({super.key, required this.information});
   final ProductInformation information;
@@ -101,158 +102,105 @@ class ProductInformationScreen extends StatelessWidget {
 }
 
 const _privacy = <(String, String)>[
-  ("h1", "Privacy, in plain words."),
-  ("p", "Last updated 14 September 2026"),
+  ('h1', 'Privacy, in plain words.'),
+  ('p', 'Last updated 26 September 2026'),
   (
-    "p",
-    "This notice explains information handled by the Trimmy team through trimmy.xyz and, where you have been invited to use one, our private app tests.",
+    'p',
+    'This notice describes information handled by the Trimmy app and its supporting services.',
+  ),
+  ('h2', 'Your account or guest session'),
+  (
+    'p',
+    'Sign-in uses Privy and the email or social provider you choose. Trimmy receives account identifiers, session credentials and available linked-account details, such as your email, handle or profile image, to authenticate you and recover your progress. Continuing as a guest creates a separate session; guest activity can also be stored on our server. Signing in can link that progress to your account.',
+  ),
+  ('h2', 'Practice and Career'),
+  (
+    'p',
+    'Your practice orders, balances, activity answers, completed workdays, streaks, Trims, watchlist and trader profile support the game and your progress. Preferences and unfinished activity drafts can be saved on your device; account and progress records are also stored on our server.',
+  ),
+  ('h2', 'Comments and following'),
+  (
+    'p',
+    'Your comment-sharing choice controls which other users can see your comments with your handle, trader persona and the asset discussed. The community feed does not publish your order amounts or wallet balance. We store follows, sharing preferences, blocks and reports to provide these features and address abuse. Public blockchain activity remains visible independently of these settings.',
+  ),
+  ('h2', 'Wallets and real trades'),
+  (
+    'p',
+    'Privy supplies the embedded wallet and signing interface. Trimmy uses your public Solana address to read balances, request quotes and prepare reviewed transactions. Our server receives signed transactions for submission and stores order terms, transaction references and status. Wallet addresses, token amounts and transaction signatures are public on the blockchain. Closing Trimmy cannot erase those records.',
+  ),
+  ('h2', 'Funding'),
+  (
+    'p',
+    'When you use Crossmint checkout, Trimmy shares the email, destination wallet, requested amount and wallet-ownership proof needed to prepare the order. Crossmint handles payment and identity-verification information in its checkout. Trimmy receives order and delivery status; our onramp server does not collect card numbers or verification documents.',
+  ),
+  ('h2', 'Reminders'),
+  (
+    'p',
+    'Career reminders are scheduled on your device with your permission. You can change the reminder preference in Trimmy or disable notifications in device settings. Saved social notification preferences do not mean that social or transaction push delivery is available in this build.',
+  ),
+  ('h2', 'Services and technical records'),
+  (
+    'p',
+    'Hosting and database providers support the app. Market-data services receive asset queries; Jupiter and blockchain providers receive wallet or transaction queries needed for real trading. Privy, your sign-in provider and Crossmint handle information under their own policies and may process it in other countries. Network information, request times, identifiers and errors help deliver the service, limit abuse and investigate failures.',
+  ),
+  ('h2', 'Your choices and records'),
+  (
+    'p',
+    'You can change sharing and reminder preferences in Settings. Signing out does not delete server records. Closing an account disables access but does not erase its historical records, delete your provider account, move assets or remove blockchain data. Clearing app data can remove local progress and access information; make sure you can recover a funded wallet before doing so.',
   ),
   (
-    "p",
-    "The public website is a product introduction. You can read it and try the sample question without creating an account or connecting a wallet.",
+    'p',
+    'Contact @trimmyhq on X to ask about access, correction or deletion of information held by Trimmy. Ask for a private conversation and do not post credentials or personal documents publicly. We may need to verify the request. Provider records follow their own policies; blockchain records cannot be deleted by Trimmy.',
   ),
-  ("h2", "When you visit this website"),
-  (
-    "p",
-    "Our hosting and network providers may process ordinary request information, such as your IP address, browser or device information, the page requested, request time, and technical errors. This supports delivery of the site, security, and troubleshooting.",
-  ),
-  (
-    "p",
-    "This version of the public website does not include advertising pixels, third-party analytics, sign-in forms, or a mailing-list form. Its fonts and illustrations are served with the site. The practice question runs in your browser; the site does not send your selection to a server or write it to cookies or local storage.",
-  ),
-  (
-    "p",
-    "Following a link to X or another website takes you to that service, which handles your visit under its own policies. We do not embed an X feed or load X's sign-in tools on this public page.",
-  ),
-  ("h2", "When you contact us"),
-  (
-    "p",
-    "If you contact @trimmyhq on X, we receive the profile information and message you share. We use it to respond, investigate an issue, or follow up on your request. X also processes that interaction under its privacy policy.",
-  ),
-  ("h2", "If you use a private app test"),
-  (
-    "p",
-    "The following applies only to an app test that you separately choose to use. Reading this website does not create an app account.",
-  ),
-  (
-    "li",
-    "Practice and preferences. The app can save activity choices, completed activities, progress, and settings on your device. In an account-enabled test, practice progress and a watchlist can also be associated with your account on our server so they can be recovered.",
-  ),
-  (
-    "li",
-    "Optional sign-in. Account-enabled tests use Privy for authentication. Depending on the method you choose, Privy and the identity provider process sign-in information. Trimmy receives a provider account identifier and authentication tokens needed to establish your session, along with available linked-account information such as an X user identifier, handle, display name, or profile image.",
-  ),
-  (
-    "li",
-    "Wallet information. Where an account test includes an embedded Solana wallet, Trimmy may read its public address and public balances for the account view. A public wallet address and on-chain activity can be visible to anyone using the blockchain. This public site does not connect wallets, request signatures, or accept deposits.",
-  ),
-  (
-    "li",
-    "Technical records. App and server testing may produce request identifiers, timestamps, errors, and security records to diagnose failures and protect accounts.",
-  ),
-  (
-    "p",
-    "We use this information to provide the test features you request, recover your progress, authenticate access, resolve support issues, and investigate abuse or technical failures. The current test does not ask X for permission to post on your behalf.",
-  ),
-  ("h2", "Services involved"),
-  (
-    "p",
-    "For account-enabled app tests, Privy provides identity and embedded-wallet infrastructure. Review Privy's privacy policy for its practices. If you choose X sign-in, X also processes the authorization under its own policy. A provider may handle information in countries other than your own.",
-  ),
-  (
-    "p",
-    "Hosting and database services support the website and app-test infrastructure. Market-data and blockchain providers can receive the stock, network, or public wallet queries necessary for requested features. We do not send your practice answers to those market-data providers.",
-  ),
-  (
-    "p",
-    "We may share information with service providers to operate these features, or when needed to respond to a valid legal request, address abuse, or protect the security of the service. We do not sell the information collected through this website or use it for targeted advertising.",
-  ),
-  ("h2", "Keeping and removing information"),
-  (
-    "p",
-    "Information is kept for the purpose it was collected for, such as maintaining an active test account, resolving a support request, or investigating a security issue. Test data may be reset as development progresses. Hosting logs and provider records follow the applicable service's retention controls; a single retention period does not apply to every kind of record.",
-  ),
-  (
-    "p",
-    "You can clear local app data through your device settings. That does not automatically remove server records or records held by Privy or X. You can ask us about access, correction, or deletion of information we hold by contacting @trimmyhq. We may need to verify that the request is yours. Please request a private conversation rather than posting personal information publicly.",
-  ),
-  (
-    "p",
-    "Where applicable, you may also have rights to object to or restrict processing, withdraw consent for optional features, receive a copy of your information, or contact your local data-protection authority. Applicable legal requirements and information needed to resolve security or legal matters may limit deletion. We cannot remove public blockchain records or independently control another provider's records.",
-  ),
-  ("h2", "Private tests and age"),
-  (
-    "p",
-    "Private app tests are intended for adults. We do not knowingly invite children to create test accounts. If you believe a child has provided account information, contact us so we can investigate and address it.",
-  ),
-  ("h2", "As Trimmy develops"),
-  (
-    "p",
-    "We will update this notice when our features or data practices change and show the date above. New account, financial, or communications features may require additional information and notices before you use them.",
-  ),
-  ("p", "For privacy questions, contact the Trimmy team at @trimmyhq on X."),
+  ('h2', 'Provider privacy policies'),
+  ('p', 'Privy: https://www.privy.io/privacy-policy'),
+  ('p', 'Crossmint: https://www.crossmint.com/legal/privacy-policy'),
 ];
 
 const _terms = <(String, String)>[
-  ("h1", "Terms of use."),
-  ("p", "Last updated 14 September 2026"),
+  ('h1', 'Using Trimmy.'),
+  ('p', 'Last updated 26 September 2026'),
   (
-    "p",
-    "These terms describe use of trimmy.xyz, a public introduction to Trimmy and a small educational preview.",
+    'p',
+    'Trimmy combines a trading simulation with a separate real-money mode. These terms describe the app as it works today. Features remain in development.',
   ),
-  ("h2", "Trimmy is in development"),
+  ('h2', 'Practice and Career'),
   (
-    "p",
-    "Product descriptions and artwork show the experience we are building. They do not promise a release date, availability in a particular country, or access to a particular financial product. Features and illustrations may change.",
+    'p',
+    'Paper balances and orders are simulated. Trims, streaks and Career ranks record game progress; they cannot be withdrawn as money. Practice can use sample or market reference data. Completing an activity does not establish investment suitability, and comments from other users are their own views. Educational content is not personalized investment, legal or tax advice.',
   ),
+  ('h2', 'Real money'),
   (
-    "p",
-    "The public website does not open financial accounts, execute trades, hold deposits, send gifts, or offer a claim on any asset. Following the project on X does not create an app account or reserve access. A separate private app test may have additional conditions provided when you join it.",
-  ),
-  ("h2", "Practice is educational"),
-  (
-    "p",
-    "The sample company and figures in the practice activity are fictional. They illustrate how to read a source and are not live market information. Your sample answer is not an investment instruction and does not move money.",
+    'p',
+    'Real mode uses a Solana mainnet wallet and supported tokenized stocks. An order can move real assets when you review and confirm it. Check the asset, amount, fees and destination before approving. A quote is an estimate that can expire; a submitted or pending order is not a confirmed trade. History currently shows reviewed quote amounts, not a complete statement of final fills, fees or external transfers.',
   ),
   (
-    "p",
-    "Content on this website is general educational and product information. It is not personalized investment, legal, or tax advice, and is not a recommendation or offer to buy or sell securities or digital assets. Nothing on the website promises a return or suggests that completing practice activities establishes suitability for an investment.",
+    'p',
+    'Tokenized stocks are subject to their issuer terms and do not necessarily give the same rights as directly holding company shares. Prices can fall, liquidity can disappear, and issuer, network or provider failures can cause loss. Trimmy does not promise returns or execution at a displayed price.',
   ),
-  ("h2", "About the planned market features"),
+  ('h2', 'Funding your wallet'),
   (
-    "p",
-    "Tokenized assets can carry market, issuer, liquidity, technology, and legal risks. A token may not provide the same rights as directly owning a share. Availability, eligibility, and asset terms vary. Future financial features will require their own terms, relevant disclosures, and an explicit action from you before use.",
+    'p',
+    'Send only supported USDC or SOL to the displayed address on the Solana network. Verify the address and network before sending; a completed blockchain transfer cannot simply be undone by Trimmy. SOL is also needed for network fees. Crossmint card checkout is currently a test environment: its test funds do not fund mainnet trades. Its production availability, payment methods, verification and fees depend on the provider.',
   ),
+  ('h2', 'Account access'),
   (
-    "p",
-    "We do not represent that decentralization removes applicable laws or user restrictions. The current public site provides no financial execution service.",
+    'p',
+    'Protect your sign-in method and review wallet prompts carefully. Never share a private key, recovery phrase or one-time sign-in code with support. This build does not yet provide in-app withdrawals or wallet export. Closing your account does not withdraw assets. Resolve wallet access before closing an account or removing the app from a funded device.',
   ),
-  ("h2", "Use the site responsibly"),
+  ('h2', 'Eligibility and other services'),
   (
-    "p",
-    "You may read the public pages, try the practice question, and share links. Do not use the site to break the law, interfere with its operation, attempt unauthorized access, impersonate the Trimmy team, or misrepresent the preview as a live financial service.",
+    'p',
+    'You must meet the applicable asset issuer and service-provider requirements, including location and eligibility restrictions. Seeing an asset or obtaining a quote does not establish eligibility. Privy, Crossmint, trading providers and asset issuers have separate terms. Trimmy does not promise availability in every country.',
   ),
+  ('h2', 'Using the community'),
   (
-    "p",
-    "Site artwork, text, and branding are provided for viewing as part of the site; publication does not grant a right to redistribute them as your own product. Third-party fonts retain their own licenses, included with the site's font files.",
+    'p',
+    'Share comments you have the right to publish. Do not impersonate others, expose private information, manipulate the market, harass users or interfere with accounts and services. Sharing settings, blocking and reporting tools are available for comments and community interactions.',
   ),
-  ("h2", "Links and other services"),
+  ('h2', 'Availability and questions'),
   (
-    "p",
-    "Links to X, Privy, and other services are provided for their stated purpose. Those services have their own terms and privacy practices. Their availability and content are outside our control. Our privacy notice describes the information handled by this website and optional app tests.",
-  ),
-  ("h2", "Availability and changes"),
-  (
-    "p",
-    "We aim to keep the website useful and accurate, but development previews can contain mistakes or become outdated. The website and preview are provided as available, without a guarantee of uninterrupted access or fitness for a particular purpose. We may correct, change, or remove content as development continues.",
-  ),
-  (
-    "p",
-    "Nothing in these terms excludes rights or liabilities that cannot be excluded under applicable law. Updated terms will show a new date on this page.",
-  ),
-  ("h2", "Questions"),
-  (
-    "p",
-    "Contact the Trimmy team at @trimmyhq on X about the website or these terms.",
+    'p',
+    'Market data, quotes, notifications and network confirmation can be delayed or unavailable. Features and these notices may change as development continues. Nothing here removes rights that cannot be excluded under applicable law. Contact @trimmyhq on X for help or questions about these terms.',
   ),
 ];
