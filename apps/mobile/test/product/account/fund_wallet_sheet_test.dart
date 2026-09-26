@@ -25,11 +25,12 @@ class _Reader implements AccountPortfolioReader {
   }
 
   @override
-  Future<AccountHoldingsSnapshot> readHoldings() async =>
-      AccountHoldingsSnapshot.fromEnvelope(
-        fixtures.holdingsEnvelope(),
-        expectedUserId: fixtures.account,
-      );
+  Future<AccountHoldingsSnapshot> readHoldings({
+    int? minimumObservedSlot,
+  }) async => AccountHoldingsSnapshot.fromEnvelope(
+    fixtures.holdingsEnvelope(),
+    expectedUserId: fixtures.account,
+  );
   @override
   void cancelPending() {}
   @override

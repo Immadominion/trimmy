@@ -89,7 +89,9 @@ class _FakeReader implements AccountPortfolioReader {
   }
 
   @override
-  Future<AccountHoldingsSnapshot> readHoldings() async => holdings;
+  Future<AccountHoldingsSnapshot> readHoldings({
+    int? minimumObservedSlot,
+  }) async => holdings;
   @override
   void cancelPending() {}
   @override

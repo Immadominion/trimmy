@@ -140,6 +140,24 @@ void main() {
     },
   );
 
+  test('confirmed transaction slot is bound to holdings reads only', () async {
+    final client = _Client((request) async {
+      expect(request.headers['x-trimmy-holdings-version'], '2');
+      expect(request.headers['x-trimmy-holdings-min-slot'], '447040359');
+      return reply(holdingsEnvelopeV2());
+    });
+    final reader = _accountClient(client);
+    await reader.readHoldings(minimumObservedSlot: 447040359);
+    for (final slot in [0, -1, 9007199254740992]) {
+      await expectLater(
+        reader.readHoldings(minimumObservedSlot: slot),
+        fails(AccountDataFailure.invalidRequest),
+      );
+    }
+    expect(client.requests.length, 1);
+    reader.close();
+  });
+
   test('wrong accounts and unsafe fresh bearers never reach HTTP', () async {
     for (final credential in [
       const PracticeAccessToken(accountId: otherAccount, token: token),

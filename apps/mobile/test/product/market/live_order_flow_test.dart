@@ -75,11 +75,13 @@ Map<String, Object?> _order(
   String side = 'buy',
   String raw = '5000000',
   String mint = fixtures.nvidiaMint,
+  int? confirmedSlot,
 }) => {
   'id': _orderId,
   'status': status,
   'wallet': fixtures.wallet,
   'signature': status == 'confirmed' ? 'test-signature' : null,
+  'confirmedSlot': ?confirmedSlot,
   'expiresAt': DateTime.now()
       .toUtc()
       .add(const Duration(minutes: 2))
@@ -105,6 +107,7 @@ http.Response _reply(Object? value, {int status = 200}) => http.Response(
 
 class _Reader implements AccountPortfolioReader {
   Map<String, Object?> envelope = fixtures.holdingsEnvelopeV2();
+  bool unavailable = false;
   _Reader() {
     final usdc =
         ((envelope['holdings'] as Map)['balances'] as Map)['usdc'] as Map;
@@ -121,11 +124,18 @@ class _Reader implements AccountPortfolioReader {
         expectedUserId: fixtures.account,
       );
   @override
-  Future<AccountHoldingsSnapshot> readHoldings() async =>
-      AccountHoldingsSnapshot.fromEnvelope(
-        envelope,
-        expectedUserId: fixtures.account,
-      );
+  Future<AccountHoldingsSnapshot> readHoldings({
+    int? minimumObservedSlot,
+  }) async {
+    if (unavailable) {
+      throw const AccountDataException(AccountDataFailure.unavailable);
+    }
+    return AccountHoldingsSnapshot.fromEnvelope(
+      envelope,
+      expectedUserId: fixtures.account,
+    );
+  }
+
   @override
   void cancelPending() {}
   @override
@@ -136,6 +146,7 @@ class _Account extends ChangeNotifier implements AccountController {
   _Account(this.portfolio);
   final AccountPortfolioRepository portfolio;
   int refreshes = 0, signatures = 0;
+  final List<int?> confirmedSlots = [];
   @override
   String? accountId = fixtures.account;
   @override
@@ -151,6 +162,14 @@ class _Account extends ChangeNotifier implements AccountController {
   Future<void> refreshPortfolio() async {
     refreshes++;
     await portfolio.refresh();
+    notifyListeners();
+  }
+
+  @override
+  Future<void> refreshPortfolioAfterTrade({int? confirmedSlot}) async {
+    confirmedSlots.add(confirmedSlot);
+    refreshes++;
+    await portfolio.refreshAfterMutation(minimumObservedSlot: confirmedSlot);
     notifyListeners();
   }
 
@@ -337,6 +356,70 @@ void main() {
     },
   );
 
+  testWidgets('newly bought token fills sell Max when holdings arrive late', (
+    tester,
+  ) async {
+    final original = reader.envelope;
+    reader.envelope = fixtures.holdingsEnvelopeV2();
+    ((reader.envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
+    await mount(tester, defaults, sell: true);
+    final field = find.byKey(const ValueKey('live-order-amount'));
+    expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+    reader.envelope = original;
+    await account.refreshPortfolio();
+    await pump(tester);
+    expect(tester.widget<TextField>(field).controller!.text, '1');
+    expect(find.text('1 NVDAx raw units available'), findsOneWidget);
+    await clean(tester);
+  });
+
+  testWidgets('late holdings do not overwrite a sell amount the user entered', (
+    tester,
+  ) async {
+    final original = reader.envelope;
+    reader.envelope = fixtures.holdingsEnvelopeV2();
+    ((reader.envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
+    await mount(tester, defaults, sell: true);
+    final field = find.byKey(const ValueKey('live-order-amount'));
+    await tester.enterText(field, '0.25');
+    reader.envelope = original;
+    await account.refreshPortfolio();
+    await pump(tester);
+    expect(tester.widget<TextField>(field).controller!.text, '0.25');
+    await clean(tester);
+  });
+
+  testWidgets(
+    'retained zero holdings cannot reject a fresh server sell quote',
+    (tester) async {
+      ((reader.envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
+      var quotes = 0;
+      await mount(tester, (request) async {
+        if (request.url.path.endsWith('preview')) {
+          quotes++;
+          return _reply({
+            'order': _order('reviewed', side: 'sell', raw: '25000000'),
+          });
+        }
+        return defaults(request);
+      }, sell: true);
+      reader.unavailable = true;
+      await tester.enterText(
+        find.byKey(const ValueKey('live-order-amount')),
+        '0.25',
+      );
+      await tap(tester, 'live-order-review');
+      expect(account.portfolioState.portfolioIsFresh, isFalse);
+      expect(quotes, 1);
+      expect(find.byKey(const ValueKey('live-order-confirm')), findsOneWidget);
+      expect(
+        find.text('You don’t have enough of this token to sell.'),
+        findsNothing,
+      );
+      await clean(tester);
+    },
+  );
+
   testWidgets(
     'capability outage retries without telling a funded user to add money',
     (tester) async {
@@ -378,7 +461,10 @@ void main() {
           return _reply(_caps(enabled: false));
         }
         return _reply({
-          'order': _order(checks++ == 0 ? 'pending' : 'confirmed'),
+          'order': _order(
+            checks++ == 0 ? 'pending' : 'confirmed',
+            confirmedSlot: checks > 1 ? 447040359 : null,
+          ),
         });
       });
       expect(find.text('Confirming your trade'), findsOneWidget);
@@ -393,6 +479,7 @@ void main() {
         isNull,
       );
       expect(account.refreshes, greaterThanOrEqualTo(2));
+      expect(account.confirmedSlots, [447040359]);
       expect(account.signatures, 0);
       await clean(tester);
     },
@@ -410,6 +497,7 @@ void main() {
       });
       expect(find.text('Trade confirmed'), findsOneWidget);
       expect(account.refreshes, greaterThanOrEqualTo(2));
+      expect(account.confirmedSlots, [null]);
       expect(
         (await SharedPreferences.getInstance()).getString(
           'trimmy.pending-live-order.${fixtures.account}',
@@ -456,6 +544,57 @@ void main() {
     );
     expect(requests, 0);
     client.close();
+    portfolio.dispose();
+    account.dispose();
+  });
+
+  testWidgets(
+    'changing accounts removes an old account review before signing',
+    (tester) async {
+      await mount(tester, (request) async {
+        if (request.url.path.endsWith('preview')) {
+          return _reply({'order': _order('reviewed')});
+        }
+        return defaults(request);
+      });
+      await tap(tester, 'live-order-review');
+      expect(find.byKey(const ValueKey('live-order-confirm')), findsOneWidget);
+      account.navigationEpoch++;
+      account.notifyListeners();
+      await pump(tester);
+      expect(find.text('Your account changed'), findsOneWidget);
+      expect(find.byKey(const ValueKey('live-order-confirm')), findsNothing);
+      expect(account.signatures, 0);
+      await clean(tester);
+    },
+  );
+
+  test(
+    'malformed confirmed slots cannot cross the order API boundary',
+    () async {
+      for (final slot in [0, -1, 1.5, '447040359', 9007199254740992]) {
+        final transport = MockClient(
+          (request) async => _reply({
+            'order': {..._order('confirmed'), 'confirmedSlot': slot},
+          }),
+        );
+        final client = LiveOrderClient(_origin, account, client: transport);
+        await expectLater(
+          client.request('order'),
+          throwsA(isA<LiveOrderFailure>()),
+        );
+        client.close();
+      }
+      portfolio.dispose();
+      account.dispose();
+    },
+  );
+
+  test('a trade-cap rejection has actionable copy', () {
+    expect(
+      const LiveOrderFailure('TRADE_LIMIT').message,
+      'This order is above the current trade limit.',
+    );
     portfolio.dispose();
     account.dispose();
   });

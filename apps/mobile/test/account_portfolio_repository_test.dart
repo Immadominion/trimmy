@@ -34,12 +34,19 @@ AccountContextSnapshot parsedContext({
 AccountHoldingsSnapshot parsedHoldings({
   required DateTime observedAt,
   String address = wallet,
+  int? slot,
 }) {
   final envelope = holdingsEnvelope();
   final walletData = envelope['wallet']! as Map<String, Object?>;
   walletData['address'] = address;
   final holdings = envelope['holdings']! as Map<String, Object?>;
   holdings['observedAt'] = observedAt.toUtc().toIso8601String();
+  if (slot != null) {
+    for (final name in ['nativeSol', 'usdc', 'aaplx']) {
+      ((holdings['balances'] as Map)[name] as Map)['observedSlot'] = slot;
+      ((holdings['consistency'] as Map)['slots'] as Map)[name] = slot;
+    }
+  }
   return AccountHoldingsSnapshot.fromEnvelope(
     envelope,
     expectedUserId: account,
@@ -58,6 +65,7 @@ final class _Reader implements AccountPortfolioReader {
   Future<AccountContextSnapshot> Function() contextRead;
   Future<AccountHoldingsSnapshot> Function() holdingsRead;
   final calls = <String>[];
+  final minimumSlots = <int?>[];
   var cancellations = 0;
   var closes = 0;
 
@@ -68,8 +76,9 @@ final class _Reader implements AccountPortfolioReader {
   }
 
   @override
-  Future<AccountHoldingsSnapshot> readHoldings() {
+  Future<AccountHoldingsSnapshot> readHoldings({int? minimumObservedSlot}) {
     calls.add('holdings');
+    minimumSlots.add(minimumObservedSlot);
     return holdingsRead();
   }
 
@@ -201,6 +210,110 @@ void main() {
 
       expect(reader.calls, ['context', 'holdings']);
       expect(subject.state.phase, AccountPortfolioPhase.ready);
+    },
+  );
+
+  test(
+    'confirmation refresh waits for the pre-trade read then uses its slot floor',
+    () async {
+      final gate = Completer<AccountHoldingsSnapshot>();
+      var reads = 0;
+      final reader = _Reader(
+        contextRead: () async => parsedContext(),
+        holdingsRead: () {
+          reads++;
+          return reads == 1
+              ? gate.future
+              : Future.value(parsedHoldings(observedAt: now, slot: 500));
+        },
+      );
+      final subject = repository(reader);
+      addTearDown(subject.dispose);
+      final old = subject.refresh();
+      await flush();
+      final confirmed = subject.refreshAfterMutation(minimumObservedSlot: 500);
+      expect(identical(subject.refresh(), confirmed), isTrue);
+      gate.complete(parsedHoldings(observedAt: now, slot: 499));
+      await Future.wait([old, confirmed]);
+      expect(reader.minimumSlots, [null, 500]);
+      expect(subject.state.phase, AccountPortfolioPhase.ready);
+      expect(subject.state.portfolio!.holdings.usdc.observedSlot, 500);
+      await subject.refresh();
+      expect(reader.minimumSlots.last, 500);
+    },
+  );
+
+  test(
+    'a second confirmation during a read raises the floor and queues the newer read',
+    () async {
+      final gate = Completer<AccountHoldingsSnapshot>();
+      var reads = 0;
+      final reader = _Reader(
+        contextRead: () async => parsedContext(),
+        holdingsRead: () {
+          reads++;
+          return reads == 1
+              ? gate.future
+              : Future.value(parsedHoldings(observedAt: now, slot: 501));
+        },
+      );
+      final subject = repository(reader);
+      addTearDown(subject.dispose);
+      final first = subject.refreshAfterMutation(minimumObservedSlot: 500);
+      await flush();
+      final next = subject.refreshAfterMutation(minimumObservedSlot: 501);
+      expect(identical(first, next), isTrue);
+      gate.complete(parsedHoldings(observedAt: now, slot: 500));
+      await first;
+      expect(reader.minimumSlots, [500, 501]);
+      expect(subject.state.portfolio!.holdings.nativeSol.observedSlot, 501);
+    },
+  );
+
+  test(
+    'confirmation floor rejects retained pre-trade holdings even with a recent timestamp',
+    () async {
+      final reader = _Reader(
+        contextRead: () async => parsedContext(),
+        holdingsRead: () async => parsedHoldings(observedAt: now, slot: 499),
+      );
+      final subject = repository(reader);
+      addTearDown(subject.dispose);
+      await subject.refresh();
+      expect(subject.state.portfolioIsFresh, isTrue);
+      await subject.refreshAfterMutation(minimumObservedSlot: 500);
+      expect(subject.state.phase, AccountPortfolioPhase.stale);
+      expect(subject.state.portfolioIsFresh, isFalse);
+      expect(subject.state.portfolio!.holdings.nativeSol.observedSlot, 499);
+      subject.setNetworkAvailable(false);
+      subject.setNetworkAvailable(true);
+      expect(subject.state.phase, AccountPortfolioPhase.stale);
+      expect(subject.state.portfolioIsFresh, isFalse);
+    },
+  );
+
+  test(
+    'account switch cancels queued confirmation refresh without reading another account',
+    () async {
+      final gate = Completer<AccountContextSnapshot>();
+      final reader = _Reader(
+        contextRead: () => gate.future,
+        holdingsRead: () async => parsedHoldings(observedAt: now, slot: 500),
+      );
+      final subject = repository(reader);
+      addTearDown(subject.dispose);
+      final first = subject.refresh();
+      final confirmed = subject.refreshAfterMutation(minimumObservedSlot: 500);
+      final rejected = expectLater(
+        confirmed,
+        portfolioFailure(AccountPortfolioIssue.accountChanged),
+      );
+      subject.invalidateForAccountSwitch(activeAccountId: otherAccount);
+      gate.complete(parsedContext());
+      await first;
+      await rejected;
+      expect(reader.calls, ['context']);
+      expect(subject.state.portfolio, isNull);
     },
   );
 

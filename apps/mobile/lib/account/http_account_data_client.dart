@@ -63,18 +63,28 @@ class HttpAccountDataClient {
         AccountContextSnapshot.fromEnvelope(body, expectedUserId: accountId),
   );
 
-  Future<AccountHoldingsSnapshot> readHoldings() => _read(
-    endpoint: _Endpoint.holdings,
-    path: _holdingsPath,
-    decode: (body) =>
-        AccountHoldingsSnapshot.fromEnvelope(body, expectedUserId: accountId),
-  );
+  Future<AccountHoldingsSnapshot> readHoldings({int? minimumObservedSlot}) {
+    if (minimumObservedSlot != null &&
+        (minimumObservedSlot < 1 || minimumObservedSlot > 9007199254740991)) {
+      return Future.error(
+        const AccountDataException(AccountDataFailure.invalidRequest),
+      );
+    }
+    return _read(
+      endpoint: _Endpoint.holdings,
+      path: _holdingsPath,
+      minimumObservedSlot: minimumObservedSlot,
+      decode: (body) =>
+          AccountHoldingsSnapshot.fromEnvelope(body, expectedUserId: accountId),
+    );
+  }
 
   Future<T> _read<T>({
     required _Endpoint endpoint,
     required String path,
     required T Function(Object?) decode,
     bool fresh = false,
+    int? minimumObservedSlot,
   }) async {
     if (_closed) {
       throw const AccountDataException(AccountDataFailure.closed);
@@ -90,7 +100,7 @@ class HttpAccountDataClient {
     );
     try {
       return await Future.any(<Future<T>>[
-        _perform(operation, endpoint, path, decode, fresh),
+        _perform(operation, endpoint, path, decode, fresh, minimumObservedSlot),
         operation.failed<T>(),
       ]);
     } finally {
@@ -117,6 +127,7 @@ class HttpAccountDataClient {
     String path,
     T Function(Object?) decode,
     bool fresh,
+    int? minimumObservedSlot,
   ) async {
     PracticeAccessToken access;
     try {
@@ -161,6 +172,9 @@ class HttpAccountDataClient {
     if (fresh) request.headers['cache-control'] = 'no-cache';
     if (endpoint == _Endpoint.holdings) {
       request.headers['x-trimmy-holdings-version'] = '2';
+      if (minimumObservedSlot != null) {
+        request.headers['x-trimmy-holdings-min-slot'] = '$minimumObservedSlot';
+      }
     }
     try {
       final response = await _client.send(request);

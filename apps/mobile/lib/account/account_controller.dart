@@ -120,6 +120,8 @@ class AccountController extends ChangeNotifier {
   OfficeProgressRepository _repository;
   AccountProgressSession? _session;
   AccountPortfolioRepository? _portfolioRepository;
+  Timer? _legacyTradeRefresh;
+  int _tradeRefreshRevision = 0;
   VoidCallback? _portfolioListener;
   StreamSubscription<PracticeAuthState>? _authSubscription;
   final _retiring = <String, Future<void>>{};
@@ -657,6 +659,8 @@ class AccountController extends ChangeNotifier {
   }
 
   void _clearPortfolio() {
+    _legacyTradeRefresh?.cancel();
+    _legacyTradeRefresh = null;
     final previous = _portfolioRepository;
     final listener = _portfolioListener;
     _portfolioRepository = null;
@@ -1409,13 +1413,53 @@ class AccountController extends ChangeNotifier {
 
   /// Refreshes read-only account context and holdings for the verified mount.
   /// Cached offline account bindings cannot cross this gate.
-  Future<void> refreshPortfolio() {
+  Future<void> refreshPortfolio() => _refreshAccountPortfolio();
+
+  /// A transaction confirmation starts a new read after all older reads finish.
+  Future<void> refreshPortfolioAfterTrade({int? confirmedSlot}) async {
+    final revision = ++_tradeRefreshRevision;
+    _legacyTradeRefresh?.cancel();
+    _legacyTradeRefresh = null;
+    final repository = _portfolioRepository, account = _accountId;
+    final generation = _generation;
+    await _refreshAccountPortfolio(
+      afterTrade: true,
+      minimumObservedSlot: confirmedSlot,
+    );
+    if (confirmedSlot == null &&
+        revision == _tradeRefreshRevision &&
+        !_disposed &&
+        repository != null &&
+        identical(repository, _portfolioRepository) &&
+        account == _accountId &&
+        generation == _generation) {
+      // Older persisted confirmations have no chain slot. One follow-up after
+      // the old three-second provider cache can settle them without polling.
+      _legacyTradeRefresh = _timerFactory(const Duration(seconds: 4), () {
+        _legacyTradeRefresh = null;
+        if (!_disposed &&
+            revision == _tradeRefreshRevision &&
+            identical(repository, _portfolioRepository) &&
+            account == _accountId &&
+            generation == _generation) {
+          unawaited(
+            _refreshAccountPortfolio(
+              afterTrade: true,
+            ).catchError((Object _) {}),
+          );
+        }
+      });
+    }
+  }
+
+  Future<void> _refreshAccountPortfolio({
+    bool afterTrade = false,
+    int? minimumObservedSlot,
+  }) {
     final repository = _portfolioRepository;
     final subject = _subject;
     final account = _accountId;
     if (_disposed ||
-        !_foreground ||
-        !_networkAvailable ||
         !_serverVerified ||
         repository == null ||
         subject == null ||
@@ -1424,7 +1468,15 @@ class AccountController extends ChangeNotifier {
         !_portfolioIdentityCurrent(subject, account, _generation)) {
       return Future<void>.value();
     }
-    return repository.refresh();
+    if (afterTrade && minimumObservedSlot != null) {
+      repository.recordConfirmedSlot(minimumObservedSlot);
+    }
+    if (!_foreground || !_networkAvailable) return Future<void>.value();
+    return afterTrade
+        ? repository.refreshAfterMutation(
+            minimumObservedSlot: minimumObservedSlot,
+          )
+        : repository.refresh();
   }
 
   /// User-initiated setup. The SDK ensures one wallet and the server independently

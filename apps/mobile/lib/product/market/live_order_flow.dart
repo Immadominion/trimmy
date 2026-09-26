@@ -26,6 +26,7 @@ class LiveOrderFailure implements Exception {
     'ADD_USDC' => 'Add USDC to your Solana wallet first.',
     'ADD_SOL' => 'Add SOL to cover network and account fees.',
     'INSUFFICIENT_HOLDINGS' => 'You don’t have enough of this token to sell.',
+    'TRADE_LIMIT' => 'This order is above the current trade limit.',
     'WALLET_REQUIRED' => 'Create your wallet to continue.',
     'ORDER_PENDING' => 'Your previous trade is still confirming.',
     'QUOTE_EXPIRED' => 'That price expired. Get a fresh quote.',
@@ -80,7 +81,9 @@ class LiveOrderClient {
   ]) async {
     if (!current) throw const LiveOrderFailure('ACCOUNT_REQUIRED');
     final token = await account.freshAccessToken();
-    if (!current) throw const LiveOrderFailure('ACCOUNT_REQUIRED');
+    if (!current || token.accountId != _identity) {
+      throw const LiveOrderFailure('ACCOUNT_REQUIRED');
+    }
     final request =
         http.Request(
             body == null ? 'GET' : 'POST',
@@ -132,6 +135,7 @@ class LiveOrderClient {
         value is String &&
         RegExp(r'^[1-9A-HJ-NP-Za-km-z]{32,44}$').hasMatch(value);
     final fees = terms is Map ? terms['platformFeeBps'] : null;
+    final confirmedSlot = order['confirmedSlot'];
     if (terms is! Map ||
         !const {'buy', 'sell'}.contains(terms['side']) ||
         !mint(terms['inputMint']) ||
@@ -143,6 +147,10 @@ class LiveOrderClient {
         fees is! int ||
         fees < 0 ||
         fees > 10000 ||
+        (confirmedSlot != null &&
+            (confirmedSlot is! int ||
+                confirmedSlot < 1 ||
+                confirmedSlot > 9007199254740991)) ||
         order['wallet'] is! String ||
         order['expiresAt'] is! String ||
         DateTime.tryParse(order['expiresAt'] as String) == null ||
@@ -254,7 +262,19 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
   }
 
   void _accountChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      if (!_client.current) {
+        _poll?.cancel();
+        _quoteTimer?.cancel();
+        setState(() {
+          _order = null;
+          _error = 'Sign in again to use your wallet.';
+        });
+        return;
+      }
+      _setInitialAmount();
+      setState(() {});
+    }
   }
 
   @override
@@ -307,6 +327,16 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     }
   }
 
+  Future<void> _refreshConfirmedBalance(Map<String, dynamic> order) async {
+    try {
+      await widget.account.refreshPortfolioAfterTrade(
+        confirmedSlot: order['confirmedSlot'] as int?,
+      );
+    } catch (_) {
+      // Confirmation remains valid; the account keeps holdings explicitly stale.
+    }
+  }
+
   Future<void> _restore() async {
     if (_restoring) return;
     _restoring = true;
@@ -337,7 +367,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             _schedule();
           } else {
             await _remember(null);
-            if (order?['status'] == 'confirmed') await _refreshBalance();
+            if (order?['status'] == 'confirmed') {
+              await _refreshConfirmedBalance(order!);
+            }
           }
         }
       } catch (_) {
@@ -364,13 +396,14 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
 
   void _setInitialAmount() {
     if (_initialAmountSet || _asset == null) return;
-    _initialAmountSet = true;
     final max = _maxRaw;
+    // A zero/unknown first snapshot may predate the buy or deposit. Keep the
+    // untouched field eligible for autofill when the verified balance arrives.
+    if (max == null || max <= BigInt.zero) return;
+    _initialAmountSet = true;
     if (_sell) {
-      if (max != null && max > BigInt.zero) {
-        _amount.text = liveDecimal(max.toString(), _decimals);
-      }
-    } else if (max != null && max > BigInt.zero && max < BigInt.from(5000000)) {
+      _amount.text = liveDecimal(max.toString(), _decimals);
+    } else if (max < BigInt.from(5000000)) {
       _amount.text = liveDecimal(max.toString(), 6);
     }
   }
@@ -380,6 +413,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     if (balance == null || _asset == null) return;
     final portion = balance * BigInt.from(percent) ~/ BigInt.from(100);
     final raw = portion > _limitRaw ? _limitRaw : portion;
+    _initialAmountSet = true;
     setState(() => _amount.text = liveDecimal(raw.toString(), _decimals));
   }
 
@@ -528,7 +562,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       } else {
         await _remember(null);
       }
-      if (result['status'] == 'confirmed') await _refreshBalance();
+      if (result['status'] == 'confirmed') {
+        await _refreshConfirmedBalance(result);
+      }
     } catch (_) {
       if (!mounted) return;
       if (dispatchStarted) {
@@ -571,7 +607,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       });
       if (!_pending) {
         await _remember(null);
-        if (result['status'] == 'confirmed') await _refreshBalance();
+        if (result['status'] == 'confirmed') {
+          await _refreshConfirmedBalance(result);
+        }
       }
     } catch (_) {
       _notice('Reconnecting to check your order…');
@@ -622,7 +660,14 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_pending || terminal)
+                if (!_client.current)
+                  ..._unavailable(
+                    context,
+                    'Your account changed',
+                    'Reopen trading after signing in.',
+                    retry: false,
+                  )
+                else if (_pending || terminal)
                   ..._result(context)
                 else if (_checking)
                   const Padding(
@@ -739,6 +784,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             TextField(
               key: const ValueKey('live-order-amount'),
               controller: _amount,
+              onChanged: (_) => _initialAmountSet = true,
               enabled: !_busy,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -804,7 +850,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 backgroundColor: ProductColor.paperRaised,
                 onPressed: _busy
                     ? null
-                    : () => setState(() => _amount.text = '$amount'),
+                    : () => setState(() {
+                        _initialAmountSet = true;
+                        _amount.text = '$amount';
+                      }),
               ),
         ],
       ),

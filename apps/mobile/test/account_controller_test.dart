@@ -218,6 +218,7 @@ Map<String, Object?> _holdingsFor(
 
 class _Server {
   final contextCacheControls = <String?>[];
+  final holdingsMinimumSlots = <String?>[];
   final current = <String, PracticeSnapshot>{_a: _empty(), _b: _empty()};
   final requests = <(String, String)>[];
   final accountRequests = <(String, String)>[];
@@ -243,6 +244,7 @@ class _Server {
           : await contextOverride!(account);
     }
     if (request.url.path == '/v1/account/holdings') {
+      holdingsMinimumSlots.add(request.headers['x-trimmy-holdings-min-slot']);
       accountRequests.add((request.url.path, account));
       return holdingsOverride == null
           ? _json(_holdingsFor(account))
@@ -1114,6 +1116,94 @@ void main() {
       ('/v1/account/context', _a),
       ('/v1/account/holdings', _a),
     ]);
+    await h.close();
+  });
+
+  test(
+    'confirmation slot survives background and guards the resume refresh',
+    () async {
+      final h = _Harness();
+      await h.controller.initialize();
+      await h.controller.portfolioRepository!.whenIdle;
+      h.server.accountRequests.clear();
+      h.server.holdingsMinimumSlots.clear();
+      h.controller.setForeground(false);
+      await h.controller.refreshPortfolioAfterTrade(confirmedSlot: 447040400);
+      expect(h.server.accountRequests, isEmpty);
+      expect(h.controller.portfolioState!.portfolioIsFresh, isFalse);
+      h.controller.setForeground(true);
+      await h.controller.portfolioRepository!.whenIdle;
+      expect(h.server.holdingsMinimumSlots, ['447040400']);
+      // This server fixture is older than the confirmation; it cannot restore ready.
+      expect(h.controller.portfolioState!.portfolioIsFresh, isFalse);
+      expect(
+        h.timers.pending.where(
+          (timer) => timer.delay == const Duration(seconds: 4),
+        ),
+        isEmpty,
+      );
+      await h.close();
+    },
+  );
+
+  test(
+    'legacy confirmation makes one delayed refresh and logout cancels it',
+    () async {
+      final h = _Harness();
+      await h.controller.initialize();
+      await h.controller.portfolioRepository!.whenIdle;
+      h.server.accountRequests.clear();
+      await h.controller.refreshPortfolioAfterTrade();
+      final followUp = h.timers.pending.singleWhere(
+        (timer) => timer.delay == const Duration(seconds: 4),
+      );
+      expect(h.server.accountRequests.length, 2);
+      followUp.fire();
+      await _settle();
+      await h.controller.portfolioRepository!.whenIdle;
+      expect(h.server.accountRequests.length, 4);
+      expect(
+        h.timers.pending.where(
+          (timer) => timer.delay == const Duration(seconds: 4),
+        ),
+        isEmpty,
+      );
+      await h.controller.refreshPortfolioAfterTrade();
+      final cancelled = h.timers.pending.singleWhere(
+        (timer) => timer.delay == const Duration(seconds: 4),
+      );
+      await h.controller.signOut();
+      final requests = h.server.accountRequests.length;
+      cancelled.fire();
+      await _settle();
+      expect(cancelled.isActive, isFalse);
+      expect(h.server.accountRequests.length, requests);
+      await h.close();
+    },
+  );
+
+  test('new slot confirmation supersedes a queued legacy follow-up', () async {
+    final h = _Harness();
+    await h.controller.initialize();
+    await h.controller.portfolioRepository!.whenIdle;
+    final gate = Completer<http.Response>();
+    var reads = 0;
+    h.server.holdingsOverride = (account) async =>
+        reads++ == 0 ? await gate.future : _json(_holdingsFor(account));
+    final legacy = h.controller.refreshPortfolioAfterTrade();
+    await _settle();
+    final newer = h.controller.refreshPortfolioAfterTrade(
+      confirmedSlot: 447040359,
+    );
+    gate.complete(_json(_holdingsFor(_a)));
+    await Future.wait([legacy, newer]);
+    expect(
+      h.timers.pending.where(
+        (timer) => timer.delay == const Duration(seconds: 4),
+      ),
+      isEmpty,
+    );
+    expect(h.controller.portfolioState!.portfolioIsFresh, isTrue);
     await h.close();
   });
 

@@ -17,7 +17,7 @@ typedef AccountPortfolioTimerFactory =
 abstract interface class AccountPortfolioReader {
   String get accountId;
   Future<AccountContextSnapshot> readContext();
-  Future<AccountHoldingsSnapshot> readHoldings();
+  Future<AccountHoldingsSnapshot> readHoldings({int? minimumObservedSlot});
   void cancelPending();
   void close();
 }
@@ -34,7 +34,8 @@ final class HttpAccountPortfolioReader implements AccountPortfolioReader {
   Future<AccountContextSnapshot> readContext() => _client.readContext();
 
   @override
-  Future<AccountHoldingsSnapshot> readHoldings() => _client.readHoldings();
+  Future<AccountHoldingsSnapshot> readHoldings({int? minimumObservedSlot}) =>
+      _client.readHoldings(minimumObservedSlot: minimumObservedSlot);
 
   @override
   void cancelPending() => _client.cancelPending();
@@ -161,7 +162,7 @@ final class AccountPortfolioState {
   bool get hasRetainedPortfolio =>
       portfolio != null && phase != AccountPortfolioPhase.ready;
 
-  bool get portfolioIsFresh => _freshness == _AccountPortfolioFreshness.fresh;
+  bool get portfolioIsFresh => phase == AccountPortfolioPhase.ready;
 }
 
 final class AccountPortfolioException implements Exception {
@@ -253,6 +254,9 @@ final class AccountPortfolioRepository extends ChangeNotifier {
   AccountPortfolioState _state;
   Future<void>? _inFlight;
   Future<void>? _queuedRefresh;
+  Future<void>? _mutationRefresh;
+  int _mutationRevision = 0;
+  int? _minimumObservedSlot;
   Timer? _expiryTimer;
   int _generation = 0;
   bool _online = true;
@@ -273,12 +277,82 @@ final class AccountPortfolioRepository extends ChangeNotifier {
   }
 
   Future<void> get whenIdle =>
-      _queuedRefresh ?? _inFlight ?? Future<void>.value();
+      _mutationRefresh ?? _queuedRefresh ?? _inFlight ?? Future<void>.value();
+
+  /// A confirmed transaction must never reuse a read begun before confirmation.
+  /// Later reads retain the chain slot floor, preventing RPC/cache regression.
+  Future<void> refreshAfterMutation({int? minimumObservedSlot}) {
+    if (minimumObservedSlot != null) {
+      try {
+        recordConfirmedSlot(minimumObservedSlot);
+      } on AccountPortfolioException catch (error) {
+        return Future.error(error);
+      }
+    }
+    _mutationRevision++;
+    final existing = _mutationRefresh;
+    if (existing != null) return existing;
+    final previous = _queuedRefresh ?? _inFlight;
+    late final Future<void> operation;
+    operation =
+        (() async {
+          if (previous != null) await previous;
+          int revision;
+          do {
+            revision = _mutationRevision;
+            await _startRefresh();
+          } while (revision != _mutationRevision &&
+              !_disposed &&
+              !_invalidated);
+        })().whenComplete(() {
+          if (identical(_mutationRefresh, operation)) _mutationRefresh = null;
+        });
+    _mutationRefresh = operation;
+    return operation;
+  }
+
+  /// Records a confirmation even while the app cannot start a network read.
+  /// Foreground/reconnect refreshes must still observe that transaction.
+  void recordConfirmedSlot(int slot) {
+    if (slot < 1 || slot > 9007199254740991) {
+      throw const AccountPortfolioException(
+        AccountPortfolioIssue.invalidRequest,
+      );
+    }
+    if (_disposed || _invalidated || slot <= (_minimumObservedSlot ?? 0)) {
+      return;
+    }
+    _minimumObservedSlot = slot;
+    final portfolio = _state.portfolio;
+    if (portfolio != null &&
+        !_observesConfirmedSlot(portfolio.holdings) &&
+        _state._phase == AccountPortfolioPhase.ready) {
+      _publish(
+        AccountPortfolioPhase.stale,
+        context: _state.context,
+        portfolio: portfolio,
+        issue: AccountPortfolioIssue.observationExpired,
+      );
+    }
+  }
+
+  bool _observesConfirmedSlot(AccountHoldingsSnapshot holdings) {
+    final floor = _minimumObservedSlot;
+    return floor == null ||
+        [
+          holdings.nativeSol.observedSlot,
+          holdings.usdc.observedSlot,
+          holdings.aaplx.observedSlot,
+          ...holdings.stockTokens.map((token) => token.observedSlot),
+        ].every((slot) => slot >= floor);
+  }
 
   /// Concurrent refreshes share one context-then-holdings operation. After a
   /// cancellation, a new refresh waits for the cancelled adapter call to retire
   /// before starting another one.
-  Future<void> refresh() {
+  Future<void> refresh() => _mutationRefresh ?? _startRefresh();
+
+  Future<void> _startRefresh() {
     if (_disposed) {
       return Future<void>.error(
         const AccountPortfolioException(AccountPortfolioIssue.closed),
@@ -312,7 +386,7 @@ final class AccountPortfolioRepository extends ChangeNotifier {
       restart = active
           .then((_) {
             if (identical(_queuedRefresh, restart)) _queuedRefresh = null;
-            return refresh();
+            return _startRefresh();
           })
           .whenComplete(() {
             if (identical(_queuedRefresh, restart)) _queuedRefresh = null;
@@ -379,7 +453,9 @@ final class AccountPortfolioRepository extends ChangeNotifier {
         portfolio: retained,
       );
 
-      final holdings = await _reader.readHoldings();
+      final holdings = await _reader.readHoldings(
+        minimumObservedSlot: _minimumObservedSlot,
+      );
       if (!_current(generation)) return;
       if (holdings.userId != accountId) {
         throw const AccountDataException(AccountDataFailure.accountMismatch);
@@ -388,6 +464,11 @@ final class AccountPortfolioRepository extends ChangeNotifier {
         retained = null;
         throw const AccountPortfolioException(
           AccountPortfolioIssue.walletChanged,
+        );
+      }
+      if (!_observesConfirmedSlot(holdings)) {
+        throw const AccountPortfolioException(
+          AccountPortfolioIssue.observationExpired,
         );
       }
 
@@ -523,7 +604,10 @@ final class AccountPortfolioRepository extends ChangeNotifier {
       );
       return;
     }
-    final isFresh = portfolio?.isFreshAt(now) ?? false;
+    final isFresh =
+        portfolio != null &&
+        portfolio.isFreshAt(now) &&
+        _observesConfirmedSlot(portfolio.holdings);
     _publish(
       portfolio == null
           ? AccountPortfolioPhase.idle
