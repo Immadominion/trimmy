@@ -36,7 +36,7 @@ export interface AccountHoldingsIdentityResolver {
 }
 
 export interface AccountHoldingsReader {
-  read(owner: ServerVerifiedStockOwner, version?: 1 | 2): Promise<StockHoldingsSnapshot>;
+  read(owner: ServerVerifiedStockOwner, version?: 1 | 2, minContextSlot?: number): Promise<StockHoldingsSnapshot>;
 }
 
 export interface AccountHoldingsAdapters {
@@ -531,11 +531,15 @@ export function registerAccountHoldingsRoute(app: FastifyInstance, options?: Acc
     onRequest: async (request, reply) => {
       reply.header('cache-control', 'no-store');
       const vary = reply.getHeader('vary');
-      reply.header('vary', vary ? `${String(vary)}, X-Trimmy-Holdings-Version` : 'X-Trimmy-Holdings-Version');
+      reply.header('vary', vary ? `${String(vary)}, X-Trimmy-Holdings-Version, X-Trimmy-Holdings-Min-Slot` : 'X-Trimmy-Holdings-Version, X-Trimmy-Holdings-Min-Slot');
       if (!adapters) return unavailable(request, reply);
       const version = request.headers['x-trimmy-holdings-version'];
       if (version !== undefined && version !== '1' && version !== '2') {
         return problem(request, reply, 400, 'ACCOUNT_HOLDINGS_INVALID_REQUEST', 'Choose a supported holdings version.');
+      }
+      const minSlot = request.headers['x-trimmy-holdings-min-slot'];
+      if (minSlot !== undefined && (typeof minSlot !== 'string' || !/^[1-9][0-9]{0,15}$/.test(minSlot) || !Number.isSafeInteger(Number(minSlot)))) {
+        return problem(request, reply, 400, 'ACCOUNT_HOLDINGS_INVALID_REQUEST', 'Choose a valid holdings slot.');
       }
       if (request.raw.url !== ACCOUNT_HOLDINGS_ROUTE ||
           request.headers['transfer-encoding'] !== undefined ||
@@ -573,7 +577,13 @@ export function registerAccountHoldingsRoute(app: FastifyInstance, options?: Acc
         verification: 'authenticated_privy_embedded_wallet',
       });
       const version = request.headers['x-trimmy-holdings-version'] === '2' ? 2 : 1;
-      const holdings = projectSnapshot(await adapters.holdings.read(owner, version), walletAddress, version);
+      const minSlot = request.headers['x-trimmy-holdings-min-slot'];
+      const minContextSlot = typeof minSlot === 'string' ? Number(minSlot) : undefined;
+      const holdings = projectSnapshot(await adapters.holdings.read(owner, version, minContextSlot), walletAddress, version);
+      // An injected reader must respect the same lower bound as the RPC adapter.
+      if (minContextSlot !== undefined && Object.values(holdings.consistency.slots).some(slot => slot < minContextSlot)) {
+        return responseInvalid();
+      }
       return Object.freeze({
         schemaVersion: version,
         userId: account.userId,

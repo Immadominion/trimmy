@@ -97,8 +97,8 @@ function requestedHeaders(input: unknown, route: string | undefined): readonly s
   if (input === undefined) return [];
   if (typeof input !== 'string' || input.length > 128) return undefined;
   const names = input.split(',').map(name => name.trim().toLowerCase());
-  if (names.length > 3 || new Set(names).size !== names.length || names.some(name =>
-    !allowedHeaders.has(name) && !(route === '/v1/account/holdings' && name === 'x-trimmy-holdings-version'))) return undefined;
+  if (names.length > (route === '/v1/account/holdings' ? 4 : 3) || new Set(names).size !== names.length || names.some(name =>
+    !allowedHeaders.has(name) && !(route === '/v1/account/holdings' && ['x-trimmy-holdings-version','x-trimmy-holdings-min-slot'].includes(name)))) return undefined;
   return names;
 }
 

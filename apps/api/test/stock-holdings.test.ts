@@ -531,3 +531,64 @@ it('v1 and v2 caches cannot substitute different response coverage', async () =>
   assert.equal(await api.read(verifiedOwner(), 2), portfolio);
   assert.equal(rpc.calls.length, 8);
 });
+
+it('a settled-slot read bypasses an older snapshot and asks every balance RPC for that minimum slot', async () => {
+  const stub = transport({envelope: (request, result) => {
+    const config = request.params.at(-1) as {minContextSlot?: number}|undefined;
+    if (config?.minContextSlot !== undefined && typeof result === 'object' && result !== null) {
+      return {jsonrpc:'2.0',id:request.id,result:{...result,context:{slot:config.minContextSlot}}};
+    }
+    return {jsonrpc:'2.0',id:request.id,result};
+  }});
+  const service = reader(stub.fetch);
+  const before = await service.read(verifiedOwner(),2);
+  assert.equal(before.balances.nativeSol.observedSlot,101);
+  const after = await service.read(verifiedOwner(),2,200);
+  assert.equal(after.balances.nativeSol.observedSlot,200);
+  assert.equal(after.balances.usdc.observedSlot,200);
+  assert.equal(after.balances.aaplx.observedSlot,200);
+  const slotCalls = stub.calls.filter(call => (call.params.at(-1) as {minContextSlot?:number}|undefined)?.minContextSlot===200);
+  assert.deepEqual(slotCalls.map(call=>call.method).sort(),['getBalance','getTokenAccountsByOwner','getTokenAccountsByOwner']);
+  assert.equal(await service.read(verifiedOwner(),2,200),after);
+  assert.equal(stub.calls.length,8,'same post-confirmation bound still benefits from the cache');
+});
+
+it('a provider cannot satisfy a settled-slot read using an older balance, and fresh reads retain budgets', async () => {
+  for (const version of [1,2] as const) {
+    const stub=transport(),service=reader(stub.fetch);
+    await assert.rejects(service.read(verifiedOwner(),version,104),errorIs('STOCK_HOLDINGS_RPC_RESPONSE_INVALID'));
+  }
+  const stub=transport(),service=reader(stub.fetch,{perUserLimit:1});
+  await service.read(verifiedOwner(),2);
+  await assert.rejects(service.read(verifiedOwner(),2,100),errorIs('STOCK_HOLDINGS_RATE_LIMITED'));
+  assert.equal(stub.calls.length,4);
+});
+
+it('a settled-slot read never joins the pre-confirmation in-flight snapshot', async () => {
+  let release!:()=>void;
+  const blocked = new Promise<void>(resolve=>{release=resolve;});
+  const stub=transport({envelope:(request,result)=>{
+    const minimum=(request.params.at(-1) as {minContextSlot?:number}|undefined)?.minContextSlot;
+    return {jsonrpc:'2.0',id:request.id,result:minimum!==undefined && typeof result==='object' && result!==null
+      ? {...result,context:{slot:minimum}}:result};
+  }});
+  let started!:()=>void;const didStart=new Promise<void>(resolve=>{started=resolve;});
+  const service=reader(async(url,init)=>{
+    const request=JSON.parse(String(init?.body));
+    if(request.method==='getBalance' && request.params[1].minContextSlot===undefined){started();await blocked;}
+    return stub.fetch(url,init);
+  });
+  const older=service.read(verifiedOwner(),2);await didStart;
+  const fresh=await service.read(verifiedOwner(),2,200);
+  assert.equal(fresh.balances.nativeSol.observedSlot,200);
+  release();assert.equal((await older).balances.nativeSol.observedSlot,101);
+  assert.equal((await service.read(verifiedOwner(),2,200)).balances.nativeSol.observedSlot,200);
+});
+
+it('invalid minimum slots never consume an upstream request', async () => {
+  const stub=transport(),service=reader(stub.fetch);
+  for(const slot of [0,-1,1.5,Infinity,Number.MAX_SAFE_INTEGER+1]) {
+    await assert.rejects(service.read(verifiedOwner(),2,slot),errorIs('STOCK_HOLDINGS_CONFIGURATION_INVALID'));
+  }
+  assert.equal(stub.calls.length,0);
+});

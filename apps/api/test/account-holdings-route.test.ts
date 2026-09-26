@@ -459,7 +459,7 @@ test('version 2 exposes validated multi-stock holdings only to opted-in clients'
       availableToTradeRaw: '0',
     }]);
     assert.equal(body.holdings.balances.usdc.availableToTradeRaw, '0');
-    assert.equal(response.headers['vary'], 'Origin, X-Trimmy-Holdings-Version');
+    assert.equal(response.headers['vary'], 'Origin, X-Trimmy-Holdings-Version, X-Trimmy-Holdings-Min-Slot');
     assert.deepEqual(versions, [1, 2]);
     for (const forbidden of ['accounts', 'associatedTokenAccount', 'tokenProgram', otherWalletAddress]) {
       assert.ok(!response.body.includes(`"${forbidden}"`), forbidden);
@@ -563,4 +563,22 @@ test('v2 keeps total ownership while limiting trading availability to an initial
       assert.equal(legacy.json().holdings.balances.usdc.availableToTradeRaw, undefined);
     } finally { await instance.close(); }
   }
+});
+
+test('the minimum-slot header is bounded, passed to the authenticated reader and enforced on its projection', async () => {
+  const slots:unknown[]=[];
+  const instance=buildApp({logger:false,accountHoldings:adapters({read:async(_owner,_version,minSlot)=>{
+    slots.push(minSlot);return portfolioSnapshot();
+  }})});
+  try {
+    const fresh=await instance.inject({url:ACCOUNT_HOLDINGS_ROUTE,headers:{'x-trimmy-holdings-version':'2','x-trimmy-holdings-min-slot':'100'}});
+    assert.equal(fresh.statusCode,200,fresh.body);assert.deepEqual(slots,[100]);
+    const stale=await instance.inject({url:ACCOUNT_HOLDINGS_ROUTE,headers:{'x-trimmy-holdings-version':'2','x-trimmy-holdings-min-slot':'999'}});
+    assert.equal(stale.statusCode,502,stale.body);
+    for(const value of ['0','-1','1.2','01','1, 2','9007199254740992','Infinity','']){
+      const response=await instance.inject({url:ACCOUNT_HOLDINGS_ROUTE,headers:{'x-trimmy-holdings-min-slot':value}});
+      assert.equal(response.statusCode,400,value);assert.equal(response.json().error.code,'ACCOUNT_HOLDINGS_INVALID_REQUEST');
+    }
+    assert.deepEqual(slots,[100,999]);
+  } finally {await instance.close();}
 });

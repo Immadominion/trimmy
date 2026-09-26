@@ -20,6 +20,8 @@ import type {StockEstimateInput,StockEstimate} from './stock-estimates.js';
 export interface LiveOrder {
  id:string;user_id:string;wallet:string;review:ReviewedStockOrderIntent;unsignedTransaction:string;
  expires_at:string;status:'reviewed'|'pending'|'confirmed'|'failed'|'expired';signature:string|null;dispatch?:boolean;
+ /** Confirmed RPC slot for a newly settled order; absent on legacy persisted reads. */
+ confirmedSlot?:number;
 }
 export interface LiveOrderStore {
  read(user:string,id?:string):Promise<LiveOrder|null>;
@@ -97,6 +99,10 @@ export class LiveStockOrders {
   return {genesisHash:STOCK_DRAFT_MAINNET_GENESIS,blockHeight:String(height),observedAt:new Date(this.#now()).toISOString()} as const;
  }
  async preview(user:string,wallet:string,input:StockEstimateInput):Promise<LiveOrder> {
+  const requestedAsset=input && findStockTradingAsset(input.assetId,input.variantMint);
+  if(requestedAsset && Object.keys(input).length===4 && ['buy','sell'].includes(input.side) &&
+    typeof input.amountRaw==='string' && /^[1-9][0-9]{0,19}$/.test(input.amountRaw) &&
+    BigInt(input.amountRaw)>BigInt(input.side==='buy'?requestedAsset.maxBuyInputRaw:requestedAsset.maxSellInputRaw))fail('TRADE_LIMIT');
   validateStockEstimateInput(input);
   if(this.#inFlight.has(user)||(this.#next.get(user)??0)>this.#now()||this.#inFlight.size>=3)fail('LIVE_BUSY');
   this.#inFlight.add(user);this.#next.set(user,this.#now()+3000);
@@ -160,7 +166,11 @@ export class LiveStockOrders {
   const result=await this.rpc('getSignatureStatuses',[[order.signature],{searchTransactionHistory:true}]);
   if(!Array.isArray(result?.value)||result.value.length!==1)fail('LIVE_UNAVAILABLE');
   const status=result.value[0];
-  if(status && ['confirmed','finalized'].includes(status.confirmationStatus))return this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed');
+  if(status && ['confirmed','finalized'].includes(status.confirmationStatus)) {
+   if(!Number.isSafeInteger(status.slot)||status.slot<1)fail('LIVE_UNAVAILABLE');
+   const settled=await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed');
+   return {...settled,confirmedSlot:status.slot};
+  }
   if(status===null) {
    const chain=await this.chain();
    // A confirmed-height cutoff alone can race a fork. Require finalized height
@@ -186,6 +196,7 @@ export function liveStockExecutionEnabled(adapters?:LiveStockAdapters):boolean {
 function publicOrder(order:LiveOrder|null) {
  if(!order)return null;
  return {id:order.id,status:order.status,wallet:order.wallet,signature:order.signature,expiresAt:order.review.expiresAt,reviewDigest:order.review.reviewDigestSha256,
+  ...(order.confirmedSlot===undefined?{}:{confirmedSlot:order.confirmedSlot}),
   terms:order.review.terms,reviewFlags:order.review.reviewFlags,...(order.status==='reviewed'?{transaction:order.unsignedTransaction.replace(/\s/g,'')}:{})};
 }
 export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockAdapters) {
@@ -208,7 +219,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','MARKET_INPUT_INVALID'];
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
@@ -219,6 +230,6 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
  app.get('/v1/trading/capabilities',{schema:{querystring:noQuery}},async()=>({enabled:liveStockExecutionEnabled(adapters),network:'solana:mainnet-beta',assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})),maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)}));
  app.get<{Params:{id:string}}>('/v1/trading/order/:id',{schema:{querystring:noQuery,params:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string',format:'uuid'}}}}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user,request.params.id)));
  app.get('/v1/trading/order',{schema:{querystring:noQuery}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user)));
- app.post<{Body:StockEstimateInput}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.assetId)},variantMint:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.mint)},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,8}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body),true));
+ app.post<{Body:StockEstimateInput}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.assetId)},variantMint:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.mint)},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,19}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body),true));
  app.post<{Body:{id:string;reviewDigest:string;signedTransaction:string}}>('/v1/trading/execute',{bodyLimit:4096,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['id','reviewDigest','signedTransaction'],properties:{id:{type:'string',format:'uuid'},reviewDigest:{type:'string',pattern:'^[0-9a-f]{64}$'},signedTransaction:{type:'string',minLength:88,maxLength:1644,pattern:'^[A-Za-z0-9+/]+={0,2}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.execute(user,wallet,request.body.id,request.body.reviewDigest,request.body.signedTransaction),true));
 }

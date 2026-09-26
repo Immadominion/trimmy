@@ -23,6 +23,34 @@ test('only the verified wallet can sign the exact reviewed message',()=>{
  const other=fixture();assert.throws(()=>verifyReviewedSignature(f.order,other.signed),/INVALID_SIGNATURE/);
  assert.throws(()=>verifyReviewedSignature(f.order,f.signed+'\n'),/INVALID_SIGNATURE/);
 });
+
+test('a malformed confirmation slot cannot settle an order or authorize a stale holdings refresh',async()=>{
+ for(const slot of [undefined,0,-1,1.5,Number.MAX_SAFE_INTEGER+1]) {
+  const f=fixture();let settlements=0;
+  const pending={...f.order,status:'pending' as const,signature:'2'.repeat(88)};
+  const store={read:async()=>pending,resolve:async()=>{settlements++;return {...pending,status:'confirmed' as const};}} as unknown as LiveOrderStore;
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async()=>Response.json({jsonrpc:'2.0',id:1,
+   result:{value:[{confirmationStatus:'confirmed',err:null,slot}]}})});
+  await assert.rejects(service.status('user','test'),{code:'LIVE_UNAVAILABLE'});
+  assert.equal(settlements,0);
+ }
+});
+
+test('confirmed status exposes its slot while retaining backward compatibility for persisted orders',async()=>{
+ const f=fixture();let includeSlot=true;
+ const adapters={authenticate:async()=>({userId:'user',identity:{subject:'did:privy:test'}}),
+  identities:{resolveFresh:async()=>({subject:'did:privy:test',embeddedSolanaWallet:{status:'candidate',address:f.order.wallet}})},
+  service:{status:async()=>({...f.order,status:'confirmed',signature:'2'.repeat(88),...(includeSlot?{confirmedSlot:501}:{})})},
+ } as unknown as LiveStockAdapters;
+ const app=Fastify();registerLiveStockRoutes(app,adapters);
+ try {
+  const fresh=await app.inject('/v1/trading/order');
+  assert.equal(fresh.json().order.confirmedSlot,501);assert.equal(fresh.json().order.transaction,undefined);
+  includeSlot=false;
+  const legacy=await app.inject('/v1/trading/order');
+  assert.equal(legacy.json().order.confirmedSlot,undefined);assert.equal(legacy.json().order.status,'confirmed');
+ }finally{await app.close();}
+});
 test('a lost dispatch response stays pending; retry never sends a second trade',async()=>{
  const f=fixture();let current=f.order,dispatches=0;
  const store:LiveOrderStore={read:async()=>current,create:async()=>{throw Error('unexpected')},begin:async(_u,_id,_d,signature)=>{if(current.status==='reviewed'){current={...current,status:'pending',signature};return {...current,dispatch:true};}return {...current,dispatch:false};},resolve:async(_u,_id,status)=>current={...current,status}};
@@ -30,13 +58,14 @@ test('a lost dispatch response stays pending; retry never sends a second trade',
  const fake=async(url:URL|RequestInfo,options?:RequestInit)=>{
   if(String(url).includes('/execute')){dispatches++;throw Error('response lost');}
   const method=JSON.parse(String(options?.body)).method;
-  const result=method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':method==='getBlockHeight'?100:{value:[confirmed?{confirmationStatus:'confirmed',err:null}:null]};
+  const result=method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':method==='getBlockHeight'?100:{value:[confirmed?{confirmationStatus:'confirmed',err:null,slot:501}:null]};
   return Response.json({jsonrpc:'2.0',id:1,result});
  };
  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
  const first=await service.execute('user',f.order.wallet,'test','a'.repeat(64),f.signed);assert.equal(first.status,'pending');
  await service.execute('user',f.order.wallet,'test','a'.repeat(64),f.signed);assert.equal(dispatches,1);
- confirmed=true;assert.equal((await service.status('user','test'))?.status,'confirmed');assert.equal(dispatches,1);
+ confirmed=true;const settled=await service.status('user','test');assert.equal(settled?.status,'confirmed');
+ assert.equal(settled?.confirmedSlot,501);assert.equal(dispatches,1);
 });
 
 test('less than one signature fee reports funding before requesting an order', async () => {
@@ -104,6 +133,25 @@ test('live preview refuses a swapped issuer/company identity before touching a w
  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store:{} as LiveOrderStore,fetch:async()=>{reads++;throw Error('unexpected');}});
  await assert.rejects(service.preview('user',fixture().order.wallet,{assetId:'apple',variantMint:STOCK_TRADING_ASSETS[1]!.mint,side:'buy',amountRaw:'1000000'}),{code:'MARKET_INPUT_INVALID'});
  assert.equal(reads,0);
+});
+
+test('buy and sell caps return an explicit limit error before reading providers or spending funds',async()=>{
+ let reads=0;
+ const wallet=fixture().order.wallet;
+ const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store:{} as LiveOrderStore,fetch:async()=>{reads++;throw Error('unexpected');}});
+ const adapters={authenticate:async()=>({userId:'user',identity:{subject:'did:privy:test'}}),
+  identities:{resolveFresh:async()=>({subject:'did:privy:test',embeddedSolanaWallet:{status:'candidate',address:wallet}})},service,
+ } as unknown as LiveStockAdapters;
+ const app=Fastify();registerLiveStockRoutes(app,adapters);
+ try {
+  for(const asset of STOCK_TRADING_ASSETS)for(const side of ['buy','sell'] as const)for(const amountRaw of ['100000001','1000000000']) {
+   const input={assetId:asset.assetId,variantMint:asset.mint,side,amountRaw};
+   await assert.rejects(service.preview('user',wallet,input),{code:'TRADE_LIMIT'});
+   const response=await app.inject({method:'POST',url:'/v1/trading/preview',payload:input});
+   assert.equal(response.statusCode,409);assert.deepEqual(response.json(),{code:'TRADE_LIMIT'});
+  }
+  assert.equal(reads,0);
+ }finally{await app.close();}
 });
 
 

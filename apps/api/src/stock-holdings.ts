@@ -576,19 +576,20 @@ export class SolanaStockHoldingsReader {
     });
   }
 
-  async #load(owner: ServerVerifiedStockOwner, observed: number, version: 1 | 2): Promise<StockHoldingsSnapshot> {
+  async #load(owner: ServerVerifiedStockOwner, observed: number, version: 1 | 2, minContextSlot?: number): Promise<StockHoldingsSnapshot> {
     const genesis = await this.#rpc.call('getGenesisHash', []);
     if (genesis !== STOCK_HOLDINGS_MAINNET_GENESIS) return fail('STOCK_HOLDINGS_WRONG_NETWORK');
-    if (version === 2) return this.#loadPortfolio(owner, observed);
+    if (version === 2) return this.#loadPortfolio(owner, observed, minContextSlot);
+    const freshness = minContextSlot === undefined ? {} : {minContextSlot};
     const [usdcAssociated, aaplxAssociated] = await Promise.all([
       associatedTokenAddress(owner.address, USDC), associatedTokenAddress(owner.address, AAPLX),
     ]);
     const [solResult, usdcResult, aaplxResult] = await Promise.all([
-      this.#rpc.call('getBalance', [owner.address, {commitment: 'confirmed'}]),
+      this.#rpc.call('getBalance', [owner.address, {commitment: 'confirmed', ...freshness}]),
       this.#rpc.call('getTokenAccountsByOwner', [owner.address, {mint: USDC.mint},
-        {encoding: 'jsonParsed', commitment: 'confirmed'}]),
+        {encoding: 'jsonParsed', commitment: 'confirmed', ...freshness}]),
       this.#rpc.call('getTokenAccountsByOwner', [owner.address, {mint: AAPLX.mint},
-        {encoding: 'jsonParsed', commitment: 'confirmed'}]),
+        {encoding: 'jsonParsed', commitment: 'confirmed', ...freshness}]),
     ]);
     const nativeSol = nativeBalance(solResult);
     const usdc = tokenHolding(usdcResult, owner.address, USDC, usdcAssociated);
@@ -619,13 +620,14 @@ export class SolanaStockHoldingsReader {
     });
   }
 
-  async #loadPortfolio(owner: ServerVerifiedStockOwner, observed: number): Promise<StockHoldingsSnapshot> {
+  async #loadPortfolio(owner: ServerVerifiedStockOwner, observed: number, minContextSlot?: number): Promise<StockHoldingsSnapshot> {
+    const freshness = minContextSlot === undefined ? {} : {minContextSlot};
     const [solResult, legacyResult, token2022Result] = await Promise.all([
-      this.#rpc.call('getBalance', [owner.address, {commitment: 'confirmed'}]),
+      this.#rpc.call('getBalance', [owner.address, {commitment: 'confirmed', ...freshness}]),
       this.#rpc.call('getTokenAccountsByOwner', [owner.address, {programId: STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy},
-        {encoding: 'jsonParsed', commitment: 'confirmed'}]),
+        {encoding: 'jsonParsed', commitment: 'confirmed', ...freshness}]),
       this.#rpc.call('getTokenAccountsByOwner', [owner.address, {programId: STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022},
-        {encoding: 'jsonParsed', commitment: 'confirmed'}]),
+        {encoding: 'jsonParsed', commitment: 'confirmed', ...freshness}]),
     ]);
     const nativeSol = nativeBalance(solResult);
     const legacy = programTokenAccounts(legacyResult, owner.address, address(STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy));
@@ -665,12 +667,25 @@ export class SolanaStockHoldingsReader {
     });
   }
 
-  async read(owner: ServerVerifiedStockOwner, version: 1 | 2 = 1): Promise<StockHoldingsSnapshot> {
+  async read(owner: ServerVerifiedStockOwner, version: 1 | 2 = 1, minContextSlot?: number): Promise<StockHoldingsSnapshot> {
     if (owner === null || typeof owner !== 'object' || !verifiedOwners.has(owner)) {
       return fail('STOCK_HOLDINGS_OWNER_UNVERIFIED');
     }
     if (version !== 1 && version !== 2) return fail('STOCK_HOLDINGS_CONFIGURATION_INVALID');
-    return this.#protectedRead.read(`${owner.address}:${version}`, owner.authenticatedUserId,
-      async observed => this.#load(owner, observed, version));
+    if (minContextSlot !== undefined && (!Number.isSafeInteger(minContextSlot) || minContextSlot < 1)) {
+      return fail('STOCK_HOLDINGS_CONFIGURATION_INVALID');
+    }
+    // A confirmed trade supplies its observed slot. Neither the pre-trade cache
+    // nor an older in-flight request may satisfy this stricter read. It still
+    // shares the same account/global rate budget and bounded cache capacity.
+    const freshnessKey = minContextSlot === undefined ? '' : `:after:${minContextSlot}`;
+    return this.#protectedRead.read(`${owner.address}:${version}${freshnessKey}`, owner.authenticatedUserId,
+      async observed => {
+        const snapshot = await this.#load(owner, observed, version, minContextSlot);
+        if (minContextSlot !== undefined && Object.values(snapshot.consistency.slots).some(slot => slot < minContextSlot)) {
+          return fail('STOCK_HOLDINGS_RPC_RESPONSE_INVALID');
+        }
+        return snapshot;
+      });
   }
 }

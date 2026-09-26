@@ -174,6 +174,21 @@ describe('explicit browser origin configuration and preflight', () => {
     } finally { await app.close(); }
   });
 
+  it('permits a minimum confirmed slot only for authenticated holdings reads', async () => {
+    const app = buildApp({logger: false, browserOrigins: [origin]});
+    const headers = {origin, 'access-control-request-method': 'GET',
+      'access-control-request-headers': 'Authorization, Content-Type, X-Trimmy-Holdings-Version, X-Trimmy-Holdings-Min-Slot'};
+    try {
+      const accepted = await app.inject({method: 'OPTIONS', url: '/v1/account/holdings', headers});
+      assert.equal(accepted.statusCode, 204);
+      assert.equal(accepted.headers['access-control-allow-headers'],
+        'authorization, content-type, x-trimmy-holdings-version, x-trimmy-holdings-min-slot');
+      for (const url of ['/v1/account/context','/v1/config','/v1/account/holdings?slot=1']) {
+        assert.equal((await app.inject({method:'OPTIONS',url,headers})).statusCode,403);
+      }
+    } finally { await app.close(); }
+  });
+
   it('rejects unknown or alias origins without reflecting them or calling authentication', async () => {
     let calls = 0;
     const app = buildApp({logger: false, browserOrigins: [origin], watchlist: watchlist(() => { calls++; })});
