@@ -46,6 +46,32 @@ export class PostgresLiveOrderStore implements LiveOrderStore {
 
 export class LiveTradeError extends Error {constructor(readonly code:string){super(code);}}
 function fail(code:string):never {throw new LiveTradeError(code);}
+/** JSON representation of a reported Solana TransactionError. A missing or
+ * malformed outcome must keep recovery pending, never imply a failed trade.
+ * https://docs.rs/solana-client/latest/solana_client/rpc_response/enum.TransactionError.html */
+function reportedTransactionError(value:unknown):boolean {
+ const variant=(input:unknown):input is string=>typeof input==='string' && /^[A-Z][A-Za-z0-9]{0,95}$/.test(input);
+ const index=(input:unknown):input is number=>Number.isInteger(input) && Number(input)>=0 && Number(input)<=255;
+ if(variant(value))return true;
+ if(value===null || typeof value!=='object' || Array.isArray(value) || Object.keys(value).length!==1)return false;
+ const error=value as Record<string,unknown>;
+ if(Object.hasOwn(error,'DuplicateInstruction'))return index(error.DuplicateInstruction);
+ if(Object.hasOwn(error,'InstructionError')) {
+  const detail=error.InstructionError;
+  if(!Array.isArray(detail)||detail.length!==2||!index(detail[0]))return false;
+  if(variant(detail[1]))return true;
+  const custom=detail[1];
+  return custom!==null && typeof custom==='object' && !Array.isArray(custom) && Object.keys(custom).length===1 &&
+   Object.hasOwn(custom,'Custom') && Number.isInteger(custom.Custom) && custom.Custom>=0 && custom.Custom<=0xffffffff;
+ }
+ for(const kind of ['InsufficientFundsForRent','ProgramExecutionTemporarilyRestricted']) {
+  if(!Object.hasOwn(error,kind))continue;
+  const detail=error[kind];
+  return detail!==null && typeof detail==='object' && !Array.isArray(detail) && Object.keys(detail).length===1 &&
+   Object.hasOwn(detail,'account_index') && index((detail as Record<string,unknown>).account_index);
+ }
+ return false;
+}
 // One sole-signer transaction costs at least 5,000 lamports. The actual fee +
 // account rent are independently reconciled and simulated for each order below.
 // Jupiter's 0.01 SOL sponsorship heuristic is NOT a minimum trading balance:
@@ -167,7 +193,8 @@ export class LiveStockOrders {
   if(!Array.isArray(result?.value)||result.value.length!==1)fail('LIVE_UNAVAILABLE');
   const status=result.value[0];
   if(status && ['confirmed','finalized'].includes(status.confirmationStatus)) {
-   if(!Number.isSafeInteger(status.slot)||status.slot<1)fail('LIVE_UNAVAILABLE');
+   if(!Number.isSafeInteger(status.slot)||status.slot<1 || !Object.hasOwn(status,'err') ||
+    (status.err!==null && !reportedTransactionError(status.err)))fail('LIVE_UNAVAILABLE');
    const settled=await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed');
    return {...settled,confirmedSlot:status.slot};
   }

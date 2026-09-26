@@ -36,6 +36,39 @@ test('a malformed confirmation slot cannot settle an order or authorize a stale 
  }
 });
 
+test('missing or malformed RPC outcomes keep confirmed signatures pending instead of declaring failure',async()=>{
+ const invalid=[undefined,false,true,0,1,'',[],{},
+  {InstructionError:[-1,'InvalidAccountData']},{InstructionError:[1,{Custom:-1}]},
+  {InstructionError:[1,{Custom:0x100000000}]},{InstructionError:[1,{}]},
+  {DuplicateInstruction:256},{InsufficientFundsForRent:{account_index:-1}},
+  {InstructionError:[1,'InvalidAccountData'],extra:true}];
+ for(const err of invalid)for(const confirmationStatus of ['confirmed','finalized']) {
+  const f=fixture();let settlements=0;
+  const pending={...f.order,status:'pending' as const,signature:'2'.repeat(88)};
+  const store={read:async()=>pending,resolve:async()=>{settlements++;return {...pending,status:'failed' as const};}} as unknown as LiveOrderStore;
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async()=>Response.json({jsonrpc:'2.0',id:1,
+   result:{value:[{confirmationStatus,slot:501,...(err===undefined?{}:{err})}]}})});
+  await assert.rejects(service.status('user','test'),{code:'LIVE_UNAVAILABLE'});
+  assert.equal(settlements,0);
+ }
+});
+
+test('explicit valid RPC success and transaction errors settle once with the observed slot',async()=>{
+ for(const err of [null,'InsufficientFundsForFee',{InstructionError:[1,'InvalidAccountData']},
+  {InstructionError:[1,{Custom:0}]},{DuplicateInstruction:2},
+  {InsufficientFundsForRent:{account_index:4}},{ProgramExecutionTemporarilyRestricted:{account_index:0}}]) {
+  const f=fixture();let settlements=0;
+  let current:LiveOrder={...f.order,status:'pending',signature:'2'.repeat(88)};
+  const store={read:async()=>current,resolve:async(_user:string,_id:string,status:LiveOrder['status'])=>{settlements++;return current={...current,status};}} as unknown as LiveOrderStore;
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async()=>Response.json({jsonrpc:'2.0',id:1,
+   result:{value:[{confirmationStatus:'confirmed',slot:501,err}]}})});
+  const settled=await service.status('user','test');
+  assert.equal(settled?.status,err===null?'confirmed':'failed');
+  assert.equal(settled?.confirmedSlot,501);
+  await service.status('user','test');assert.equal(settlements,1);
+ }
+});
+
 test('confirmed status exposes its slot while retaining backward compatibility for persisted orders',async()=>{
  const f=fixture();let includeSlot=true;
  const adapters={authenticate:async()=>({userId:'user',identity:{subject:'did:privy:test'}}),
