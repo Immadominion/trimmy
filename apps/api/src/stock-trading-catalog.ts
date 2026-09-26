@@ -1,5 +1,6 @@
 /** Server-owned execution identities, checked against the xStocks issuer API and
- * finalized Solana mint accounts on 2026-09-25 (slot 450355321).
+ * finalized Solana mint accounts on 2026-09-25 (slot 450355321); MSTRx, CRCLx
+ * and PLTRx were additionally verified on 2026-09-26 (slot 450695517).
  * Discovery metadata never adds an executable asset. Every order independently
  * re-reads mint/account state and must pass transaction reconciliation + simulation.
  * Sources: https://api.xstocks.fi/api/v2/public/assets/{symbol}
@@ -18,6 +19,9 @@ const identities = [
   {assetId: 'robinhood', symbol: 'HOODx', name: 'Robinhood xStock', mint: 'XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg'},
   {assetId: 'netflix', symbol: 'NFLXx', name: 'Netflix xStock', mint: 'XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL'},
   {assetId: 'amd', symbol: 'AMDx', name: 'AMD xStock', mint: 'XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF'},
+  {assetId: 'microstrategy', symbol: 'MSTRx', name: 'MicroStrategy xStock', mint: 'XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ'},
+  {assetId: 'circle', symbol: 'CRCLx', name: 'Circle xStock', mint: 'XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1'},
+  {assetId: 'palantir', symbol: 'PLTRx', name: 'Palantir xStock', mint: 'XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4'},
 ] as const;
 export const STOCK_TRADING_ASSETS = Object.freeze(identities.map(asset => Object.freeze({
   ...asset, decimals: 8 as const, tokenProgram: 'token_2022' as const,

@@ -49,4 +49,4 @@ for (const {asset, side, amountRaw} of requests) {
   await pause(2500);
 }
 await mkdir('artifacts/verification', {recursive: true});
-await writeFile('artifacts/verification/stock-trading-preview-2026-09-25.json', JSON.stringify(evidence, null, 2) + '\n');
+await writeFile(`artifacts/verification/stock-trading-preview-${evidence.observedAt.slice(0,10)}.json`, JSON.stringify(evidence, null, 2) + '\n');

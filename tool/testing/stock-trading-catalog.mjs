@@ -5,7 +5,11 @@ import {setTimeout as pause} from 'node:timers/promises';
 import {STOCK_TRADING_ASSETS, STOCK_TOKEN_PROGRAM} from '../../apps/api/src/stock-trading-catalog.ts';
 import {JUPITER_QUOTE_ASSETS} from '../../apps/api/src/jupiter-quote-reader.ts';
 
-if (process.argv.length !== 3 || process.argv[2] !== '--read-only') throw Error('Use --read-only. This checks public identities and indicative quotes only.');
+const [flag,...symbols] = process.argv.slice(2);
+if (flag !== '--read-only' || new Set(symbols).size !== symbols.length || symbols.some(symbol => !STOCK_TRADING_ASSETS.some(asset => asset.symbol === symbol))) {
+  throw Error('Use --read-only [SYMBOL ...]. This checks public identities and indicative quotes only.');
+}
+const assets = symbols.length ? STOCK_TRADING_ASSETS.filter(asset => symbols.includes(asset.symbol)) : STOCK_TRADING_ASSETS;
 async function json(url, init) {
   const response = await fetch(url, {...init, redirect: 'error', signal: AbortSignal.timeout(15000)});
   if (!response.ok) throw Error(`READ_HTTP_${response.status}`);
@@ -22,9 +26,9 @@ async function rpc(method, params = []) {
 }
 const evidence = {observedAt: new Date().toISOString(), walletUsed: false, transactionBroadcast: false, assets: []};
 assert.equal(await rpc('getGenesisHash'), '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d');
-const mints = await rpc('getMultipleAccounts', [STOCK_TRADING_ASSETS.map(asset => asset.mint), {encoding: 'jsonParsed', commitment: 'finalized'}]);
+const mints = await rpc('getMultipleAccounts', [assets.map(asset => asset.mint), {encoding: 'jsonParsed', commitment: 'finalized'}]);
 evidence.slot = mints.context.slot;
-for (const [index, asset] of STOCK_TRADING_ASSETS.entries()) {
+for (const [index, asset] of assets.entries()) {
   const issuer = await json(asset.issuerUrl);
   assert.equal(issuer.symbol, asset.symbol);
   const deployments = issuer.deployments.filter(row => row.network === 'Solana');
@@ -53,4 +57,4 @@ for (const [index, asset] of STOCK_TRADING_ASSETS.entries()) {
   console.log(asset.symbol + ': issuer + mainnet identity + buy/sell quotes passed');
 }
 await mkdir('artifacts/verification', {recursive: true});
-await writeFile('artifacts/verification/stock-trading-catalog-2026-09-25.json', JSON.stringify(evidence, null, 2) + '\n');
+await writeFile(`artifacts/verification/stock-trading-catalog-${evidence.observedAt.slice(0,10)}.json`, JSON.stringify(evidence, null, 2) + '\n');

@@ -10,7 +10,7 @@ import {registerStockEstimateRoute} from '../src/stock-estimate-route.js';
 
 const now = Date.parse('2026-09-25T10:00:00Z');
 test('execution catalog pins unique issuer identities, programs and conservative caps', () => {
-  assert.equal(STOCK_TRADING_ASSETS.length, 11);
+  assert.equal(STOCK_TRADING_ASSETS.length, 14);
   assert.equal(new Set(STOCK_TRADING_ASSETS.map(asset => asset.mint)).size, STOCK_TRADING_ASSETS.length);
   assert.equal(new Set(STOCK_TRADING_ASSETS.map(asset => asset.assetId)).size, STOCK_TRADING_ASSETS.length);
   for (const asset of STOCK_TRADING_ASSETS) {
