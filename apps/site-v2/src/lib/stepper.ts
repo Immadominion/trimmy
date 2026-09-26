@@ -79,6 +79,12 @@ export function setScroller(instance: Lenis | null) {
   lenis = instance;
 }
 
+/** Holds the page still while a dialog is open, and lets it go again. */
+export function holdScroll(hold: boolean) {
+  if (hold) lenis?.stop();
+  else lenis?.start();
+}
+
 export function configure(options: { lengths: number[]; reducedMotion: boolean }) {
   lengths = options.lengths.length ? options.lengths.map((l) => Math.max(0.25, l)) : [1];
   count = lengths.length;

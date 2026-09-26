@@ -1,0 +1,94 @@
+/*
+ * The page's own controls: the quiet header, the Get the app panel, and the
+ * capsule buttons, which share the Scroll capsule's shape and type.
+ */
+.icon { display: block; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+.icon--android { --icon: url("/icons8-android.png"); }
+.icon--apple { --icon: url("/icons8-apple.png"); }
+.icon--play { --icon: url("/icons8-google-play.png"); }
+.icon--seeker { --icon: url("/icons8-seeker.png"); }
+.icon--web { --icon: url("/icons8-globe.png"); }
+.icon--download { --icon: url("/icons8-download.png"); }
+.icon--x { --icon: url("/icons8-x.png"); }
+.icon--close { --icon: url("/icons8-close.png"); }
+
+/* Header: text only, quiet, on every screen. */
+.site-header { position: fixed; z-index: 30; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 22px) 32px 0; pointer-events: none; text-shadow: 0 1px 14px #0009; }
+.site-header::before { content: ""; position: absolute; z-index: -1; inset: 0 0 -56px; background: linear-gradient(#000000a6, #00000000); opacity: 0; transition: opacity .5s; pointer-events: none; }
+.site-header--shade::before { opacity: 1; }
+.site-header a, .site-header button { pointer-events: auto; }
+.site-header__brand { font: 800 21px/1 var(--font-display); letter-spacing: -.055em; color: #fff; text-decoration: none; }
+.site-header nav { display: flex; gap: 26px; }
+.site-header nav :is(a, button) { padding: 8px 0; border: 0; background: none; font: 600 13px/1 var(--font-body); letter-spacing: .01em; color: #ffffffbd; text-decoration: none; cursor: pointer; transition: color .2s; }
+.site-header nav :is(a, button):hover { color: #fff; }
+.site-header :is(a, button):focus-visible { outline: 2px solid #fff; outline-offset: 6px; border-radius: 4px; }
+
+/* Capsule buttons. */
+.capsule { display: inline-flex; align-items: center; gap: 12px; height: 44px; padding: 0 6px 0 20px; border: 1px solid #ffffff33; border-radius: 999px; background: #ffffff0d; color: #ffffffcc; font: 600 11px/1 var(--font-body); letter-spacing: .24em; text-transform: uppercase; text-decoration: none; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color .2s, border-color .2s, color .2s; }
+.capsule:hover { border-color: #ffffff59; background: #ffffff1a; color: #fff; }
+.capsule:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.capsule__disc { display: grid; flex-shrink: 0; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #fff; color: #000; }
+.capsule__disc .icon { width: 15px; height: 15px; }
+.capsule--primary { border-color: #fff; background: #fff; color: #121212; }
+.capsule--primary:hover { border-color: #ece6ff; background: #ece6ff; color: #121212; }
+.capsule--primary .capsule__disc { background: #7455e8; color: #fff; }
+
+/* The Scroll capsule becomes Get the app on the last screen. */
+.scroll-cue { transition: opacity .18s, background-color .3s, border-color .3s, color .3s; }
+.scroll-cue.is-switching { opacity: 0; }
+.scroll-cue[data-mode="cta"] { border-color: #fff; background-color: #fff; color: #121212; }
+.scroll-cue[data-mode="cta"]:hover { border-color: #ece6ff; background-color: #ece6ff; }
+.scroll-cue__download { display: none; width: 15px; height: 15px; }
+.scroll-cue[data-mode="cta"] .scroll-cue__disc { background: #7455e8; color: #fff; }
+.scroll-cue[data-mode="cta"] .cue-arrow { display: none; }
+.scroll-cue[data-mode="cta"] .scroll-cue__download { display: block; }
+
+/* Buttons and links inside the story's copy. */
+.story-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.story-links { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; }
+.story-links a { display: inline-flex; align-items: center; gap: 7px; pointer-events: auto; font-size: 12px; font-weight: 600; color: #ffffff8f; text-decoration: none; transition: color .2s; }
+.story-links a:hover { color: #fff; }
+.story-links .icon { width: 12px; height: 12px; }
+.story-links a:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+
+/* Get the app. */
+.get-app { position: fixed; z-index: 50; inset: 0; display: flex; align-items: flex-start; justify-content: flex-end; padding: calc(env(safe-area-inset-top) + 66px) 24px 24px; background: #0000008c; animation: get-app-fade .25s ease both; }
+.get-app__panel { width: min(380px, 100%); padding: 20px; border: 1px solid #ffffff1f; border-radius: 26px; background: #0e0e11; box-shadow: 0 30px 80px #000c; color: #fff; animation: get-app-rise .35s cubic-bezier(.2,.8,.2,1) both; }
+.get-app__top { display: flex; align-items: center; justify-content: space-between; margin: 2px 2px 16px 4px; }
+.get-app__top h2 { margin: 0; font: 800 24px/1 var(--font-display); letter-spacing: -.035em; }
+.get-app__close { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #ffffff26; border-radius: 50%; background: #ffffff0d; color: #ffffffcc; cursor: pointer; transition: background-color .2s; }
+.get-app__close:hover { background: #ffffff1f; }
+.get-app__close .icon { width: 13px; height: 13px; }
+.get-app__apk, .get-app__web { display: flex; align-items: center; gap: 14px; border-radius: 20px; text-decoration: none; transition: background-color .2s; }
+.get-app__apk { padding: 14px 10px 14px 16px; background: #fff; color: #121212; }
+.get-app__apk:hover { background: #ece6ff; }
+.get-app__apk > .icon { width: 28px; height: 28px; flex-shrink: 0; }
+.get-app__apk strong { display: block; font: 800 16px/1.2 var(--font-body); letter-spacing: -.01em; }
+.get-app__apk small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.35; color: #5d5a66; }
+.get-app__apk .capsule__disc { width: 38px; height: 38px; margin-left: auto; background: #7455e8; color: #fff; }
+.get-app__web { margin-top: 10px; padding: 14px 16px; border: 1px solid #ffffff2e; color: #fff; font-size: 15px; font-weight: 700; }
+.get-app__web:hover { background: #ffffff14; }
+.get-app__web .icon { width: 20px; height: 20px; }
+.get-app__hint { margin: 10px 4px 0; font-size: 12px; line-height: 1.5; color: #ffffff85; }
+.get-app__label { margin: 22px 4px 6px; font: 700 11px/1 var(--font-body); letter-spacing: .24em; text-transform: uppercase; color: #ffffff70; }
+.get-app__soon { margin: 0; padding: 0; list-style: none; }
+.get-app__soon li { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-top: 1px solid #ffffff14; font-size: 14px; font-weight: 600; color: #ffffffd9; }
+.get-app__soon .icon { width: 19px; height: 19px; flex-shrink: 0; color: #ffffffa6; }
+.get-app__soon em { margin-left: auto; font-size: 11px; font-style: normal; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #ffffff5c; }
+.get-app :is(a, button):focus-visible { outline: 2px solid #b8a6ff; outline-offset: 3px; }
+@keyframes get-app-fade { from { opacity: 0; } }
+@keyframes get-app-rise { from { opacity: 0; transform: translateY(12px); } }
+
+@media (max-width: 700px) {
+  .site-header { padding: calc(env(safe-area-inset-top) + 16px) 20px 0; }
+  .site-header__brand { font-size: 19px; }
+  .site-header nav { gap: 18px; }
+  .story-cta { justify-content: center; margin-top: 16px; }
+  .story-links { justify-content: center; }
+  .get-app { align-items: flex-end; padding: 0; }
+  .get-app__panel { width: 100%; border-radius: 26px 26px 0 0; padding: 20px 18px calc(env(safe-area-inset-bottom) + 22px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .get-app, .get-app__panel { animation: none; }
+}

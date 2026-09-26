@@ -1,5 +1,6 @@
 import { useState, type JSX, type ReactNode } from "react";
 import { goTo } from "@/lib/stepper";
+import { openGetApp } from "@/lib/getApp";
 import "./phone-app.css";
 
 /**
@@ -174,7 +175,9 @@ function Trim() {
         : <p>Sell 2 of your 8 shares. Keep the other 6 invested.</p>}
     </div>
     <button type="button" className={`app-button ${sold ? "app-button--line" : ""}`} onClick={toggle}>{sold ? "Undo trim" : "Trim 25%"}</button>
-    <p className="app-fine">Example only. No trade is placed.</p>
+    {sold
+      ? <button type="button" className="app-more" onClick={openGetApp}>Play the full game</button>
+      : <p className="app-fine">Example only. No trade is placed.</p>}
   </Shell>;
 }
 
@@ -227,7 +230,7 @@ function Close() {
     <strong className="app-close-word">trimmy</strong>
     <p className="app-close-line">It’s your first day on Wall Street, intern.</p>
     <img className="app-close-sal" src="/app/sal-celebrating.webp" alt="" />
-    <span className="app-button app-close-button">Start my first day</span>
+    <button type="button" className="app-button app-close-button" onClick={openGetApp}>Start my first day</button>
   </Shell>;
 }
 

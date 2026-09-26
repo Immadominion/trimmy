@@ -3,6 +3,8 @@ import { useFrame } from "@/lib/useFrame";
 import { getOffset, getScroll, isReducedMotion } from "@/lib/stepper";
 import { clamp01, smoothstep } from "@/lib/math";
 import { getTextPlan, textPlanVersion, type TextBox } from "@/lib/storyText";
+import { openGetApp } from "@/lib/getApp";
+import { LINKS } from "@/story/links";
 import { LENGTHS, type Screen as ScreenData } from "@/story/screens";
 import "./product.css";
 
@@ -94,18 +96,34 @@ export function Screen({ screen, index }: Props) {
           <p className="story-powered">Proudly powered by Solana</p>
         </div>
       )}
+      {screen.cta && (
+        <div className="story-cta">
+          <button type="button" className="capsule capsule--primary" onClick={openGetApp}>
+            Get the app<span className="capsule__disc" aria-hidden="true"><span className="icon icon--download" /></span>
+          </button>
+          {LINKS.web && (
+            <a className="capsule" href={LINKS.web}>
+              Play on the web<span className="capsule__disc" aria-hidden="true"><span className="icon icon--web" /></span>
+            </a>
+          )}
+        </div>
+      )}
       {screen.note && <p className="story-note">{screen.note}</p>}
       {screen.status && (
         <dl className="story-status">
           {screen.status.map(({ label, text }) => <div key={label}><dt>{label}</dt><dd>{text}</dd></div>)}
         </dl>
       )}
-      {screen.action && (
-        <a className="story-action" href={screen.action.href} target="_blank" rel="noopener noreferrer">
-          {screen.action.label}<span aria-hidden="true">↗</span>
-        </a>
+      {screen.footer && (
+        <>
+          <p className="story-footer">{screen.footer}</p>
+          <nav className="story-links" aria-label="More from Trimmy">
+            <a href={LINKS.x} target="_blank" rel="noopener noreferrer"><span className="icon icon--x" aria-hidden="true" />@trimmyhq</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+          </nav>
+        </>
       )}
-      {screen.footer && <p className="story-footer">{screen.footer}</p>}
     </section>
   );
 }

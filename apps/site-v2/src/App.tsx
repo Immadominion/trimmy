@@ -7,6 +7,9 @@ import { SoundSwitch } from "@/components/SoundSwitch";
 import { LENGTHS, SCREENS, TRACK } from "@/story/screens";
 import { HistoricalFlight } from "@/components/HistoricalFlight";
 import { FrameStory } from "@/components/FrameStory";
+import { SiteHeader } from "@/components/SiteHeader";
+import { GetApp } from "@/components/GetApp";
+import "@/components/site-chrome.css";
 
 /**
  * A real scroll track drives a fixed stage. Visitors can pause at a story beat
@@ -26,6 +29,7 @@ export default function App() {
         ))}
       </div>
 
+      <SiteHeader />
       <ProgressRail />
       <ScrollCue />
       <SoundSwitch music="/audio/music.mp3" />
@@ -34,6 +38,7 @@ export default function App() {
           <Ambience key={screen.id} index={index} src={screen.sound} />
         ) : null,
       )}
+      <GetApp />
     </main>
     <div aria-hidden="true" className="story-scroll-track" style={{ height: `calc(var(--story-viewport-height, 100dvh) * ${TRACK})` }} />
     </>

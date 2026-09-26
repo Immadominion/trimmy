@@ -31,7 +31,9 @@ export type Screen = {
   length?: number;
   /** Build status is explicit rather than implied by a product preview. */
   status?: { label: string; text: string }[];
-  action?: { label: string; href: string };
+  /** Show the Get the app button (and Play on the web, once hosted) under the copy. */
+  cta?: boolean;
+  /** The last line of the page; the X, Privacy and Terms links go under it. */
   footer?: string;
 };
 
@@ -83,6 +85,7 @@ export const SCREENS: Screen[] = [
     heading: "Now the floor fits in your hand.",
     body: ["Buy and sell stocks for practice. Learn as you go."],
     signature: true,
+    cta: true,
   },
   {
     id: "virtual-money",
@@ -122,8 +125,7 @@ export const SCREENS: Screen[] = [
   {
     id: "close",
     heading: "Your first day is coming.",
-    body: ["Follow Trimmy for a look inside the game and launch updates."],
-    action: { label: "Follow Trimmy", href: "https://x.com/trimmyhq" },
+    body: ["Get Trimmy for Android today. Seeker, iPhone and the web app are coming soon."],
     footer: "Trimmy is a Wall Street simulation game.",
   },
 ];

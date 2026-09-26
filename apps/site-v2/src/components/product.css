@@ -27,10 +27,6 @@
 .story-status { margin: 28px 0 0; display: grid; gap: 24px; }
 .story-status dt { font-size: 12px; font-weight: 800; margin-bottom: 8px; color: white; }
 .story-status dd { margin: 0; font-size: 16px; line-height: 1.65; max-width: 40ch; color: #ffffffa6; }
-.story-action { pointer-events: auto; display: inline-flex; gap: 32px; align-items: center; margin-top: 30px; padding: 15px 22px; border-radius: 99px; background: white; color: #151515; text-decoration: none; font-size: 14px; font-weight: 800; transition: background .2s, transform .2s; }
-.story-action:hover { transform: translateY(-2px); background: #e9e1ff; }
-.story-action:focus-visible { outline: 2px solid white; outline-offset: 6px; }
-.story-action span { font-size: 19px; }
 .story-footer { margin-top: 27px; color: #ffffff6b; font-size: 11px; line-height: 1.6; }
 
 @media (min-width: 1500px) {
@@ -59,7 +55,6 @@
   .story-status { grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; text-align: left; }
   .story-status dt { font-size: 10px; margin-bottom: 5px; }
   .story-status dd { font-size: 11px; line-height: 1.5; }
-  .story-action { margin-top: 14px; padding: 10px 17px; font-size: 12px; gap: 20px; }
   .story-footer { margin-top: 10px; font-size: 9px; }
 }
 
@@ -80,10 +75,6 @@
   .story-status dd { font-size: 13px; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .story-action { transition: none; }
-}
-
 /* Landscape is a separate full-size composition, not a scaled portrait stage. */
 @media (min-width: 701px) and (max-height: 560px) {
   .story-screen--product { left: 8vw; top: 45%; width: 35vw; }
@@ -94,6 +85,5 @@
   .story-status { margin-top: 15px; gap: 12px; }
   .story-status dd { font-size: 12px; line-height: 1.5; }
   .story-status dt { margin-bottom: 4px; }
-  .story-action { min-height: 44px; margin-top: 16px; padding-block: 10px; }
   .story-footer { margin-top: 12px; }
 }
