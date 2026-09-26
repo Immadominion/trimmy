@@ -1543,7 +1543,9 @@ class _ProductExperienceState extends State<ProductExperience>
                 logoForAsset: (holding) =>
                     _knownCompany(holding.assetId)?.logoUrl,
                 onAddMoney: _openFunding,
-                onAsset: (holding) => unawaited(_openAssetId(holding.assetId)),
+                onAsset: (holding) => unawaited(
+                  _openAssetId(holding.assetId, variantMint: holding.mint),
+                ),
                 onExplore: _openFastBuy,
               ),
               dailyDesk: _dailyDesk == null
@@ -1748,6 +1750,8 @@ class _ProductExperienceState extends State<ProductExperience>
     bool sell = false,
   }) async {
     if (!_realMoney || !_signedIn || widget.account == null) return;
+    final account = widget.account;
+    final generation = _portfolioGeneration;
     final origin = PracticeAccountConfig.fromEnvironment().apiUri;
     if (origin == null) return;
     await showModalBottomSheet<void>(
@@ -1769,6 +1773,13 @@ class _ProductExperienceState extends State<ProductExperience>
         ),
       ),
     );
+    if (mounted &&
+        identical(account, widget.account) &&
+        generation == _portfolioGeneration &&
+        _signedIn &&
+        _realMoney) {
+      await _refreshRealPortfolio();
+    }
   }
 
   Future<void> _openFunding() async {
@@ -1883,6 +1894,9 @@ class _ProductExperienceState extends State<ProductExperience>
         ),
       ),
     );
+    if (mounted && generation == _portfolioGeneration && _realMoney) {
+      await _refreshRealPortfolio();
+    }
   }
 
   Future<void> _openCompany(MarketCompany company) async {

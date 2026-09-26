@@ -75,6 +75,8 @@ void main() {
     double textScale = 1,
     MarketFactsController? factsController,
     Future<void> Function(PaperOrderSide)? onRealTrade,
+    String? availableShares,
+    String? realPositionLabel,
   }) => MaterialApp(
     theme: ThemeData(useMaterial3: true, fontFamily: 'Manrope'),
     builder: (context, child) => MediaQuery(
@@ -88,7 +90,8 @@ void main() {
       orderRepository: FakePaperOrderRepository(),
       clientOrderId: () => 'client-order-1',
       availablePaper: '10000',
-      availableShares: value.position?.shares ?? '0',
+      availableShares: availableShares ?? value.position?.shares ?? '0',
+      realPositionLabel: realPositionLabel,
       factsController: factsController,
       onRealTrade: onRealTrade,
     ),
@@ -178,6 +181,58 @@ void main() {
     );
     expect(sell.label, 'Sell');
     expect(sell.getSemanticsData().hasAction(SemanticsAction.tap), isFalse);
+    semantics.dispose();
+  });
+
+  testWidgets('open real asset reacts to a settled buy and full sell', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final actions = <PaperOrderSide>[];
+    Future<void> trade(PaperOrderSide side) async => actions.add(side);
+    Widget live({String shares = '0', String? label}) => app(
+      details(position: false),
+      availableShares: shares,
+      realPositionLabel: label,
+      onRealTrade: trade,
+    );
+    final sell = find.byKey(const ValueKey('stock-sell-button'));
+    await tester.pumpWidget(live());
+    expect(
+      tester
+          .getSemantics(sell)
+          .getSemanticsData()
+          .hasAction(SemanticsAction.tap),
+      isFalse,
+    );
+
+    await tester.pumpWidget(
+      live(shares: '0.00591613', label: '0.00593546 AAPLx'),
+    );
+    await tester.pump();
+    expect(find.text('0.00593546 AAPLx'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(sell)
+          .getSemanticsData()
+          .hasAction(SemanticsAction.tap),
+      isTrue,
+    );
+    await tester.tap(sell);
+    await tester.pump();
+    expect(actions, [PaperOrderSide.sell]);
+    expect(find.byType(PaperOrderFlow), findsNothing);
+
+    await tester.pumpWidget(live());
+    await tester.pump();
+    expect(find.text('0.00593546 AAPLx'), findsNothing);
+    expect(
+      tester
+          .getSemantics(sell)
+          .getSemanticsData()
+          .hasAction(SemanticsAction.tap),
+      isFalse,
+    );
     semantics.dispose();
   });
 
