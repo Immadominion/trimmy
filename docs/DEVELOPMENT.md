@@ -47,6 +47,12 @@ flutter run --flavor production --dart-define-from-file=account-config.local.jso
 
 A physical phone needs an API endpoint reachable from the phone; `localhost` refers to the phone itself. Configure native auth callback schemes and provider origins for your own app. The default `main.dart` is the actual product. `ui_review.dart` and `design_study.dart` are separate historical review entries.
 
+### Wallet backup configuration
+
+The optional `TRIMMY_WALLET_RECOVERY_URL` stays empty until browser recovery is configured and verified. The current native link accepts only `https://web-production-e8138.up.railway.app/wallet-recovery`; changing hosts also requires updating that allowlist and its tests. The app passes only the expected public address in a URL fragment. Browser sign-in is independent of the native session.
+
+The recovery page needs a **web** Privy client under the same app, with its exact HTTPS origin allowed. Do not reuse or relax the native-only client, create another wallet, or put a server secret in either app. Configure `VITE_PRIVY_APP_CLIENT_ID` on the web service, rebuild, verify sign-in and wallet matching, then enable the native URL. See [web recovery](../apps/web/README.md).
+
 ### Android signing and the development Seeker
 
 For a local release-mode update to a Seeker already using your debug certificate, explicitly retain that certificate:

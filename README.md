@@ -54,7 +54,7 @@ When a player chooses Real mode, the Desk changes to the wallet's cash balance. 
 
 The Solana execution path uses Privy for the user's wallet and Jupiter for a reviewed stock-token trade. The server validates the transaction before the user signs, then checks its result onchain.
 
-**Current build:** the game, paper trading, market research, and wallet reads are implemented. The deployed Solana trading registry supports the xStocks variants of **AAPL, TSLA, NVDA, MSFT, AMZN, GOOGL, META, COIN, HOOD, NFLX and AMD**, paired with USDC. Unsigned buy reviews and simulations passed for all 11 on September 25, 2026, along with AAPLx sell checks. These checks moved no money; routes can change, and technical verification does not establish a user's issuer eligibility.
+**Current build:** the game, paper trading, market research, and wallet reads are implemented. The deployed Solana trading registry supports the xStocks variants of **AAPL, TSLA, NVDA, MSFT, AMZN, GOOGL, META, COIN, HOOD, NFLX, AMD, MSTR, CRCL and PLTR**, paired with USDC. Unsigned buy reviews and simulations passed for all 14 during the September 25–26 audit, along with full and partial AAPLx sell checks. These checks moved no money; routes can change, and technical verification does not establish a user's issuer eligibility.
 
 The demo records a completed $2 AAPLx buy and updated holdings. Crossmint card checkout remains in staging and does not fund a mainnet purchase; funded crypto purchases use the Solana wallet. Real balances and holdings stay separate from the practice ledger. [See what is verified and what still needs work →](docs/PRODUCTION-READINESS.md)
 
