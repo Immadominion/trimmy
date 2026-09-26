@@ -277,7 +277,7 @@ function semanticsFetch(options: {values?: Record<string, unknown>; walletValues
 }
 
 function simulationFetch(options: {postTaker?: number; postSource?: bigint; postDestination?: bigint;
-  err?: unknown; unitsConsumed?: number; slot?: number; genesis?: string; calls?: RpcCall[]; stockMint?: Address} = {}): typeof globalThis.fetch {
+  err?: unknown; omitErr?: boolean; unitsConsumed?: number; slot?: number; genesis?: string; calls?: RpcCall[]; stockMint?: Address} = {}): typeof globalThis.fetch {
   return (async (_url: string | URL, init?: {body?: string}) => {
     const request = JSON.parse(String(init?.body)) as {id: string; method: string; params: unknown[]};
     options.calls?.push({method: request.method, params: request.params});
@@ -300,7 +300,7 @@ function simulationFetch(options: {postTaker?: number; postSource?: bigint; post
     ];
     return new Response(JSON.stringify({jsonrpc: '2.0', id: request.id, result: {
       context: {slot: options.slot ?? 447_100_005, apiVersion: '3.1.10'},
-      value: {err: options.err ?? null, logs: ['Program log: ok'], unitsConsumed: options.unitsConsumed ?? 180_000,
+      value: {...(options.omitErr ? {} : {err: options.err ?? null}), logs: ['Program log: ok'], unitsConsumed: options.unitsConsumed ?? 180_000,
         accounts, returnData: null},
     }}), {status: 200, headers: {'content-type': 'application/json'}});
   }) as unknown as typeof globalThis.fetch;
@@ -618,6 +618,13 @@ describe('gate 7: isolated simulation', () => {
       assert.equal(error.message, 'The stock order simulation did not confirm the reviewed terms.');
       assert.deepEqual(error.failure, {kind: 'InstructionError:Custom', instructionIndex: 3, customCode: 6001});
     }
+  });
+
+  it('requires an explicit null simulation outcome even when all returned balances match', async () => {
+    const {base, semantics, reconciliation} = await reconciled();
+    await assert.rejects(simulator(simulationFetch({omitErr: true}), base.clock)
+      .simulate({draft: base.draft, binding: base.binding, semantics, reconciliation}),
+      {code: 'SIMULATION_RPC_RESPONSE_INVALID'});
   });
 });
 

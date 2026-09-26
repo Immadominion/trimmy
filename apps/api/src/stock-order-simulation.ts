@@ -250,9 +250,9 @@ export class SolanaMainnetStockOrderSimulator {
     const observedAt = new Date(this.#now()).toISOString();
     const result = record(outcome.result);
     const value = result === null ? null : record(result['value']);
-    if (value === null || outcome.contextSlot === null) return fail('SIMULATION_RPC_RESPONSE_INVALID');
+    if (value === null || outcome.contextSlot === null || !Object.hasOwn(value, 'err')) return fail('SIMULATION_RPC_RESPONSE_INVALID');
     if (BigInt(outcome.contextSlot) < BigInt(minContextSlot)) return fail('SIMULATION_OBSERVATION_STALE');
-    if (value['err'] !== null && value['err'] !== undefined) {
+    if (value['err'] !== null) {
       const failure = summarizeFailure(value['err']);
       if (failure.kind === 'BlockhashNotFound') return fail('SIMULATION_BLOCKHASH_EXPIRED', failure);
       return fail('SIMULATION_TRANSACTION_FAILED', failure);
