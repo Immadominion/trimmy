@@ -29,6 +29,7 @@ import '../../markets/discovery.dart';
 import '../../markets/stock_research_host.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../account/fund_wallet_sheet.dart';
+import '../account/wallet_recovery_link.dart';
 import '../account/guest_desk_preserved_screen.dart';
 import '../account/guest_desk_recovery_screen.dart';
 import '../account/product_sign_in_screen.dart';
@@ -55,6 +56,7 @@ import 'http_product_profile_repository.dart';
 import 'launch_moments.dart';
 import 'product_market_session.dart';
 import 'product_session.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TrimmyProductApp extends StatefulWidget {
   const TrimmyProductApp({
@@ -2719,7 +2721,11 @@ class _ProductExperienceState extends State<ProductExperience>
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => ListenableBuilder(
-          listenable: Listenable.merge([ReviewFeedback.shared, widget.session]),
+          listenable: Listenable.merge([
+            ReviewFeedback.shared,
+            widget.session,
+            if (widget.account != null) widget.account!,
+          ]),
           builder: (context, _) => ProductSettingsScreen(
             onSoundChanged: (value) =>
                 unawaited(ReviewFeedback.shared.setSound(value)),
@@ -2755,6 +2761,9 @@ class _ProductExperienceState extends State<ProductExperience>
                 if (mounted) _message('Wallet address copied.');
               }),
             ),
+            onWalletExport: _walletRecoveryUri == null
+                ? null
+                : () => unawaited(_openWalletRecovery()),
             onCloseAccount: widget.account?.canCloseAccount == true
                 ? () => unawaited(_confirmCloseAccount())
                 : null,
@@ -2783,8 +2792,9 @@ class _ProductExperienceState extends State<ProductExperience>
   ProductSettingsState _settingsState() {
     final profile = widget.session.profile!;
     final paperLimit = int.tryParse(_career.summary?.rank.paperLimit ?? '');
-    final walletAddress =
-        widget.account?.portfolioState?.portfolio?.holdings.wallet.address;
+    final wallet =
+        widget.account?.portfolioState?.context?.embeddedSolanaWallet;
+    final walletAddress = wallet?.isCandidate == true ? wallet!.address : null;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return ProductSettingsState(
       account: SettingsAccountState(
@@ -2845,10 +2855,26 @@ class _ProductExperienceState extends State<ProductExperience>
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Close your account?'),
-        content: const Text(
-          'You will lose access to the saved account. Records that must be kept stay protected.',
+        content: Text(
+          widget
+                      .account
+                      ?.portfolioState
+                      ?.context
+                      ?.embeddedSolanaWallet
+                      .isCandidate !=
+                  true
+              ? 'You will lose access to the saved account. Records that must be kept stay protected.'
+              : 'Keep access to your wallet before closing your account. Closing will not move its funds. You will lose access to your saved desk.',
         ),
         actions: [
+          if (_walletRecoveryUri != null)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+                unawaited(_openWalletRecovery());
+              },
+              child: const Text('Back up wallet'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
@@ -2866,6 +2892,32 @@ class _ProductExperienceState extends State<ProductExperience>
     if (!mounted) return;
     final navigator = Navigator.maybeOf(context);
     if (navigator?.canPop() == true) navigator!.pop();
+  }
+
+  Uri? get _walletRecoveryUri {
+    if (!_signedIn) return null;
+    final wallet =
+        widget.account?.portfolioState?.context?.embeddedSolanaWallet;
+    if (wallet?.isCandidate != true || wallet?.address == null) return null;
+    return walletRecoveryLink(
+      const String.fromEnvironment('TRIMMY_WALLET_RECOVERY_URL'),
+      wallet!.address!,
+    );
+  }
+
+  Future<void> _openWalletRecovery() async {
+    final uri = _walletRecoveryUri;
+    if (uri == null) return;
+    final generation = _portfolioGeneration;
+    try {
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {
+      // Never log the browser session or credentials. The page authenticates
+      // independently; only the expected public address leaves this app.
+    }
+    if (mounted && generation == _portfolioGeneration) {
+      _message('Couldn’t open wallet backup. Try again.');
+    }
   }
 
   void _message(String text) {

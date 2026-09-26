@@ -421,8 +421,8 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
         if (widget.onWalletExport != null)
           _SettingsRow(
             icon: Icons.ios_share_rounded,
-            title: 'Export instructions',
-            subtitle: 'Learn how wallet export works.',
+            title: 'Back up wallet',
+            subtitle: 'Keep access outside Trimmy.',
             onTap: available ? widget.onWalletExport : null,
           ),
       ],
