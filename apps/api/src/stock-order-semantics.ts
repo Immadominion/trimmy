@@ -15,8 +15,9 @@ import type { ResolvedStockTransactionAccounts } from './stock-order-lookup-reso
 
 /**
  * Gate 5 of the unsigned stock-order review: identify every program, decode
- * every top-level instruction and observe every referenced account at
- * finalized commitment. The result describes what the transaction would do and
+ * every top-level instruction and observe mint/program identities at finalized
+ * commitment, then refresh the taker's balances at confirmed commitment. The
+ * result describes what the transaction would do and
  * what the accounts look like right now. It makes no judgement about whether
  * those effects match the approved candidate (gate 6), runs no simulation,
  * signs nothing and sends nothing. The RPC allowlist is exactly
@@ -90,7 +91,10 @@ export interface StockOrderSemantics {
   readonly kind: 'solana_stock_order_semantics';
   readonly network: 'solana:mainnet-beta';
   readonly genesisHash: typeof STOCK_DRAFT_MAINNET_GENESIS;
-  readonly commitment: 'finalized';
+  /** Commitment of the wallet balances used for reconciliation and simulation. */
+  readonly commitment: 'confirmed';
+  readonly identityCommitment: 'finalized';
+  readonly identityObservationSlot: string;
   readonly transactionHash: string;
   readonly transactionMessageHash: string;
   readonly draftBindingHash: string;
@@ -148,6 +152,8 @@ export interface StockOrderSemanticsInput {
   readonly binding: StockDraftBinding;
   readonly structure: StockDraftStructuralInspection;
   readonly resolvedAccounts: ResolvedStockTransactionAccounts;
+  /** Server-observed confirmed slot; never a client-supplied balance assertion. */
+  readonly minContextSlot?: number;
 }
 
 export interface StockOrderSemanticsReaderOptions {
@@ -220,7 +226,7 @@ export class SolanaMainnetStockOrderSemanticsReader {
   }
 
   async read(input: StockOrderSemanticsInput): Promise<StockOrderSemantics> {
-    const {draft, binding, structure, resolvedAccounts} = validateInput(input);
+    const {draft, binding, structure, resolvedAccounts, minContextSlot} = validateInput(input);
     const summary = draft.summary;
     const readStartedAt = new Date(this.#now()).toISOString();
     // Re-checks account, exact identity and both expiry constraints; a stale draft never reaches RPC.
@@ -277,8 +283,8 @@ export class SolanaMainnetStockOrderSemanticsReader {
       if (!Array.isArray(values) || values.length !== part.length || outcome.contextSlot === null) {
         return fail('SEMANTICS_RPC_RESPONSE_INVALID');
       }
-      if (observationSlot === null) { observationSlot = outcome.contextSlot; apiVersion = outcome.apiVersion; }
-      else if (BigInt(outcome.contextSlot) < BigInt(observationSlot)) return fail('SEMANTICS_OBSERVATION_INCONSISTENT');
+      if (observationSlot !== null && BigInt(outcome.contextSlot) < BigInt(observationSlot)) return fail('SEMANTICS_OBSERVATION_INCONSISTENT');
+      observationSlot = outcome.contextSlot; apiVersion = outcome.apiVersion;
       part.forEach((address, index) => {
         try { observed.set(address, parseObservedAccount(address, values[index])); }
         catch (error) {
@@ -288,6 +294,30 @@ export class SolanaMainnetStockOrderSemanticsReader {
       });
     }
     if (observationSlot === null) return fail('SEMANTICS_RPC_RESPONSE_INVALID');
+    const identityObservationSlot = observationSlot;
+    // A just-confirmed buy may not exist in finalized state yet. Refresh only
+    // the taker's canonical accounts; issuer mints and program identities retain
+    // their finalized observations. Reconciliation still validates every owner,
+    // mint, freeze state, delegate, movement, amount and fee as before.
+    const walletAddresses = [...new Set([candidate.taker, candidate.takerInputAssociatedAccount,
+      candidate.takerOutputAssociatedAccount, candidate.takerWrappedSolAssociatedAccount])]
+      .filter(address => addresses.includes(address));
+    const walletFloor = Math.max(Number(identityObservationSlot), minContextSlot ?? 0);
+    const walletOutcome = await this.#rpc.call('getMultipleAccounts', [walletAddresses,
+      {encoding: 'base64', commitment: 'confirmed', minContextSlot: walletFloor}]);
+    const walletValues = (walletOutcome.result as {value?: unknown} | null)?.value;
+    if (!Array.isArray(walletValues) || walletValues.length !== walletAddresses.length || walletOutcome.contextSlot === null) {
+      return fail('SEMANTICS_RPC_RESPONSE_INVALID');
+    }
+    if (BigInt(walletOutcome.contextSlot) < BigInt(walletFloor)) return fail('SEMANTICS_OBSERVATION_INCONSISTENT');
+    walletAddresses.forEach((address, index) => {
+      try { observed.set(address, parseObservedAccount(address, walletValues[index])); }
+      catch (error) {
+        if (error instanceof AccountStateError) return fail('SEMANTICS_RPC_RESPONSE_INVALID');
+        throw error;
+      }
+    });
+    observationSlot = walletOutcome.contextSlot; apiVersion = walletOutcome.apiVersion;
     const observedAt = new Date(this.#now()).toISOString();
 
     const states = new Map<string, DecodedAccountState>();
@@ -327,19 +357,20 @@ export class SolanaMainnetStockOrderSemanticsReader {
     const computeBudget = readComputeBudget(instructions);
     const feeEstimate = estimateFee(computeBudget, instructions.length);
     const digestInput = JSON.stringify({
-      transactionMessageHash: structure.transactionMessageHash, observationSlot, instructions, accounts, supplementalAccounts, programs,
+      transactionMessageHash: structure.transactionMessageHash, identityObservationSlot, observationSlot,
+      identityCommitment: 'finalized', commitment: 'confirmed', instructions, accounts, supplementalAccounts, programs,
     });
     return Object.freeze({
       schemaVersion: 1, kind: 'solana_stock_order_semantics', network: 'solana:mainnet-beta',
-      genesisHash: STOCK_DRAFT_MAINNET_GENESIS, commitment: 'finalized',
+      genesisHash: STOCK_DRAFT_MAINNET_GENESIS, commitment: 'confirmed', identityCommitment: 'finalized', identityObservationSlot,
       transactionHash: structure.transactionHash, transactionMessageHash: structure.transactionMessageHash,
       draftBindingHash: structure.draftBindingHash, candidateTermsHash: structure.candidateTermsHash,
       readStartedAt, observedAt, observationSlot, rpcApiVersion: apiVersion, candidate,
       instructions: Object.freeze(instructions), accounts: Object.freeze([...accounts, ...supplementalAccounts]),
       programs: Object.freeze(programs), computeBudget, feeEstimate,
       provenance: Object.freeze({
-        rpcMethods: Object.freeze(['getGenesisHash', ...chunks.map(() => 'getMultipleAccounts')]),
-        accountReadChunks: chunks.length, accountsObserved: addresses.length, retries: 0, cacheUsed: false,
+        rpcMethods: Object.freeze(['getGenesisHash', ...chunks.map(() => 'getMultipleAccounts'), 'getMultipleAccounts']),
+        accountReadChunks: chunks.length + 1, accountsObserved: addresses.length, retries: 0, cacheUsed: false,
         digestSha256: sha256(digestInput),
       }),
       assessment: Object.freeze({
@@ -354,6 +385,9 @@ export class SolanaMainnetStockOrderSemanticsReader {
 
 function validateInput(input: StockOrderSemanticsInput): StockOrderSemanticsInput {
   if (input === null || typeof input !== 'object') return fail('SEMANTICS_INPUT_INVALID');
+  if (input.minContextSlot !== undefined && (!Number.isSafeInteger(input.minContextSlot) || input.minContextSlot < 1)) {
+    return fail('SEMANTICS_INPUT_INVALID');
+  }
   const {draft, binding, structure, resolvedAccounts} = input;
   if (draft === null || typeof draft !== 'object' || binding === null || typeof binding !== 'object' ||
       structure === null || typeof structure !== 'object' || resolvedAccounts === null || typeof resolvedAccounts !== 'object') {

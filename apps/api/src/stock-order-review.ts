@@ -107,9 +107,10 @@ export interface StockOrderReviewOutcome {
 }
 
 export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDraftBinding,
-  stages: StockOrderReviewStages): Promise<StockOrderReviewOutcome> {
+  stages: StockOrderReviewStages, minContextSlot?: number): Promise<StockOrderReviewOutcome> {
   if (draft?.summary?.kind !== 'stock_order_draft' || binding === null || typeof binding !== 'object' ||
-      stages === null || typeof stages !== 'object' || (stages.now !== undefined && typeof stages.now !== 'function')) {
+      stages === null || typeof stages !== 'object' || (stages.now !== undefined && typeof stages.now !== 'function') ||
+      (minContextSlot !== undefined && (!Number.isSafeInteger(minContextSlot) || minContextSlot < 1))) {
     return fail('REVIEW_INPUT_INVALID');
   }
   const now = stages.now ?? Date.now;
@@ -126,7 +127,8 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
   }
   const resolvedAccounts = await stages.lookupResolver.resolve(structure);
   const lifetime = await stages.lifetimeVerifier.verify(draft, binding, structure);
-  const semantics = await stages.semanticsReader.read({draft, binding, structure, resolvedAccounts});
+  const semantics = await stages.semanticsReader.read({draft, binding, structure, resolvedAccounts,
+    ...(minContextSlot === undefined ? {} : {minContextSlot})});
   const reconciliation = reconcileStockOrderTerms({summary, semantics, now: now()});
   const simulation = await stages.simulator.simulate({draft, binding, semantics, reconciliation});
   const hashes = [structure, resolvedAccounts, lifetime, semantics, reconciliation, simulation].map(stage => stage.transactionMessageHash);

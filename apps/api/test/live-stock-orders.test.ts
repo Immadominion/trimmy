@@ -109,7 +109,7 @@ test('less than one signature fee reports funding before requesting an order', a
   const fake=async(url:URL|RequestInfo,options?:RequestInit)=>{
    if(String(url).includes('/order')){orderRequests++;throw Error('unexpected order');}
    const request=JSON.parse(String(options?.body));
-   const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{value:balance};
+   const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{context:{slot:501},value:balance};
    if(request.method==='getBalance')assert.deepEqual(request.params,[wallet,{commitment:'confirmed'}]);
    return Response.json({jsonrpc:'2.0',id:1,result});
   };
@@ -126,12 +126,31 @@ test('a wallet below the sponsorship heuristic can request an order without spen
   if(String(url).includes('/order')){orderRequests++;return Response.json({transaction:'',router:'metis',errorCode:1});}
   const request=JSON.parse(String(options?.body));
   assert.ok(['getGenesisHash','getBlockHeight','getBalance'].includes(request.method));
-  const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{value:9_435_303};
+  const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{context:{slot:501},value:9_435_303};
   return Response.json({jsonrpc:'2.0',id:1,result});
  };
  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
  await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000'}),/ADD_USDC/);
  assert.equal(orderRequests,1);
+});
+
+test('a fresh preview refuses malformed or regressing confirmed balance context before asking for a route',async()=>{
+ for(const slot of [undefined,0,1.5,500,501]) {
+  const f=fixture();let orderRequests=0;
+  const store={read:async()=>({...f.order,status:'confirmed',confirmedSlot:501})} as unknown as LiveOrderStore;
+  const fake:typeof fetch=async(url,options)=>{
+   if(String(url).includes('/order')){orderRequests++;return Response.json({error:'no route'},{status:400});}
+   const request=JSON.parse(String(options?.body));
+   if(request.method==='getBalance')assert.deepEqual(request.params,[f.order.wallet,{commitment:'confirmed',minContextSlot:501}]);
+   const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':
+    request.method==='getBlockHeight'?100:{context:{slot},value:9_435_303};
+   return Response.json({jsonrpc:'2.0',id:1,result});
+  };
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake});
+  await assert.rejects(service.preview('user',f.order.wallet,{assetId:'apple',variantMint:STOCK_TRADING_ASSETS[0]!.mint,
+   side:'sell',amountRaw:'1000000'}),{code:slot===501?'NO_ROUTE':'LIVE_UNAVAILABLE'});
+  assert.equal(orderRequests,slot===501?1:0);
+ }
 });
 
 
@@ -152,7 +171,7 @@ test('live preview requests each selected stock in both directions and reports n
    }
    const request=JSON.parse(String(options?.body));
    assert.ok(['getGenesisHash','getBlockHeight','getBalance'].includes(request.method));
-   const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{value:9_435_303};
+   const result=request.method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':request.method==='getBlockHeight'?100:{context:{slot:501},value:9_435_303};
    return Response.json({jsonrpc:'2.0',id:1,result});
   };
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
@@ -222,7 +241,7 @@ test('live previews refuse sponsorship and map genuine provider funding failures
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async(rawUrl,options)=>{
    if(String(rawUrl).includes('/order'))return Response.json(item.payload);
    const {method}=JSON.parse(String(options?.body));
-   return Response.json({jsonrpc:'2.0',id:1,result:method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':method==='getBlockHeight'?100:{value:9_435_303}});
+   return Response.json({jsonrpc:'2.0',id:1,result:method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':method==='getBlockHeight'?100:{context:{slot:501},value:9_435_303}});
   }});
   const asset=STOCK_TRADING_ASSETS[0]!;
   await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side:item.side,amountRaw:'1000000'}),new RegExp(item.code));

@@ -197,7 +197,8 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   }
   const {summary, semantics, now} = input;
   if (summary?.kind !== 'stock_order_draft' || semantics?.kind !== 'solana_stock_order_semantics') return fail('RECONCILIATION_INPUT_INVALID');
-  if (semantics.transactionMessageHash !== summary.transactionMessageHash || semantics.transactionHash !== summary.transactionHash ||
+  if (semantics.commitment !== 'confirmed' || semantics.identityCommitment !== 'finalized' ||
+      semantics.transactionMessageHash !== summary.transactionMessageHash || semantics.transactionHash !== summary.transactionHash ||
       semantics.draftBindingHash !== summary.bindingHash || semantics.candidateTermsHash !== summary.userApproval.candidateTermsHash ||
       semantics.assessment.status !== 'semantics_decoded_but_unreconciled' || semantics.candidate.taker !== summary.taker ||
       semantics.candidate.inputMint !== summary.input.mint || semantics.candidate.outputMint !== summary.output.mint ||

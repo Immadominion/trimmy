@@ -137,8 +137,10 @@ export class LiveStockOrders {
    const previous=await this.status(user);
    if(previous?.status==='pending')fail('ORDER_PENDING');
    const observation=await this.chain();
-   const balance=await this.rpc('getBalance',[wallet,{commitment:'confirmed'}]);
-   if(!Number.isSafeInteger(balance?.value)||balance.value<0)fail('LIVE_UNAVAILABLE');
+   const previousSlot=previous?.confirmedSlot;
+   const balance=await this.rpc('getBalance',[wallet,{commitment:'confirmed',...(previousSlot===undefined?{}:{minContextSlot:previousSlot})}]);
+   if(!Number.isSafeInteger(balance?.value)||balance.value<0 || !Number.isSafeInteger(balance?.context?.slot) ||
+    balance.context.slot<1 || (previousSlot!==undefined && balance.context.slot<previousSlot))fail('LIVE_UNAVAILABLE');
    if(balance.value<LIVE_STOCK_MIN_SOL_LAMPORTS)fail('ADD_SOL');
    const stock=findStockTradingAsset(input.assetId,input.variantMint)!;
    const buying=input.side==='buy';const pair={inputAsset:buying?'USDC':stock.symbol,outputAsset:buying?stock.symbol:'USDC',amountRaw:input.amountRaw} as const;
@@ -158,7 +160,7 @@ export class LiveStockOrders {
    const expected:StockEstimate={...quote,...input,executionEnabled:false,eligibility:'unverified',amountUnits:'raw_token_units'};
    const draft=bindStockOrderDraft(payload,{authenticatedUserId:user,verifiedTaker:wallet,expected,requestStartedAt:new Date(received).toISOString(),chainObservation:observation,validityAuthority:{now:this.#now,readChainObservation:()=>this.chain()}});
    const binding={authenticatedUserId:user,verifiedTaker:wallet,requestId:draft.summary.requestId,transactionMessageHash:draft.summary.transactionMessageHash,bindingHash:draft.summary.bindingHash};
-   const reviewed=await reviewStockOrder(draft,binding,this.#stages).catch(error=>{
+   const reviewed=await reviewStockOrder(draft,binding,this.#stages,balance.context.slot).catch(error=>{
     if(error?.code==='RECONCILIATION_TAKER_SOL_INSUFFICIENT')fail('ADD_SOL');
     if(error?.code==='RECONCILIATION_SOURCE_BALANCE_INSUFFICIENT')fail(buying?'ADD_USDC':'INSUFFICIENT_HOLDINGS');
     throw error;

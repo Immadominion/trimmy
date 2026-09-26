@@ -257,17 +257,20 @@ function accountValues(overrides: Record<string, unknown> = {}): Record<string, 
 
 interface RpcCall { readonly method: string; readonly params: readonly unknown[] }
 
-function semanticsFetch(options: {values?: Record<string, unknown>; slot?: number; genesis?: string;
+function semanticsFetch(options: {values?: Record<string, unknown>; walletValues?: Record<string, unknown>;
+  slot?: number; walletSlot?: number; genesis?: string;
   calls?: RpcCall[]} = {}): typeof globalThis.fetch {
   const values = options.values ?? accountValues();
   return (async (_url: string | URL, init?: {body?: string}) => {
     const request = JSON.parse(String(init?.body)) as {id: string; method: string; params: unknown[]};
     options.calls?.push({method: request.method, params: request.params});
+    const confirmed = (request.params[1] as {commitment?: string} | undefined)?.commitment === 'confirmed';
+    const observedValues = confirmed ? options.walletValues ?? values : values;
     const body = request.method === 'getGenesisHash'
       ? {jsonrpc: '2.0', id: request.id, result: options.genesis ?? STOCK_DRAFT_MAINNET_GENESIS}
       : {jsonrpc: '2.0', id: request.id, result: {
-        context: {slot: options.slot ?? 447_100_000, apiVersion: '3.1.10'},
-        value: (request.params[0] as string[]).map(item => values[item] ?? null),
+        context: {slot: (confirmed ? options.walletSlot : undefined) ?? options.slot ?? 447_100_000, apiVersion: '3.1.10'},
+        value: (request.params[0] as string[]).map(item => observedValues[item] ?? null),
       }};
     return new Response(JSON.stringify(body), {status: 200, headers: {'content-type': 'application/json'}});
   }) as unknown as typeof globalThis.fetch;
@@ -326,9 +329,12 @@ describe('gate 5: semantics', () => {
     assert.equal(semantics.transactionMessageHash, base.draft.summary.transactionMessageHash);
     assert.equal(semantics.observationSlot, '447100000');
     assert.equal(semantics.rpcApiVersion, '3.1.10');
-    assert.deepEqual(calls.map(call => call.method), ['getGenesisHash', 'getMultipleAccounts']);
+    assert.deepEqual(calls.map(call => call.method), ['getGenesisHash', 'getMultipleAccounts', 'getMultipleAccounts']);
     // The reader cannot express a simulation or a send.
-    assert.deepEqual(semantics.provenance.rpcMethods, ['getGenesisHash', 'getMultipleAccounts']);
+    assert.deepEqual(semantics.provenance.rpcMethods, ['getGenesisHash', 'getMultipleAccounts', 'getMultipleAccounts']);
+    assert.equal(semantics.commitment, 'confirmed');
+    assert.equal(semantics.identityCommitment, 'finalized');
+    assert.equal(semantics.identityObservationSlot, '447100000');
 
     assert.deepEqual(semantics.instructions.map(item => item.programName),
       ['computeBudget', 'computeBudget', 'associatedToken', 'jupiterV6']);
@@ -566,7 +572,7 @@ describe('gate 7: isolated simulation', () => {
     const config = calls[1]!.params[1] as Record<string, unknown>;
     assert.equal(config['sigVerify'], false);
     assert.equal(config['replaceRecentBlockhash'], false);
-    assert.equal(config['commitment'], 'finalized');
+    assert.equal(config['commitment'], 'confirmed');
     assert.deepEqual((config['accounts'] as {addresses: string[]}).addresses, [taker, sourceAta, destinationAta]);
     assert.deepEqual(simulation.provenance.rpcMethods, ['getGenesisHash', 'simulateTransaction']);
     assert.equal(simulation.outcome.error, null);
@@ -771,6 +777,100 @@ describe('multi-stock composed review', () => {
       assert.equal(intent.terms.outputMint, stock.mint);
       assert.equal(intent.terms.simulatedOutputReceivedRaw, QUOTED_OUT.toString());
       assert.equal(intent.approval.status, 'required');
+    }
+  });
+});
+
+describe('confirmed wallet state after a buy', () => {
+  function sellFixture() {
+    const clock = {now: Date.parse(at(3))};
+    const original = swapMessage();
+    const instructions = [...original.instructions];
+    instructions[3] = {programAddressIndex: 6, accountIndices: [0, 1, 2, 9, 10, 7, 12, 6, 11, 6, 3],
+      data: Uint8Array.from([...anchor('route_v2'), ...u64(INPUT_RAW), ...u64(QUOTED_OUT), 50, 0, 0, 0, 0, 0, ...u32(1), 0, 16, 39, 0, 1])};
+    const message = {...original, instructions, staticAccounts: original.staticAccounts.map(item =>
+      item === sourceAta ? address(destinationAta) : item === destinationAta ? address(sourceAta) :
+      item === usdcMint ? aaplxMint : item === aaplxMint ? usdcMint :
+      item === KNOWN_PROGRAMS.token ? address(KNOWN_PROGRAMS.token2022) :
+      item === KNOWN_PROGRAMS.token2022 ? address(KNOWN_PROGRAMS.token) : item)};
+    const ref = estimate();
+    const quote: StockEstimate = {...ref, side: 'sell',
+      input: {symbol: 'AAPLx', mint: aaplxMint, decimals: 8, amountRaw: INPUT_RAW.toString()},
+      output: {symbol: 'USDC', mint: usdcMint, decimals: 6,
+        estimatedAmountRaw: QUOTED_OUT.toString(), quotedMinimumAmountRaw: MINIMUM_OUT.toString()},
+      swapFee: {...ref.swapFee, mint: aaplxMint}};
+    const draft = bindStockOrderDraft(payload({inputMint: aaplxMint, outputMint: usdcMint, feeMint: aaplxMint}, message),
+      {...context(clock), expected: quote});
+    const bound = binding(draft), structure = inspectStockDraftStructure(draft, bound);
+    const stockAccount = (amount: bigint, state = AccountState.Initialized) => rpcAccount(Uint8Array.from(getTokenEncoder().encode({
+      mint: aaplxMint, owner: taker, amount, delegate: null, state, isNative: null,
+      delegatedAmount: 0n, closeAuthority: null, extensions: [{__kind: 'ImmutableOwner'}],
+    })), KNOWN_PROGRAMS.token2022, 2_157_600);
+    // The buy has created this account at confirmed, but finalized still sees no account.
+    const values = accountValues({[destinationAta]: null});
+    const walletValues = accountValues({[destinationAta]: stockAccount(20_000_000n)});
+    return {clock, draft, bound, structure, message, values, walletValues, stockAccount};
+  }
+
+  it('reviews an immediate sell using confirmed balances, finalized identity and a monotonic simulation slot', async () => {
+    const f = sellFixture(), calls: RpcCall[] = [];
+    const simulate: typeof fetch = async (_url, init) => {
+      const request = JSON.parse(String(init?.body)); calls.push(request);
+      if (request.method === 'getGenesisHash') return Response.json({jsonrpc: '2.0', id: request.id, result: STOCK_DRAFT_MAINNET_GENESIS});
+      assert.equal(request.method, 'simulateTransaction');
+      assert.equal(request.params[1].commitment, 'confirmed');
+      assert.equal(request.params[1].minContextSlot, 447_100_050);
+      assert.deepEqual(request.params[1].accounts.addresses, [taker, destinationAta, sourceAta]);
+      return Response.json({jsonrpc: '2.0', id: request.id, result: {context: {slot: 447_100_055}, value: {
+        err: null, unitsConsumed: 180_000, logs: [], accounts: [
+          rpcAccount(new Uint8Array(), KNOWN_PROGRAMS.system, 39_995_000), f.stockAccount(10_000_000n),
+          rpcAccount(Uint8Array.from(getLegacyTokenEncoder().encode({mint: usdcMint, owner: taker,
+            amount: 25_000_000n + QUOTED_OUT, delegate: null, state: LegacyAccountState.Initialized,
+            isNative: null, delegatedAmount: 0n, closeAuthority: null})), KNOWN_PROGRAMS.token, 2_039_280),
+        ],
+      }}});
+    };
+    const {intent, evidence} = await reviewStockOrder(f.draft, f.bound, {
+      lookupResolver: {resolve: async () => resolvedAccounts(f.structure, f.message.staticAccounts)},
+      lifetimeVerifier: {verify: async () => lifetimeEvidence(f.structure)},
+      semanticsReader: semanticsReader(semanticsFetch({values: f.values, walletValues: f.walletValues,
+        slot: 447_100_000, walletSlot: 447_100_050, calls}), f.clock),
+      simulator: simulator(simulate, f.clock), now: () => f.clock.now,
+    }, 447_100_040);
+    const reads = calls.filter(call => call.method === 'getMultipleAccounts');
+    assert.equal((reads[0]!.params[1] as {commitment: string}).commitment, 'finalized');
+    assert.deepEqual(reads[1]!.params, [[taker, destinationAta, sourceAta],
+      {encoding: 'base64', commitment: 'confirmed', minContextSlot: 447_100_040}]);
+    assert.equal(evidence.semantics.identityObservationSlot, '447100000');
+    assert.equal(evidence.semantics.observationSlot, '447100050');
+    assert.equal(evidence.lifetime.commitment, 'finalized');
+    assert.equal(evidence.resolvedAccounts.commitment, 'finalized');
+    assert.equal(intent.terms.side, 'sell');
+    assert.equal(intent.terms.simulatedOutputReceivedRaw, QUOTED_OUT.toString());
+    assert.equal(intent.assessment.signingEnabled, false);
+    const staleCommitment = {...evidence.semantics, commitment: 'finalized'} as unknown as typeof evidence.semantics;
+    assert.throws(() => reconcileStockOrderTerms({summary: f.draft.summary, semantics: staleCommitment, now: f.clock.now}),
+      {code: 'RECONCILIATION_EVIDENCE_MISMATCH'});
+    await assert.rejects(simulator(simulate, f.clock).simulate({draft: f.draft, binding: f.bound,
+      semantics: staleCommitment, reconciliation: evidence.reconciliation}), {code: 'SIMULATION_EVIDENCE_MISMATCH'});
+  });
+
+  it('rejects a lagging confirmed RPC, frozen source and paused finalized mint', async () => {
+    const f = sellFixture();
+    const input = {draft: f.draft, binding: f.bound, structure: f.structure,
+      resolvedAccounts: resolvedAccounts(f.structure, f.message.staticAccounts), minContextSlot: 447_100_040};
+    await assert.rejects(semanticsReader(semanticsFetch({values: f.values, walletValues: f.walletValues,
+      walletSlot: 447_100_039}), f.clock).read(input), {code: 'SEMANTICS_OBSERVATION_INCONSISTENT'});
+    for (const paused of [false, true]) {
+      const values = paused ? accountValues({[destinationAta]: null, [aaplxMint]:
+        rpcAccount(Uint8Array.from(getMintEncoder().encode({mintAuthority: key('aaplx-authority'),
+          supply: 15_376_355_897_326n, decimals: 8, isInitialized: true, freezeAuthority: key('aaplx-freeze'),
+          extensions: AAPLX_EXTENSIONS.map(extension => extension.__kind === 'PausableConfig'
+            ? {...extension, paused: true} : extension)})), KNOWN_PROGRAMS.token2022, 4_000_000)}) : f.values;
+      const walletValues = paused ? f.walletValues : {...f.walletValues, [destinationAta]: f.stockAccount(20_000_000n, AccountState.Frozen)};
+      const semantics = await semanticsReader(semanticsFetch({values, walletValues, walletSlot: 447_100_050}), f.clock).read(input);
+      assert.throws(() => reconcileStockOrderTerms({summary: f.draft.summary, semantics, now: f.clock.now}),
+        {code: paused ? 'RECONCILIATION_MINT_STATE_INVALID' : 'RECONCILIATION_SOURCE_ACCOUNT_STATE_INVALID'});
     }
   });
 });

@@ -10,7 +10,8 @@ import { reconciliationDigest } from './stock-order-terms-reconciliation.js';
 /**
  * Gate 7 of the unsigned stock-order review: an isolated simulation boundary.
  * The unsigned bytes are submitted to `simulateTransaction` with signature
- * verification off and the bound blockhash kept, and the returned post-state of
+ * verification off and the bound blockhash kept, at confirmed commitment no
+ * older than the reconciled wallet snapshot, and the returned post-state of
  * the taker, the source account and the destination account is compared with
  * the reconciled terms. The RPC allowlist is exactly `getGenesisHash` and
  * `simulateTransaction`; the class cannot express `sendTransaction`. A passing
@@ -55,7 +56,7 @@ export interface StockOrderSimulation {
   readonly kind: 'solana_stock_order_simulation';
   readonly network: 'solana:mainnet-beta';
   readonly genesisHash: typeof STOCK_DRAFT_MAINNET_GENESIS;
-  readonly commitment: 'finalized';
+  readonly commitment: 'confirmed';
   readonly transactionHash: string;
   readonly transactionMessageHash: string;
   readonly draftBindingHash: string;
@@ -208,7 +209,8 @@ export class SolanaMainnetStockOrderSimulator {
         semantics?.kind !== 'solana_stock_order_semantics' || binding === null || typeof binding !== 'object') {
       return fail('SIMULATION_INPUT_INVALID');
     }
-    if (reconciliation.semanticsDigestSha256 !== semantics.provenance.digestSha256 ||
+    if (semantics.commitment !== 'confirmed' || semantics.identityCommitment !== 'finalized' ||
+        reconciliation.semanticsDigestSha256 !== semantics.provenance.digestSha256 ||
         semantics.transactionMessageHash !== reconciliation.transactionMessageHash) {
       return fail('SIMULATION_EVIDENCE_MISMATCH');
     }
@@ -241,7 +243,7 @@ export class SolanaMainnetStockOrderSimulator {
     const genesis = await this.#rpc.call('getGenesisHash', []);
     if (genesis.result !== STOCK_DRAFT_MAINNET_GENESIS) return fail('SIMULATION_WRONG_NETWORK');
     const outcome = await this.#rpc.call('simulateTransaction', [Buffer.from(bytes).toString('base64'), {
-      sigVerify: false, replaceRecentBlockhash: false, commitment: 'finalized', encoding: 'base64',
+      sigVerify: false, replaceRecentBlockhash: false, commitment: 'confirmed', encoding: 'base64',
       minContextSlot: Number(minContextSlot), innerInstructions: false,
       accounts: {encoding: 'base64', addresses: [...accountAddresses]},
     }]);
@@ -301,7 +303,7 @@ export class SolanaMainnetStockOrderSimulator {
     });
     return Object.freeze({
       schemaVersion: 1, kind: 'solana_stock_order_simulation', network: 'solana:mainnet-beta',
-      genesisHash: STOCK_DRAFT_MAINNET_GENESIS, commitment: 'finalized',
+      genesisHash: STOCK_DRAFT_MAINNET_GENESIS, commitment: 'confirmed',
       transactionHash: summary.transactionHash, transactionMessageHash: summary.transactionMessageHash,
       draftBindingHash: summary.bindingHash, candidateTermsHash: summary.userApproval.candidateTermsHash,
       reconciliationDigestSha256: digest, simulationStartedAt, observedAt, simulationSlot: outcome.contextSlot,
