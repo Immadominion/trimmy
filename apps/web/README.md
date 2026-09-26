@@ -89,3 +89,25 @@ regression tests and account modules. It is no longer the default entry and its
 fictional fixtures are not imported by the new product. Existing verified
 Privy token binding, account lifecycle and followed-stock contracts remain
 available for the remaining web features.
+
+## Wallet recovery
+
+`/wallet-recovery` is a separate, client-only entry for the native app's Privy
+Solana wallet. It does not start a guest desk or call the practice API. Configure
+`VITE_PRIVY_APP_ID` for the same Privy application as mobile and a web-compatible
+`VITE_PRIVY_APP_CLIENT_ID`; verify the deployed HTTPS origin in Privy before
+opening the native entry. Never supply an app secret to this build.
+
+The optional `#address=PUBLIC_SOLANA_ADDRESS` pins the expected linked wallet.
+Invalid or mismatched addresses block export; direct visits require selection.
+Sign-in disables signup and automatic wallet creation. The explicit recovery
+button invokes [Privy's Solana React export
+UI](https://docs.privy.io/wallets/wallets/export). It does not read tokens or keys,
+copy an export result, or send one to the app, server or storage. Identity changes
+clear selection and invalidate pending UI continuations. Only Privy's isolated
+window displays the key; closing that window is not proof of a completed backup.
+
+Serve this entry with no-store, no-referrer and frame-denial headers. The native
+link stays disabled until the hosted page and provider sign-in have been checked.
+Tests cover the mocked SDK boundary and account/target races; a successful build
+is not evidence of a live key export. No live export is part of automated tests.
