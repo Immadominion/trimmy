@@ -13,8 +13,8 @@ export function ScrollCue() {
     if (!el) return;
     const k = smoothstep(clamp01((getPosition() - (getCount() - 1.5)) / 0.5));
     el.style.opacity = String(1 - k);
-    // Darker behind the capsule while the rendered opening (sky, streets, the market) is up.
-    el.style.backgroundColor = getPosition() > 1.3 && getPosition() < 5.95 ? "rgba(0,0,0,.28)" : "";
+    // Darker behind the capsule over the rendered pictures (sky, streets, the market, the exchange floor).
+    el.style.backgroundColor = getPosition() > 1.3 && getPosition() < 8.95 ? "rgba(0,0,0,.28)" : "";
     el.dataset.chapter = String(getIndex());
     el.style.transform = `translate3d(-50%, ${k * 10}px, 0)`;
 

@@ -33,7 +33,7 @@
 
 /* "The street became the market.", large, in the calm part of the Broad Street
    render; JS moves it into the area the render reports. */
-.historical-flight__market { z-index:9; left:8%; right:8%; bottom:18%; display:flex; align-items:center; color:#fffdf7; text-shadow:0 1px 2px #0d162680,0 0 26px #0d1626a6,0 0 52px #0d162673; }
+.historical-flight__market { z-index:9; left:8%; right:8%; bottom:18%; display:flex; align-items:flex-end; justify-content:center; text-align:center; color:#fffdf7; text-shadow:0 1px 2px #0d162680,0 0 26px #0d1626a6,0 0 52px #0d162673; }
 .historical-flight__market[data-placed] { right:auto; bottom:auto; }
 .historical-flight__market h2 { margin:0; font:800 clamp(44px,5.4vw,90px)/.98 var(--font-display); letter-spacing:-.055em; text-wrap:balance; }
 

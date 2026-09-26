@@ -1,35 +1,62 @@
 import { useRef, type CSSProperties } from "react";
 import { useFrame } from "@/lib/useFrame";
-import { getPosition, isReducedMotion } from "@/lib/stepper";
+import { getOffset, getScroll, isReducedMotion } from "@/lib/stepper";
 import { clamp01, smoothstep } from "@/lib/math";
-import type { Screen as ScreenData } from "@/story/screens";
+import { getTextPlan, textPlanVersion, type TextBox } from "@/lib/storyText";
+import { LENGTHS, type Screen as ScreenData } from "@/story/screens";
 import "./product.css";
 
 const RISE = 20;
+/** Share of a screen's scroll over which its copy crosses with the next one's. */
 const SHARE = 0.55;
 const OPSZ: CSSProperties = { fontVariationSettings: "'opsz' 48" };
 
 type Props = { screen: ScreenData; index: number };
 
-/** Copy and the world follow the same position, including when going back. */
+function place(el: HTMLElement, box: TextBox | undefined) {
+  el.classList.toggle("story-screen--placed", !!box);
+  el.classList.toggle("story-screen--center", !!box?.center);
+  el.classList.toggle("story-screen--middle", !!box?.middle);
+  el.style.left = box ? `${box.left}px` : "";
+  el.style.top = box ? `${box.top}px` : "";
+  el.style.width = box ? `${box.width}px` : "";
+  el.style.height = box ? `${box.height}px` : "";
+}
+
+/**
+ * Copy follows the scroll, including when going back. By default it crosses
+ * with its neighbours around the moment its screen arrives; a screen whose
+ * picture is rendered frames gets its timing and place from the section that
+ * plays them (see storyText).
+ */
 export function Screen({ screen, index }: Props) {
   const node = useRef<HTMLElement>(null);
   const shown = useRef(index === 0);
+  const placed = useRef(-1);
 
   useFrame(() => {
     const el = node.current;
     if (!el) return;
-    const t = getPosition() - index;
+    const plan = getTextPlan(index);
+    if (placed.current !== textPlanVersion()) {
+      placed.current = textPlanVersion();
+      place(el, plan?.box);
+    }
+    const t = getScroll() - getOffset(index);
+    const [in0, in1] = plan?.fadeIn ?? [-SHARE * (LENGTHS[index - 1] ?? 1), 0];
+    const [out0, out1] = plan?.fadeOut ?? [0, SHARE * (LENGTHS[index] ?? 1)];
     let opacity = 0;
     let drift = 0;
-    if (t >= 0 && t < 1) {
-      const k = smoothstep(clamp01(t / SHARE));
-      opacity = 1 - k;
-      drift = -k;
-    } else if (t < 0 && t > -1) {
-      const k = smoothstep(clamp01((t + SHARE) / SHARE));
+    if (t >= in1 && t <= out0) {
+      opacity = 1;
+    } else if (t > in0 && t < in1) {
+      const k = smoothstep(clamp01((t - in0) / (in1 - in0)));
       opacity = k;
       drift = 1 - k;
+    } else if (t > out0 && t < out1) {
+      const k = smoothstep(clamp01((t - out0) / (out1 - out0)));
+      opacity = 1 - k;
+      drift = -k;
     }
     el.style.opacity = String(opacity);
     el.style.setProperty("--story-drift", `${drift * (isReducedMotion() ? 0 : RISE)}px`);
@@ -50,7 +77,7 @@ export function Screen({ screen, index }: Props) {
       ref={node}
       aria-hidden={index !== 0}
       inert={index !== 0}
-      className={`story-screen story-screen--${placement}`}
+      className={`story-screen story-screen--${placement}${screen.large ? " story-screen--large" : ""}`}
       style={{ opacity: index === 0 ? 1 : 0, visibility: index === 0 ? "visible" : "hidden" }}
     >
       {screen.stamp && <p className="story-stamp">{screen.stamp}</p>}

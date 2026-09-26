@@ -1,0 +1,5 @@
+/* Screens 6 to 16: rendered frames; on the phone, the app page lies under the see-through display. */
+.frame-story { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
+.frame-story__display { position: absolute; z-index: 1; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; border-radius: 52.6px; overflow: hidden; background: #fff; pointer-events: none; }
+.frame-story__page { position: absolute; inset: 0; background: #fff; }
+.frame-story__frames { position: absolute; z-index: 2; left: 0; top: 0; display: block; pointer-events: none; }

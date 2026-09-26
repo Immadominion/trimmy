@@ -4,7 +4,7 @@ import { getOffset, getScroll, isReducedMotion } from "@/lib/stepper";
 import { clamp01, smoothstep } from "@/lib/math";
 import { SCREENS } from "@/story/screens";
 import { PaintTitle, type SkyTitleState } from "./PaintTitle";
-import { FrameCanvas, FrameSequence, IDENTITY, invert, multiply, type RiseManifest, type RiseSet, type SequenceSet } from "./risePlayer";
+import { FrameCanvas, FrameSequence, handoff, IDENTITY, invert, loadManifest, measure, multiply, PORTRAIT_QUERY, type Layout, type RiseManifest, type RiseSet, type SequenceSet } from "./risePlayer";
 import { drawTitle, TITLE_FONTS, tokens } from "./wallTitle";
 import "./historical-flight.css";
 
@@ -68,10 +68,6 @@ const PLATES: Record<Kind, Plate> = {
   portrait: { aspect: 9 / 16, base: "/opening/rise/portrait", photo: "/history/brokers-portrait.webp" },
 };
 
-let manifestLoad: Promise<RiseManifest | null> | null = null;
-const loadManifest = () => (manifestLoad ??= fetch("/opening/rise/manifest.json")
-  .then((response) => (response.ok ? response.json() as Promise<RiseManifest> : null))
-  .catch(() => null));
 
 const soft = (t: number) => smoothstep(clamp01(t));
 const range = (s: number, [from, to]: [number, number]) => (s - from) / (to - from);
@@ -97,18 +93,12 @@ function beats() {
     whip: [street - 0.56, street + 0.02] as [number, number],
     market: [street + 0.02, street + 1.3] as [number, number],
     marketLine: [street + 0.1, street + 1.2] as [number, number],
-    exit: [street + 1.25, street + 1.55] as [number, number],
+    // The exchange's first frame is the market's last, drawn underneath: the
+    // camera flies on through the doors (FrameStory) and this layer lets go.
+    exit: [street + 1.3, street + 1.36] as [number, number],
   };
 }
 
-type Layout = { width: number; height: number; frame: { w: number; h: number; x: number; y: number } };
-
-function measure(width: number, height: number, plate: Plate): Layout {
-  // The rendered frame covers the screen, centred, like the Blender camera.
-  const h = Math.max(height, width / plate.aspect);
-  const w = h * plate.aspect;
-  return { width, height, frame: { w, h, x: (width - w) / 2, y: (height - h) / 2 } };
-}
 
 function setVisible(node: HTMLElement | null, visible: boolean) {
   if (!node) return;
@@ -123,7 +113,6 @@ function setShown(node: HTMLElement | null, shown: boolean) {
   node.inert = !shown;
 }
 
-const portraitQuery = "(max-aspect-ratio: 4/5)";
 
 type Sequences = {
   rise: FrameSequence;
@@ -134,7 +123,7 @@ type Sequences = {
 };
 
 export function HistoricalFlight() {
-  const [portrait, setPortrait] = useState(() => typeof window !== "undefined" && window.matchMedia(portraitQuery).matches);
+  const [portrait, setPortrait] = useState(() => typeof window !== "undefined" && window.matchMedia(PORTRAIT_QUERY).matches);
   const kind: Kind = portrait ? "portrait" : "desktop";
   const plate = PLATES[kind];
   const [manifest, setManifest] = useState<RiseManifest | null>(null);
@@ -158,7 +147,7 @@ export function HistoricalFlight() {
   useEffect(() => { void loadManifest().then(setManifest); }, []);
 
   useEffect(() => {
-    const query = window.matchMedia(portraitQuery);
+    const query = window.matchMedia(PORTRAIT_QUERY);
     const change = () => setPortrait(query.matches);
     query.addEventListener("change", change);
     return () => query.removeEventListener("change", change);
@@ -215,7 +204,7 @@ export function HistoricalFlight() {
     const apply = () => {
       const node = host.current;
       if (!node) return;
-      const L = measure(node.clientWidth, node.clientHeight, plate);
+      const L = measure(node.clientWidth, node.clientHeight, plate.aspect);
       layout.current = L;
       const place = (el: HTMLElement | null, x: number, y: number, w: number, h: number) => {
         if (!el) return;
@@ -227,15 +216,16 @@ export function HistoricalFlight() {
       const { frame } = L;
       place(canvas.current, frame.x, frame.y, frame.w, frame.h);
       place(photo.current, frame.x, frame.y, frame.w, frame.h);
-      // The market line sits where the render left calm space for it, kept on screen.
+      // The market line sits in the calm band the render left for it, but clear
+      // of the Scroll capsule at the bottom: it grows upward from just above it.
       const area = set?.sequences?.market?.textArea;
       if (marketLine.current && area) {
         const [x0, y0, x1, y1] = area;
         const left = Math.max(24, frame.x + x0 * frame.w);
-        const top = Math.max(24, frame.y + y0 * frame.h);
         const right = Math.min(L.width - 24, frame.x + x1 * frame.w);
-        const bottom = Math.min(L.height - 24, frame.y + y1 * frame.h);
-        place(marketLine.current, left, top, Math.max(160, right - left), Math.max(60, bottom - top));
+        const bottom = Math.min(L.height - 112, frame.y + y1 * frame.h);
+        const top = Math.min(bottom - 60, Math.max(24, frame.y + y0 * frame.h));
+        place(marketLine.current, left, top, Math.max(160, right - left), bottom - top);
         marketLine.current.dataset.placed = "true";
       }
       if (canvas.current) {
@@ -260,8 +250,10 @@ export function HistoricalFlight() {
     const b = beats();
     const reduced = isReducedMotion();
 
-    const active = s > b.dawn[0] - 0.02 && s < b.exit[1];
-    root.style.opacity = String(1 - soft(range(s, b.exit)));
+    // Until the exchange has a frame on screen, the market holds instead of leaving.
+    const holding = !handoff.later && s < getOffset(6);
+    const active = s > b.dawn[0] - 0.02 && (s < b.exit[1] || holding);
+    root.style.opacity = String(holding ? 1 : 1 - soft(range(s, b.exit)));
     setVisible(root, active);
     if (!active) { skyTitle.current = null; return; }
 

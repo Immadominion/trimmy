@@ -24,9 +24,22 @@ export type SequenceSet = {
   bond?: ([number, number, number, number] | null)[];
   /** Whip: the first frame rendered in Blender, after the 2D whip out of 1792. */
   cut?: number;
-  /** Market: calm area for the large line, normalised to the frame. */
+  /** Market and phone: calm area for the text, normalised to the frame. */
   textArea?: [number, number, number, number];
+  /**
+   * Phone: the display's corners per frame (TL, TR, BR, BL, normalised to the
+   * frame, v down), or null while it faces away or shows a rendered picture.
+   */
+  screen?: (Quad | null)[];
+  /** Phone: first frame at which the display shows this screen's page. */
+  page?: number;
+  /** Phone: first frame from which the copy's area is clear. */
+  textFrom?: number;
+  /** Phone: false when the frames are opaque (the picture is rendered in). */
+  alpha?: boolean;
 };
+
+export type Quad = [number, number, number, number, number, number, number, number];
 
 export type RiseSet = {
   frames: number;
@@ -37,10 +50,35 @@ export type RiseSet = {
   skySize?: [number, number];
   /** Wider sky from the hero pose, drawn over this box of the hero frame. */
   skyBox?: [number, number, number, number];
-  sequences?: { tilt?: SequenceSet; peel?: SequenceSet; whip?: SequenceSet; market?: SequenceSet };
+  sequences?: { tilt?: SequenceSet; peel?: SequenceSet; whip?: SequenceSet; market?: SequenceSet } & Record<string, SequenceSet | undefined>;
 };
 
 export type RiseManifest = { desktop: RiseSet; portrait: RiseSet };
+
+let manifestLoad: Promise<RiseManifest | null> | null = null;
+/** The frames' manifest, fetched once for every section that plays frames. */
+export const loadManifest = () => (manifestLoad ??= fetch("/opening/rise/manifest.json")
+  .then((response) => (response.ok ? response.json() as Promise<RiseManifest> : null))
+  .catch(() => null));
+
+/**
+ * Whether the frames after the market (FrameStory) have a picture on screen
+ * this frame. The market's layer waits for it before it lets go, so a slow
+ * connection holds the market instead of showing black.
+ */
+export const handoff = { later: false };
+
+/** Screens this tall or taller play the portrait renders. */
+export const PORTRAIT_QUERY = "(max-aspect-ratio: 4/5)";
+
+export type Layout = { width: number; height: number; frame: { w: number; h: number; x: number; y: number } };
+
+/** The rendered frame covers the screen, centred, like the Blender camera. */
+export function measure(width: number, height: number, aspect: number): Layout {
+  const h = Math.max(height, width / aspect);
+  const w = h * aspect;
+  return { width, height, frame: { w, h, x: (width - w) / 2, y: (height - h) / 2 } };
+}
 
 const KEEP = 12;
 const AHEAD = 3;
@@ -55,6 +93,10 @@ export class FrameSequence {
   private readonly bitmaps = new Map<number, ImageBitmap>();
   private readonly pending = new Set<number>();
   private finalBitmap: ImageBitmap | null = null;
+  private finalBlob: Blob | null = null;
+  private finalDecoding = false;
+  /** Index of the frame the last pick returned; the last frame for the still. */
+  picked = -1;
   private readonly abort = new AbortController();
   private target = 0;
   private disposed = false;
@@ -63,7 +105,8 @@ export class FrameSequence {
   readonly coarse: Promise<void>;
   private coarseDone!: () => void;
 
-  constructor(private readonly base: string, frames: number, private readonly final?: string) {
+  /** `eagerFinal`: decode the still as soon as it arrives, not when first needed. */
+  constructor(private readonly base: string, frames: number, private readonly final?: string, private readonly eagerFinal = true) {
     this.frames = frames;
     this.blobs = new Array(frames).fill(null);
     this.coarse = new Promise((resolve) => { this.coarseDone = resolve; });
@@ -82,23 +125,33 @@ export class FrameSequence {
     const last = this.frames - 1;
     const target = Math.round(Math.min(1, Math.max(0, progress)) * last);
     this.target = target;
-    if (target >= last && this.finalBitmap) return this.finalBitmap;
+    if (target >= last - 1) this.decodeFinal();
+    if (target >= last && this.finalBitmap) { this.picked = last; return this.finalBitmap; }
     this.want(target);
     let best: ImageBitmap | null = null;
     let distance = Infinity;
     for (const [index, bitmap] of this.bitmaps) {
       const d = Math.abs(index - target);
-      if (d < distance) { best = bitmap; distance = d; }
+      if (d < distance) { best = bitmap; distance = d; this.picked = index; }
     }
-    return best ?? (target >= last - 1 ? this.finalBitmap : null);
+    if (!best && target >= last - 1 && this.finalBitmap) { this.picked = last; return this.finalBitmap; }
+    return best;
   }
 
-  /** Let decoded frames go while the sequence is off screen; keep its ends. */
-  rest() {
+  /**
+   * Let decoded frames go while the sequence is off screen. It keeps its ends,
+   * so a fast scroll back lands on something, unless `all` asks for everything
+   * to go, the still too (it decodes again from the fetched file when needed).
+   */
+  rest(all = false) {
     for (const [index, bitmap] of this.bitmaps) {
-      if (index === 0 || index === this.frames - 1) continue;
+      if (!all && (index === 0 || index === this.frames - 1)) continue;
       bitmap.close();
       this.bitmaps.delete(index);
+    }
+    if (all && this.finalBitmap && !this.finalDecoding) {
+      this.finalBitmap.close();
+      this.finalBitmap = null;
     }
   }
 
@@ -109,7 +162,18 @@ export class FrameSequence {
     this.bitmaps.clear();
     this.finalBitmap?.close();
     this.finalBitmap = null;
+    this.finalBlob = null;
     this.coarseDone();
+  }
+
+  private decodeFinal() {
+    if (this.finalBitmap || this.finalDecoding || !this.finalBlob) return;
+    this.finalDecoding = true;
+    createImageBitmap(this.finalBlob).then((bitmap) => {
+      this.finalDecoding = false;
+      if (this.disposed || this.finalBitmap) { bitmap.close(); return; }
+      this.finalBitmap = bitmap;
+    }, () => { this.finalDecoding = false; });
   }
 
   private want(target: number) {
@@ -168,9 +232,10 @@ export class FrameSequence {
         if (++finished === coarseCount) this.coarseDone();
         if (!finalStarted && this.final && finished >= coarseCount) {
           finalStarted = true;
-          this.fetchBlob(this.final).then((blob) => createImageBitmap(blob)).then((bitmap) => {
-            if (this.disposed) { bitmap.close(); return; }
-            this.finalBitmap = bitmap;
+          this.fetchBlob(this.final).then((blob) => {
+            if (this.disposed) return;
+            this.finalBlob = blob;
+            if (this.eagerFinal) this.decodeFinal();
           }).catch(() => undefined);
         }
       }

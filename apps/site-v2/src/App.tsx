@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { useStepper } from "@/lib/useStepper";
 import { ProgressRail } from "@/components/ProgressRail";
 import { Screen } from "@/components/Screen";
@@ -6,10 +5,8 @@ import { ScrollCue } from "@/components/ScrollCue";
 import { Ambience } from "@/components/Ambience";
 import { SoundSwitch } from "@/components/SoundSwitch";
 import { LENGTHS, SCREENS, TRACK } from "@/story/screens";
-import { ProductShowcase } from "@/components/ProductShowcase";
 import { HistoricalFlight } from "@/components/HistoricalFlight";
-
-const WorldStage = lazy(() => import("@/world/WorldStage"));
+import { FrameStory } from "@/components/FrameStory";
 
 /**
  * A real scroll track drives a fixed stage. Visitors can pause at a story beat
@@ -21,8 +18,7 @@ export default function App() {
   return (
     <>
     <main className="fixed inset-0 overflow-hidden">
-      <Suspense fallback={null}><WorldStage /></Suspense>
-      <ProductShowcase />
+      <FrameStory />
       <HistoricalFlight />
       <div className="pointer-events-none absolute inset-0">
         {SCREENS.map((screen, index) => (

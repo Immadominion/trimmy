@@ -23,9 +23,10 @@ export type Screen = {
   /** Short supporting note, separate from the main explanation. */
   note?: string;
   /**
-   * How much scroll this screen takes, in viewports. Default 1. The opening
-   * screens are longer so the buildings, clouds and descent have room to play
-   * out instead of flashing past in one flick.
+   * How much scroll this screen takes, in viewports. Default 1. Screens whose
+   * rendered shots run long get more, so the move has room to play out instead
+   * of flashing past in one flick: the opening, the market (the camera flies
+   * on through the doors at its end) and the exchange floor.
    */
   length?: number;
   /** Build status is explicit rather than implied by a product preview. */
@@ -52,9 +53,10 @@ export const SCREENS: Screen[] = [
     heading: "Twenty-four brokers. One agreement.",
     body: ["They set rules for trading with one another. The New York Stock Exchange traces its beginning to that agreement."],
   },
-  { id: "market", large: "The street became the market.", length: 1.6 },
+  { id: "market", large: "The street became the market.", length: 2.3 },
   {
     id: "ticker",
+    length: 1.25,
     heading: "Then the numbers learned to run.",
     body: [
       "The stock ticker arrived in 1867. Prices moved on paper tape.",
@@ -63,6 +65,7 @@ export const SCREENS: Screen[] = [
   },
   {
     id: "floor",
+    length: 1.3,
     heading: "Then the floor found its voice.",
     sound: "/audio/floor.mp3",
     body: [
@@ -72,6 +75,7 @@ export const SCREENS: Screen[] = [
   },
   {
     id: "performance",
+    length: 1.1,
     large: "The market was numbers. Wall Street made it a performance.",
   },
   {
@@ -100,7 +104,7 @@ export const SCREENS: Screen[] = [
     id: "trim",
     heading: "Sell some. Keep the rest.",
     body: ["When a stock goes up, sell part of it to keep some of the gain. The shares you keep can still grow. That’s a trim."],
-    note: "Try a trim below. It’s only a demo.",
+    note: "Try it on the phone. It’s only a demo.",
   },
   {
     id: "career",
