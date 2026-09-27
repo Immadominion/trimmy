@@ -103,6 +103,34 @@ describe('explicit browser origin configuration and preflight', () => {
     } finally { await app.close(); }
   });
 
+  it('allows the web app trading, wallet and market routes with exact methods only', async () => {
+    const app = buildApp({logger: false, browserOrigins: [origin]});
+    try {
+      for (const [url, method] of [
+        ['/v1/trading/capabilities?schema=2', 'GET'], ['/v1/trading/preview', 'POST'], ['/v1/trading/execute', 'POST'],
+        ['/v1/trading/order', 'GET'], ['/v1/account/wallet/challenge', 'POST'], ['/v1/account/wallet/possession', 'POST'],
+        ['/v1/markets/stocks/catalog?offset=0', 'GET'], ['/v1/markets/stocks/cards?query=apple', 'GET'],
+        ['/v1/markets/stocks/facts?assetId=apple&mint=x&period=1d', 'GET'], ['/v1/markets/stocks/insight?assetId=apple', 'GET'],
+        ['/v1/markets/stocks/holders?mint=x', 'GET'], ['/v1/markets/prestocks', 'GET'],
+      ]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!, headers: {
+          origin, 'access-control-request-method': method!, 'access-control-request-headers': 'Authorization, Content-Type',
+        }});
+        assert.equal(response.statusCode, 204, `${url} ${method}: ${response.body}`);
+        assert.equal(response.headers['access-control-allow-methods'], method);
+      }
+      for (const [url, method] of [
+        ['/v1/trading/preview', 'GET'], ['/v1/trading/execute', 'PUT'], ['/v1/trading/capabilities', 'POST'],
+        ['/v1/trading/preview?side=buy', 'POST'], ['/v1/trading/execute?id=x', 'POST'], ['/v1/trading/order?id=x', 'GET'],
+        ['/v1/account/wallet/challenge?wallet=x', 'POST'], ['/v1/markets/prestocks?x=1', 'GET'],
+      ]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!, headers: {origin, 'access-control-request-method': method!}});
+        assert.equal(response.statusCode, 403, `${url} ${method}`);
+        assert.equal(response.json().error.code, 'BROWSER_PREFLIGHT_DENIED');
+      }
+    } finally { await app.close(); }
+  });
+
   it('allows absent requested headers and still requires a genuine preflight origin/method', async () => {
     const app = buildApp({logger: false, browserOrigins: [origin]});
     try {

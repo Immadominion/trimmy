@@ -97,6 +97,13 @@ export interface ReconciledStockOrderTerms {
   readonly effects: Readonly<{
     readonly createdAccounts: readonly {readonly address: string; readonly mint: string; readonly rentLamportsUpperBound: string}[];
     readonly closedAccounts: readonly string[];
+    /** The taker's own accounts for a token the route passes through. */
+    readonly intermediateAccounts: readonly {readonly address: string; readonly mint: string}[];
+    /** Every other taker token account the transaction references, with its starting balance:
+     * simulation must show each unchanged (a route may pass through, never draw on it). */
+    readonly preservedAccounts: readonly {readonly address: string; readonly mint: string; readonly amountRaw: string}[];
+    /** The taker's existing wrapped-SOL account, used by the route and closed back to the taker as SOL. */
+    readonly unwrappedWrappedSol: {readonly address: string; readonly amountRaw: string; readonly lamports: string} | null;
     readonly memoInstructions: number;
     readonly computeBudgetInstructions: number;
   }>;
@@ -104,6 +111,8 @@ export interface ReconciledStockOrderTerms {
     readonly feeLamportsUpperBound: string;
     readonly rentLamportsUpperBound: string;
     readonly totalLamportsUpperBound: string;
+    /** SOL that may come back to the taker from closing an existing wrapped-SOL account. */
+    readonly takerLamportsReturnUpperBound: string;
     readonly takerLamportsObserved: string;
   }>;
   readonly reviewFlags: readonly string[];
@@ -249,6 +258,17 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   let fill: {readonly instructionIndex: number; readonly decoded: FillInstruction} | null = null;
   const createdAccounts: {address: string; mint: string; rentLamportsUpperBound: string}[] = [];
   const closedAccounts: string[] = [];
+  const intermediateAccounts: {address: string; mint: string}[] = [];
+  let unwrappedWrappedSol: {address: string; amountRaw: string; lamports: string} | null = null;
+  let existingWrappedSolReferenced = false;
+  /** The taker's own, initialized, undelegated native SOL account at its canonical address. */
+  const existingWrappedSol = () => {
+    const entry = accounts.get(candidate.takerWrappedSolAssociatedAccount);
+    const state = entry?.state;
+    return entry !== undefined && state !== undefined && state.kind === 'token_account' && state.owner === taker &&
+      state.mint === JUPITER_QUOTE_ASSETS.SOL.mint && state.state === 'initialized' && state.isNative && state.delegate === null &&
+      (state.closeAuthority === null || state.closeAuthority === taker) ? {state, lamports: entry.lamports} : null;
+  };
   let memoInstructions = 0;
   let computeBudgetInstructions = 0;
   const nativeInput = candidate.inputMint === JUPITER_QUOTE_ASSETS.SOL.mint;
@@ -266,15 +286,41 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
         const forOutput = decoded.mint === candidate.outputMint;
         const forIntermediateSol = !forInput && !forOutput && decoded.mint === JUPITER_QUOTE_ASSETS.SOL.mint;
         const expectedAccount = forIntermediateSol ? candidate.takerWrappedSolAssociatedAccount : forInput ? candidate.takerInputAssociatedAccount : forOutput ? candidate.takerOutputAssociatedAccount : null;
+        if (expectedAccount === null) {
+          // A route hop through another token uses the taker's own associated account
+          // for it (the associated-token program enforces the address). Simulation must
+          // show its balance unchanged; a new account's rent is counted below.
+          if (decoded.payer !== taker || decoded.owner !== taker) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+          const kind = decoded.tokenProgram === TOKEN_PROGRAM_ADDRESS ? 'token' as const
+            : decoded.tokenProgram === TOKEN_2022_PROGRAM_ADDRESS ? 'token_2022' as const : fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+          const review = mintReview(decoded.mint, accounts, kind);
+          const current = accounts.get(decoded.associatedAccount);
+          if (current === undefined || current.state.kind === 'missing') {
+            createdAccounts.push({address: decoded.associatedAccount, mint: decoded.mint, rentLamportsUpperBound: associatedAccountRentUpperBound(review).toString()});
+          } else {
+            const state = current.state;
+            if (state.kind !== 'token_account' || state.owner !== taker || state.mint !== decoded.mint ||
+                state.state !== 'initialized') return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+          }
+          if (!intermediateAccounts.some(item => item.address === decoded.associatedAccount)) {
+            intermediateAccounts.push({address: decoded.associatedAccount, mint: decoded.mint});
+          }
+          continue;
+        }
         const expectedProgram = forIntermediateSol ? 'token' : forInput ? candidate.inputTokenProgram : candidate.outputTokenProgram;
         const programAddress = expectedProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
-        if (expectedAccount === null || decoded.payer !== taker || decoded.owner !== taker ||
+        if (decoded.payer !== taker || decoded.owner !== taker ||
             decoded.associatedAccount !== expectedAccount || decoded.tokenProgram !== programAddress) {
           return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
         }
         const existing = accounts.get(expectedAccount);
-        // Only allow a newly created, empty intermediate WSOL account. Never close existing holdings.
-        if (forIntermediateSol && existing !== undefined && existing.state.kind !== 'missing') return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+        // An existing wrapped-SOL account may only be touched when the route closes it
+        // back to the taker as SOL (checked after the loop); never left partly used.
+        if (forIntermediateSol && existing !== undefined && existing.state.kind !== 'missing') {
+          if (decoded.kind !== 'create_idempotent' || existingWrappedSol() === null) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+          existingWrappedSolReferenced = true;
+          continue;
+        }
         if (existing === undefined || existing.state.kind === 'missing') {
           if (forIntermediateSol) {
             createdAccounts.push({address: expectedAccount, mint: decoded.mint, rentLamportsUpperBound: rentExemptLamports(LEGACY_TOKEN_ACCOUNT_BYTES).toString()});
@@ -299,10 +345,17 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
           continue;
         }
         if (decoded.kind === 'close_account') {
-          const wrapped = (decoded.account === candidate.takerInputAssociatedAccount && nativeInput) ||
-            (decoded.account === candidate.takerWrappedSolAssociatedAccount &&
-              createdAccounts.some(item => item.address === decoded.account && item.mint === JUPITER_QUOTE_ASSETS.SOL.mint));
-          if (!wrapped || decoded.destination !== taker || decoded.authority !== taker) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+          const created = decoded.account === candidate.takerWrappedSolAssociatedAccount &&
+            createdAccounts.some(item => item.address === decoded.account && item.mint === JUPITER_QUOTE_ASSETS.SOL.mint);
+          const wrapped = (decoded.account === candidate.takerInputAssociatedAccount && nativeInput) || created;
+          // The route used the taker's existing wrapped-SOL account and closes it: the
+          // taker's wrapped SOL comes back as SOL. Value-preserving, flagged, bounded in simulation.
+          const existing = !wrapped && decoded.account === candidate.takerWrappedSolAssociatedAccount && !nativeInput ? existingWrappedSol() : null;
+          if ((!wrapped && existing === null) || decoded.destination !== taker || decoded.authority !== taker ||
+              closedAccounts.includes(decoded.account)) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+          if (existing !== null) {
+            unwrappedWrappedSol = {address: decoded.account, amountRaw: existing.state.amount, lamports: existing.lamports};
+          }
           closedAccounts.push(decoded.account);
           continue;
         }
@@ -330,6 +383,24 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   }
   for (const item of createdAccounts) {
     if (item.mint === JUPITER_QUOTE_ASSETS.SOL.mint && !nativeInput && !closedAccounts.includes(item.address)) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+  }
+  // A referenced existing wrapped-SOL account must be closed back to the taker.
+  if (existingWrappedSolReferenced && unwrappedWrappedSol === null) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+  // Intermediate accounts are for tokens other than the pair; never the taker's input or output.
+  if (intermediateAccounts.some(item => [candidate.takerInputAssociatedAccount, candidate.takerOutputAssociatedAccount,
+    candidate.takerWrappedSolAssociatedAccount].includes(item.address))) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
+  // Every other token account of the taker's in the transaction keeps its balance.
+  const settled = new Set([candidate.takerInputAssociatedAccount, candidate.takerOutputAssociatedAccount, ...closedAccounts,
+    ...createdAccounts.filter(item => item.mint === JUPITER_QUOTE_ASSETS.SOL.mint).map(item => item.address)]);
+  const preservedAccounts: {address: string; mint: string; amountRaw: string}[] = [];
+  for (const account of semantics.accounts) {
+    const state = account.state;
+    if (state.kind === 'token_account' && state.owner === taker && !settled.has(account.address)) {
+      preservedAccounts.push({address: account.address, mint: state.mint, amountRaw: state.amount});
+    }
+  }
+  for (const item of intermediateAccounts) {
+    if (!preservedAccounts.some(account => account.address === item.address)) preservedAccounts.push({...item, amountRaw: '0'});
   }
   const candidateInput = parseAmount(summary.input.amountRaw, 'RECONCILIATION_INPUT_INVALID');
   const floor = parseAmount(summary.approvalPolicy.minimumOutputAmountRaw, 'RECONCILIATION_INPUT_INVALID');
@@ -475,6 +546,8 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   if (source.delegate !== null) reviewFlags.push('source_account_has_delegate');
   if (terms.platformFeeAccount !== null) reviewFlags.push('platform_fee_account_present');
   if (rfq) reviewFlags.push('rfq_market_maker_fill');
+  if (intermediateAccounts.length > 0) reviewFlags.push('intermediate_token_account');
+  if (unwrappedWrappedSol !== null) reviewFlags.push('closes_existing_wrapped_sol');
 
   return Object.freeze({
     schemaVersion: 1, kind: 'stock_order_terms_reconciliation', network: 'solana:mainnet-beta',
@@ -501,11 +574,17 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
     }),
     effects: Object.freeze({
       createdAccounts: Object.freeze(createdAccounts.map(item => Object.freeze({...item}))),
-      closedAccounts: Object.freeze(closedAccounts), memoInstructions, computeBudgetInstructions,
+      closedAccounts: Object.freeze(closedAccounts),
+      intermediateAccounts: Object.freeze(intermediateAccounts.map(item => Object.freeze({...item}))),
+      preservedAccounts: Object.freeze(preservedAccounts.map(item => Object.freeze({...item}))),
+      unwrappedWrappedSol: unwrappedWrappedSol === null ? null : Object.freeze({...unwrappedWrappedSol as {address: string; amountRaw: string; lamports: string}}),
+      memoInstructions, computeBudgetInstructions,
     }),
     cost: Object.freeze({
       feeLamportsUpperBound: feeUpperBound.toString(), rentLamportsUpperBound: rentUpperBound.toString(),
-      totalLamportsUpperBound: totalCost.toString(), takerLamportsObserved: takerLamports.toString(),
+      totalLamportsUpperBound: totalCost.toString(),
+      takerLamportsReturnUpperBound: unwrappedWrappedSol === null ? '0' : (unwrappedWrappedSol as {lamports: string}).lamports,
+      takerLamportsObserved: takerLamports.toString(),
     }),
     reviewFlags: Object.freeze(reviewFlags),
     checks: Object.freeze(checks),

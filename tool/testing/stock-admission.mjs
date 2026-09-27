@@ -220,7 +220,9 @@ function attributionReason(stage, reason) {
 const attribution = new Map();
 const reject = (candidate, stage, reason, detail = null) => {
   evidence.rejected.push({mint: candidate.mint, symbol: candidate.symbol ?? null, issuerId: candidate.issuerId ?? null, stage, reason, detail});
-  attribution.set(candidate.mint, {mint: candidate.mint, issuerId: candidate.issuerId ?? null, reason: attributionReason(stage, reason)});
+  // The symbol lets the API match a token to its issuer's live status (Ondo's is keyed by symbol).
+  attribution.set(candidate.mint, {mint: candidate.mint, issuerId: candidate.issuerId ?? null, reason: attributionReason(stage, reason),
+    symbol: candidate.symbol ?? candidate.catalogSymbol ?? catalogSymbols.get(candidate.mint) ?? null});
   console.log(`reject ${candidate.symbol ?? candidate.mint} (${candidate.issuerId ?? '?'}): ${stage} ${reason}`);
 };
 
@@ -236,6 +238,11 @@ for (let offset = 0; offset !== null && offset !== undefined;) {
   offset = page.nextOffset;
 }
 const variants = new Map();
+/** Every Market variant's symbol, including admitted and skipped ones. */
+const catalogSymbols = new Map();
+for (const row of rows) for (const variant of row.variants ?? []) {
+  if (typeof variant.symbol === 'string' && /^[A-Za-z0-9.-]{1,32}$/.test(variant.symbol)) catalogSymbols.set(variant.mint, variant.symbol);
+}
 for (const row of rows) for (const variant of row.variants ?? []) {
   if (variants.has(variant.mint) || existingMints.has(variant.mint) || (onlyMints && !onlyMints.includes(variant.mint))) continue;
   variants.set(variant.mint, {assetId: row.assetId, companyName: row.name, mint: variant.mint,
@@ -536,14 +543,19 @@ for (const candidate of marketReady) {
 }
 const plan = [];
 for (const candidate of unique) {
-  plan.push({assetId: candidate.assetId, mint: candidate.mint, symbol: candidate.symbol, side: 'buy', taker: buyTaker, amountRaw: '1000000'});
-  const sellAmount = BigInt(candidate.market.rawPerUsd) > 0n ? BigInt(candidate.market.rawPerUsd) : 1n;
+  // Ondo's market makers refuse trades under $1 after fees, with the same message
+  // they use outside market hours, so market-maker routes are tested at $2.
+  const usd = candidate.route === 'rfq' ? 2n : 1n;
+  plan.push({assetId: candidate.assetId, mint: candidate.mint, symbol: candidate.symbol, side: 'buy', taker: buyTaker,
+    amountRaw: (usd * 1_000_000n).toString()});
+  const sellAmount = BigInt(candidate.market.rawPerUsd) > 0n ? BigInt(candidate.market.rawPerUsd) * usd : 1n;
   let takers = [];
   try {takers = await sellTakers(candidate, sellAmount);} catch (error) {candidate.sellTakerError = String(error.message).slice(0, 120);}
   if (takers.length) plan.push({assetId: candidate.assetId, mint: candidate.mint, symbol: candidate.symbol, side: 'sell', takers, amountRaw: sellAmount.toString()});
   else candidate.sellTaker = null;
 }
-const scratch = `artifacts/verification/stock-admission-${today}${onlyMints ? '-recheck' : ''}`;
+// One evidence set per run: a later recheck the same day never overwrites an earlier one.
+const scratch = `artifacts/verification/stock-admission-${observedAt.replace(/[:.]/g, '-')}${onlyMints ? '-recheck' : ''}`;
 await mkdir('artifacts/verification', {recursive: true});
 let previews = [];
 try {
@@ -585,14 +597,15 @@ if (flag('--write')) {
   if (onlyMints) {
     // Keep every other row verbatim; replace or drop only the rechecked mints.
     const {STOCK_MARKET_ATTRIBUTION} = await import('../../apps/api/src/stock-market-attribution.generated.ts');
-    const kept = STOCK_MARKET_ATTRIBUTION.filter(row => !onlyMints.includes(row.mint));
+    const kept = STOCK_MARKET_ATTRIBUTION.filter(row => !onlyMints.includes(row.mint))
+      .map(row => ({...row, symbol: row.symbol ?? catalogSymbols.get(row.mint) ?? null}));
     attributionRows.splice(0, attributionRows.length, ...[...kept, ...attributionRows]
       .sort((a, b) => a.mint < b.mint ? -1 : a.mint > b.mint ? 1 : 0));
   }
   const attributionSource = header + 'export const STOCK_MARKET_ATTRIBUTION: readonly {readonly mint: string; ' +
-    'readonly issuerId: string | null; readonly reason: string}[] = [\n' +
+    'readonly issuerId: string | null; readonly reason: string; readonly symbol?: string}[] = [\n' +
     attributionRows.map(row => `  {mint: ${quoted(row.mint)}, issuerId: ${row.issuerId === null ? 'null' : quoted(row.issuerId)}, ` +
-      `reason: ${quoted(row.reason)}},`).join('\n') + (attributionRows.length ? '\n' : '') + '];\n';
+      `reason: ${quoted(row.reason)}${row.symbol ? `, symbol: ${quoted(row.symbol)}` : ''}},`).join('\n') + (attributionRows.length ? '\n' : '') + '];\n';
   await writeFile(REGISTRY_PATH, registrySource);
   await writeFile(ATTRIBUTION_PATH, attributionSource);
 }

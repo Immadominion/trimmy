@@ -754,6 +754,126 @@ describe('current Jupiter order regressions', () => {
 });
 
 
+/** Appends post-simulation states for the extra accounts the simulator asked for. */
+function withExtraSimulatedAccounts(fetch: typeof globalThis.fetch, extra: unknown[]): typeof globalThis.fetch {
+  return (async (url: string | URL, init?: {body?: string}) => {
+    const response = await fetch(url, init as RequestInit);
+    const body = await response.json() as {result?: {value?: {accounts?: unknown[]}}};
+    body.result?.value?.accounts?.push(...extra);
+    return new Response(JSON.stringify(body), {status: 200, headers: {'content-type': 'application/json'}});
+  }) as unknown as typeof globalThis.fetch;
+}
+const legacyTokenAccount = (mint: Address, amount: bigint, isNative: bigint | null = null, lamports = 2_039_280) =>
+  rpcAccount(Uint8Array.from(getLegacyTokenEncoder().encode({mint, owner: taker, amount, delegate: null,
+    state: LegacyAccountState.Initialized, isNative, delegatedAmount: 0n, closeAuthority: null})), KNOWN_PROGRAMS.token, lamports);
+
+describe('route accounts beyond the pair', () => {
+  async function read() {
+    const base = prepared();
+    const semantics = await semanticsReader(semanticsFetch(), base.clock).read({
+      draft: base.draft, binding: base.binding, structure: base.structure, resolvedAccounts: base.resolved});
+    return {base, semantics};
+  }
+  const refusedMovement = (e: unknown) => e instanceof StockOrderReconciliationError && e.code === 'RECONCILIATION_UNEXPECTED_MOVEMENT';
+  const effectsMismatch = (e: unknown) => e instanceof StockOrderSimulationError && e.code === 'SIMULATION_EFFECTS_MISMATCH';
+
+  it('passes through another token only in the taker\'s own account, which must end unchanged', async () => {
+    const {base, semantics} = await read();
+    const hopMint = key('hop-mint');
+    const hopAccount = await deriveAssociatedTokenAddress(taker, hopMint, 'token');
+    const usdc = semantics.accounts.find(a => a.address === usdcMint)!;
+    const hopMintAccount = {...usdc, address: hopMint as string, state: {...usdc.state, address: hopMint as string}};
+    const create = {...semantics.instructions[2]!, decoded: {program: 'associated_token' as const, kind: 'create_idempotent' as const,
+      payer: taker as string, owner: taker as string, associatedAccount: hopAccount, mint: hopMint as string, tokenProgram: KNOWN_PROGRAMS.token}};
+    const withHop = {...semantics, instructions: [create, ...semantics.instructions], accounts: [...semantics.accounts, hopMintAccount]};
+    const args = {summary: base.draft.summary, now: base.clock.now, semantics: withHop};
+    const report = reconcileStockOrderTerms(args);
+    assert.deepEqual(report.effects.intermediateAccounts, [{address: hopAccount, mint: hopMint}]);
+    assert.deepEqual(report.effects.preservedAccounts, [{address: hopAccount, mint: hopMint, amountRaw: '0'}]);
+    assert.equal(report.cost.rentLamportsUpperBound, '2039280');
+    assert.ok(report.reviewFlags.includes('intermediate_token_account'));
+    for (const change of [{payer: poolAccount}, {owner: poolAccount}, {tokenProgram: KNOWN_PROGRAMS.system}]) {
+      assert.throws(() => reconcileStockOrderTerms({...args, semantics: {...withHop,
+        instructions: [{...create, decoded: {...create.decoded, ...change}}, ...semantics.instructions]}}), refusedMovement);
+    }
+    // The hop token's mint must be observed and acceptable.
+    assert.throws(() => reconcileStockOrderTerms({...args, semantics: {...withHop, accounts: semantics.accounts}}),
+      (e: unknown) => e instanceof StockOrderReconciliationError && e.code === 'RECONCILIATION_MINT_STATE_INVALID');
+
+    const simulate = (extra: unknown[], reconciliation = report, reviewed = withHop) =>
+      simulator(withExtraSimulatedAccounts(simulationFetch(), extra), base.clock).simulate({
+        draft: base.draft, binding: base.binding, semantics: reviewed, reconciliation});
+    const simulated = await simulate([legacyTokenAccount(hopMint, 0n)]);
+    assert.deepEqual(simulated.request.accountAddresses, [taker, sourceAta, destinationAta, hopAccount]);
+    assert.equal(simulated.effects.preservedAccountsUnchanged, 1);
+    await assert.rejects(simulate([legacyTokenAccount(hopMint, 5n)]), effectsMismatch);
+
+    // A taker who already holds the hop token keeps exactly that balance.
+    const source = semantics.accounts.find(a => a.address === sourceAta)!;
+    const held = {...source, address: hopAccount, state: {...source.state, address: hopAccount, mint: hopMint as string, amount: '777'}};
+    const holding = {...withHop, accounts: [...withHop.accounts, held]};
+    const holdingReport = reconcileStockOrderTerms({...args, semantics: holding});
+    assert.deepEqual(holdingReport.effects.preservedAccounts, [{address: hopAccount, mint: hopMint, amountRaw: '777'}]);
+    assert.equal(holdingReport.cost.rentLamportsUpperBound, '0');
+    await simulate([legacyTokenAccount(hopMint, 777n)], holdingReport, holding);
+    for (const after of [legacyTokenAccount(hopMint, 700n), rpcAccount(new Uint8Array(), KNOWN_PROGRAMS.system, 0)]) {
+      await assert.rejects(simulate([after], holdingReport, holding), effectsMismatch);
+    }
+  });
+
+  it('closes the taker\'s existing wrapped SOL only back to the taker, all of it returned in simulation', async () => {
+    const {base, semantics} = await read();
+    const wrapped = semantics.candidate.takerWrappedSolAssociatedAccount;
+    const WRAPPED = 3_000_000_000n;
+    const RESERVE = 2_039_280n;
+    const source = semantics.accounts.find(a => a.address === sourceAta)!;
+    const existing = {...source, address: wrapped,
+      observation: {...source.observation, address: wrapped, lamports: String(WRAPPED + RESERVE)},
+      state: {...source.state, address: wrapped, mint: JUPITER_QUOTE_ASSETS.SOL.mint, amount: WRAPPED.toString(),
+        isNative: true, nativeRentExemptReserve: RESERVE.toString(), lamports: String(WRAPPED + RESERVE)}};
+    const create = {...semantics.instructions[2]!, decoded: {program: 'associated_token' as const, kind: 'create_idempotent' as const,
+      payer: taker as string, owner: taker as string, associatedAccount: wrapped, mint: JUPITER_QUOTE_ASSETS.SOL.mint, tokenProgram: KNOWN_PROGRAMS.token}};
+    const close = {...semantics.instructions[2]!, decoded: {program: 'token' as const, kind: 'close_account' as const,
+      account: wrapped, destination: taker as string, authority: taker as string}};
+    const withWrapped = {...semantics, instructions: [create, ...semantics.instructions, close], accounts: [...semantics.accounts, existing]};
+    const args = {summary: base.draft.summary, now: base.clock.now, semantics: withWrapped};
+    const report = reconcileStockOrderTerms(args);
+    assert.deepEqual(report.effects.unwrappedWrappedSol, {address: wrapped, amountRaw: WRAPPED.toString(), lamports: String(WRAPPED + RESERVE)});
+    assert.equal(report.cost.takerLamportsReturnUpperBound, String(WRAPPED + RESERVE));
+    assert.equal(report.cost.rentLamportsUpperBound, '0');
+    assert.deepEqual(report.effects.preservedAccounts, []);
+    assert.ok(report.reviewFlags.includes('closes_existing_wrapped_sol'));
+    for (const refused of [
+      {...withWrapped, accounts: [...semantics.accounts, {...existing, state: {...existing.state, delegate: poolAccount as string}}]},
+      {...withWrapped, accounts: [...semantics.accounts, {...existing, state: {...existing.state, closeAuthority: poolAccount as string}}]},
+      {...withWrapped, instructions: [create, ...semantics.instructions, {...close, decoded: {...close.decoded, destination: poolAccount as string}}]},
+      {...withWrapped, instructions: [create, ...semantics.instructions]},
+      {...withWrapped, instructions: [{...create, decoded: {...create.decoded, kind: 'create' as const}}, ...semantics.instructions, close]},
+    ]) {
+      assert.throws(() => reconcileStockOrderTerms({...args, semantics: refused}), refusedMovement);
+    }
+
+    // Simulation reports the closed account as an empty system account; the taker
+    // gets every wrapped lamport back, less at most the fee.
+    const closed = rpcAccount(new Uint8Array(), KNOWN_PROGRAMS.system, 0);
+    const returned = 40_000_000n + WRAPPED + RESERVE - 5_000n;
+    const simulate = (postTaker: bigint, after: unknown) =>
+      simulator(withExtraSimulatedAccounts(simulationFetch({postTaker: Number(postTaker)}), [after]), base.clock).simulate({
+        draft: base.draft, binding: base.binding, semantics: withWrapped, reconciliation: report});
+    const simulated = await simulate(returned, closed);
+    assert.deepEqual(simulated.request.accountAddresses, [taker, sourceAta, destinationAta, wrapped]);
+    assert.equal(simulated.effects.wrappedSolAccountClosed, true);
+    assert.equal(simulated.effects.takerLamportsSpent, String(-(WRAPPED + RESERVE - 5_000n)));
+    assert.equal(simulated.terms.takerLamportsReturnUpperBound, String(WRAPPED + RESERVE));
+    // The route kept some wrapped SOL, the account stayed open, or more came back than was wrapped.
+    for (const [postTaker, after] of [[returned - 1_000_000n, closed],
+      [returned, legacyTokenAccount(address(JUPITER_QUOTE_ASSETS.SOL.mint), WRAPPED, RESERVE, Number(WRAPPED + RESERVE))],
+      [40_000_000n + WRAPPED + RESERVE + 1n, closed]] as const) {
+      await assert.rejects(simulate(postTaker, after), effectsMismatch);
+    }
+  });
+});
+
 describe('multi-stock composed review', () => {
   it('reviews every pinned mint with canonical account derivation and exact simulated outputs', async () => {
     for (const stock of STOCK_TRADING_ASSETS.slice(1)) {

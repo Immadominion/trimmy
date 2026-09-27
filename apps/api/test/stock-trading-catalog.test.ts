@@ -133,16 +133,24 @@ test('schema 2 capabilities publish every active identity with its issuer disclo
     const tradeable = new Set(STOCK_TRADING_ASSETS.map(asset => asset.mint));
     assert.equal(new Set(body.unavailable.map((item: {mint: string}) => item.mint)).size, body.unavailable.length);
     for (const item of body.unavailable) {
-      assert.deepEqual(Object.keys(item).sort(), ['issuerId', 'mint', 'reason']);
+      // An Ondo token refused only for a closed market carries its market state.
+      const marketAware = item.issuerId === 'ondo' && ['market_closed', 'awaiting_review'].includes(item.reason) && item.symbol !== null;
+      assert.deepEqual(Object.keys(item).sort(), marketAware ? ['issuerId', 'market', 'mint', 'reason', 'symbol'] : ['issuerId', 'mint', 'reason', 'symbol']);
+      if (marketAware) assert.equal(item.reason === 'awaiting_review', item.market.status === 'open');
       assert.ok(!tradeable.has(item.mint));
       assert.ok((STOCK_UNAVAILABLE_REASONS as readonly string[]).includes(item.reason));
       if (item.issuerId !== null && STOCK_ISSUERS[item.issuerId as 'xstocks'].offer.status !== 'offered') assert.equal(item.reason, 'issuer_not_offered');
     }
+    assert.ok([null, 'overnight', 'premarket', 'regular', 'postmarket', 'offhours'].includes(body.usMarket.session));
     for (const asset of STOCK_TRADING_ASSETS) {
-      const actual = body.assets.find((item: {mint: string}) => item.mint === asset.mint);
+      const {market, ...actual} = body.assets.find((item: {mint: string}) => item.mint === asset.mint);
       assert.deepEqual(actual, {assetId: asset.assetId, mint: asset.mint, symbol: asset.symbol, name: asset.name, issuerId: asset.issuerId,
         decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.maxSellInputRaw, transferFeeBps: asset.transferFeeBps,
-        route: asset.route});
+        route: asset.route, minBuyInputRaw: asset.route === 'rfq' ? '2000000' : '1'});
+      // Without live inputs the calendar decides: around the clock, or Ondo's US sessions.
+      assert.equal(market.hours, asset.issuerId === 'ondo' ? 'us_sessions' : 'always');
+      assert.ok(['open', 'paused', 'closed'].includes(market.status));
+      if (asset.issuerId !== 'ondo') assert.equal(market.status, 'open');
     }
   } finally {await app.close();}
 });

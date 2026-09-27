@@ -682,6 +682,174 @@ void main() {
     });
   });
 
+  group('market states', () {
+    final now = DateTime(2026, 9, 27, 15, 40);
+    test(
+      'each token says when it trades, and an unreadable state never closes one',
+      () {
+        final caps = LiveTradingCapabilities.fromJson(
+          capabilitiesV2Json(
+            assets: [
+              {
+                ...assetJson(
+                  assetId: 'apple',
+                  mint: fakeMint(1),
+                  symbol: 'AAPLx',
+                ),
+                'market': {'hours': 'always', 'status': 'open'},
+              },
+              {
+                ...assetJson(
+                  assetId: 'meta',
+                  mint: fakeMint(2),
+                  symbol: 'METAon',
+                  issuerId: 'ondo',
+                  decimals: 9,
+                ),
+                'minBuyInputRaw': '2000000',
+                'market': {
+                  'hours': 'us_sessions',
+                  'sessions': [
+                    'overnight',
+                    'premarket',
+                    'regular',
+                    'postmarket',
+                  ],
+                  'status': 'closed',
+                  'reason': 'outside_sessions',
+                  'nextOpenAt': DateTime(
+                    2026,
+                    9,
+                    27,
+                    20,
+                    5,
+                  ).toUtc().toIso8601String(),
+                },
+              },
+              {
+                ...assetJson(
+                  assetId: 'ibm',
+                  mint: fakeMint(3),
+                  symbol: 'IBM',
+                  issuerId: 'backpack',
+                ),
+                'market': {
+                  'hours': 'always',
+                  'status': 'paused',
+                  'reason': 'issuer_paused',
+                },
+              },
+              {
+                ...assetJson(
+                  assetId: 'tesla',
+                  mint: fakeMint(4),
+                  symbol: 'TSLAx',
+                ),
+                'market': {'status': 'sleeping'},
+                'minBuyInputRaw': 'lots',
+              },
+            ],
+          ),
+        );
+        final apple = caps.forMint(fakeMint(1))!;
+        final meta = caps.forMint(fakeMint(2))!;
+        final ibm = caps.forMint(fakeMint(3))!;
+        final tesla = caps.forMint(fakeMint(4))!;
+        expect(apple.market!.label(now), 'Open 24/7');
+        expect(apple.minBuyInputRaw, '1');
+        expect(meta.marketOpen, isFalse);
+        expect(meta.minBuyInputRaw, '2000000');
+        expect(meta.market!.label(now), 'Closed · opens 8:05 PM');
+        expect(
+          meta.market!.hours,
+          'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).',
+        );
+        expect(ibm.market!.label(now), 'Paused by the issuer');
+        expect(ibm.marketOpen, isFalse);
+        expect(tesla.market, isNull);
+        expect(tesla.marketOpen, isTrue);
+        expect(tesla.minBuyInputRaw, '1');
+      },
+    );
+
+    test('a token refused for a closed market says when it opens', () {
+      final opens = DateTime.now().add(const Duration(days: 1));
+      final caps = LiveTradingCapabilities.fromJson(
+        capabilitiesV2Json(
+          unavailable: [
+            {
+              'mint': fakeMint(21),
+              'issuerId': 'ondo',
+              'reason': 'market_closed',
+              'symbol': 'ABNBon',
+              'market': {
+                'status': 'closed',
+                'nextOpenAt': opens.toUtc().toIso8601String(),
+              },
+            },
+            {
+              'mint': fakeMint(22),
+              'issuerId': 'ondo',
+              'reason': 'awaiting_review',
+            },
+          ],
+        ),
+      );
+      expect(
+        caps.reasonFor(fakeMint(21)),
+        startsWith('Its market is closed. It opens tomorrow '),
+      );
+      expect(
+        caps.reasonFor(fakeMint(22)),
+        'Its market is open. Trimmy is checking it before you can trade.',
+      );
+    });
+
+    test('times read as today, tomorrow, a weekday or a date', () {
+      expect(liveMarketTime(DateTime(2026, 9, 27, 9, 31), now), '9:31 AM');
+      expect(
+        liveMarketTime(DateTime(2026, 9, 28, 0, 5), now),
+        'tomorrow 12:05 AM',
+      );
+      expect(liveMarketTime(DateTime(2026, 9, 30, 13, 0), now), 'Wed 1:00 PM');
+      expect(
+        liveMarketTime(DateTime(2026, 10, 12, 21, 30), now),
+        'Oct 12, 9:30 PM',
+      );
+      const always = [
+        'overnight',
+        'premarket',
+        'regular',
+        'postmarket',
+        'offhours',
+      ];
+      expect(
+        const LiveMarketState(
+          status: 'open',
+          usSessions: true,
+          sessions: always,
+        ).label(now),
+        'Open now, including weekends',
+      );
+      expect(
+        const LiveMarketState(
+          status: 'open',
+          usSessions: true,
+          sessions: ['regular'],
+        ).hours,
+        'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.',
+      );
+      expect(
+        LiveMarketState(
+          status: 'paused',
+          reason: 'session_break',
+          nextOpenAt: DateTime(2026, 9, 27, 16, 1),
+        ).label(now),
+        'Short pause · resumes 4:01 PM',
+      );
+    });
+  });
+
   group('shares', () {
     test('plain shares are raw over 10^decimals for 6 and 9 decimals', () {
       final backpack = LiveShareScale.plain(6);

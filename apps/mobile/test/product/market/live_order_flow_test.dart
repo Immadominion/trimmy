@@ -790,6 +790,62 @@ void main() {
     await clean(tester);
   });
 
+  group('market state', () {
+    testWidgets('a closed token says when it opens and cannot be reviewed', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('ondo')],
+      });
+      LiveIssuerTerms.resetSession();
+      var quotes = 0;
+      final caps = _caps();
+      final assets = caps['assets'] as List;
+      final ondo = assets.indexWhere(
+        (asset) => (asset as Map)['mint'] == ondoNvidiaMint,
+      );
+      assets[ondo] = {
+        ...(assets[ondo] as Map<String, Object?>),
+        'minBuyInputRaw': '2000000',
+        'market': {
+          'hours': 'us_sessions',
+          'sessions': ['overnight', 'premarket', 'regular', 'postmarket'],
+          'status': 'closed',
+          'reason': 'outside_sessions',
+          'nextOpenAt': DateTime.now()
+              .add(const Duration(hours: 3))
+              .toUtc()
+              .toIso8601String(),
+        },
+      };
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('capabilities')) return _reply(caps);
+          if (request.url.path.endsWith('preview')) quotes++;
+          return _reply({'order': null});
+        },
+        company: _nvidia(),
+        variantMint: ondoNvidiaMint,
+      );
+      expect(
+        find.byKey(const ValueKey('live-order-market-state')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Closed · opens'), findsNWidgets(2));
+      expect(
+        find.text(
+          'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).',
+        ),
+        findsOneWidget,
+      );
+      expect(reviewEnabled(tester), isFalse);
+      await tap(tester, 'live-order-review');
+      expect(quotes, 0);
+      await clean(tester);
+    });
+  });
+
   group('issuer terms', () {
     testWidgets(
       'the issuer card gates Review until ticked and is remembered per version',

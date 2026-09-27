@@ -2008,6 +2008,13 @@ class _ProductExperienceState extends State<ProductExperience>
                         label: option.label,
                         tradeable: option.tradeable,
                         reason: option.reason,
+                        marketNote: switch (option.asset?.market) {
+                          final market?
+                              when !market.open || market.usSessions =>
+                            market.label(DateTime.now()),
+                          _ => null,
+                        },
+                        marketOpen: option.asset?.marketOpen ?? true,
                       ),
                   ]
                 : const [],
