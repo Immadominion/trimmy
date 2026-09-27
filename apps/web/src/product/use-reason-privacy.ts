@@ -20,9 +20,13 @@ export function useReasonPrivacy(options: {api: ProductApiClient | null; identit
   const [pending, setPending] = useState<ReasonPrivacyWrite | null>(null);
   const [failure, setFailure] = useState<PracticeError | null>(null), [notice, setNotice] = useState<ReasonPrivacyNotice>(null);
   const epoch = useRef(0), busy = useRef(false);
+  // The guest record object changes after unrelated saves; the principal is the stable identity.
+  const identityRef = useRef(identity); identityRef.current = identity;
+  const hasIdentity = identity !== null;
   const toError = (error: unknown) => error instanceof PracticeError ? error : new PracticeError('PRACTICE_NETWORK_ERROR', 'Could not reach Trimmy.');
 
   const send = useCallback(async (write: ReasonPrivacyWrite, turn: number) => {
+    const identity = identityRef.current;
     if (!api || !identity || !principal || !store) return;
     setSaving(true); setFailure(null); setNotice(null);
     try {
@@ -39,9 +43,10 @@ export function useReasonPrivacy(options: {api: ProductApiClient | null; identit
       }
       setFailure(problem);
     } finally {if (turn === epoch.current) setSaving(false);}
-  }, [api, identity, principal, store]);
+  }, [api, hasIdentity, principal, store]);
 
   const load = useCallback(async () => {
+    const identity = identityRef.current;
     if (!api || !identity || !principal || !store || !enabled) return;
     const turn = epoch.current; setLoading(true); setFailure(null);
     try {
@@ -53,7 +58,7 @@ export function useReasonPrivacy(options: {api: ProductApiClient | null; identit
       if (saved) {setPending(saved); if (!busy.current) {busy.current = true; try {await send(saved, turn);} finally {busy.current = false;}}}
     } catch (error) {if (turn === epoch.current) setFailure(toError(error));}
     finally {if (turn === epoch.current) setLoading(false);}
-  }, [api, identity, principal, store, enabled, send]);
+  }, [api, hasIdentity, principal, store, enabled, send]);
 
   useEffect(() => {
     epoch.current++; setPrivacy(null); setPending(null); setFailure(null); setNotice(null); setSaving(false);

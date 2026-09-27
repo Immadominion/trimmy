@@ -27,3 +27,19 @@
 .settings-modal-actions{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:8px}
 .web-profile-settings-link{display:inline-flex;align-items:center;gap:8px}
 @media(max-width:940px){.settings-grid{grid-template-columns:minmax(0,1fr);gap:26px}}
+/* Career milestone actions: comment composer, promotion moment and result. */
+.reason-composer{position:relative}
+.reason-composer .rank-close{position:absolute;top:14px;right:14px;min-width:40px;min-height:40px;border-radius:13px;color:var(--muted);font-size:22px}
+.reason-note{display:block;width:100%;border:0;border-radius:15px;background:#f6f3fb;min-height:50px;padding:13px 16px;color:var(--ink);font-size:15px}
+.reason-count{font-size:11px!important;text-align:right;margin:6px 0 12px!important}
+.reason-saved-note{margin:6px 0 12px;padding:14px 16px;border-radius:16px;background:#f8f6fb;font-size:15px;color:var(--ink)}
+.reason-reward{font-weight:700;color:var(--green)!important}
+.promotion-moment{text-align:center}
+.promotion-art{width:120px;height:120px;object-fit:contain;margin:0 auto 12px}
+.promotion-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 20px;padding:14px;border-radius:18px;background:#f4f0ff}
+.promotion-facts dt{font-size:11px;color:#8a789a}
+.promotion-facts dd{margin:4px 0 0;font-weight:700;font-size:14px}
+.promotion-result{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px;background:#f4f0ff;margin:0 0 16px}
+.promotion-result img{width:40px;height:40px;object-fit:contain}
+.promotion-result div{display:grid;gap:2px}
+.promotion-result span{font-size:13px;color:var(--green)}

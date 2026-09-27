@@ -38,6 +38,10 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
     lastRequestId: GUEST_ID, launches: [] as string[], resets: 0,
     privacy: {revision: 1, visibility: 'nobody', configured: false, friendsSharing: 'unavailable', createdAt: at, updatedAt: at} as Record<string, unknown>,
     closed: false,
+    career: {revision: 0, total: 0, rank: 'rookie', next: {id: 'analyst', label: 'Analyst', threshold: 300, trimsRemaining: 300, promotionRequired: true} as Record<string, unknown> | null},
+    missions: [] as Record<string, unknown>[],
+    dayContext: {revision: 1, timeZone: 'UTC', configured: false, serverDate: at.slice(0, 10), nextDayAt: new Date(now + 6 * 3600000).toISOString(), createdAt: at, updatedAt: at} as Record<string, unknown>,
+    reasons: [] as Record<string, unknown>[], promotions: [] as Record<string, unknown>[],
   };
   const source = {provider: 'tokens-xyz-v1', providerReference: '/v1/assets/apple', marketSource: null, metricsSource: null,
     providerTimestamps: {asOf: null, lastFetchedAt: null, lastTradeAt: null, unit: 'not_declared'}, observedAt: at, acceptedAt: at};
@@ -122,12 +126,37 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
       state.traded = true; if (state.profile) state.profile = {...state.profile, hasConfirmedPaperTrade: true};
       return json(envelope('order', {...calculation, accountRevision: 1, id: ORDER_ID, previewId: PREVIEW_ID, committedAt: at}));
     }
-    if (call.path === '/v1/career/summary') return json({schemaVersion: 1, career: {revision: 0, trims: {total: 0, today: 0, thisWeek: 0},
-      rank: {id: 'rookie', label: 'Rookie', paperLimit: '10000', threshold: 0}, nextRank: {id: 'analyst', label: 'Analyst', threshold: 300, trimsRemaining: 300, promotionRequired: true},
-      streak: {days: 0, status: 'not-started', lastActiveDate: null}, careerStarted: false,
+    if (call.path === '/v1/career/summary') return json({schemaVersion: 1, career: {revision: state.career.revision, trims: {total: state.career.total, today: 0, thisWeek: 0},
+      rank: {id: state.career.rank, label: state.career.rank === 'rookie' ? 'Rookie' : 'Analyst', paperLimit: '10000', threshold: state.career.rank === 'rookie' ? 0 : 300}, nextRank: state.career.next,
+      streak: {days: 0, status: 'not-started', lastActiveDate: null}, careerStarted: state.career.total > 0,
       firstConfirmedBuy: state.traded ? {orderId: ORDER_ID, assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', quantityMicros: '2000000', confirmedAt: at} : null,
       serverDate: at.slice(0, 10), updatedAt: null}});
-    if (call.path === '/v1/career/missions') return json({schemaVersion: 1, career: {revision: 0, currentRank: 'rookie'}, missions: []});
+    if (call.path === '/v1/career/missions') return json({schemaVersion: 1, career: {revision: state.career.revision, currentRank: state.career.rank}, missions: state.missions});
+    if (call.path === '/v1/career/promotions') {
+      const replay = state.promotions.find(item => item['mutationId'] === call.body?.['mutationId']);
+      if (replay) return json({schemaVersion: 1, promotion: replay}, 201);
+      if (call.body?.['targetRank'] !== 'analyst' || state.career.rank !== 'rookie') return json({error: {code: 'CAREER_PROMOTION_RANK_MISMATCH', message: 'No.', requestId: GUEST_ID}}, 409);
+      state.career = {revision: state.career.revision + 1, total: state.career.total + 100, rank: 'analyst', next: {id: 'trader', label: 'Trader', threshold: 800, trimsRemaining: 400, promotionRequired: false}};
+      state.missions = state.missions.map(item => ({...item, chapterRank: item['chapterRank']}));
+      const promotion = {mutationId: call.body?.['mutationId'], fromRank: 'rookie', toRank: 'analyst', careerRevision: state.career.revision, trimsAwarded: 100, promotedAt: at};
+      state.promotions.push(promotion);
+      return json({schemaVersion: 1, promotion}, 201);
+    }
+    if (call.path === '/v1/career/trade-reasons' && call.method === 'POST') {
+      const replay = state.reasons.find(item => item['mutationId'] === call.body?.['mutationId']);
+      if (!replay && state.reasons.some(item => item['orderId'] === call.body?.['orderId'])) return json({error: {code: 'CAREER_REASON_EXISTS', message: 'Exists.', requestId: GUEST_ID}}, 409);
+      const reason = replay ?? {mutationId: call.body?.['mutationId'], orderId: call.body?.['orderId'], note: call.body?.['note']};
+      if (!replay) {state.reasons.push(reason); state.career = {...state.career, revision: state.career.revision + 1, total: state.career.total + 20};
+        state.missions = state.missions.map(item => item['id'] === 'write-a-reason' ? {...item, status: 'complete', completedAt: at} : item);}
+      return json({schemaVersion: 1, reason: {orderId: reason['orderId'], assetId: 'apple', variantMint: MINT, note: reason['note'], trimsAwarded: 20, dailyAwardNumber: 1, savedAt: at}}, 201);
+    }
+    if (call.path === '/v1/career/day-context') {
+      if (call.method === 'PUT') {
+        if (state.dayContext['configured'] || call.body?.['baseRevision'] !== state.dayContext['revision']) return json({error: {code: 'CAREER_DAY_CONTEXT_REVISION_CONFLICT', message: 'Conflict.', requestId: GUEST_ID}}, 409);
+        state.dayContext = {...state.dayContext, revision: 2, timeZone: call.body?.['timeZone'], configured: true, updatedAt: new Date(now + 1000).toISOString()};
+      }
+      return json({schemaVersion: 1, dayContext: state.dayContext});
+    }
     if (call.path.endsWith('/search')) {
       const page = {...searchFixture(parsed.searchParams.get('query')!, Number(parsed.searchParams.get('limit'))), requestedAt: at, observedAt: at,
         refreshAfter: new Date(now + 60000).toISOString()};
