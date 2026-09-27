@@ -156,10 +156,14 @@ test('account bearers cross only existing product routes and guest proof stays c
     assert.equal((await send(path)).status, 404);
     assert.equal((await send(path, {method: 'DELETE'})).status, 404);
   }
-  for (const path of ['/api/v1/logout', '/api/v1/auth/login', '/api/v1/account/closure', '/api/v1/guest/claim/extra']) {
+  for (const path of ['/api/v1/logout', '/api/v1/auth/login', '/api/v1/account/closure/extra', '/api/v1/guest/claim/extra']) {
     assert.equal((await send(path, {method: 'POST', body: '{}'})).status, 404);
   }
   assert.equal(calls.length, paths.length, 'no arbitrary account or SDK proxy surface');
+  // Settings' account closure is an exact account route; its guest proof never crosses.
+  assert.equal((await send('/api/v1/account/closure', {method: 'POST', body: '{}', headers: {authorization: 'Bearer account-token', 'x-trimmy-guest': 'must-not-leak'}})).status, 200);
+  assert.equal(new Headers(calls.at(-1)!.options!.headers).has('x-trimmy-guest'), false);
+  assert.equal((await send('/api/v1/account/closure', {method: 'GET'})).status, 404);
 });
 
 test('duplicate physical bearer or guest claim fields cannot be collapsed into an authorized request', async t => {
@@ -220,4 +224,19 @@ test('a disconnected body causes no unhandled request error or upstream call', a
   assert.equal(calls.length, 0);
   assert.equal((await send('/api/v1/guest/session', {method: 'POST', body: '{}'})).status, 200);
   assert.equal(calls.length, 1);
+});
+
+test('parity routes pass only their exact methods, UUID path parameters and query strings', async t => {
+  const {calls, send} = await fixture(t);
+  for (const [method, path] of [['GET', '/v1/career/reason-privacy'], ['PUT', '/v1/career/reason-privacy'], ['GET', '/v1/career/trade-reasons?scope=self&limit=20'],
+    ['POST', '/v1/career/trade-reasons'], ['POST', '/v1/career/promotions'], ['GET', '/v1/career/day-context'], ['PUT', '/v1/career/day-context'],
+    ['POST', '/v1/account/paper/reset'], ['GET', '/v1/community?scope=everyone'], ['PUT', '/v1/community/following/0f8fad5b-d9cb-469f-a165-70867728950e'],
+    ['GET', '/v1/markets/stocks/holders?mint=So11111111111111111111111111111111111111112'], ['GET', '/v1/following'], ['PUT', '/v1/following']] as const) {
+    assert.equal((await send('/api' + path, {method, ...(method === 'GET' ? {} : {body: '{}'})})).status, 200, `${method} ${path}`);
+  }
+  for (const [method, path] of [['DELETE', '/v1/career/reason-privacy'], ['PUT', '/v1/community/following/not-a-uuid'], ['GET', '/v1/community/following/0f8fad5b-d9cb-469f-a165-70867728950e'],
+    ['POST', '/v1/community'], ['PUT', '/v1/community/following/0f8fad5b-d9cb-469f-a165-70867728950e/extra']] as const) {
+    assert.equal((await send('/api' + path, {method})).status, 404, `${method} ${path}`);
+  }
+  assert.equal(calls.length, 13);
 });

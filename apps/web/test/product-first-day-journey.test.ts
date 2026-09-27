@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {act, createElement} from 'react';
-import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
 import {ProductMarketClient} from '../src/product/market-client.js';
 import {practiceStorageKey} from '../src/product/practice-session.js';
@@ -162,6 +161,7 @@ test('the Welcome back notice for a preserved guest desk shows the expired varia
   for (const [key, value] of Object.entries({window: dom.window, document: dom.window.document, navigator: dom.window.navigator, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true})) {
     saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, {configurable: true, writable: true, value});
   }
+  const {createRoot} = await import('react-dom/client');
   const root = createRoot(dom.window.document.getElementById('root')!);
   let acknowledged = 0;
   const market = new ProductMarketClient({baseUrl: '/api', fetch: async () => json({}), timeoutMs: 1000});

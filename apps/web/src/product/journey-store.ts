@@ -100,6 +100,19 @@ export class JourneyStore {
       return (intent === 'app' || intent === 'fund') && age >= 0 && age < 15 * 60_000 ? intent : null;
     } catch {return null;}
   }
+  /** A one-time message that must outlive a sign-out, such as the account-closure note. */
+  setOneTimeNotice(text: string): void {
+    try {this.#write(`${this.#prefix}:notice`, JSON.stringify({text: text.slice(0, 400), at: this.#now()}));} catch { /* Informational only. */ }
+  }
+  consumeOneTimeNotice(): string | null {
+    const raw = this.#read(`${this.#prefix}:notice`);
+    if (!raw) return null;
+    try {this.#write(`${this.#prefix}:notice`, '');} catch { /* Shown at most until storage recovers. */ }
+    try {
+      const value = JSON.parse(raw) as {text?: unknown; at?: unknown};
+      return typeof value.text === 'string' && typeof value.at === 'number' && this.#now() - value.at < 10 * 60_000 ? value.text : null;
+    } catch {return null;}
+  }
 }
 /** 'app': signed in from the app, so an unfinished account introduction is skipped. 'fund': open deposits next. */
 export type SignInIntent = 'app' | 'fund';

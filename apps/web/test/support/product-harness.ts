@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {act, createElement} from 'react';
-import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
 import {ProductApp} from '../../src/product/ProductApp.js';
 import {ProductMarketClient} from '../../src/product/market-client.js';
@@ -10,6 +9,7 @@ import {PracticeClient, PORTFOLIO_MEDIA_TYPE, PROFILE_MEDIA_TYPE} from '../../sr
 import type {LaunchCheckpoint} from '../../src/product/practice-client.js';
 import type {PracticeStorage} from '../../src/product/practice-session.js';
 import {JourneyStore} from '../../src/product/journey-store.js';
+import {ProductApiClient} from '../../src/product/product-api.js';
 import {searchFixture, variantFixture} from '../../src/markets/fixtures.test-support.js';
 import {RESEARCH_AAPLX_MINT as MINT} from '../../src/markets/estimate.js';
 
@@ -35,7 +35,9 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
       onboarding: {goal: null, knowledge: null, persona: null, dailyGoal: null, handle: null},
       launchCheckpoint: options.checkpoint, hasConfirmedPaperTrade: options.traded ?? options.checkpoint !== 'first-trade', createdAt: at, updatedAt: at},
     traded: options.traded ?? (options.checkpoint !== null && options.checkpoint !== undefined && options.checkpoint !== 'first-trade'),
-    lastRequestId: GUEST_ID, launches: [] as string[],
+    lastRequestId: GUEST_ID, launches: [] as string[], resets: 0,
+    privacy: {revision: 1, visibility: 'nobody', configured: false, friendsSharing: 'unavailable', createdAt: at, updatedAt: at} as Record<string, unknown>,
+    closed: false,
   };
   const source = {provider: 'tokens-xyz-v1', providerReference: '/v1/assets/apple', marketSource: null, metricsSource: null,
     providerTimestamps: {asOf: null, lastFetchedAt: null, lastTradeAt: null, unit: 'not_declared'}, observedAt: at, acceptedAt: at};
@@ -47,8 +49,8 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
     execution: {walletUsed: false, transactionBuilt: false, transactionSigned: false, transactionBroadcast: false}});
   const portfolio = () => {
     const base = {schemaVersion: 2, mode: 'paper', unit: {kind: 'paper', scaleDigits: 6}, startingCashPaperMicros: '10000000000'};
-    if (!state.traded) return {...base, revision: 0, cashPaperMicros: '10000000000', openedAt: null, updatedAt: null, positions: [], recentOrders: [],
-      valuation: {status: 'complete', portfolioRevision: 0, openPositionCount: 0, pricedPositionCount: 0, cashPaperMicros: '10000000000',
+    if (!state.traded) return {...base, revision: state.resets ? 1 + state.resets : 0, cashPaperMicros: '10000000000', openedAt: null, updatedAt: null, positions: [], recentOrders: [],
+      valuation: {status: 'complete', portfolioRevision: state.resets ? 1 + state.resets : 0, openPositionCount: 0, pricedPositionCount: 0, cashPaperMicros: '10000000000',
         knownValuePaperMicros: '10000000000', totalPaperMicros: '10000000000', positions: []}};
     return {...base, revision: 1, cashPaperMicros: '9900000000', openedAt: at, updatedAt: at,
       positions: [{assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', quantityMicros: '2000000', costBasisPaperMicros: '100000000',
@@ -87,6 +89,30 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
       return json({schemaVersion: 2, profile: state.profile}, 200, PROFILE_MEDIA_TYPE);
     }
     if (call.path === '/v1/account/paper/portfolio') return json(portfolio(), 200, PORTFOLIO_MEDIA_TYPE);
+    if (call.path === '/v1/account/paper/reset') {
+      const current = portfolio() as {revision: number};
+      if (call.body?.['confirm'] !== 'reset my paper desk') return json({error: {code: 'PAPER_INPUT_INVALID', message: 'Invalid.', requestId: GUEST_ID}}, 400);
+      if (call.body?.['baseRevision'] !== current.revision) return json({error: {code: 'PAPER_PORTFOLIO_CHANGED', message: 'Changed.', requestId: GUEST_ID}}, 409);
+      if (!state.traded) return json({error: {code: 'PAPER_RESET_NOT_NEEDED', message: 'Fresh.', requestId: GUEST_ID}}, 409);
+      state.traded = false; state.resets++;
+      const revision = 1 + state.resets;
+      return json({schemaVersion: 1, mode: 'paper', unit: {kind: 'paper', scaleDigits: 6},
+        reset: {mutationId: call.body?.['mutationId'], previousRevision: current.revision, revision, resetAt: at},
+        portfolioAtReset: {revision, startingCashPaperMicros: '10000000000', cashPaperMicros: '10000000000', positions: [], recentOrders: []}});
+    }
+    if (call.path === '/v1/career/reason-privacy') {
+      if (call.method === 'PUT') {
+        if (call.body?.['baseRevision'] !== state.privacy['revision']) return json({error: {code: 'CAREER_REASON_PRIVACY_REVISION_CONFLICT', message: 'Conflict.', requestId: GUEST_ID}}, 409);
+        state.privacy = {...state.privacy, revision: Number(state.privacy['revision']) + 1, visibility: call.body?.['visibility'], configured: true,
+          updatedAt: new Date(Date.parse(String(state.privacy['updatedAt'])) + 1000).toISOString()};
+      }
+      return json({schemaVersion: 1, reasonPrivacy: state.privacy});
+    }
+    if (call.path === '/v1/account/closure') {
+      if (call.body?.['confirm'] !== 'close my account') return json({error: {code: 'ACCOUNT_CLOSURE_INVALID_INPUT', message: 'Invalid.', requestId: GUEST_ID}}, 400);
+      state.closed = true;
+      return json({schemaVersion: 1, closed: true, canceledInvitations: 0, note: 'This account can no longer sign in. Saved practice history is kept and is no longer reachable.'});
+    }
     if (call.path === '/v1/account/paper/orders/preview') {
       state.lastRequestId = String(call.body?.['requestId']);
       return json(envelope('preview', {...calculation, id: PREVIEW_ID, requestId: state.lastRequestId, state: 'open',
@@ -131,6 +157,7 @@ export async function harness(options: {checkpoint?: LaunchCheckpoint | null; tr
   const api = server(options), storage = options.storage ?? new MemoryStorage();
   const practice = new PracticeClient({baseUrl: '/api', fetch: api.fetcher, timeoutMs: 1000});
   const market = new ProductMarketClient({baseUrl: '/api', fetch: api.fetcher, timeoutMs: 1000});
+  const productApi = new ProductApiClient({baseUrl: '/api', fetch: api.fetcher, timeoutMs: 1000});
   const account = {subject: 'did:privy:journeyTester', accountId: ACCOUNT_ID, signal: new AbortController().signal, freshAccessToken: async () => 'test.account.proof'};
   const store = new JourneyStore(storage, '/api');
   if (options.savedGuest) {
@@ -143,10 +170,12 @@ export async function harness(options: {checkpoint?: LaunchCheckpoint | null; tr
       storage.setItem(key, JSON.stringify(record));
     }
   }
+  // Import React DOM only after the jsdom globals exist, or it falls back to legacy input handling.
+  const {createRoot} = await import('react-dom/client');
   const root = createRoot(dom.window.document.getElementById('root')!);
   const flush = async (ms = 25) => {await act(async () => {await delay(ms);});};
   const app = async () => {
-    await act(async () => {root.render(createElement(ProductApp, {apiBase: '/api', practiceClient: practice, marketClient: market, storage,
+    await act(async () => {root.render(createElement(ProductApp, {apiBase: '/api', practiceClient: practice, marketClient: market, storage, productApi,
       authConfig: {kind: 'disabled'}, ...(options.account ? {accountAccess: account} : {})}));});
     await flush();
   };

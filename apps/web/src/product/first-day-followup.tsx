@@ -83,9 +83,11 @@ export interface ReminderPageProps {
   readonly onSave: (choice: ReminderChoice) => Promise<void>;
   readonly onDone: () => Promise<void>;
   readonly downloadCalendar?: (choice: Exclude<ReminderChoice, 'off'>) => boolean;
+  /** From Settings: Back, Escape and × only close. In the first day they skip, as on mobile. */
+  readonly onClose?: () => void;
 }
 /** Mobile's "A little nudge?" page with an honest browser delivery: a calendar event. */
-export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar = downloadReminderCalendar}: ReminderPageProps) {
+export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar = downloadReminderCalendar, onClose}: ReminderPageProps) {
   const [selected, setSelected] = useState<ReminderChoice | null>(saved?.choice ?? null);
   const [confirmed, setConfirmed] = useState<ReminderChoice | null>(null);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState<string | null>(null), [error, setError] = useState<string | null>(null);
@@ -106,9 +108,9 @@ export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar 
     // A browser tab cannot wake itself; keep the choice and offer the calendar.
     if (mounted.current) {setConfirmed(choice); setMessage('Your preference is saved. Browsers can’t send Trimmy reminders while it’s closed, so add it to your calendar.');}
   });
-  useBackAction(() => void save(true));
+  useBackAction(() => {if (onClose) onClose(); else void save(true);});
   return <section className="first-day journey-screen reminder-page" aria-label="Reminders">
-    <button className="intro-close" aria-label="Skip reminders" disabled={busy} onClick={() => void save(true)}>×</button>
+    <button className="intro-close" aria-label={onClose ? 'Close reminders' : 'Skip reminders'} disabled={busy} onClick={() => {if (onClose) onClose(); else void save(true);}}>×</button>
     <img className="journey-icon" src={art('icons/asset-bell.png')} alt="" width="52" height="52"/>
     <h1 ref={heading} tabIndex={-1}>A little nudge?</h1>
     <p className="journey-lede">How often would you like a reminder?</p>

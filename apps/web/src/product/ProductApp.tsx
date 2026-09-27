@@ -27,9 +27,14 @@ import {isJourneyScreen} from './journey';
 import type {SignInIntent} from './journey-store';
 import {openFundWallet, type FundWalletSource} from './fund-wallet';
 import {GuestDeskRecovery} from './guest-desk-recovery';
+import {SettingsScreen, type PaperResetOutcome} from './settings-screen';
+import {ProductApiClient} from './product-api';
+import {PAPER_RESET_CONFIRMATION, PendingMutations, ambiguous, careerApi, newMutationId, type PaperResetWrite} from './career-actions';
+import {useReasonPrivacy} from './use-reason-privacy';
+import {PracticeError} from './practice-client';
 import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares} from './ui';
 
-type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work';
+type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work' | 'settings';
 type Route = {page: Page; assetId?: string; mint?: string; assignmentId?: string};
 const pages: readonly {page: Page; title: string; icon: string}[] = [
   {page: 'desk', title: 'Desk', icon: 'nav-plumpy-desk.png'},
@@ -45,7 +50,7 @@ function readRoute(): Route {
     const mint = new URLSearchParams(search).get('mint');
     return {page, assetId, ...(mint && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint) ? {mint} : {})};
   }
-  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || pages.some(item => item.page === page) ? page as Page : 'desk'};
+  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || page === 'settings' || pages.some(item => item.page === page) ? page as Page : 'desk'};
 }
 function browserStorage(): PracticeStorage {
   try {return window.localStorage;} catch {return {getItem() {throw new Error('Storage unavailable');}, setItem() {throw new Error('Storage unavailable');}};}
@@ -62,6 +67,8 @@ export interface ProductAppProps {
   readonly authSdk?: ProductAuthSdkPort;
   readonly connectAccount?: ConnectProductAccount;
   readonly accountAccess?: ProductAccountAccess;
+  /** Client for the social, settings and Career action routes. Defaults to the API origin. */
+  readonly productApi?: ProductApiClient;
 }
 export function ProductApp(props: ProductAppProps) {
   const apiBase = props.apiBase === undefined ? productApiBase() : props.apiBase;
@@ -79,7 +86,7 @@ function IdentityWorkspace(props: ProductAppProps) {
   if (auth.phase === 'restoring') return <div className="auth-restore"><img src={art('trimmy-mark.png')} alt="Trimmy"/><Loading>Opening Trimmy…</Loading></div>;
   return <ProductWorkspace key={`${props.apiBase ?? 'unconfigured'}:${binding.current.epoch}`} {...props} {...(auth.accountAccess ? {accountAccess: auth.accountAccess} : {})}/>;
 }
-function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketClient, storage, accountAccess}: ProductAppProps) {
+function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketClient, storage, accountAccess, productApi: suppliedProductApi}: ProductAppProps) {
   const auth = useProductAuth();
   const setup = useMemo(() => {
     if (!apiBase) return {session: null, market: null, error: null};
@@ -187,6 +194,17 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     profile: snapshot.profileKnown ? snapshot.profile : undefined, career: snapshot.career, guestDisposition: auth.guestDisposition,
     restoreGuest, refresh, active: () => workspaceActive.current});
   useEffect(() => {if (session?.isAccount) journey.forgetGuestChoice();}, [session, journey.forgetGuestChoice]);
+  // Settings, reason privacy and Career actions (mobile parity). Identity is this workspace's desk.
+  const productApi = useMemo(() => {
+    if (suppliedProductApi) return suppliedProductApi;
+    try {return apiBase ? new ProductApiClient({baseUrl: apiBase}) : null;} catch {return null;}
+  }, [apiBase, suppliedProductApi]);
+  const pendingMutations = useMemo(() => {try {return apiBase ? new PendingMutations(journeyStorage, apiBase) : null;} catch {return null;}}, [apiBase, journeyStorage]);
+  const productIdentity = session?.isAccount ? accountAccess ?? null : session?.guest ?? null;
+  const reasonPrivacy = useReasonPrivacy({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
+    enabled: Boolean(session?.hasIdentity) && !storageChanged && !restoring && route.page === 'settings'});
+  const [oneTimeNotice, setOneTimeNotice] = useState<string | null>(null);
+  useEffect(() => {const text = journey.store?.consumeOneTimeNotice(); if (text) setOneTimeNotice(text);}, [journey.store]);
   const preservedExpired = useMemo(() => {
     if (auth.guestDisposition !== 'preserved' || !apiBase) return false;
     try {
@@ -309,6 +327,36 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     ++loadEpoch.current; setError(null); setSnapshot(emptySnapshot); introSettled.current = false;
     setIntroInitial('welcome'); navigate({page: 'start'}, true);
   }
+  /** Mobile's settings reset: the exact command is saved before dispatch and replayed after an ambiguous result. */
+  async function resetPaperDesk(): Promise<PaperResetOutcome> {
+    const principal = journey.principal, portfolio = snapshot.portfolio;
+    if (!session || !productApi || !productIdentity || !principal || !pendingMutations || !portfolio || session.pendingCommit) {
+      throw new PracticeError('PAPER_RESET_UNAVAILABLE', 'Paper reset is unavailable.');
+    }
+    const saved = pendingMutations.read<PaperResetWrite>('paper-reset', principal);
+    const body: PaperResetWrite = saved ?? {schemaVersion: 1, mutationId: newMutationId(), baseRevision: portfolio.revision, confirm: PAPER_RESET_CONFIRMATION};
+    if (!saved) pendingMutations.save('paper-reset', principal, body);
+    try {
+      const receipt = await careerApi.resetPaper(productApi, productIdentity, body);
+      pendingMutations.clear('paper-reset', principal);
+      const current = await session.readPortfolio().catch(() => null);
+      if (workspaceActive.current) await refresh();
+      const newerActivity = current !== null && current.revision > receipt.revision;
+      return {cashPaperMicros: newerActivity ? current.cashPaperMicros : receipt.cashPaperMicros, newerActivity};
+    } catch (error) {
+      if (!ambiguous(error)) pendingMutations.clear('paper-reset', principal);
+      if (error instanceof PracticeError && error.code === 'PAPER_PORTFOLIO_CHANGED' && workspaceActive.current) await refresh();
+      throw error;
+    } finally {setRevision(value => value + 1);}
+  }
+  /** Account-only and irreversible; the session ends locally after the API confirms, as on mobile. */
+  async function closeAccount() {
+    if (!productApi || !session?.isAccount || !accountAccess) throw new PracticeError('ACCOUNT_CLOSURE_UNAVAILABLE', 'Account closure is unavailable.');
+    const result = await careerApi.closeAccount(productApi, accountAccess);
+    journey.store?.setOneTimeNotice(result.note);
+    navigate({page: 'welcome'}, true);
+    await auth.logout();
+  }
   async function chooseGuest() {
     // A half-finished provider sign-in is dropped before the explicit guest choice is saved.
     if (auth.subject && !(await auth.logout())) throw new Error('Sign-out did not finish.');
@@ -376,7 +424,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   return <div className={`product-shell${firstDay || signIn || journeyScreen || recoveryScreen ? ' onboarding-shell' : ''}${route.page === 'market' && !route.assetId ? ' market-shell' : ''}${route.page === 'career' || route.page === 'daily' && !progress.pending ? ' career-shell' : ''}`} data-revision={revision}>
     <a className="skip" href="#main-content" onClick={event => {event.preventDefault(); heading.current?.focus();}}>Skip to content</a>
     <aside className="product-nav"><button className="product-brand" aria-label="Trimmy desk" onClick={() => navigate({page: 'desk'})}><img src={art('trimmy-mark.png')} alt=""/>trimmy</button>
-      <nav aria-label="Main navigation">{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{item.title}</span></button>)}</nav>
+      <nav aria-label="Main navigation">{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' || route.page === 'settings' && item.page === 'profile' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{item.title}</span></button>)}</nav>
       {snapshot.profile?.onboarding.persona && <button className="nav-identity" onClick={() => navigate({page:'profile'})}><img src={art(`persona-${snapshot.profile.onboarding.persona}-avatar-v1.png`)} alt=""/><span><strong>{snapshot.profile.onboarding.handle ? `@${snapshot.profile.onboarding.handle}` : `The ${snapshot.profile.onboarding.persona[0]!.toUpperCase()}${snapshot.profile.onboarding.persona.slice(1)}`}</strong>{snapshot.career && <small>{snapshot.career.rank.label}</small>}</span></button>}
     </aside>
     <div className="product-body">{(firstDay || signIn || journeyScreen || recoveryScreen) && <header className="onboard-header"><span className="product-brand"><img src={art('trimmy-mark.png')} alt=""/>trimmy</span>{firstDay && <button className="text-button" onClick={() => navigate({page: 'sign-in'})}>Sign in</button>}</header>}
@@ -388,6 +436,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
         {session?.pendingCommit && <div className="pending-order" role="status"><strong>Let’s check your last order.</strong><p>The connection ended before its receipt arrived. Checking uses the same order so it won’t be placed twice.</p><button className="text-button" disabled={busy} onClick={() => void recover()}>{busy ? 'Checking…' : 'Check order'}</button></div>}
         {recovered && <div className="notice" role="status">Your order is confirmed. The same receipt and updated desk are restored.</div>}
         {workdays.pending && !['career', 'work', 'daily'].includes(route.page) && <div className="work-recovery" role="status"><span>Your assignment has an unconfirmed save.</span><button className="text-button" disabled={workdays.working} onClick={() => void workdays.recover()}>{workdays.working ? 'Checking…' : 'Check saved work'}</button></div>}
+        {oneTimeNotice && !journeyScreen && <div className="notice" role="status">{oneTimeNotice}<button className="text-button" onClick={() => setOneTimeNotice(null)}>Dismiss</button></div>}
         {fundingUnavailable && !journeyScreen && !signIn && <div className="notice" role="status">Adding money isn’t available on the web yet. You can keep practicing with free money.<button className="text-button" onClick={() => setFundingUnavailable(false)}>Dismiss</button></div>}
         {recoveryScreen && guestRecovery ? <GuestDeskRecovery failure={guestRecovery} canSignIn={auth.enabled} onSignIn={() => openSignIn('app')} onStartNew={startNewGuestDesk}/>
         : journeyScreen && market ? <JourneyScreens journey={journey} market={market} career={snapshot.career} portfolio={snapshot.portfolio} careerLoading={busy && !snapshot.career}
@@ -400,7 +449,17 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
         {progress.pending && route.page !== 'daily' && <div className="work-recovery" role="status"><span>Your earlier desk story needs confirmation.</span><button className="text-button" onClick={() => navigate({page:'daily'})}>Check clock-out</button></div>}
         {route.page === 'daily' && progress.pending && <DailyStoryScreen progress={progress} onBack={() => navigate({page:'career'})}/>}
         {route.page === 'work' && (!hasGuest ? <GuestInvitation title="Your first assignment awaits." onStart={start} motion={motion}/> : assignment ? canOpenWork(assignment, workdays.journey!.assignments) ? <WorkdayScreen key={assignment.id} assignment={assignment} working={workdays.working} error={workdays.error} pending={Boolean(workdays.pending)} onSubmit={workdays.saveStep} onSaveDraft={workdays.saveDraft} onRecover={workdays.recover} onBack={() => commitNavigation({page:'career'})} registerLeaveGuard={registerLeaveGuard} onCue={workSound.play}/> : <div className="empty-page"><h1>{assignment.title}</h1><p>File day {assignment.ordinal - 1} to open this assignment.</p><button className="primary" onClick={() => navigate({page:'career'})}>Back to Career</button></div> : workdays.loading ? <Loading>Opening your assignment…</Loading> : <div className="empty-page"><h1>Your assignment couldn’t open.</h1><button className="text-button" onClick={() => void workdays.refresh()}>Try again</button><button className="primary" onClick={() => navigate({page:'career'})}>Back to Career</button></div>)}
-        {route.page === 'profile' && <WebProfile profile={snapshot.profile} career={snapshot.career} missions={snapshot.missions} hasIdentity={hasGuest} signedIn={auth.authenticated} authBusy={auth.busy} busy={busy} progressError={careerError !== null} motion={motion} onMotion={motionSetting} onStart={start} onCareer={() => navigate({page: 'career'})} onSignIn={() => openSignIn('app')} onSignOut={() => {navigate({page: 'sign-in'}, true); void auth.logout();}} onRetry={() => void refresh()} {...(hasGuest ? {onPersona: changePersona} : {})}/>}
+        {route.page === 'settings' && <SettingsScreen signedIn={Boolean(session?.isAccount)} authBusy={auth.busy} handle={snapshot.profile?.onboarding.handle ?? null}
+          persona={snapshot.profile?.onboarding.persona ? `The ${snapshot.profile.onboarding.persona[0]!.toUpperCase()}${snapshot.profile.onboarding.persona.slice(1)}` : null}
+          paperLimit={snapshot.career?.rank.paperLimit ?? null} reminder={journey.reminder} remindersAvailable={journey.principal !== null}
+          onSaveReminder={journey.saveReminder} sound={workSound.enabled} onSound={workSound.toggle} motion={motion} onMotion={motionSetting}
+          privacy={hasGuest ? reasonPrivacy : null}
+          resetAvailable={hasGuest && Boolean(snapshot.portfolio) && !session?.pendingCommit}
+          resetPending={Boolean(journey.principal && pendingMutations?.read('paper-reset', journey.principal))} onResetPaper={resetPaperDesk}
+          closeAvailable={Boolean(session?.isAccount && accountAccess)} onCloseAccount={closeAccount}
+          onSignIn={() => openSignIn('app')} onSignOut={() => {navigate({page: 'sign-in'}, true); void auth.logout();}}
+          onTrader={() => navigate({page: 'profile'})} onAddMoney={() => requestFunding('settings')} onBack={() => navigate({page: 'profile'})}/>}
+        {route.page === 'profile' && <WebProfile onSettings={() => navigate({page: 'settings'})} profile={snapshot.profile} career={snapshot.career} missions={snapshot.missions} hasIdentity={hasGuest} signedIn={auth.authenticated} authBusy={auth.busy} busy={busy} progressError={careerError !== null} motion={motion} onMotion={motionSetting} onStart={start} onCareer={() => navigate({page: 'career'})} onSignIn={() => openSignIn('app')} onSignOut={() => {navigate({page: 'sign-in'}, true); void auth.logout();}} onRetry={() => void refresh()} {...(hasGuest ? {onPersona: changePersona} : {})}/>}
         </>}
       </>}
       </main>

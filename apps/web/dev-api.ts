@@ -16,6 +16,29 @@ const routes: Readonly<Record<string, readonly string[]>> = {
   '/v1/markets/stocks/facts': ['GET'], '/v1/markets/stocks/insight': ['GET'],
 };
 
+// Web parity (first day, settings, Career actions, Market social, community).
+// Production browser access for each is tracked in docs/WEB_API_REQUESTS.md.
+const parityRoutes: Readonly<Record<string, readonly string[]>> = {
+  '/v1/career/reason-privacy': ['GET', 'PUT'], '/v1/career/trade-reasons': ['GET', 'POST'],
+  '/v1/career/promotions': ['POST'], '/v1/career/day-context': ['GET', 'PUT'],
+  '/v1/account/paper/reset': ['POST'], '/v1/account/closure': ['POST'],
+  '/v1/community': ['GET'], '/v1/markets/stocks/holders': ['GET'],
+  '/v1/following': ['GET', 'PUT'], '/v1/watchlist': ['GET', 'PUT'],
+  '/v1/invitations': ['GET', 'POST'], '/v1/social/friends': ['GET'],
+  '/v1/social/reason-reports': ['POST'],
+};
+const uuidSegment = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const parityPatterns: readonly {readonly path: RegExp; readonly methods: readonly string[]}[] = [
+  {path: new RegExp(`^/v1/community/following/${uuidSegment}$`), methods: ['PUT']},
+  {path: new RegExp(`^/v1/invitations/${uuidSegment}/actions$`), methods: ['POST']},
+  {path: new RegExp(`^/v1/social/friends/${uuidSegment}/actions$`), methods: ['POST']},
+  {path: new RegExp(`^/v1/social/blocks/${uuidSegment}$`), methods: ['GET', 'PUT']},
+];
+function allowed(pathname: string, method: string): boolean {
+  return Boolean(routes[pathname]?.includes(method) || parityRoutes[pathname]?.includes(method) ||
+    parityPatterns.some(route => route.path.test(pathname) && route.methods.includes(method)));
+}
+
 function problem(res: ServerResponse, status: number, code: string) {
   res.writeHead(status, {'content-type': 'application/json', 'cache-control': 'no-store'});
   res.end(JSON.stringify({error: {code, message: 'The local practice connection is unavailable.'}}));
@@ -85,7 +108,7 @@ export function createDevelopmentRelay(apiOrigin: string, fetcher: typeof fetch 
     const url = new URL(relative, target);
     const method = req.method ?? 'GET';
     if (url.origin !== target.origin || rawPath.includes('\\') || /%2f|%5c|%2e/i.test(rawPath) ||
-        !routes[url.pathname]?.includes(method)) {
+        !allowed(url.pathname, method)) {
       problem(res, 404, 'LOCAL_ROUTE_UNAVAILABLE'); return;
     }
     const authorization = credentialHeader(req, 'authorization');
