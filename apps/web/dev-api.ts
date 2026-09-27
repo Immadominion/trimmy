@@ -23,15 +23,11 @@ const parityRoutes: Readonly<Record<string, readonly string[]>> = {
   '/v1/career/promotions': ['POST'], '/v1/career/day-context': ['GET', 'PUT'],
   '/v1/account/paper/reset': ['POST'], '/v1/account/closure': ['POST'],
   '/v1/community': ['GET'], '/v1/markets/stocks/holders': ['GET'],
-  '/v1/following': ['GET', 'PUT'], '/v1/watchlist': ['GET', 'PUT'],
-  '/v1/invitations': ['GET', 'POST'], '/v1/social/friends': ['GET'],
-  '/v1/social/reason-reports': ['POST'],
+  '/v1/following': ['GET', 'PUT'], '/v1/social/reason-reports': ['POST'],
 };
 const uuidSegment = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const parityPatterns: readonly {readonly path: RegExp; readonly methods: readonly string[]}[] = [
   {path: new RegExp(`^/v1/community/following/${uuidSegment}$`), methods: ['PUT']},
-  {path: new RegExp(`^/v1/invitations/${uuidSegment}/actions$`), methods: ['POST']},
-  {path: new RegExp(`^/v1/social/friends/${uuidSegment}/actions$`), methods: ['POST']},
   {path: new RegExp(`^/v1/social/blocks/${uuidSegment}$`), methods: ['GET', 'PUT']},
 ];
 function allowed(pathname: string, method: string): boolean {
