@@ -53,6 +53,8 @@ const unavailable: ProductAuth = Object.freeze({enabled: false, ready: true, bus
 });
 export const ProductAuthContext = createContext<ProductAuth>(unavailable);
 export function useProductAuth(): ProductAuth {return useContext(ProductAuthContext);}
+/** True only below Privy's provider, where its wallet hooks may run (money/wallet-bridge.tsx). */
+export const ProductPrivyMountedContext = createContext(false);
 
 export function readProductAuthConfig(apiBase?: string | null, env: Record<string, unknown> = import.meta.env ?? {}): ProductAuthConfig {
   const appId = env['VITE_PRIVY_APP_ID'], clientId = env['VITE_PRIVY_APP_CLIENT_ID'];
@@ -311,7 +313,7 @@ function Configured({children, config, connectAccount, sdk: providedSdk}: {
     errorCode: failed ? 'PRODUCT_AUTH_UNAVAILABLE' : null}}>{children}</ProductAuthContext.Provider>;
   return <sdk.PrivyProvider appId={config.appId} {...(config.clientId ? {clientId: config.clientId} : {})} config={{loginMethods: ['email', 'google', 'twitter'],
     embeddedWallets: {ethereum: {createOnLogin: 'off'}, solana: {createOnLogin: 'off'}, disableAutomaticMigration: true}}}>
-    <Bridge sdk={sdk} config={config} connectAccount={connectAccount}>{children}</Bridge>
+    <ProductPrivyMountedContext.Provider value={true}><Bridge sdk={sdk} config={config} connectAccount={connectAccount}>{children}</Bridge></ProductPrivyMountedContext.Provider>
   </sdk.PrivyProvider>;
 }
 export function ProductAuthProvider({children, apiBase, config: supplied, connectAccount, sdk}: {
