@@ -70,15 +70,29 @@ class HttpMarketCatalogGateway implements MarketCatalogGateway {
   final Uri origin;
   final http.Client _client;
 
-  @override
-  Future<MarketCatalogPage> load({int offset = 0}) async {
-    final response = await _client
+  /// Funds and commodities come with `schema=2`. A server from before them
+  /// refuses the parameter with 400, and its plain answer lists equities.
+  bool _schema2 = true;
+
+  Future<http.Response> _read(String path, Map<String, String> query) async {
+    Future<http.Response> get(bool schema2) => _client
         .get(
           origin
-              .resolve('/v1/markets/stocks/catalog')
-              .replace(queryParameters: {'offset': '$offset'}),
+              .resolve(path)
+              .replace(queryParameters: {...query, if (schema2) 'schema': '2'}),
         )
         .timeout(const Duration(seconds: 12));
+    final response = await get(_schema2);
+    if (response.statusCode != 400 || !_schema2) return response;
+    _schema2 = false;
+    return get(false);
+  }
+
+  @override
+  Future<MarketCatalogPage> load({int offset = 0}) async {
+    final response = await _read('/v1/markets/stocks/catalog', {
+      'offset': '$offset',
+    });
     if (response.statusCode != 200) {
       throw const FormatException('catalog unavailable');
     }
@@ -93,18 +107,10 @@ class HttpMarketCatalogGateway implements MarketCatalogGateway {
 
   @override
   Future<MarketCompany?> find(String assetId) async {
-    final response = await _client
-        .get(
-          origin
-              .resolve('/v1/markets/stocks/search')
-              .replace(
-                queryParameters: {
-                  'query': assetId.replaceAll('-', ' '),
-                  'limit': '20',
-                },
-              ),
-        )
-        .timeout(const Duration(seconds: 12));
+    final response = await _read('/v1/markets/stocks/search', {
+      'query': assetId.replaceAll('-', ' '),
+      'limit': '20',
+    });
     if (response.statusCode != 200) {
       throw const FormatException('company unavailable');
     }
@@ -113,18 +119,10 @@ class HttpMarketCatalogGateway implements MarketCatalogGateway {
     if (asset == null) return null;
     StockCardFacts? card;
     try {
-      final response = await _client
-          .get(
-            origin
-                .resolve('/v1/markets/stocks/cards')
-                .replace(
-                  queryParameters: {
-                    'query': assetId.replaceAll('-', ' '),
-                    'limit': '20',
-                  },
-                ),
-          )
-          .timeout(const Duration(seconds: 12));
+      final response = await _read('/v1/markets/stocks/cards', {
+        'query': assetId.replaceAll('-', ' '),
+        'limit': '20',
+      });
       if (response.statusCode == 200) {
         card = StockCardsPage.fromJson(
           jsonDecode(response.body),

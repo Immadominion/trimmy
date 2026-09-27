@@ -134,6 +134,7 @@ void main() {
       expect(requests.first.url.queryParameters, {
         'query': 'Apple & Co',
         'limit': '2',
+        'schema': '2',
       });
       expect(requests[1].url.queryParameters, {'assetId': 'apple'});
       expect(requests.last.url.queryParameters, buy.queryParameters);
@@ -286,20 +287,20 @@ void main() {
 
   test('a 200 response cannot claim a different final GET request', () async {
     final expected = Uri.parse(
-      'https://research.example/v1/markets/stocks/search?query=Apple&limit=10',
+      'https://research.example/v1/markets/stocks/search?query=Apple&limit=10&schema=2',
     );
     for (final finalRequest in [
       http.Request('POST', expected),
       http.Request(
         'GET',
         Uri.parse(
-          'https://other.example/v1/markets/stocks/search?query=Apple&limit=10',
+          'https://other.example/v1/markets/stocks/search?query=Apple&limit=10&schema=2',
         ),
       ),
       http.Request(
         'GET',
         Uri.parse(
-          'https://research.example/v1/markets/stocks/search?query=Tesla&limit=10',
+          'https://research.example/v1/markets/stocks/search?query=Tesla&limit=10&schema=2',
         ),
       ),
     ]) {

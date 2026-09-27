@@ -241,8 +241,13 @@ class StockDiscoveryAsset {
     this.symbol,
     this.providerPrimaryVariantMint,
     this.variants,
-    this.advisories,
-  );
+    this.advisories, {
+    this.category = 'equity',
+  });
+
+  /// Listed instruments the Market shows. Servers answer `schema=2` requests
+  /// with funds and commodities too.
+  static const categories = {'equity', 'etf', 'commodity'};
   factory StockDiscoveryAsset.fromJson(Object? value) {
     final data = researchObject(value, const {
       'assetId',
@@ -253,7 +258,10 @@ class StockDiscoveryAsset {
       'variants',
       'advisories',
     });
-    if (data['category'] != 'equity') researchInvalid();
+    final category = data['category'];
+    if (category is! String || !categories.contains(category)) {
+      researchInvalid();
+    }
     final variants = _variants(data['variants']);
     final primary = data['providerPrimaryVariantMint'] == null
         ? null
@@ -287,6 +295,7 @@ class StockDiscoveryAsset {
       primary,
       variants,
       flags,
+      category: category,
     );
   }
   final String assetId;
@@ -295,7 +304,9 @@ class StockDiscoveryAsset {
 
   /// Includes flagged siblings omitted from the search variants.
   final List<StockAssetAdvisory> advisories;
-  String get category => 'equity';
+
+  /// `equity`, `etf` or `commodity`.
+  final String category;
 }
 
 class StockSearchPage {

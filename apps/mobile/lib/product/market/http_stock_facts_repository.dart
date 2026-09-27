@@ -45,7 +45,8 @@ final class HttpStockFactsRepository
     final decoded = await _get(
       _baseUri.replace(
         path: _cardsPath,
-        queryParameters: {'query': query, 'limit': '$limit'},
+        // Schema 2 includes funds and commodities, such as SPY and gold.
+        queryParameters: {'query': query, 'limit': '$limit', 'schema': '2'},
       ),
     );
     final page = StockCardsPage.fromJson(decoded);

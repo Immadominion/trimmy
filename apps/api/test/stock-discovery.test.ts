@@ -315,3 +315,35 @@ it('catalog rejects invalid offsets and inconsistent provider pagination', async
       .catalog(), codeIs('STOCK_RESPONSE_INVALID'));
   }
 });
+it('schema 2 catalog reads every curated asset and keeps equities, funds and commodities with their category', async () => {
+  const payload = {listId: 'all', primaryVariantStrategy: 'liquidity',
+    pagination: {offset: 0, limit: 20, total: 45, hasMore: true, nextOffset: 20},
+    assets: [asset(), asset({assetId: 'sp500', symbol: 'SPY', category: 'etf'}), asset({assetId: 'gold', symbol: 'GLD', category: 'commodity'}),
+      asset({assetId: 'bitcoin', category: 'crypto'}), asset({assetId: 'usd-coin', category: 'stablecoin'})]};
+  const lists: string[] = [];
+  const api = client(payload, {fetch: async url => {
+    lists.push(new URL(String(url)).searchParams.get('list')!);
+    return Response.json(payload);
+  }});
+  const page = await api.catalog(0, 2);
+  assert.deepEqual(page.discovery.results.map(row => [row.assetId, row.category]),
+    [['example-company', 'equity'], ['sp500', 'etf'], ['gold', 'commodity']]);
+  assert.deepEqual(page.cards.map(card => card.assetId), ['example-company', 'sp500', 'gold']);
+  assert.deepEqual(lists, ['all']);
+  // Schema 1 stays the equities-only stocks list installed apps parse.
+  const legacy = client({...payload, listId: 'stocks'});
+  assert.deepEqual((await legacy.catalog(0)).discovery.results.map(row => row.category), ['equity']);
+  await assert.rejects(client().catalog(0, 3 as never), codeIs('STOCK_INPUT_INVALID'));
+});
+it('schema 2 search asks every category and keeps only listed instruments', async () => {
+  let query: URLSearchParams | undefined;
+  const payload = {query: input.query, primaryVariantStrategy: 'liquidity',
+    results: [asset(), asset({assetId: 'sp500', symbol: 'SPY', category: 'etf', variants: [variant({mint: mintC, variantId: 'spy'})],
+      primaryVariant: variant({mint: mintC, variantId: 'spy'})}), asset({assetId: 'bitcoin', category: 'crypto', variants: [], primaryVariant: null})]};
+  const api = client(payload, {fetch: async url => { query = new URL(String(url)).searchParams; return Response.json(payload); }});
+  const page = await api.search(input, 2);
+  assert.equal(query?.get('category'), null);
+  assert.deepEqual(page.results.map(row => row.category), ['equity', 'etf']);
+  // Schema 1 still requires the provider's equity-only answer.
+  await assert.rejects(client(payload).search(input), codeIs('STOCK_RESPONSE_INVALID'));
+});

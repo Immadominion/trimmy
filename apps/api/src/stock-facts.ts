@@ -10,6 +10,8 @@ import type { BoundedProviderReadConfiguration } from './bounded-provider-read.j
  * https://docs.tokens.xyz/v1/endpoints/assets
  * https://docs.tokens.xyz/v1/endpoints/asset-by-id
  */
+/** Listed instruments with facts: equities, exchange-traded funds and commodities. */
+const LISTED_CATEGORIES: readonly string[] = Object.freeze(['equity', 'etf', 'commodity']);
 export interface StockCardsInput { readonly query: string; readonly limit?: number }
 export interface StockFactsInput { readonly assetId: string }
 export interface StockSessionSnapshot {
@@ -86,7 +88,8 @@ export interface StockInsight extends FactsProvenance {
 }
 export interface StockFactsReader {
   insight?(input: StockInsightInput): Promise<StockInsight>;
-  cards(input: StockCardsInput): Promise<StockCardsPage>;
+  /** Schema 2 adds exchange-traded funds and commodities. */
+  cards(input: StockCardsInput, schema?: 1 | 2): Promise<StockCardsPage>;
   facts(input: StockFactsInput): Promise<StockFacts>;
 }
 export type StockFactsErrorCode = 'STOCK_FACTS_INPUT_INVALID' | 'STOCK_FACTS_UNAVAILABLE' |
@@ -180,9 +183,9 @@ function cardVariant(value: unknown): StockCardVariant | null {
     priceUsd: market === null ? null : optionalNumber(market['price'], 0, Number.MAX_SAFE_INTEGER),
     changePercent24h: market === null ? null : optionalNumber(market['priceChange24hPercent'], -changeLimit, changeLimit)});
 }
-export function stockCard(value: unknown): StockCard {
+export function stockCard(value: unknown, categories: readonly string[] = ['equity']): StockCard {
   const data = record(value);
-  if (!isSlug(data['assetId']) || data['category'] !== 'equity') invalid();
+  if (!isSlug(data['assetId']) || !categories.includes(data['category'] as string)) invalid();
   return Object.freeze({assetId: data['assetId'], name: optionalText(data['name'], 200), symbol: optionalText(data['symbol'], 40),
     imageUrl: safeImageUrl(data['imageUrl']), stock: session(data['canonicalMarket']),
     primaryVariant: cardVariant(data['primaryVariant'])});
@@ -275,17 +278,20 @@ export class TokensStockFacts implements StockFactsReader {
       rateLimited: () => new StockFactsError('STOCK_FACTS_RATE_LIMITED'),
     });
   }
-  async cards(input: StockCardsInput): Promise<StockCardsPage> {
+  async cards(input: StockCardsInput, schema: 1 | 2 = 1): Promise<StockCardsPage> {
     const request = cardsInput(input);
+    if (schema !== 1 && schema !== 2) badInput();
+    const categories: readonly string[] = schema === 2 ? LISTED_CATEGORIES : ['equity'];
     const url = new URL('/v1/assets/search', origin);
-    url.search = new URLSearchParams({q: request.query, category: 'equity', variants: 'all',
+    url.search = new URLSearchParams({q: request.query, ...(schema === 1 ? {category: 'equity'} : {}), variants: 'all',
       primaryVariantStrategy: 'liquidity', limit: String(request.limit)}).toString();
-    const result = await this.#reads.read(`cards:${request.limit}:${request.query}`, `cards:${request.query}`, async () => {
+    const result = await this.#reads.read(`cards:${schema}:${request.limit}:${request.query}`, `cards:${request.query}`, async () => {
       const received = await this.#schedule(() => this.#get(url));
       const data = record(received.payload);
-      if (data['query'] !== request.query || data['category'] !== 'equity' || !Array.isArray(data['results']) ||
+      if (data['query'] !== request.query || (schema === 1 && data['category'] !== 'equity') || !Array.isArray(data['results']) ||
         data['results'].length > request.limit) invalid();
-      const rows = data['results'].map(stockCard);
+      const rows = data['results'].filter(row => schema === 1 || categories.includes(record(row)['category'] as string))
+        .map(row => stockCard(row, categories));
       if (new Set(rows.map(row => row.assetId)).size !== rows.length) invalid();
       return Object.freeze({...this.#provenance(received), sourceUrl: received.sourceUrl, ...request, completeCatalog: false,
         results: Object.freeze(rows)}) as StockCardsPage;
@@ -300,7 +306,7 @@ export class TokensStockFacts implements StockFactsReader {
       const detail = await this.#schedule(() => this.#get(detailUrl));
       const root = record(detail.payload);
       const asset = record(root['asset']);
-      if (asset['assetId'] !== requestedId || asset['category'] !== 'equity') invalid();
+      if (asset['assetId'] !== requestedId || !LISTED_CATEGORIES.includes(asset['category'] as string)) invalid();
       const identity = {name: optionalText(asset['name'], 200), symbol: optionalText(asset['symbol'], 40),
         imageUrl: safeImageUrl(asset['imageUrl']), description: shortDescription(optionalText(asset['description'], 4_096)),
         stock: session(asset['canonicalMarket'])};
@@ -339,7 +345,7 @@ export class TokensStockFacts implements StockFactsReader {
       url.searchParams.set('primaryVariantStrategy', 'liquidity');
       const detail = await this.#schedule(() => this.#get(url));
       const asset = record(record(detail.payload)['asset']);
-      if (asset['assetId'] !== assetId || asset['category'] !== 'equity') invalid();
+      if (asset['assetId'] !== assetId || !LISTED_CATEGORIES.includes(asset['category'] as string)) invalid();
       const groups = asset['variantGroups'] == null ? {} : record(asset['variantGroups']);
       const variants = [asset['primaryVariant'], ...Object.values(groups).flat(),
         ...(Array.isArray(asset['variants']) ? asset['variants'] : [])];

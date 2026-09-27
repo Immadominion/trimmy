@@ -514,7 +514,7 @@ void main() {
       expect(
         seen.single,
         Uri.parse(
-          'https://one.example/v1/markets/stocks/search?query=Apple&limit=10',
+          'https://one.example/v1/markets/stocks/search?query=Apple&limit=10&schema=2',
         ),
       );
 

@@ -16,24 +16,26 @@ function failure(error: unknown, request: FastifyRequest, reply: FastifyReply) {
 
 /** Discovery supplies provider metadata. It never adds assets to the approved trading catalog. */
 export function registerStockDiscoveryRoutes(app: FastifyInstance, discovery?: StockDiscovery): void {
-  app.get<{Querystring: {offset?: string}}>('/v1/markets/stocks/catalog', {
+  // `schema=2` adds exchange-traded funds and commodities; installed apps read equities only.
+  app.get<{Querystring: {offset?: string; schema?: '2'}}>('/v1/markets/stocks/catalog', {
     exposeHeadRoute: false,
     schema: {querystring: {type: 'object', additionalProperties: false,
-      properties: {offset: {type: 'string', pattern: '^(0|[1-9][0-9]{0,4})$'}}}},
+      properties: {offset: {type: 'string', pattern: '^(0|[1-9][0-9]{0,4})$'}, schema: {enum: ['2']}}}},
   }, async (request, reply) => {
     try {
       if (!discovery?.catalog) throw new StockDiscoveryError('STOCK_DISCOVERY_UNAVAILABLE');
-      return await discovery.catalog(Number(request.query.offset ?? 0));
+      return await discovery.catalog(Number(request.query.offset ?? 0), request.query.schema === '2' ? 2 : 1);
     } catch (error) { return failure(error, request, reply); }
   });
 
-  app.get<{Querystring: {query: string; limit?: string}}>(STOCK_SEARCH_ROUTE, {
+  app.get<{Querystring: {query: string; limit?: string; schema?: '2'}}>(STOCK_SEARCH_ROUTE, {
     exposeHeadRoute: false,
     schema: {querystring: {
       type: 'object', additionalProperties: false, required: ['query'],
       properties: {
         query: {type: 'string', minLength: 1, maxLength: 80},
         limit: {type: 'string', enum: Array.from({length: 20}, (_, index) => String(index + 1))},
+        schema: {enum: ['2']},
       },
     }},
   }, async (request, reply) => {
@@ -43,7 +45,7 @@ export function registerStockDiscoveryRoutes(app: FastifyInstance, discovery?: S
       }
       if (!discovery) throw new StockDiscoveryError('STOCK_DISCOVERY_UNAVAILABLE');
       return await discovery.search({query: request.query.query,
-        ...(request.query.limit === undefined ? {} : {limit: Number(request.query.limit)})});
+        ...(request.query.limit === undefined ? {} : {limit: Number(request.query.limit)})}, request.query.schema === '2' ? 2 : 1);
     } catch (error) { return failure(error, request, reply); }
   });
 

@@ -34,7 +34,11 @@ void main() {
       final page = await api.cards('apple', limit: 5);
       expect(seen.method, 'GET');
       expect(seen.url.path, '/v1/markets/stocks/cards');
-      expect(seen.url.queryParameters, {'query': 'apple', 'limit': '5'});
+      expect(seen.url.queryParameters, {
+        'query': 'apple',
+        'limit': '5',
+        'schema': '2',
+      });
       expect(seen.headers.containsKey('authorization'), isFalse);
       expect(seen.followRedirects, isFalse);
       expect(page.results.single.assetId, 'apple');
