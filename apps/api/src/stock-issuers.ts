@@ -53,6 +53,8 @@ export interface StockIssuerIdentity {
   readonly registry: StockIssuerRegistrySource;
   /** Admission refuses higher Token-2022 transfer fees for this issuer. */
   readonly maxTransferFeeBps: number;
+  /** 'rfq': liquidity comes only from JupiterZ market makers (fixed quotes, maker pays the fee). */
+  readonly route: 'aggregator' | 'rfq';
 }
 
 export interface StockIssuer {
@@ -85,6 +87,7 @@ const issuers: Record<StockIssuerId, StockIssuer> = {
       metadataUriPrefixes: ['https://xstocks-metadata.backed.fi/tokens/Solana/'],
       registry: {kind: 'xstocks_api', url: 'https://api.xstocks.fi/api/v2/public/assets/'},
       maxTransferFeeBps: 0,
+      route: 'aggregator',
     },
     offer: {status: 'offered'},
   },
@@ -110,6 +113,7 @@ const issuers: Record<StockIssuerId, StockIssuer> = {
       metadataUriPrefixes: ['https://metadata.backpack.exchange/stocks/', 'https://trek-labs.github.io/heart-metadata/stocks/'],
       registry: {kind: 'backpack_assets_api', url: 'https://api.backpack.exchange/api/v1/assets'},
       maxTransferFeeBps: 0,
+      route: 'aggregator',
     },
     offer: {status: 'offered'},
   },
@@ -118,7 +122,7 @@ const issuers: Record<StockIssuerId, StockIssuer> = {
       issuerId: 'ondo', name: 'Ondo', legalName: 'Ondo Global Markets (BVI) Limited',
       productType: 'Structured note',
       summary: 'Each token is a note that tracks one share, backed by shares held through a US broker. You do not own the share.',
-      holderRights: 'No voting or shareholder rights. Dividends are reinvested after tax by adjusting your token amount. Trading can pause around dividends and company events.',
+      holderRights: 'No voting or shareholder rights. Dividends are reinvested after tax by adjusting your token amount. Prices come from market makers, and trading can pause outside US market hours or around company events.',
       warning: 'Only professional investors may buy in the United Kingdom, the European Economic Area, Switzerland, Singapore, Hong Kong, Malaysia and Brazil.',
       excludedRegions: ['United States', 'Canada', 'Afghanistan', 'Belarus', 'Cuba', 'Iran', 'Libya', 'Myanmar', 'North Korea',
         'Russia', 'Somalia', 'South Sudan', 'Sudan', 'Syria', 'Occupied regions of Ukraine'],
@@ -135,11 +139,10 @@ const issuers: Record<StockIssuerId, StockIssuer> = {
       metadataUriPrefixes: ['https://app.ondo.finance/api/v2/assets/'],
       registry: {kind: 'ondo_assets_api', url: 'https://app.ondo.finance/api/v2/assets'},
       maxTransferFeeBps: 0,
+      route: 'rfq',
     },
-    // Ondo liquidity is quoted by market makers (Jupiter RFQ) during US market
-    // hours. Those orders carry a second signer the review cannot yet verify.
-    offer: {status: 'not_offered',
-      reason: 'Ondo tokens are sold only by market makers during US market hours. Trimmy cannot check those orders yet.'},
+    // Ondo liquidity is quoted by JupiterZ market makers (route: 'rfq').
+    offer: {status: 'offered'},
   },
   prestocks: {
     disclosure: {
@@ -162,9 +165,10 @@ const issuers: Record<StockIssuerId, StockIssuer> = {
       metadataUriPrefixes: ['https://prestocks.com/metadata/'],
       registry: {kind: 'issuer_metadata'},
       maxTransferFeeBps: 300,
+      route: 'aggregator',
     },
-    offer: {status: 'not_offered',
-      reason: 'PreStocks names no legal issuer, and some of the companies involved say these transfers are void. Trimmy does not offer these tokens.'},
+    // Offered at the owner's direction (27 Sept 2026) with the warning above shown before any order.
+    offer: {status: 'offered'},
   },
   tessera: {
     disclosure: {
@@ -187,9 +191,10 @@ const issuers: Record<StockIssuerId, StockIssuer> = {
       metadataUriPrefixes: ['https://cdn.tesseralab.co/tessera/'],
       registry: {kind: 'issuer_metadata'},
       maxTransferFeeBps: 50,
+      route: 'aggregator',
     },
-    offer: {status: 'not_offered',
-      reason: 'Tessera tokens are loan claims that are lost if a redemption window is missed. Trimmy does not offer these tokens.'},
+    // Offered at the owner's direction (27 Sept 2026) with the warning above shown before any order.
+    offer: {status: 'offered'},
   },
 };
 

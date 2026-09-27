@@ -63,7 +63,7 @@ export interface ReconciledStockOrderTerms {
   readonly reconciledAt: string;
   readonly swap: Readonly<{
     readonly instructionIndex: number;
-    readonly variant: 'route' | 'shared_accounts_route' | 'route_v2';
+    readonly variant: 'route' | 'shared_accounts_route' | 'route_v2' | 'rfq_fill';
     readonly taker: string;
     readonly sourceTokenAccount: string;
     readonly destinationTokenAccount: string;
@@ -154,6 +154,12 @@ const TLV_HEADER_BYTES = 4n;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 type SwapInstruction = Extract<ReviewableInstruction, {program: 'jupiter_v6'}>;
+type FillInstruction = Extract<ReviewableInstruction, {program: 'order_engine'}>;
+const TOKEN_PROGRAM_ADDRESS = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const TOKEN_2022_PROGRAM_ADDRESS = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+const programAddressFor = (kind: 'token' | 'token_2022') => kind === 'token' ? TOKEN_PROGRAM_ADDRESS : TOKEN_2022_PROGRAM_ADDRESS;
+/** RFQ quotes normally expire within a minute; anything much longer is not a live quote. */
+const MAX_RFQ_EXPIRY_SECONDS = 300n;
 type AccountByAddress = ReadonlyMap<string, {readonly state: ReviewableAccountState; readonly lamports: string}>;
 
 function rentExemptLamports(dataBytes: bigint): bigint {
@@ -222,9 +228,12 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   const candidate = semantics.candidate;
   const taker = summary.taker;
 
-  // Program set: only the programs a Jupiter swap needs. The names are the
-  // KNOWN_PROGRAMS keys the semantics gate reports.
-  const admittedPrograms: readonly string[] = ['computeBudget', 'associatedToken', 'jupiterV6', 'token',
+  // Program set: only the programs this route needs. The names are the
+  // KNOWN_PROGRAMS keys the semantics gate reports. An RFQ fill and a Jupiter
+  // route never share a transaction.
+  const rfq = summary.route === 'rfq';
+  if (rfq !== (summary.marketMaker !== null)) return fail('RECONCILIATION_EVIDENCE_MISMATCH');
+  const admittedPrograms: readonly string[] = ['computeBudget', 'associatedToken', rfq ? 'orderEngine' : 'jupiterV6', 'token',
     'token2022', 'system', 'memo'];
   for (const program of semantics.programs) {
     if (!admittedPrograms.includes(program.name)) return fail('RECONCILIATION_PROGRAM_UNEXPECTED');
@@ -237,6 +246,7 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
 
   // Walk every top-level instruction and admit only the expected shapes.
   let swap: {readonly instructionIndex: number; readonly decoded: SwapInstruction} | null = null;
+  let fill: {readonly instructionIndex: number; readonly decoded: FillInstruction} | null = null;
   const createdAccounts: {address: string; mint: string; rentLamportsUpperBound: string}[] = [];
   const closedAccounts: string[] = [];
   let memoInstructions = 0;
@@ -305,8 +315,13 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
         return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
       }
       case 'jupiter_v6': {
-        if (swap !== null) return fail('RECONCILIATION_MULTIPLE_SWAPS');
+        if (swap !== null || fill !== null) return fail('RECONCILIATION_MULTIPLE_SWAPS');
         swap = {instructionIndex: instruction.instructionIndex, decoded};
+        continue;
+      }
+      case 'order_engine': {
+        if (swap !== null || fill !== null) return fail('RECONCILIATION_MULTIPLE_SWAPS');
+        fill = {instructionIndex: instruction.instructionIndex, decoded};
         continue;
       }
       default:
@@ -316,39 +331,96 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   for (const item of createdAccounts) {
     if (item.mint === JUPITER_QUOTE_ASSETS.SOL.mint && !nativeInput && !closedAccounts.includes(item.address)) return fail('RECONCILIATION_UNEXPECTED_MOVEMENT');
   }
-  if (swap === null) return fail('RECONCILIATION_SWAP_INSTRUCTION_MISSING');
-  const route = swap.decoded;
-
-  // Terms: authority, accounts, mints, program, amounts, slippage and fees.
-  check('swap authority', route.userTransferAuthority === taker, route.userTransferAuthority, taker, 'RECONCILIATION_AUTHORITY_MISMATCH');
-  check('swap source account', route.userSourceTokenAccount === candidate.takerInputAssociatedAccount,
-    route.userSourceTokenAccount, candidate.takerInputAssociatedAccount, 'RECONCILIATION_SOURCE_ACCOUNT_MISMATCH');
-  check('swap destination account', route.userDestinationTokenAccount === candidate.takerOutputAssociatedAccount,
-    route.userDestinationTokenAccount, candidate.takerOutputAssociatedAccount, 'RECONCILIATION_DESTINATION_ACCOUNT_MISMATCH');
-  check('swap destination mint', route.destinationMint === candidate.outputMint, route.destinationMint, candidate.outputMint, 'RECONCILIATION_MINT_MISMATCH');
-  if (route.sourceMint !== null) {
-    check('swap source mint', route.sourceMint === candidate.inputMint, String(route.sourceMint), candidate.inputMint, 'RECONCILIATION_MINT_MISMATCH');
-  }
-  const inputProgramAddress = candidate.inputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
-  check('swap token program', route.tokenProgram === inputProgramAddress, route.tokenProgram, inputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
-  if (route.kind === 'route_v2') {
-    const outputProgramAddress = candidate.outputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
-    check('swap destination token program', route.destinationTokenProgram === outputProgramAddress, String(route.destinationTokenProgram), outputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
-  }
-  const inputAmount = parseAmount(route.inAmount, 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
   const candidateInput = parseAmount(summary.input.amountRaw, 'RECONCILIATION_INPUT_INVALID');
-  check('input amount', inputAmount === candidateInput, inputAmount.toString(), candidateInput.toString(), 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
-  const quotedOut = parseAmount(route.quotedOutAmount, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
-  if (!Number.isInteger(route.slippageBps) || route.slippageBps < 0 || route.slippageBps > 10_000) return fail('RECONCILIATION_SLIPPAGE_EXCEEDED');
-  check('slippage', route.slippageBps <= summary.slippageBps, String(route.slippageBps), `<= ${summary.slippageBps}`, 'RECONCILIATION_SLIPPAGE_EXCEEDED');
-  const minimumOut = quotedOut - (quotedOut * BigInt(route.slippageBps)) / 10_000n;
   const floor = parseAmount(summary.approvalPolicy.minimumOutputAmountRaw, 'RECONCILIATION_INPUT_INVALID');
   const quotedMinimum = parseAmount(summary.output.quotedMinimumAmountRaw, 'RECONCILIATION_INPUT_INVALID');
-  check('minimum output floor', minimumOut >= floor && minimumOut > 0n, minimumOut.toString(), `>= ${floor}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
-  check('quoted minimum consistency', minimumOut >= quotedMinimum, minimumOut.toString(), `>= ${quotedMinimum}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
-  check('platform fee cap', route.platformFeeBps <= summary.approvalPolicy.maximumFeeBasisPoints,
-    String(route.platformFeeBps), `<= ${summary.approvalPolicy.maximumFeeBasisPoints}`, 'RECONCILIATION_FEE_CAP_EXCEEDED');
-  if (route.platformFeeBps > 0 && route.platformFeeAccount === null) return fail('RECONCILIATION_FEE_CAP_EXCEEDED');
+  let terms: {
+    readonly instructionIndex: number; readonly variant: ReconciledStockOrderTerms['swap']['variant'];
+    readonly sourceTokenAccount: string; readonly destinationTokenAccount: string; readonly tokenProgram: string;
+    readonly inputAmount: bigint; readonly quotedOut: bigint; readonly slippageBps: number; readonly minimumOut: bigint;
+    readonly platformFeeBps: number; readonly platformFeeAccount: string | null; readonly routePlanStepCount: number;
+  };
+  if (rfq) {
+    if (fill === null) return fail('RECONCILIATION_SWAP_INSTRUCTION_MISSING');
+    if (swap !== null) return fail('RECONCILIATION_MULTIPLE_SWAPS');
+    const order = fill.decoded;
+    // A fixed quote: the maker delivers exactly outputAmount for exactly inputAmount.
+    check('fill taker', order.taker === taker, order.taker, taker, 'RECONCILIATION_AUTHORITY_MISMATCH');
+    check('fill market maker', order.maker === summary.marketMaker, order.maker, String(summary.marketMaker), 'RECONCILIATION_AUTHORITY_MISMATCH');
+    check('fill taker source account', order.takerInputTokenAccount === candidate.takerInputAssociatedAccount,
+      order.takerInputTokenAccount, candidate.takerInputAssociatedAccount, 'RECONCILIATION_SOURCE_ACCOUNT_MISMATCH');
+    check('fill taker destination account', order.takerOutputTokenAccount === candidate.takerOutputAssociatedAccount,
+      order.takerOutputTokenAccount, candidate.takerOutputAssociatedAccount, 'RECONCILIATION_DESTINATION_ACCOUNT_MISMATCH');
+    check('fill input mint', order.inputMint === candidate.inputMint, order.inputMint, candidate.inputMint, 'RECONCILIATION_MINT_MISMATCH');
+    check('fill output mint', order.outputMint === candidate.outputMint, order.outputMint, candidate.outputMint, 'RECONCILIATION_MINT_MISMATCH');
+    check('fill input token program', order.inputTokenProgram === programAddressFor(candidate.inputTokenProgram),
+      order.inputTokenProgram, programAddressFor(candidate.inputTokenProgram), 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
+    check('fill output token program', order.outputTokenProgram === programAddressFor(candidate.outputTokenProgram),
+      order.outputTokenProgram, programAddressFor(candidate.outputTokenProgram), 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
+    // The maker's side must be the maker's own accounts for these mints, never the taker's.
+    const takerAccounts = [candidate.takerInputAssociatedAccount, candidate.takerOutputAssociatedAccount, candidate.takerWrappedSolAssociatedAccount];
+    for (const [label, account, mint] of [['maker input account', order.makerInputTokenAccount, candidate.inputMint],
+      ['maker output account', order.makerOutputTokenAccount, candidate.outputMint]] as const) {
+      const state = accounts.get(account)?.state;
+      check(label, !takerAccounts.includes(account) && state !== undefined && state.kind === 'token_account' &&
+        state.owner === order.maker && state.mint === mint && state.state === 'initialized', account, `${order.maker} ${mint}`,
+        'RECONCILIATION_UNEXPECTED_MOVEMENT');
+    }
+    const quotedOutput = parseAmount(summary.output.estimatedAmountRaw, 'RECONCILIATION_INPUT_INVALID');
+    const fillInput = parseAmount(order.inputAmount, 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
+    check('input amount', fillInput === candidateInput, fillInput.toString(), candidateInput.toString(), 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
+    const outputAmount = parseAmount(order.outputAmount, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    check('fixed output', outputAmount === quotedOutput, outputAmount.toString(), quotedOutput.toString(), 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    check('minimum output floor', outputAmount >= floor && outputAmount > 0n, outputAmount.toString(), `>= ${floor}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    check('quoted minimum consistency', outputAmount >= quotedMinimum, outputAmount.toString(), `>= ${quotedMinimum}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    const nowSeconds = BigInt(Math.floor(now / 1000));
+    const expireAt = parseAmount(order.expireAt, 'RECONCILIATION_EXPIRED');
+    if (expireAt <= nowSeconds) return fail('RECONCILIATION_EXPIRED');
+    check('quote expiry', expireAt - nowSeconds <= MAX_RFQ_EXPIRY_SECONDS, String(expireAt), `<= now + ${MAX_RFQ_EXPIRY_SECONDS}s`, 'RECONCILIATION_EXPIRED');
+    check('platform fee cap', order.feeBps <= summary.approvalPolicy.maximumFeeBasisPoints,
+      String(order.feeBps), `<= ${summary.approvalPolicy.maximumFeeBasisPoints}`, 'RECONCILIATION_FEE_CAP_EXCEEDED');
+    terms = {instructionIndex: fill.instructionIndex, variant: 'rfq_fill', sourceTokenAccount: order.takerInputTokenAccount,
+      destinationTokenAccount: order.takerOutputTokenAccount, tokenProgram: order.inputTokenProgram, inputAmount: candidateInput,
+      quotedOut: outputAmount, slippageBps: 0, minimumOut: outputAmount, platformFeeBps: order.feeBps, platformFeeAccount: null,
+      routePlanStepCount: 1};
+  } else {
+    if (fill !== null) return fail('RECONCILIATION_PROGRAM_UNEXPECTED');
+    if (swap === null) return fail('RECONCILIATION_SWAP_INSTRUCTION_MISSING');
+    const route = swap.decoded;
+
+    // Terms: authority, accounts, mints, program, amounts, slippage and fees.
+    check('swap authority', route.userTransferAuthority === taker, route.userTransferAuthority, taker, 'RECONCILIATION_AUTHORITY_MISMATCH');
+    check('swap source account', route.userSourceTokenAccount === candidate.takerInputAssociatedAccount,
+      route.userSourceTokenAccount, candidate.takerInputAssociatedAccount, 'RECONCILIATION_SOURCE_ACCOUNT_MISMATCH');
+    check('swap destination account', route.userDestinationTokenAccount === candidate.takerOutputAssociatedAccount,
+      route.userDestinationTokenAccount, candidate.takerOutputAssociatedAccount, 'RECONCILIATION_DESTINATION_ACCOUNT_MISMATCH');
+    check('swap destination mint', route.destinationMint === candidate.outputMint, route.destinationMint, candidate.outputMint, 'RECONCILIATION_MINT_MISMATCH');
+    if (route.sourceMint !== null) {
+      check('swap source mint', route.sourceMint === candidate.inputMint, String(route.sourceMint), candidate.inputMint, 'RECONCILIATION_MINT_MISMATCH');
+    }
+    const inputProgramAddress = candidate.inputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+    check('swap token program', route.tokenProgram === inputProgramAddress, route.tokenProgram, inputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
+    if (route.kind === 'route_v2') {
+      const outputProgramAddress = candidate.outputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+      check('swap destination token program', route.destinationTokenProgram === outputProgramAddress, String(route.destinationTokenProgram), outputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
+    }
+    const inputAmount = parseAmount(route.inAmount, 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
+    check('input amount', inputAmount === candidateInput, inputAmount.toString(), candidateInput.toString(), 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
+    const quotedOut = parseAmount(route.quotedOutAmount, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    if (!Number.isInteger(route.slippageBps) || route.slippageBps < 0 || route.slippageBps > 10_000) return fail('RECONCILIATION_SLIPPAGE_EXCEEDED');
+    check('slippage', route.slippageBps <= summary.slippageBps, String(route.slippageBps), `<= ${summary.slippageBps}`, 'RECONCILIATION_SLIPPAGE_EXCEEDED');
+    const minimumOut = quotedOut - (quotedOut * BigInt(route.slippageBps)) / 10_000n;
+    check('minimum output floor', minimumOut >= floor && minimumOut > 0n, minimumOut.toString(), `>= ${floor}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    check('quoted minimum consistency', minimumOut >= quotedMinimum, minimumOut.toString(), `>= ${quotedMinimum}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
+    check('platform fee cap', route.platformFeeBps <= summary.approvalPolicy.maximumFeeBasisPoints,
+      String(route.platformFeeBps), `<= ${summary.approvalPolicy.maximumFeeBasisPoints}`, 'RECONCILIATION_FEE_CAP_EXCEEDED');
+    if (route.platformFeeBps > 0 && route.platformFeeAccount === null) return fail('RECONCILIATION_FEE_CAP_EXCEEDED');
+    terms = {instructionIndex: swap.instructionIndex, variant: route.kind, sourceTokenAccount: route.userSourceTokenAccount,
+      destinationTokenAccount: route.userDestinationTokenAccount, tokenProgram: route.tokenProgram, inputAmount,
+      quotedOut, slippageBps: route.slippageBps, minimumOut, platformFeeBps: route.platformFeeBps,
+      platformFeeAccount: route.platformFeeAccount, routePlanStepCount: route.routePlanStepCount};
+  }
+  const inputAmount = terms.inputAmount;
 
   // Account state at the observation slot.
   const takerEntry = accounts.get(taker);
@@ -384,7 +456,8 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   }
 
   // SOL cost: fees plus rent for any account this transaction creates (plus the wrapped input for SOL).
-  const feeUpperBound = parseAmount(semantics.feeEstimate.totalLamportsUpperBound, 'RECONCILIATION_INPUT_INVALID');
+  // The taker's share only: an RFQ market maker pays the network fee itself.
+  const feeUpperBound = parseAmount(semantics.feeEstimate.takerLamportsUpperBound, 'RECONCILIATION_INPUT_INVALID');
   const rentUpperBound = createdAccounts.reduce((total, item) => total + BigInt(item.rentLamportsUpperBound), 0n);
   const totalCost = feeUpperBound + rentUpperBound + (nativeInput ? inputAmount : 0n);
   check('taker SOL for fees and rent', takerLamports >= totalCost, takerLamports.toString(), `>= ${totalCost}`, 'RECONCILIATION_TAKER_SOL_INSUFFICIENT');
@@ -400,7 +473,8 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
   if (outputMint.paused === false) reviewFlags.push('output_mint_pausable');
   if (inputMint.transferFeeBasisPoints !== null) reviewFlags.push('input_mint_transfer_fee');
   if (source.delegate !== null) reviewFlags.push('source_account_has_delegate');
-  if (route.platformFeeAccount !== null) reviewFlags.push('platform_fee_account_present');
+  if (terms.platformFeeAccount !== null) reviewFlags.push('platform_fee_account_present');
+  if (rfq) reviewFlags.push('rfq_market_maker_fill');
 
   return Object.freeze({
     schemaVersion: 1, kind: 'stock_order_terms_reconciliation', network: 'solana:mainnet-beta',
@@ -409,12 +483,12 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
     semanticsDigestSha256: semantics.provenance.digestSha256, observationSlot: semantics.observationSlot,
     reconciledAt: new Date(now).toISOString(),
     swap: Object.freeze({
-      instructionIndex: swap.instructionIndex, variant: route.kind, taker,
-      sourceTokenAccount: route.userSourceTokenAccount, destinationTokenAccount: route.userDestinationTokenAccount,
-      inputMint: candidate.inputMint, outputMint: candidate.outputMint, tokenProgram: route.tokenProgram,
-      inputAmountRaw: inputAmount.toString(), quotedOutputAmountRaw: quotedOut.toString(), slippageBps: route.slippageBps,
-      minimumOutputAmountRaw: minimumOut.toString(), platformFeeBps: route.platformFeeBps,
-      platformFeeAccount: route.platformFeeAccount, routePlanStepCount: route.routePlanStepCount,
+      instructionIndex: terms.instructionIndex, variant: terms.variant, taker,
+      sourceTokenAccount: terms.sourceTokenAccount, destinationTokenAccount: terms.destinationTokenAccount,
+      inputMint: candidate.inputMint, outputMint: candidate.outputMint, tokenProgram: terms.tokenProgram,
+      inputAmountRaw: inputAmount.toString(), quotedOutputAmountRaw: terms.quotedOut.toString(), slippageBps: terms.slippageBps,
+      minimumOutputAmountRaw: terms.minimumOut.toString(), platformFeeBps: terms.platformFeeBps,
+      platformFeeAccount: terms.platformFeeAccount, routePlanStepCount: terms.routePlanStepCount,
     }),
     candidate: Object.freeze({
       inputAmountRaw: candidateInput.toString(), minimumOutputFloorRaw: floor.toString(), quotedMinimumAmountRaw: quotedMinimum.toString(),

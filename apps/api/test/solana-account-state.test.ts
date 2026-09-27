@@ -432,3 +432,35 @@ it('decodes a mixed getMultipleAccounts value array deterministically', () => {
   assert.deepEqual(decodeAll().map(state => state.kind), ['missing', 'system', 'mint']);
   assert.deepEqual(decodeAll(), decodeAll());
 });
+
+it('decodes accounts whose cleared options keep old bytes, as SPL Token leaves them after a revoke', () => {
+  // A USDC account whose delegate was revoked: None tag, stale delegate bytes (observed on mainnet).
+  const account = new Uint8Array(getLegacyTokenEncoder().encode({mint: usdcMint, owner: wallet, amount: 75_325_521_615n,
+    delegate: null, state: LegacyAccountState.Initialized, isNative: null, delegatedAmount: 0n, closeAuthority: null}));
+  const stale = Uint8Array.from(account);
+  stale.set(new Uint8Array(32).fill(0xff), 76);
+  stale.set(new Uint8Array(32).fill(0xaa), 133);
+  const decoded = decodeAccountState(observe(addr(60), stale, TOKEN_PROGRAM_ADDRESS));
+  assert.ok(decoded.kind === 'token_account' && decoded.delegate === null && decoded.closeAuthority === null &&
+    decoded.amount === 75_325_521_615n && decoded.state === 'initialized');
+  // The same on Token-2022 accounts and on mints whose authority was removed.
+  const token2022 = Uint8Array.from(getTokenEncoder().encode({mint: addr(22), owner: wallet, amount: 5n, delegate: null,
+    state: AccountState.Initialized, isNative: null, delegatedAmount: 0n, closeAuthority: null, extensions: [{__kind: 'ImmutableOwner'}]}));
+  token2022.set(new Uint8Array(32).fill(7), 76);
+  assert.equal(decodeAccountState(observe(addr(61), token2022, TOKEN_2022_PROGRAM_ADDRESS)).kind, 'token_account');
+  const mint = Uint8Array.from(getLegacyMintEncoder().encode({mintAuthority: null, supply: 1n, decimals: 6, isInitialized: true, freezeAuthority: null}));
+  mint.set(new Uint8Array(32).fill(9), 4);
+  mint.set(new Uint8Array(32).fill(3), 50);
+  const decodedMint = decodeAccountState(observe(addr(62), mint, TOKEN_PROGRAM_ADDRESS));
+  assert.ok(decodedMint.kind === 'mint' && decodedMint.mintAuthority === null && decodedMint.freezeAuthority === null);
+  const mint2022Stale = mint2022(null, {mintAuthority: null});
+  mint2022Stale.set(new Uint8Array(32).fill(5), 4);
+  assert.equal(decodeAccountState(observe(addr(63), mint2022Stale, TOKEN_2022_PROGRAM_ADDRESS)).kind, 'mint');
+  // Only a zero tag clears its body; any other non-canonical tag still fails.
+  const badTag = Uint8Array.from(account);
+  badTag[72] = 2;
+  assert.throws(() => decodeAccountState(observe(addr(64), badTag, TOKEN_PROGRAM_ADDRESS)), errorIs('ACCOUNT_DATA_INVALID'));
+  const partialTag = Uint8Array.from(stale);
+  partialTag[73] = 1;
+  assert.throws(() => decodeAccountState(observe(addr(65), partialTag, TOKEN_PROGRAM_ADDRESS)), errorIs('ACCOUNT_DATA_INVALID'));
+});

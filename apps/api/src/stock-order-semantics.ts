@@ -114,11 +114,16 @@ export interface StockOrderSemantics {
     readonly loadedAccountsDataSizeLimitBytes: number | null;
   }>;
   readonly feeEstimate: Readonly<{
-    readonly signatureCount: 1;
-    readonly baseLamports: '5000';
+    readonly signatureCount: 1 | 2;
+    /** Who pays the network fee: the taker, or an RFQ market maker. */
+    readonly feePayer: 'taker' | 'market_maker';
+    readonly baseLamports: string;
     readonly priorityLamportsUpperBound: string;
     readonly computeUnitsAssumed: number;
+    /** The whole transaction fee, whoever pays it. */
     readonly totalLamportsUpperBound: string;
+    /** The share the taker pays: the whole fee, or zero when a market maker pays. */
+    readonly takerLamportsUpperBound: string;
     readonly basis: 'base_fee_plus_priority_upper_bound_excluding_rent';
   }>;
   readonly provenance: Readonly<{
@@ -357,7 +362,8 @@ export class SolanaMainnetStockOrderSemanticsReader {
     });
 
     const computeBudget = readComputeBudget(instructions);
-    const feeEstimate = estimateFee(computeBudget, instructions.length);
+    const feeEstimate = estimateFee(computeBudget, instructions.length, structure.signatures.required,
+      structure.coSigner === null ? 'taker' : 'market_maker');
     const digestInput = JSON.stringify({
       transactionMessageHash: structure.transactionMessageHash, identityObservationSlot, observationSlot,
       identityCommitment: 'finalized', commitment: 'confirmed', instructions, accounts, supplementalAccounts, programs,
@@ -490,14 +496,17 @@ function readComputeBudget(instructions: readonly StockOrderSemanticInstruction[
   return Object.freeze({unitLimit, unitPriceMicroLamports, heapFrameBytes, loadedAccountsDataSizeLimitBytes});
 }
 
-function estimateFee(computeBudget: StockOrderSemantics['computeBudget'], instructionCount: number): StockOrderSemantics['feeEstimate'] {
+function estimateFee(computeBudget: StockOrderSemantics['computeBudget'], instructionCount: number,
+  signatureCount: 1 | 2, feePayer: 'taker' | 'market_maker'): StockOrderSemantics['feeEstimate'] {
   const computeUnitsAssumed = computeBudget.unitLimit ??
     Math.min(MAX_COMPUTE_UNITS, DEFAULT_COMPUTE_UNITS_PER_INSTRUCTION * Math.max(1, instructionCount));
   const price = computeBudget.unitPriceMicroLamports === null ? 0n : BigInt(computeBudget.unitPriceMicroLamports);
   const priority = (BigInt(computeUnitsAssumed) * price + 999_999n) / 1_000_000n;
+  const base = BASE_FEE_LAMPORTS * BigInt(signatureCount);
+  const total = base + priority;
   return Object.freeze({
-    signatureCount: 1, baseLamports: '5000', priorityLamportsUpperBound: priority.toString(), computeUnitsAssumed,
-    totalLamportsUpperBound: (BASE_FEE_LAMPORTS + priority).toString(),
+    signatureCount, feePayer, baseLamports: base.toString(), priorityLamportsUpperBound: priority.toString(), computeUnitsAssumed,
+    totalLamportsUpperBound: total.toString(), takerLamportsUpperBound: feePayer === 'taker' ? total.toString() : '0',
     basis: 'base_fee_plus_priority_upper_bound_excluding_rent',
   });
 }

@@ -33,8 +33,13 @@ class LiveTradeRecord {
     required this.inputAmountRaw,
     required this.quotedOutputAmountRaw,
     required this.minimumOutputAmountRaw,
+    this.rfq = false,
   });
   final String id, wallet, signature, assetId, mint, symbol, name;
+
+  /// Filled by a market maker: the transaction id is the maker's signature,
+  /// so explorers cannot find it by this [signature].
+  final bool rfq;
   final LiveTradeStatus status;
   final DateTime createdAt, updatedAt;
   final int decimals;
@@ -56,6 +61,7 @@ class LiveTradeRecord {
     inputAmountRaw: inputAmountRaw,
     quotedOutputAmountRaw: quotedOutputAmountRaw,
     minimumOutputAmountRaw: minimumOutputAmountRaw,
+    rfq: rfq,
   );
 
   /// USDC, or shares of the token. Shares use [scale] when the wallet's
@@ -72,7 +78,9 @@ class LiveTradeRecord {
   String get inputLabel => inputLabelWith();
   String get quotedOutputLabel => quotedOutputLabelWith();
   String get minimumOutputLabel => minimumOutputLabelWith();
-  Uri get explorer => Uri.https('solscan.io', '/tx/$signature');
+  Uri get explorer => rfq
+      ? Uri.https('solscan.io', '/account/$wallet')
+      : Uri.https('solscan.io', '/tx/$signature');
   String get statusLabel => switch (status) {
     LiveTradeStatus.pending => 'Confirming',
     LiveTradeStatus.confirmed => 'Confirmed',
@@ -163,6 +171,7 @@ class LiveTradeRecord {
       inputAmountRaw: input,
       quotedOutputAmountRaw: output,
       minimumOutputAmountRaw: minimum,
+      rfq: asset['route'] == 'rfq',
     );
   }
 }

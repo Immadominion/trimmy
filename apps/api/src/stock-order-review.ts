@@ -75,6 +75,9 @@ export interface ReviewedStockOrderIntent {
     /** Token-2022 scaled UI multiplier in force for the stock mint at review:
      * shares = raw / 10^decimals x multiplier. "1" when the mint has none. */
     readonly stockUiMultiplier: string;
+    /** 'rfq': a market maker fills a fixed quote and pays the network fee; the
+     * transaction is identified by the maker's signature, not the user's. */
+    readonly route: 'aggregator' | 'rfq';
   }>;
   readonly evidence: Readonly<{
     readonly structureSha256: string;
@@ -164,6 +167,7 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
     platformFeeBps: reconciliation.swap.platformFeeBps, totalLamportsUpperBound: reconciliation.cost.totalLamportsUpperBound,
     simulatedOutputReceivedRaw: simulation.effects.outputReceivedRaw, simulatedTakerLamportsSpent: simulation.effects.takerLamportsSpent,
     stockUiMultiplier: stockUiMultiplier(semantics, summary.side === 'buy' ? summary.output.mint : summary.input.mint, reviewedAtMs),
+    route: summary.route,
   });
   const reviewedAt = new Date(reviewedAtMs).toISOString();
   const expiresAt = new Date(expiresAtMs).toISOString();

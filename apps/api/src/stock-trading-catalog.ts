@@ -37,6 +37,8 @@ export interface StockTradingIdentity {
   readonly admissionSlot: number;
   /** Where the admission tool proved this mint's identity. */
   readonly issuerUrl: string;
+  /** The one route orders use: Jupiter's aggregator, or JupiterZ market makers (RFQ). */
+  readonly route: 'aggregator' | 'rfq';
 }
 export type StockTradingAsset = StockTradingIdentity & {readonly status: 'active'};
 
@@ -68,13 +70,16 @@ function load(): readonly StockTradingIdentity[] {
         mints.has(entry.mint) || symbols.has(entry.symbol.toLowerCase()) || RESERVED_SYMBOLS.has(entry.symbol.toLowerCase())) {
       throw new Error(`Invalid stock trading registry entry: ${String(entry.mint)}`);
     }
+    // An entry may pin its own route (admission found liquidity only there); otherwise the issuer's.
+    const route = 'route' in entry ? (entry as {route: unknown}).route : issuer.identity.route;
+    if (route !== 'aggregator' && route !== 'rfq') throw new Error(`Invalid stock trading registry entry: ${String(entry.mint)}`);
     mints.add(entry.mint); symbols.add(entry.symbol.toLowerCase());
     return Object.freeze({
       assetId: entry.assetId, symbol: entry.symbol, name: entry.name, mint: entry.mint, issuerId: entry.issuerId,
       decimals: entry.decimals, tokenProgram: 'token_2022' as const, tokenProgramAddress: STOCK_TOKEN_PROGRAM,
       maxBuyInputRaw: STOCK_MAX_BUY_INPUT_RAW, maxSellInputRaw: entry.maxSellInputRaw,
       transferFeeBps: entry.transferFeeBps, status: entry.status, admittedAt: entry.admittedAt,
-      admissionSlot: entry.admissionSlot, issuerUrl: identitySource(entry),
+      admissionSlot: entry.admissionSlot, issuerUrl: identitySource(entry), route,
     });
   }));
 }

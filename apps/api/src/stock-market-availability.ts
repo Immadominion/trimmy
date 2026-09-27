@@ -7,7 +7,9 @@ import {STOCK_TRADING_ASSETS, STOCK_TRADING_IDENTITIES} from './stock-trading-ca
 import {STOCK_MARKET_ATTRIBUTION} from './stock-market-attribution.generated.js';
 
 export const STOCK_UNAVAILABLE_REASONS = Object.freeze(['issuer_not_offered', 'identity_unverified', 'token_restricted',
-  'low_liquidity', 'no_reviewed_route', 'price_off_market', 'held_back', 'not_reviewed'] as const);
+  'low_liquidity', 'no_reviewed_route', 'price_off_market', 'held_back', 'not_reviewed',
+  // Market makers quote many tokens only while US markets are open.
+  'market_closed', 'no_market_maker_quote'] as const);
 export type StockUnavailableReason = (typeof STOCK_UNAVAILABLE_REASONS)[number];
 export interface StockUnavailableVariant {
   readonly mint: string;
@@ -47,5 +49,7 @@ export const STOCK_UNAVAILABLE_VARIANTS: readonly StockUnavailableVariant[] = lo
 /** Every issuer's disclosure with whether Trimmy offers its tokens. */
 export function stockIssuerCapabilities() {
   return Object.values(STOCK_ISSUERS).map(issuer => ({...issuer.disclosure, offered: issuer.offer.status === 'offered',
-    notOfferedReason: issuer.offer.status === 'offered' ? null : issuer.offer.reason}));
+    notOfferedReason: issuer.offer.status === 'offered' ? null : issuer.offer.reason,
+    // 'rfq': fills come from market makers; the transaction id is the maker's signature.
+    route: issuer.identity.route}));
 }

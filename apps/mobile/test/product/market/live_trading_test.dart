@@ -502,6 +502,16 @@ void main() {
               'reason': 'moon_phase',
             },
             {
+              'mint': unknownMint(13),
+              'issuerId': 'ondo',
+              'reason': 'market_closed',
+            },
+            {
+              'mint': unknownMint(14),
+              'issuerId': 'xstocks',
+              'reason': 'no_market_maker_quote',
+            },
+            {
               'mint': unknownMint(10),
               'issuerId': 'nobody',
               'reason': 'issuer_not_offered',
@@ -521,6 +531,14 @@ void main() {
       expect(
         caps.reasonFor(unknownMint(2)),
         'Trimmy could not confirm who issued this token.',
+      );
+      expect(
+        caps.reasonFor(unknownMint(13)),
+        'Trades only while US markets are open.',
+      );
+      expect(
+        caps.reasonFor(unknownMint(14)),
+        'No market maker is quoting it right now.',
       );
       expect(
         caps.reasonFor(unknownMint(3)),
@@ -551,7 +569,7 @@ void main() {
         caps.reasonFor(unknownMint(10)),
         'This issuer is not offered in Trimmy.',
       );
-      expect(caps.unavailable.keys, hasLength(10));
+      expect(caps.unavailable.keys, hasLength(12));
       expect(
         caps.reasonFor(unknownMint(40)),
         'Not available to trade in Trimmy yet.',

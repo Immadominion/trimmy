@@ -246,9 +246,9 @@ function bindLifetimeInput(draft: StockOrderDraft, binding: StockDraftBinding,
   // copied into the async snapshot below.
   assertExactData(structuralReport, canonical);
 
-  const report = ownRecord(structuralReport, 'LIFETIME_BINDING_MISMATCH', 18);
+  const report = ownRecord(structuralReport, 'LIFETIME_BINDING_MISMATCH', 19);
   exactKeys(report, ['schemaVersion', 'kind', 'transactionVersion', 'transactionSizeBytes', 'transactionHash',
-    'transactionMessageHash', 'requiredSigner', 'signatures', 'header', 'lifetimeToken', 'staticAccountKeys',
+    'transactionMessageHash', 'requiredSigner', 'coSigner', 'signatures', 'header', 'lifetimeToken', 'staticAccountKeys',
     'addressTableLookups', 'accountIndexSpace', 'instructions', 'assessment', 'networkContext',
     'draftBindingHash', 'candidateTermsHash'], 'LIFETIME_BINDING_MISMATCH');
   if (report['schemaVersion'] !== 1 || report['kind'] !== 'unsigned_solana_v0_structure' ||

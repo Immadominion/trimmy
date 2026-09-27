@@ -67,7 +67,8 @@ function project(value:unknown) {
   if(BigInt(minimumOutputAmountRaw)>BigInt(quotedOutputAmountRaw))return unavailable();
   return {
     id,wallet,status:status as 'pending'|'confirmed'|'failed'|'expired',signature,createdAt,updatedAt,
-    asset:{assetId:asset.assetId,mint:asset.mint,symbol:asset.symbol,name:asset.name,decimals:asset.decimals},
+    // route 'rfq': the stored signature is the user's, not the transaction id (the market maker's).
+    asset:{assetId:asset.assetId,mint:asset.mint,symbol:asset.symbol,name:asset.name,decimals:asset.decimals,route:asset.route},
     terms:{side,inputMint:inputMint as string,outputMint:outputMint as string,inputAmountRaw,quotedOutputAmountRaw,minimumOutputAmountRaw},
     amountUnits:'raw_token_units' as const,amountsStatus:'reviewed_quote' as const,
   };
