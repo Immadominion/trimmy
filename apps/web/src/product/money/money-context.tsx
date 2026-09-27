@@ -71,7 +71,8 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
       mode: new MoneyModeStore(storage, apiBase, account.accountId), terms: new IssuerTermsStore(storage, account.accountId),
       pending: new PendingOrderStore(storage, apiBase, account.accountId)};
   }, [apiBase, account, fetch, storage]);
-  useEffect(() => () => setup?.wallet.close(), [setup]);
+  // No close() on cleanup: StrictMode re-runs effects with the same memoized wallet. The identity
+  // signal ends a replaced account's wallet, and every read checks it.
 
   const noopSubscribe = useCallback(() => () => {}, []);
   const wallet = useSyncExternalStore(setup?.wallet.subscribe ?? noopSubscribe, setup?.wallet.getState ?? (() => closedWallet));

@@ -267,3 +267,18 @@ test('history pages real orders, reconciles pending ones by id and links each to
     assert.equal(page.button('More trades'), undefined);
   } finally {await page.close();}
 });
+
+test('under StrictMode the wallet and the order session survive React’s double mount through to confirmation', async () => {
+  const page = await moneyPage({strict: true});
+  page.storage.data.set(REAL_KEY, 'real');
+  page.server.settle.push('confirmed');
+  try {
+    await page.render(createElement(LiveOrderPanel, {assetId: 'apple', mint: AAPLX, companyName: 'Apple', discovery: apple}));
+    await page.waitFor(() => /25 USDC available/.test(page.text()), 'entry with a fresh balance');
+    await page.tick(); await page.click('Review buy');
+    await page.waitFor(() => /Review your buy/.test(page.text()), 'review');
+    await page.click('Confirm buy');
+    await page.waitFor(() => /Trade confirmed/.test(page.text()), 'confirmation');
+    assert.equal(page.calls.filter(call => call.path === '/v1/trading/execute').length, 1);
+  } finally {await page.close();}
+});

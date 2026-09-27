@@ -2,14 +2,14 @@
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
-import {act, createElement, type ReactElement} from 'react';
+import {act, createElement, StrictMode, type ReactElement} from 'react';
 import {JSDOM} from 'jsdom';
 import {MoneyProvider} from '../../src/product/money/money-context.js';
 import type {ProductWalletSdkPort} from '../../src/product/money/wallet-sdk-loader.js';
 import {ACCOUNT_ID, SUBJECT} from './money-fixtures.js';
 import {moneyHarness} from './money-harness.js';
 
-export async function moneyPage(options: Parameters<typeof moneyHarness>[0] & {signedIn?: boolean} = {}) {
+export async function moneyPage(options: Parameters<typeof moneyHarness>[0] & {signedIn?: boolean; strict?: boolean} = {}) {
   const dom = new JSDOM('<!doctype html><div id="root"></div>', {url: 'https://trimmy.example/#desk', pretendToBeVisual: true});
   const saved = new Map<string, PropertyDescriptor | undefined>();
   const expose = (name: string, value: unknown) => {saved.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -29,8 +29,9 @@ export async function moneyPage(options: Parameters<typeof moneyHarness>[0] & {s
   const root = createRoot(dom.window.document.getElementById('root')!);
   const flush = async (ms = 20) => {await act(async () => {await delay(ms);});};
   const render = async (children: ReactElement) => {
-    await act(async () => {root.render(createElement(MoneyProvider, {apiBase: '/api', accountAccess: options.signedIn === false ? null : access,
-      walletSdk, fetch: h.fetch, storage: h.storage, orderPollMs: 5, children}));});
+    const provider = createElement(MoneyProvider, {apiBase: '/api', accountAccess: options.signedIn === false ? null : access,
+      walletSdk, fetch: h.fetch, storage: h.storage, orderPollMs: 5, children});
+    await act(async () => {root.render(options.strict ? createElement(StrictMode, null, provider) : provider);});
     await flush();
   };
   const text = () => dom.window.document.body.textContent ?? '';

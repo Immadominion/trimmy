@@ -59,19 +59,25 @@ export interface LiveOrderPanelProps {
 
 export function LiveOrderPanel(props: LiveOrderPanelProps) {
   const money = useMoney();
-  const session = useMemo(() => money.createOrderSession(), [money.orders]);
+  // One session per mount (and per StrictMode re-mount), never reused after dispose.
+  const [session, setSession] = useState<LiveOrderSession | null>(null);
   useEffect(() => {
-    if (!session) return;
-    void session.restore();
-    const resume = () => {if (document.visibilityState !== 'hidden') session.resume();};
+    const created = money.createOrderSession();
+    setSession(created);
+    if (!created) return;
+    void created.restore();
+    const resume = () => {if (document.visibilityState !== 'hidden') created.resume();};
     document.addEventListener('visibilitychange', resume);
-    return () => {document.removeEventListener('visibilitychange', resume); session.dispose();};
-  }, [session]);
+    return () => {document.removeEventListener('visibilitychange', resume); created.dispose(); setSession(current => current === created ? null : current);};
+  }, [money.orders]);
   useEffect(() => {void money.refreshCapabilities();}, [money.refreshCapabilities]);
-  const state = useSyncExternalStore(session?.subscribe ?? (() => () => {}), session?.getState ?? (() => idle));
-  if (!session) return <aside className="trade-panel live"><h2>Trade with your own money.</h2><p className="trade-caption">Sign in to use your wallet.</p></aside>;
+  const state = useSyncExternalStore(session?.subscribe ?? noSubscribe, session?.getState ?? idleState);
+  if (!money.available) return <aside className="trade-panel live"><h2>Trade with your own money.</h2><p className="trade-caption">Sign in to use your wallet.</p></aside>;
+  if (!session) return <aside className="trade-panel live"><div className="loading" role="status"><span className="loading-dot" aria-hidden="true"/>Checking your last order…</div></aside>;
   return <LivePanelBody {...props} session={session} state={state}/>;
 }
+const noSubscribe = () => () => {};
+const idleState = () => idle;
 
 function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'buy', onDone, onPracticeInPaper, session, state}: LiveOrderPanelProps & {session: LiveOrderSession; state: OrderSessionState}) {
   const money = useMoney();
