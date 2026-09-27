@@ -41,10 +41,12 @@ export interface MoneyProviderProps {
   readonly walletSdk?: ProductWalletSdkPort;
   readonly fetch?: typeof globalThis.fetch;
   readonly storage?: MoneyStorage | null;
+  /** Test-only: how often a pending order is re-read (3 seconds, as on mobile). */
+  readonly orderPollMs?: number;
   readonly children: ReactNode;
 }
 
-export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage: suppliedStorage, children}: MoneyProviderProps) {
+export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage: suppliedStorage, orderPollMs, children}: MoneyProviderProps) {
   const privyMounted = useContext(ProductPrivyMountedContext);
   const storage = useMemo(() => suppliedStorage === undefined ? browserMoneyStorage() : suppliedStorage, [suppliedStorage]);
   const [sdk, setSdk] = useState<ProductWalletSdkPort | null>(walletSdk ?? null);
@@ -125,7 +127,7 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     setUpWallet: () => setup?.wallet.setUpWallet() ?? Promise.resolve('unavailable' as const), refreshWallet,
     capabilities, capabilitiesFailed, refreshCapabilities, terms: setup?.terms ?? null, orders: setup?.orders ?? null,
     createOrderSession: () => setup ? new LiveOrderSession({client: setup.orders, wallet: setup.wallet, pending: setup.pending,
-      visible: () => document.visibilityState !== 'hidden'}) : null,
+      visible: () => document.visibilityState !== 'hidden', ...(orderPollMs ? {pollMs: orderPollMs} : {})}) : null,
     fundWalletOpen, openFundWallet, closeFundWallet: () => setFundWalletOpen(false),
   };
   return <MoneyContext.Provider value={api}>

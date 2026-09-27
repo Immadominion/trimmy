@@ -19,8 +19,10 @@ function when(value: string): string {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} · ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function TradeHistoryScreen({onBack, onOpenAsset, identities}: {
+export function TradeHistoryScreen({onBack, onOpenAsset, identities, pollMs = 10_000}: {
   onBack(): void; onOpenAsset?(assetId: string, mint: string): void; identities?: ReadonlyMap<string, CompanyIdentity>;
+  /** Test-only: how often pending rows are reconciled (10 seconds, as on mobile). */
+  pollMs?: number;
 }) {
   const money = useMoney();
   const client = money.orders;
@@ -75,9 +77,9 @@ export function TradeHistoryScreen({onBack, onOpenAsset, identities}: {
         }
         if (turn === generation.current) await refresh(true);
       })().finally(() => {running = false;});
-    }, 10_000);
+    }, pollMs);
     return () => clearInterval(timer);
-  }, [client, pending, more, refresh]);
+  }, [client, pending, more, refresh, pollMs]);
 
   async function loadMore() {
     if (!client || more || loading || cursor === null) return;

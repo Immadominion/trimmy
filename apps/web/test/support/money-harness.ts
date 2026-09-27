@@ -104,7 +104,7 @@ export async function moneyHarness(options: {route?: 'aggregator' | 'rfq'; usdc?
     sign: null as null | ((bytes: Uint8Array) => Promise<Uint8Array>)};
   const embedded = (): EmbeddedSolanaSnapshot => ({ready: true, subject: privy.subject, wallets: privy.wallets.map(address => ({address})),
     signable: [...privy.wallets], refreshUser: async () => ({subject: privy.subject, wallets: privy.wallets.map(address => ({address}))}),
-    createWallet: async () => user.address,
+    createWallet: async () => {privy.wallets = [user.address]; return user.address;},
     signTransaction: async (address, bytes) => {
       privy.signs++;
       if (privy.sign) return privy.sign(bytes);
