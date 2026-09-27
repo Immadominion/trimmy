@@ -302,13 +302,15 @@ export class TokensStockDiscovery implements StockDiscovery {
     url.search = new URLSearchParams({q: request.query, ...(schema === 1 ? {category: 'equity'} : {}), variants: 'all',
       primaryVariantStrategy: 'liquidity', limit: String(request.limit)}).toString();
     const result = await this.#reads.read(`search:${schema}:${request.limit}:${request.query}`, `search:${request.query}`, async () => {
-      const received = await this.#schedule(() => this.#get(url));
+      // Without a category the provider can include Solana's crypto asset with every liquid
+      // staking token (about 1.3 MB); it is read, then left out with the other crypto rows.
+      const received = await this.#schedule(() => this.#get(url, schema === 2 ? 2 * byteLimit : byteLimit));
       const data = record(received.payload);
       if (data['query'] !== request.query || (schema === 1 && data['category'] !== 'equity') ||
         data['primaryVariantStrategy'] !== 'liquidity' || !Array.isArray(data['results']) || data['results'].length > request.limit) invalid();
       // An equity-only search answering with another category is a provider fault; a
       // search across categories keeps the listed instruments.
-      const rows = data['results'].filter(row => schema === 1 || (categories as readonly unknown[]).includes(record(row)['category']))
+      const parsed = data['results'].filter(row => schema === 1 || (categories as readonly unknown[]).includes(record(row)['category']))
         .flatMap(row => {
           try { return [asset(row, categories)]; }
           catch (error) {
@@ -317,6 +319,14 @@ export class TokensStockDiscovery implements StockDiscovery {
             throw error;
           }
         });
+      // Across categories one token can sit under two assets (gold's tokens under both
+      // "Gold" and "SPDR Gold Shares"). Each token belongs to one company: the first wins.
+      const seen = new Set<string>();
+      const rows = schema === 1 ? parsed : parsed.filter(row => {
+        if (row.variants.some(variant => seen.has(variant.mint))) return false;
+        for (const variant of row.variants) seen.add(variant.mint);
+        return true;
+      });
       if (new Set(rows.map(row => row.assetId)).size !== rows.length) invalid();
       const mints = rows.flatMap(row => row.variants.map(variant => variant.mint));
       if (new Set(mints).size !== mints.length) invalid();
@@ -420,7 +430,7 @@ export class TokensStockDiscovery implements StockDiscovery {
     release();
     return pending;
   }
-  async #get(url: URL): Promise<{payload: unknown; provenance: DiscoveryProvenance}> {
+  async #get(url: URL, maxBytes = byteLimit): Promise<{payload: unknown; provenance: DiscoveryProvenance}> {
     const started = this.#timestamp();
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -446,12 +456,12 @@ export class TokensStockDiscovery implements StockDiscovery {
       if (!response.ok) throw new StockDiscoveryError('STOCK_PROVIDER_UNAVAILABLE');
       if (!/^application\/json(?:\s*;|$)/iu.test(response.headers.get('content-type') ?? '') || !response.body) invalid();
       const length = response.headers.get('content-length');
-      if (length !== null && (!/^\d+$/u.test(length) || Number(length) > byteLimit)) invalid();
+      if (length !== null && (!/^\d+$/u.test(length) || Number(length) > maxBytes)) invalid();
       reader = response.body.getReader();
       const chunks: Uint8Array[] = []; let bytes = 0;
       for (;;) {
         const part = await Promise.race([reader.read(), deadline]); if (part.done) break;
-        bytes += part.value.byteLength; if (bytes > byteLimit) invalid(); chunks.push(part.value);
+        bytes += part.value.byteLength; if (bytes > maxBytes) invalid(); chunks.push(part.value);
       }
       const payload: unknown = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(Buffer.concat(chunks)));
       if (controller.signal.aborted) throw new StockDiscoveryError('STOCK_TIMEOUT');
