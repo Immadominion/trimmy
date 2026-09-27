@@ -53,7 +53,7 @@ void main() {
         Uri.parse('https://api.trimmy.example'),
         client: MockClient((r) async {
           expect(r.url.path, '/v1/markets/stocks/catalog');
-          expect(r.url.queryParameters, {'offset': '0'});
+          expect(r.url.queryParameters, {'offset': '0', 'schema': '2'});
           expect(r.headers.containsKey('authorization'), false);
           return http.Response(jsonEncode(payload()), 200);
         }),
@@ -68,4 +68,41 @@ void main() {
       await expectLater(failure.load(), throwsFormatException);
     },
   );
+  test('funds and commodities are listed with their category', () {
+    final fund = payload();
+    final discovery = fund['discovery'] as Map<String, Object?>;
+    final asset = Map<String, Object?>.from(
+      (discovery['results'] as List).single as Map,
+    )..['category'] = 'etf';
+    discovery['results'] = [asset];
+    final page = MarketCatalogPage.fromJson(fund, offset: 0);
+    expect(page.companies.single.assetId, 'apple');
+    asset['category'] = 'crypto';
+    expect(
+      () => MarketCatalogPage.fromJson(fund, offset: 0),
+      throwsA(
+        predicate((error) => '$error'.contains('STOCK_RESPONSE_INVALID')),
+      ),
+    );
+  });
+  test('an older server that refuses schema 2 still lists equities', () async {
+    final seen = <Map<String, String>>[];
+    final client = HttpMarketCatalogGateway(
+      Uri.parse('https://api.trimmy.example'),
+      client: MockClient((r) async {
+        seen.add(r.url.queryParameters);
+        return r.url.queryParameters.containsKey('schema')
+            ? http.Response('{}', 400)
+            : http.Response(jsonEncode(payload()), 200);
+      }),
+    );
+    addTearDown(client.close);
+    expect((await client.load()).companies.single.assetId, 'apple');
+    await client.load(offset: 0);
+    expect(seen, [
+      {'offset': '0', 'schema': '2'},
+      {'offset': '0'},
+      {'offset': '0'},
+    ]);
+  });
 }

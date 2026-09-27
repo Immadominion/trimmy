@@ -122,7 +122,8 @@ class HttpStockResearchClient implements StockResearchClient {
     final page = StockSearchPage.fromJson(
       await _get(
         '/v1/markets/stocks/search',
-        {'query': query, 'limit': '$limit'},
+        // Schema 2 includes funds and commodities, such as SPY and gold.
+        {'query': query, 'limit': '$limit', 'schema': '2'},
         _StockResearchEndpoint.discovery,
         cancellation,
       ),

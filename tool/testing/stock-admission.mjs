@@ -232,8 +232,17 @@ assert.equal(await rpc('getGenesisHash'), MAINNET_GENESIS);
 const existingMints = new Set(STOCK_TRADING_REGISTRY.map(entry => entry.mint));
 const existingSymbols = new Set(STOCK_TRADING_REGISTRY.map(entry => entry.symbol.toLowerCase()));
 const rows = [];
+// Schema 2 adds exchange-traded funds and commodities (SPY, QQQ, gold); an older
+// server answers 400 to it and keeps the equities-only list.
+let catalogSchema = '&schema=2';
 for (let offset = 0; offset !== null && offset !== undefined;) {
-  const page = await getJson(`${apiBase}/v1/markets/stocks/catalog?offset=${offset}`);
+  let page;
+  try { page = await getJson(`${apiBase}/v1/markets/stocks/catalog?offset=${offset}${catalogSchema}`); }
+  catch (error) {
+    if (error.status !== 400 || !catalogSchema || offset !== 0) throw error;
+    catalogSchema = '';
+    continue;
+  }
   rows.push(...page.discovery.results);
   offset = page.nextOffset;
 }

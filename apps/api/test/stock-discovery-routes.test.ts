@@ -111,3 +111,25 @@ it('reports disabled discovery and sanitizes provider failures with their correc
     } finally { await app.close(); }
   }
 });
+
+it('passes schema 2 through to catalog and search, and refuses any other schema', async () => {
+  const seen: unknown[] = [];
+  const app = buildApp({logger: false, stockDiscovery: {
+    search: async ({query, limit = 10}, schema) => { seen.push(['search', schema]); return {...common, query, limit, completeCatalog: false, results: []}; },
+    variants: async ({assetId}) => ({...common, assetId, variants: []}),
+    catalog: async (offset, schema) => {
+      seen.push(['catalog', offset, schema]);
+      return {discovery: {...common, query: 'catalog', limit: 20, completeCatalog: false, results: []}, cards: [], offset: offset ?? 0, total: 0, nextOffset: null};
+    },
+  }});
+  try {
+    assert.equal((await app.inject('/v1/markets/stocks/catalog?offset=20&schema=2')).statusCode, 200);
+    assert.equal((await app.inject('/v1/markets/stocks/catalog?offset=20')).statusCode, 200);
+    assert.equal((await app.inject(search + '?query=SPY&schema=2')).statusCode, 200);
+    assert.equal((await app.inject(search + '?query=SPY')).statusCode, 200);
+    for (const url of ['/v1/markets/stocks/catalog?schema=1', '/v1/markets/stocks/catalog?schema=3', search + '?query=SPY&schema=all']) {
+      assert.equal((await app.inject(url)).statusCode, 400, url);
+    }
+    assert.deepEqual(seen, [['catalog', 20, 2], ['catalog', 20, 1], ['search', 2], ['search', 1]]);
+  } finally { await app.close(); }
+});

@@ -48,11 +48,18 @@ export interface StockVariant {
   readonly advisory: StockAdvisory | null;
   readonly market: StockVariantMarket | null;
 }
+/** Listed instruments the Market shows. Schema 1 (installed apps) is equities only. */
+export const STOCK_MARKET_CATEGORIES = Object.freeze(['equity', 'etf', 'commodity'] as const);
+export type StockMarketCategory = (typeof STOCK_MARKET_CATEGORIES)[number];
+export type StockDiscoverySchema = 1 | 2;
+const categoriesFor = (schema: StockDiscoverySchema): readonly StockMarketCategory[] =>
+  schema === 2 ? STOCK_MARKET_CATEGORIES : ['equity'];
 export interface StockDiscoveryAsset {
   readonly assetId: string;
   readonly name: string | null;
   readonly symbol: string | null;
-  readonly category: 'equity';
+  /** Always 'equity' in schema 1; schema 2 adds exchange-traded funds and commodities. */
+  readonly category: StockMarketCategory;
   readonly providerPrimaryVariantMint: string | null;
   readonly variants: readonly StockVariant[];
   /** Includes flagged siblings omitted by upstream search filtering. */
@@ -90,8 +97,8 @@ export interface StockCatalogPage {
   readonly nextOffset: number | null;
 }
 export interface StockDiscovery {
-  catalog?(offset?: number): Promise<StockCatalogPage>;
-  search(input: StockSearchInput): Promise<StockDiscoveryPage>;
+  catalog?(offset?: number, schema?: StockDiscoverySchema): Promise<StockCatalogPage>;
+  search(input: StockSearchInput, schema?: StockDiscoverySchema): Promise<StockDiscoveryPage>;
   variants(input: StockVariantsInput): Promise<StockVariantsPage>;
 }
 export type StockDiscoveryErrorCode = 'STOCK_INPUT_INVALID' | 'STOCK_DISCOVERY_UNAVAILABLE' |
@@ -196,9 +203,10 @@ function variants(value: unknown): readonly StockVariant[] {
     new Set(result.map(row => row.variantId)).size !== result.length) invalid();
   return Object.freeze(result);
 }
-function asset(value: unknown): StockDiscoveryAsset {
+function asset(value: unknown, categories: readonly StockMarketCategory[] = ['equity']): StockDiscoveryAsset {
   const data = record(value);
-  if (data['category'] !== 'equity') invalid();
+  const category = data['category'];
+  if (!(categories as readonly unknown[]).includes(category)) invalid();
   const all = variants(data['variants']);
   const primary = data['primaryVariant'] === null ? null : variant(data['primaryVariant']);
   if (primary !== null && !all.some(row => JSON.stringify(row) === JSON.stringify(primary))) invalid();
@@ -218,7 +226,7 @@ function asset(value: unknown): StockDiscoveryAsset {
         flag.reason !== row.advisory.reason || flag.since !== row.advisory.since)) invalid();
   }
   return Object.freeze({assetId: assetId(data['assetId']), name: optionalText(data['name']),
-    symbol: optionalText(data['symbol'], 40), category: 'equity', providerPrimaryVariantMint: primary?.mint ?? null,
+    symbol: optionalText(data['symbol'], 40), category: category as StockMarketCategory, providerPrimaryVariantMint: primary?.mint ?? null,
     variants: all, advisories: Object.freeze(advisories)});
 }
 function searchInput(value: StockSearchInput): {query: string; limit: number} {
@@ -283,17 +291,23 @@ export class TokensStockDiscovery implements StockDiscovery {
       rateLimited: () => new StockDiscoveryError('STOCK_RATE_LIMITED'),
     });
   }
-  async search(input: StockSearchInput): Promise<StockDiscoveryPage> {
+  async search(input: StockSearchInput, schema: StockDiscoverySchema = 1): Promise<StockDiscoveryPage> {
     const request = searchInput(input);
+    if (schema !== 1 && schema !== 2) badInput();
+    const categories = categoriesFor(schema);
     const url = new URL('/v1/assets/search', origin);
-    url.search = new URLSearchParams({q: request.query, category: 'equity', variants: 'all',
+    // Schema 2 searches every category and keeps the listed instruments the Market shows.
+    url.search = new URLSearchParams({q: request.query, ...(schema === 1 ? {category: 'equity'} : {}), variants: 'all',
       primaryVariantStrategy: 'liquidity', limit: String(request.limit)}).toString();
-    const result = await this.#reads.read(`search:${request.limit}:${request.query}`, `search:${request.query}`, async () => {
+    const result = await this.#reads.read(`search:${schema}:${request.limit}:${request.query}`, `search:${request.query}`, async () => {
       const received = await this.#schedule(() => this.#get(url));
       const data = record(received.payload);
-      if (data['query'] !== request.query || data['category'] !== 'equity' || data['primaryVariantStrategy'] !== 'liquidity' ||
-        !Array.isArray(data['results']) || data['results'].length > request.limit) invalid();
-      const rows = data['results'].map(asset);
+      if (data['query'] !== request.query || (schema === 1 && data['category'] !== 'equity') ||
+        data['primaryVariantStrategy'] !== 'liquidity' || !Array.isArray(data['results']) || data['results'].length > request.limit) invalid();
+      // An equity-only search answering with another category is a provider fault; a
+      // search across categories keeps the listed instruments.
+      const rows = data['results'].filter(row => schema === 1 || (categories as readonly unknown[]).includes(record(row)['category']))
+        .map(row => asset(row, categories));
       if (new Set(rows.map(row => row.assetId)).size !== rows.length) invalid();
       const mints = rows.flatMap(row => row.variants.map(variant => variant.mint));
       if (new Set(mints).size !== mints.length) invalid();
@@ -302,33 +316,37 @@ export class TokensStockDiscovery implements StockDiscovery {
     });
     return result as StockDiscoveryPage;
   }
-  async catalog(offset = 0): Promise<StockCatalogPage> {
-    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000 || offset % 20 !== 0) badInput();
+  async catalog(offset = 0, schema: StockDiscoverySchema = 1): Promise<StockCatalogPage> {
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000 || offset % 20 !== 0 || (schema !== 1 && schema !== 2)) badInput();
     const limit = 20;
+    const categories = categoriesFor(schema);
+    // Schema 2 reads the provider's whole curated list, where exchange-traded funds and
+    // commodities such as SPY, QQQ and gold live, and keeps the listed instruments.
+    const list = schema === 1 ? 'stocks' : 'all';
     const url = new URL('/v1/assets/curated', origin);
-    url.search = new URLSearchParams({list: 'stocks', groupBy: 'asset', variants: 'all',
+    url.search = new URLSearchParams({list, groupBy: 'asset', variants: 'all',
       primaryVariantStrategy: 'liquidity', limit: String(limit), offset: String(offset)}).toString();
-    return await this.#reads.read(`catalog:${offset}`, `catalog:${offset}`, async () => {
+    return await this.#reads.read(`catalog:${schema}:${offset}`, `catalog:${schema}:${offset}`, async () => {
       const received = await this.#schedule(() => this.#get(url));
       const data = record(received.payload);
       const pagination = record(data['pagination']);
       const total = pagination['total'];
       const next = pagination['nextOffset'];
-      if (data['listId'] !== 'stocks' || data['primaryVariantStrategy'] !== 'liquidity' ||
+      if (data['listId'] !== list || data['primaryVariantStrategy'] !== 'liquidity' ||
           !Array.isArray(data['assets']) || data['assets'].length > limit ||
           pagination['offset'] !== offset || pagination['limit'] !== limit ||
           typeof total !== 'number' || !Number.isSafeInteger(total) || total < 0 || total > 10000 ||
           typeof pagination['hasMore'] !== 'boolean' ||
           (pagination['hasMore'] ? next !== offset + limit || next >= total : next !== null)) invalid();
-      // The provider's stocks list also contains ETFs/commodities. This
-      // equity contract keeps them out without corrupting provider offsets.
-      const equities = data['assets'].filter(row => record(row)['category'] === 'equity');
-      const rows = equities.map(asset);
+      // The provider's lists also contain other categories (ETFs and commodities in
+      // schema 1, crypto and stablecoins in schema 2). Filtering keeps provider offsets.
+      const listed = data['assets'].filter(row => (categories as readonly unknown[]).includes(record(row)['category']));
+      const rows = listed.map(row => asset(row, categories));
       if (new Set(rows.map(row => row.assetId)).size !== rows.length) invalid();
       return Object.freeze({
         discovery: Object.freeze({...received.provenance, query: 'catalog', limit, completeCatalog: false,
           results: Object.freeze(rows)}),
-        cards: Object.freeze(equities.map(stockCard)), offset, total, nextOffset: next,
+        cards: Object.freeze(listed.map(row => stockCard(row, categories))), offset, total, nextOffset: next,
       }) as StockCatalogPage;
     }) as StockCatalogPage;
   }

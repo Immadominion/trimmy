@@ -16,13 +16,15 @@ function failure(error: unknown, request: FastifyRequest, reply: FastifyReply) {
 
 /** Company facts are reading material for cards and stock pages. They never approve an asset for trading. */
 export function registerStockFactsRoutes(app: FastifyInstance, facts?: StockFactsReader): void {
-  app.get<{Querystring: {query: string; limit?: string}}>(STOCK_CARDS_ROUTE, {
+  app.get<{Querystring: {query: string; limit?: string; schema?: '2'}}>(STOCK_CARDS_ROUTE, {
     exposeHeadRoute: false,
     schema: {querystring: {
       type: 'object', additionalProperties: false, required: ['query'],
       properties: {
         query: {type: 'string', minLength: 1, maxLength: 80},
         limit: {type: 'string', enum: Array.from({length: 20}, (_, index) => String(index + 1))},
+        // Adds exchange-traded funds and commodities, as the catalog's schema 2 does.
+        schema: {enum: ['2']},
       },
     }},
   }, async (request, reply) => {
@@ -32,7 +34,7 @@ export function registerStockFactsRoutes(app: FastifyInstance, facts?: StockFact
       }
       if (!facts) throw new StockFactsError('STOCK_FACTS_UNAVAILABLE');
       return await facts.cards({query: request.query.query,
-        ...(request.query.limit === undefined ? {} : {limit: Number(request.query.limit)})});
+        ...(request.query.limit === undefined ? {} : {limit: Number(request.query.limit)})}, request.query.schema === '2' ? 2 : 1);
     } catch (error) { return failure(error, request, reply); }
   });
 
