@@ -21,9 +21,18 @@ import {ProductAuthProvider, useProductAuth, type ProductAuthConfig, type Produc
 import type {ProductAuthSdkPort} from './product-auth-sdk-loader';
 import {createProductAccountConnector} from './product-account';
 import {SignInScreen} from './sign-in-screen';
+// Own money (Real mode): see money/money-api.ts for the entry points other screens use.
+import {MoneyProvider} from './money/money-context';
+import {requestRealAfterSignIn, useMoney, type MoneyApi} from './money/money-api';
+import {MoneyModeSwitch, RealBalanceCard, RealHoldings} from './money/real-desk';
+import {TradeHistoryScreen} from './money/trade-history';
+import {FastBuySheet, type FastBuyChoice} from './money/fast-buy-sheet';
+import type {ProductWalletSdkPort} from './money/wallet-sdk-loader';
+import type {MoneyStorage} from './money/stores';
+import {coherentHoldings} from './money/wallet-controller';
 import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares} from './ui';
 
-type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work';
+type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work' | 'history';
 type Route = {page: Page; assetId?: string; mint?: string; assignmentId?: string};
 const pages: readonly {page: Page; title: string; icon: string}[] = [
   {page: 'desk', title: 'Desk', icon: 'nav-plumpy-desk.png'},
@@ -39,7 +48,7 @@ function readRoute(): Route {
     const mint = new URLSearchParams(search).get('mint');
     return {page, assetId, ...(mint && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint) ? {mint} : {})};
   }
-  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || pages.some(item => item.page === page) ? page as Page : 'desk'};
+  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || page === 'history' || pages.some(item => item.page === page) ? page as Page : 'desk'};
 }
 function browserStorage(): PracticeStorage {
   try {return window.localStorage;} catch {return {getItem() {throw new Error('Storage unavailable');}, setItem() {throw new Error('Storage unavailable');}};}
@@ -56,6 +65,10 @@ export interface ProductAppProps {
   readonly authSdk?: ProductAuthSdkPort;
   readonly connectAccount?: ConnectProductAccount;
   readonly accountAccess?: ProductAccountAccess;
+  /** Own money: tests inject the Privy wallet boundary, transport and storage. */
+  readonly walletSdk?: ProductWalletSdkPort;
+  readonly moneyFetch?: typeof globalThis.fetch;
+  readonly moneyStorage?: MoneyStorage | null;
 }
 export function ProductApp(props: ProductAppProps) {
   const apiBase = props.apiBase === undefined ? productApiBase() : props.apiBase;
@@ -71,10 +84,17 @@ function IdentityWorkspace(props: ProductAppProps) {
   const binding = useRef<{access: ProductAccountAccess | null; epoch: number}>({access: null, epoch: 0});
   if (binding.current.access !== auth.accountAccess) binding.current = {access: auth.accountAccess, epoch: binding.current.epoch + 1};
   if (auth.phase === 'restoring') return <div className="auth-restore"><img src={art('trimmy-mark.png')} alt="Trimmy"/><Loading>Opening Trimmy…</Loading></div>;
-  return <ProductWorkspace key={`${props.apiBase ?? 'unconfigured'}:${binding.current.epoch}`} {...props} {...(auth.accountAccess ? {accountAccess: auth.accountAccess} : {})}/>;
+  const key = `${props.apiBase ?? 'unconfigured'}:${binding.current.epoch}`;
+  return <MoneyProvider key={key} apiBase={props.apiBase ?? null} accountAccess={auth.accountAccess}
+    {...(props.walletSdk ? {walletSdk: props.walletSdk} : {})} {...(props.moneyFetch ? {fetch: props.moneyFetch} : {})}
+    {...(props.moneyStorage !== undefined ? {storage: props.moneyStorage} : {})}>
+    <ProductWorkspace {...props} {...(auth.accountAccess ? {accountAccess: auth.accountAccess} : {})}/>
+  </MoneyProvider>;
 }
 function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketClient, storage, accountAccess}: ProductAppProps) {
   const auth = useProductAuth();
+  const money = useMoney();
+  const [fastBuy, setFastBuy] = useState(false);
   const setup = useMemo(() => {
     if (!apiBase) return {session: null, market: null, error: null};
     try {return {session: new PracticeSession({client: practiceClient ?? new PracticeClient({baseUrl: apiBase}), storage: storage ?? browserStorage(), ...(accountAccess ? {account: accountAccess} : {})}),
@@ -290,6 +310,16 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   }, [session, route.page, restoring, refresh]);
 
   function select(card: StockCard) {cards.current.set(card.assetId, card); navigate({page: 'market', assetId: card.assetId, ...(card.primaryVariant ? {mint: card.primaryVariant.mint} : {})});}
+  // Paper/Real is account-scoped. A guest who asks for Real signs in first, then lands in Real.
+  function switchMoneyMode() {
+    if (money.available) {money.setReal(!money.real); return;}
+    requestRealAfterSignIn(); navigate({page: 'sign-in'});
+  }
+  function openFastBuyChoice(choice: FastBuyChoice) {
+    setFastBuy(false);
+    if (choice.card) cards.current.set(choice.assetId, choice.card);
+    navigate({page: 'market', assetId: choice.assetId, ...(choice.mint ? {mint: choice.mint} : {})});
+  }
   function motionSetting(value: boolean) {
     try {localStorage.setItem('trimmy.web.motion', value ? 'on' : 'off'); setMotion(value);} catch {setError(new Error('Motion preference could not be saved.'));}
   }
@@ -310,6 +340,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   return <div className={`product-shell${firstDay || signIn ? ' onboarding-shell' : ''}${route.page === 'market' && !route.assetId ? ' market-shell' : ''}${route.page === 'career' || route.page === 'daily' && !progress.pending ? ' career-shell' : ''}`} data-revision={revision}>
     <a className="skip" href="#main-content" onClick={event => {event.preventDefault(); heading.current?.focus();}}>Skip to content</a>
     <aside className="product-nav"><button className="product-brand" aria-label="Trimmy desk" onClick={() => navigate({page: 'desk'})}><img src={art('trimmy-mark.png')} alt=""/>trimmy</button>
+      {money.real && <span className="nav-money-mode" role="status">Real money</span>}
       <nav aria-label="Main navigation">{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{item.title}</span></button>)}</nav>
       {snapshot.profile?.onboarding.persona && <button className="nav-identity" onClick={() => navigate({page:'profile'})}><img src={art(`persona-${snapshot.profile.onboarding.persona}-avatar-v1.png`)} alt=""/><span><strong>{snapshot.profile.onboarding.handle ? `@${snapshot.profile.onboarding.handle}` : `The ${snapshot.profile.onboarding.persona[0]!.toUpperCase()}${snapshot.profile.onboarding.persona.slice(1)}`}</strong>{snapshot.career && <small>{snapshot.career.rank.label}</small>}</span></button>}
     </aside>
@@ -323,8 +354,12 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
         {recovered && <div className="notice" role="status">Your order is confirmed. The same receipt and updated desk are restored.</div>}
         {workdays.pending && !['career', 'work', 'daily'].includes(route.page) && <div className="work-recovery" role="status"><span>Your assignment has an unconfirmed save.</span><button className="text-button" disabled={workdays.working} onClick={() => void workdays.recover()}>{workdays.working ? 'Checking…' : 'Check saved work'}</button></div>}
         {signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} onBack={() => navigate({page: hasGuest ? 'desk' : 'welcome'}, true)} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
-        {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)}/> : <MarketScreen client={market} onSelect={select}/>)}
-        {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => navigate({page: 'sign-in'})} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}/> : null)}
+        {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)} onPracticeInPaper={() => money.setReal(false)}/> : <MarketScreen client={market} onSelect={select} real={money.real} capabilities={money.capabilities}/>)}
+        {route.page === 'history' && (money.available ? <TradeHistoryScreen onBack={() => navigate({page: 'desk'})} onOpenAsset={(assetId, mint) => navigate({page: 'market', assetId, mint})}/>
+          : <div className="empty-page"><h1>Your trades</h1><p>Sign in to see the trades you made with your own money.</p><button className="primary" onClick={() => navigate({page: 'sign-in'})}>Sign in</button></div>)}
+        {route.page === 'desk' && market && (busy && !snapshot.portfolio && !money.real ? <Loading/> : snapshot.portfolio || money.real ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => navigate({page: 'sign-in'})} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}
+          money={money} onSwitchMode={switchMoneyMode} onFastBuy={() => setFastBuy(true)} onHistory={() => navigate({page: 'history'})}/> : null)}
+        {fastBuy && market && <FastBuySheet market={market} knownCards={cards.current} onOpen={openFastBuyChoice} onClose={() => setFastBuy(false)}/>}
         {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title="Your career starts here." onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle}/>)}
         {progress.pending && route.page !== 'daily' && <div className="work-recovery" role="status"><span>Your earlier desk story needs confirmation.</span><button className="text-button" onClick={() => navigate({page:'daily'})}>Check clock-out</button></div>}
         {route.page === 'daily' && progress.pending && <DailyStoryScreen progress={progress} onBack={() => navigate({page:'career'})}/>}
@@ -337,9 +372,17 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   </div>;
 }
 
-function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, onSignIn, onPosition}: {snapshot: Snapshot; market: ProductMarketClient; workdays: WorkdaysState; onWork: (id: string) => void; motion: boolean; onMarket: () => void; onCareer: () => void; onSignIn?: (() => void) | undefined; onPosition: (assetId: string, mint: string) => void}) {
-  const portfolio = snapshot.portfolio!;
-  const identities = useCompanyIdentities(market, [...portfolio.positions.map(p => p.assetId), ...portfolio.recentOrders.map(o => o.assetId)], portfolio);
+/** Real mode can open before the paper desk loads; the paper side then reads as empty, never as a balance. */
+const emptyPortfolio: PaperPortfolio = {schemaVersion: 2, mode: 'paper', unit: {kind: 'paper', scaleDigits: 6}, revision: 0,
+  startingCashPaperMicros: '0', cashPaperMicros: '0', openedAt: null, updatedAt: null, positions: [], recentOrders: [],
+  valuation: {status: 'unavailable', portfolioRevision: 0, openPositionCount: 0, pricedPositionCount: 0, cashPaperMicros: '0',
+    knownValuePaperMicros: '0', totalPaperMicros: null, positions: []}};
+function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, onSignIn, onPosition, money, onSwitchMode, onFastBuy, onHistory}: {snapshot: Snapshot; market: ProductMarketClient; workdays: WorkdaysState; onWork: (id: string) => void; motion: boolean; onMarket: () => void; onCareer: () => void; onSignIn?: (() => void) | undefined; onPosition: (assetId: string, mint: string) => void;
+  money: MoneyApi; onSwitchMode: () => void; onFastBuy: () => void; onHistory: () => void}) {
+  const portfolio = snapshot.portfolio ?? emptyPortfolio;
+  const realHoldings = coherentHoldings(money.wallet);
+  const identities = useCompanyIdentities(market, [...portfolio.positions.map(p => p.assetId), ...portfolio.recentOrders.map(o => o.assetId),
+    ...(money.real ? realHoldings?.stockTokens.map(token => token.assetId) ?? [] : [])], money.real ? realHoldings : portfolio);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {const timer = window.setInterval(() => setClock(Date.now()), 5000); return () => clearInterval(timer);}, []);
   const open = portfolio.positions.filter(position => BigInt(position.quantityMicros) > 0n);
@@ -355,18 +398,22 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
   return <section className="desk-screen" aria-label="Your desk">
     <div className="page-intro"><h1>Your desk.</h1>{onSignIn && <button className="secondary save-desk" onClick={onSignIn}>Save your desk</button>}</div>
     <div className="desk-overview">
+      {money.real ? <RealBalanceCard onSwitch={onSwitchMode} onFastBuy={onFastBuy} onAddMoney={money.openFundWallet}/> :
       <section className="balance-card" aria-label="Paper balance">
-        <div className="balance-heading"><div className="balance-label">{total !== null ? 'Your paper balance' : 'Your paper cash'}</div><div className="balance-coins" aria-hidden="true">{open.slice(0,3).map(position => <CompanyLogo key={position.assetId + position.variantMint} name={identities.get(position.assetId)?.name ?? position.symbol} url={identities.get(position.assetId)?.imageUrl ?? null} size={34}/>)}</div></div>
+        <div className="balance-heading"><div className="balance-label">{total !== null ? 'Your paper balance' : 'Your paper cash'}</div><MoneyModeSwitch real={false} onSwitch={onSwitchMode}/><div className="balance-coins" aria-hidden="true">{open.slice(0,3).map(position => <CompanyLogo key={position.assetId + position.variantMint} name={identities.get(position.assetId)?.name ?? position.symbol} url={identities.get(position.assetId)?.imageUrl ?? null} size={34}/>)}</div></div>
         <div className="balance-amount">{micros(total ?? portfolio.cashPaperMicros)}<small>paper</small></div>
         <div className="balance-details"><div><span>Available to practice</span><strong>{micros(portfolio.cashPaperMicros)}</strong></div><div><span>Open positions</span><strong>{open.length}</strong></div></div>
         {open.length > 0 && !fresh && <p className="checked">Holding prices are updating.</p>}
-      </section>
+        <div className="balance-actions"><button onClick={onFastBuy}><span aria-hidden="true">+</span>Fast buy</button></div>
+      </section>}
       <aside className="desk-mentor" aria-label="A note from Sal">
         <SalArt motion={motion}/>
         <div className="desk-mentor-copy"><span className="desk-mentor-label">A note from Sal{career && <span>{career.rank.label}</span>}</span><h2>{salTitle}</h2><p>{salCopy}</p><button className="text-button" onClick={salAction}>{salActionLabel}<span aria-hidden="true">↗</span></button></div>
       </aside>
     </div>
     <WorkdayEntry workdays={workdays} onOpen={onWork}/>
+    {money.real ? <div className="desk-holdings"><RealHoldings identities={identities} onOpen={holding => onPosition(holding.assetId, holding.mint)}
+      onExplore={onFastBuy} onAddMoney={money.openFundWallet} onHistory={onHistory}/></div> :
     <div className={`desk-holdings${portfolio.recentOrders.length ? ' has-activity' : ''}`}>
       <section className="desk-section desk-positions">
         <div className="section-line"><h2>Your positions{open.length > 0 && <span className="desk-count">{open.length}</span>}</h2><button className="text-button" onClick={onMarket}>Explore Market<span aria-hidden="true">↗</span></button></div>
@@ -377,7 +424,7 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
         })}
       </section>
       {portfolio.recentOrders.length > 0 && <section className="desk-section desk-activity"><div className="section-line"><h2>Recent moves</h2></div>{portfolio.recentOrders.slice(0, 5).map(order => <div className="activity-row" key={order.id}><CompanyLogo name={identities.get(order.assetId)?.name ?? order.symbol} url={identities.get(order.assetId)?.imageUrl ?? null} size={34}/><div className="activity-copy"><strong>{order.action === 'buy' ? 'Bought' : 'Sold'} {identities.get(order.assetId)?.name ?? order.symbol}</strong><span>{shares(order.quantityMicros)} shares · {dateLabel(order.committedAt)}</span></div><div className="activity-value">{micros(order.action === 'buy' ? order.cashDebitPaperMicros : order.cashCreditPaperMicros)}<small>paper</small></div></div>)}</section>}
-    </div>
+    </div>}
   </section>;
 }
 
