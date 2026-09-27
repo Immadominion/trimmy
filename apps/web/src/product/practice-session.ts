@@ -147,6 +147,8 @@ export class PracticeSession {
   get lastReceipt(): PaperReceipt | null {return this.#saved?.lastReceipt ?? null;}
   get pendingDailyDesk(): DailyDeskCompletion | null {return this.#saved?.pendingDailyDesk ?? null;}
   get pendingWorkdayMutation(): WorkdayMutation | null {return this.#saved?.pendingWorkdayMutation ?? null;}
+  /** Why an account claim kept this guest desk separate, if it did. Read-only. */
+  get claimFailureCode(): string | null {return this.#saved?.claim?.failureCode ?? null;}
   close(): void {this.#closed = true; this.#offeredPreview = null;}
   #readRaw(): string | null {
     try {return this.#storage.getItem(this.storageKey);}

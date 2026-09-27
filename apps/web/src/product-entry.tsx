@@ -8,6 +8,7 @@ import './product/company-coin.css';
 import './product/career-world.css';
 import './product/career-journey.css';
 import './product/workday-screen.css';
+import './product/journey.css';
 
 
 export {ProductApp};
