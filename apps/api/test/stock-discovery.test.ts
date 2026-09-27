@@ -113,7 +113,7 @@ it('rejects changed search identity/category/strategy, duplicated assets and und
 });
 it('rejects duplicate or wrong-length mints, changed chain, inconsistent primary and erased warnings', async () => {
   const flag = {status: 'compromised', reason: 'Fixture issue', since: now};
-  for (const row of [asset({variants: [variant(), variant()]}), asset({primaryVariant: variant({mint: mintC})}),
+  for (const row of [asset({variants: [variant(), variant({symbol: 'EX-OTHER'})]}), asset({primaryVariant: variant({mint: mintC})}),
     asset({primaryVariant: null, variants: [variant({mint: '1'.repeat(33)})]}),
     asset({primaryVariant: null, variants: [variant({chain: 'ethereum'})]}),
     asset({primaryVariant: null, variants: [variant({advisory: undefined})]}),
@@ -346,4 +346,29 @@ it('schema 2 search asks every category and keeps only listed instruments', asyn
   assert.deepEqual(page.results.map(row => row.category), ['equity', 'etf']);
   // Schema 1 still requires the provider's equity-only answer.
   await assert.rejects(client(payload).search(input), codeIs('STOCK_RESPONSE_INVALID'));
+});
+it('collapses a verbatim repeated variant but refuses a conflicting one', async () => {
+  const repeated = variant();
+  const page = await client(search({results: [asset({variants: [repeated, repeated], primaryVariant: repeated})]})).search(input);
+  assert.equal(page.results[0]?.variants.length, 1);
+  await assert.rejects(client(search({results: [asset({variants: [repeated, {...repeated, symbol: 'OTHER'}], primaryVariant: repeated})]}))
+    .search(input), codeIs('STOCK_RESPONSE_INVALID'));
+});
+it('a schema 2 catalog page leaves out only a malformed asset; schema 1 still refuses the page', async () => {
+  const broken = asset({assetId: 'broken-fund', category: 'etf', variants: [variant(), {...variant(), symbol: 'OTHER'}]});
+  const payload = (listId: string) => ({listId, primaryVariantStrategy: 'liquidity',
+    pagination: {offset: 0, limit: 20, total: 3, hasMore: false, nextOffset: null},
+    assets: [asset(), broken, asset({assetId: 'gold', category: 'commodity', variants: [variant({mint: mintC, variantId: 'gold'})],
+      primaryVariant: variant({mint: mintC, variantId: 'gold'})})]});
+  const page = await client(payload('all')).catalog(0, 2);
+  assert.deepEqual(page.discovery.results.map(row => row.assetId), ['example-company', 'gold']);
+  assert.deepEqual(page.cards.map(card => card.assetId), ['example-company', 'gold']);
+  await assert.rejects(client({...payload('stocks'), assets: [asset(), {...broken, category: 'equity'}]}).catalog(0),
+    codeIs('STOCK_RESPONSE_INVALID'));
+});
+it('a schema 2 search leaves out only a malformed result', async () => {
+  const payload = {query: input.query, primaryVariantStrategy: 'liquidity',
+    results: [asset(), asset({assetId: 'broken', category: 'etf', variants: [variant({mint: mintC, variantId: 'b'}), variant({mint: mintC, variantId: 'b', symbol: 'X'})],
+      primaryVariant: null})]};
+  assert.deepEqual((await client(payload).search(input, 2)).results.map(row => row.assetId), ['example-company']);
 });

@@ -1,4 +1,4 @@
-import { stockCard } from './stock-facts.js';
+import { stockCard, StockFactsError } from './stock-facts.js';
 import type { StockCard } from './stock-facts.js';
 import { BoundedProviderRead } from './bounded-provider-read.js';
 import type { BoundedProviderReadConfiguration } from './bounded-provider-read.js';
@@ -198,7 +198,9 @@ function variant(value: unknown): StockVariant {
 }
 function variants(value: unknown): readonly StockVariant[] {
   if (!Array.isArray(value) || value.length > 64) invalid();
-  const result = value.map(variant);
+  // The provider sometimes repeats a variant verbatim; a conflicting repeat is still refused.
+  const unique = value.filter((row, index) => value.findIndex(other => JSON.stringify(other) === JSON.stringify(row)) === index);
+  const result = unique.map(variant);
   if (new Set(result.map(row => row.mint)).size !== result.length ||
     new Set(result.map(row => row.variantId)).size !== result.length) invalid();
   return Object.freeze(result);
@@ -307,7 +309,14 @@ export class TokensStockDiscovery implements StockDiscovery {
       // An equity-only search answering with another category is a provider fault; a
       // search across categories keeps the listed instruments.
       const rows = data['results'].filter(row => schema === 1 || (categories as readonly unknown[]).includes(record(row)['category']))
-        .map(row => asset(row, categories));
+        .flatMap(row => {
+          try { return [asset(row, categories)]; }
+          catch (error) {
+            // As in the catalog, schema 2 leaves out only a malformed result.
+            if (schema === 2 && error instanceof StockDiscoveryError && error.code === 'STOCK_RESPONSE_INVALID') return [];
+            throw error;
+          }
+        });
       if (new Set(rows.map(row => row.assetId)).size !== rows.length) invalid();
       const mints = rows.flatMap(row => row.variants.map(variant => variant.mint));
       if (new Set(mints).size !== mints.length) invalid();
@@ -341,12 +350,23 @@ export class TokensStockDiscovery implements StockDiscovery {
       // The provider's lists also contain other categories (ETFs and commodities in
       // schema 1, crypto and stablecoins in schema 2). Filtering keeps provider offsets.
       const listed = data['assets'].filter(row => (categories as readonly unknown[]).includes(record(row)['category']));
-      const rows = listed.map(row => asset(row, categories));
+      // Schema 1 refuses the whole page for one malformed asset. Schema 2 spans every
+      // provider list, so it leaves out only the asset that fails validation.
+      const parsed = listed.flatMap(row => {
+        try { return [{asset: asset(row, categories), card: stockCard(row, categories)}]; }
+        catch (error) {
+          const malformed = error instanceof StockDiscoveryError && error.code === 'STOCK_RESPONSE_INVALID' ||
+            error instanceof StockFactsError && error.code === 'STOCK_FACTS_RESPONSE_INVALID';
+          if (schema === 2 && malformed) return [];
+          throw error;
+        }
+      });
+      const rows = parsed.map(item => item.asset);
       if (new Set(rows.map(row => row.assetId)).size !== rows.length) invalid();
       return Object.freeze({
         discovery: Object.freeze({...received.provenance, query: 'catalog', limit, completeCatalog: false,
           results: Object.freeze(rows)}),
-        cards: Object.freeze(listed.map(row => stockCard(row, categories))), offset, total, nextOffset: next,
+        cards: Object.freeze(parsed.map(item => item.card)), offset, total, nextOffset: next,
       }) as StockCatalogPage;
     }) as StockCatalogPage;
   }
