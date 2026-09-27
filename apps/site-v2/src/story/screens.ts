@@ -51,7 +51,7 @@ export const SCREENS: Screen[] = [
   {
     id: "1792",
     stamp: "1792",
-    length: 1.6,
+    length: 2.3,
     heading: "Twenty-four brokers. One agreement.",
     body: ["They set rules for trading with one another. The New York Stock Exchange traces its beginning to that agreement."],
   },

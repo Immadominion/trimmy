@@ -9,9 +9,9 @@ import { drawTitle, TITLE_FONTS, tokens } from "./wallTitle";
 import "./historical-flight.css";
 
 /**
- * 1653 to 1792 as one continuous camera move, rendered in Blender from a 3D
- * rebuild of Wall Street at Federal Hall (trimmy/art/tmp/blender-opening) and
- * played here as frames in step with the scroll:
+ * 1653 to today's market as one continuous camera move, rendered in Blender
+ * from a 3D rebuild of Wall Street at Federal Hall (trimmy/art/tmp/blender-opening)
+ * and played here as frames in step with the scroll:
  *
  * 1. The sky comes up out of the black and "A WALL gave a STREET its name"
  *    paints on over it.
@@ -20,15 +20,18 @@ import "./historical-flight.css";
  * 3. Tilt: the buildings went up, so the camera comes down. It tilts and moves
  *    down Wall Street to eye level at Federal Hall, while a 1790 bond, the thing
  *    the brokers came to trade, falls with it.
- * 4. Peel: the modern street lifts away upward and the 1792 street is
- *    underneath, where the brokers meet.
- * 5. Whip: a sharp camera turn out of 1792, a second jump in time, landing on
+ * 4. Rewind: the modern towers lift away, and 1792 is standing where they
+ *    were: L'Enfant's Federal Hall, brick houses, an open sky.
+ * 5. Walk: the camera turns right down Wall Street to the buttonwood tree,
+ *    where twenty-four brokers sign their agreement.
+ * 6. Whip: the camera keeps turning, a second jump in time, and lands on
  *    today's New York Stock Exchange on Broad Street: "The street became the
- *    market." Then the three.js world takes over at the ticker.
+ *    market." Then FrameStory flies on through its doors.
  *
- * The sky and the title are the site's own layers under the frames. While the
- * camera turns, they move by the homography the render exported for each
- * frame, so they stay locked to the rendered buildings.
+ * Until the rewind, the sky and the title are the site's own layers under the
+ * frames; while the camera turns they move by the homography the render
+ * exported for each frame, so they stay locked to the rendered buildings. From
+ * the rewind on, the frames are opaque and carry their own sky.
  */
 
 const wall = SCREENS[2]!;
@@ -59,13 +62,11 @@ type Plate = {
   aspect: number;
   /** Folder with the frames, stills and skies, under public/. */
   base: string;
-  /** The 1792 street, revealed under the modern one. */
-  photo: string;
 };
 
 const PLATES: Record<Kind, Plate> = {
-  desktop: { aspect: 1.6, base: "/opening/rise/desktop", photo: "/history/brokers-desktop.webp" },
-  portrait: { aspect: 9 / 16, base: "/opening/rise/portrait", photo: "/history/brokers-portrait.webp" },
+  desktop: { aspect: 1.6, base: "/opening/rise/desktop" },
+  portrait: { aspect: 9 / 16, base: "/opening/rise/portrait" },
 };
 
 
@@ -87,8 +88,11 @@ function beats() {
     tilt,
     /** The bond is in view through the middle of the tilt; 1790 sits beside it. */
     bonds: [Math.min(middle - 0.3, tilt[0] + tiltLength * 0.24), tilt[0] + tiltLength * 0.8] as [number, number],
-    peel: [end - 0.9, end - 0.02] as [number, number],
-    agreement: [end - 0.1, street - 0.62] as [number, number],
+    /** The towers lift away and 1792 is there; it ends as the 1792 screen arrives. */
+    rewind: [end - 0.9, end - 0.02] as [number, number],
+    /** Down Wall Street to the brokers; the copy comes in near its end and stays until the whip. */
+    walk: [end + 0.02, end + 1.2] as [number, number],
+    agreementEnd: street - 0.62,
     /** A sharp turn: short in scroll, so a normal flick carries straight through it. */
     whip: [street - 0.56, street + 0.02] as [number, number],
     market: [street + 0.02, street + 1.3] as [number, number],
@@ -117,7 +121,8 @@ function setShown(node: HTMLElement | null, shown: boolean) {
 type Sequences = {
   rise: FrameSequence;
   tilt: FrameSequence | null;
-  peel: FrameSequence | null;
+  rewind: FrameSequence | null;
+  walk: FrameSequence | null;
   whip: FrameSequence | null;
   market: FrameSequence | null;
 };
@@ -129,7 +134,6 @@ export function HistoricalFlight() {
   const [manifest, setManifest] = useState<RiseManifest | null>(null);
   const set: RiseSet | undefined = manifest?.[kind];
   const host = useRef<HTMLElement>(null);
-  const photo = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLDivElement>(null);
   const skyTitle = useRef<SkyTitleState | null>(null);
   const wallHeading = useRef<HTMLDivElement>(null);
@@ -158,19 +162,19 @@ export function HistoricalFlight() {
   useEffect(() => {
     if (!set) return;
     const tiltSet = set.sequences?.tilt;
-    const peelSet = set.sequences?.peel;
     const sequence = (seq?: SequenceSet) => seq
       ? new FrameSequence(`${plate.base}/${seq.dir}`, seq.frames, seq.final ? `../${seq.final}` : undefined)
       : null;
     const next: Sequences = {
       rise: new FrameSequence(plate.base, set.frames, set.hero),
       tilt: sequence(tiltSet),
-      peel: sequence(peelSet),
+      rewind: sequence(set.sequences?.rewind),
+      walk: sequence(set.sequences?.walk),
       whip: sequence(set.sequences?.whip),
       market: sequence(set.sequences?.market),
     };
     next.rise.start();
-    void [next.tilt, next.peel, next.whip, next.market]
+    void [next.tilt, next.rewind, next.walk, next.whip, next.market]
       .reduce<Promise<void>>((ready, seq) => ready.then(() => { seq?.start(); return seq?.coarse; }), next.rise.coarse);
     sequences.current = next;
     // 1790 shows while the bond is in view and the title has gone, and sits on
@@ -215,7 +219,19 @@ export function HistoricalFlight() {
       };
       const { frame } = L;
       place(canvas.current, frame.x, frame.y, frame.w, frame.h);
-      place(photo.current, frame.x, frame.y, frame.w, frame.h);
+      // 1792 sits in the room the walk's last frames leave for it: clear of the
+      // header at the top and the Scroll capsule at the bottom.
+      const walkArea = set?.sequences?.walk?.textArea;
+      if (brokerStory.current && walkArea) {
+        const [x0, y0, x1, y1] = walkArea;
+        const narrow = L.width < 700;
+        const left = Math.max(narrow ? 24 : 100, frame.x + x0 * frame.w);
+        const right = Math.min(L.width - 24, frame.x + x1 * frame.w);
+        const top = Math.max(narrow ? 64 : 84, frame.y + y0 * frame.h);
+        const bottom = Math.min(L.height - 96, frame.y + y1 * frame.h);
+        place(brokerStory.current, left, top, Math.max(220, right - left), Math.max(90, bottom - top));
+        brokerStory.current.dataset.align = (y0 + y1) / 2 < 0.5 ? "top" : "bottom";
+      }
       // The market line sits in the calm band the render left for it, but clear
       // of the Scroll capsule at the bottom: it grows upward from just above it.
       const area = set?.sequences?.market?.textArea;
@@ -231,7 +247,7 @@ export function HistoricalFlight() {
       if (canvas.current) {
         stage.current ??= new FrameCanvas(canvas.current);
         // Draw at screen resolution, never above the sharpest still's own size.
-        const widest = Math.max(set?.heroSize[0] ?? 2560, set?.sequences?.tilt?.finalSize?.[0] ?? 0);
+        const widest = Math.max(set?.heroSize[0] ?? 2560, set?.sequences?.tilt?.finalSize?.[0] ?? 0, set?.sequences?.walk?.finalSize?.[0] ?? 0);
         const scale = Math.min(Math.min(window.devicePixelRatio || 1, 2), widest / frame.w);
         stage.current.resize(Math.round(frame.w * scale), Math.round(frame.h * scale));
       }
@@ -259,51 +275,57 @@ export function HistoricalFlight() {
 
     const seq = sequences.current;
     const tiltSet = set?.sequences?.tilt;
-    const peelSet = set?.sequences?.peel;
+    const walkSet = set?.sequences?.walk;
+    const tiltSky = (t: number) => {
+      const skies = Array.isArray(tiltSet?.sky?.[0]) ? tiltSet!.sky as number[][] : null;
+      return skies ? skies[Math.round(t * (skies.length - 1))] ?? IDENTITY : IDENTITY;
+    };
 
-    // Which rendered frame is on screen, and the sky's homography for it.
+    // Which rendered frame is on screen and, up to the rewind, the sky's
+    // homography for it. From the rewind on the frames carry their own sky.
     let image: ImageBitmap | null = null;
     let skyH = IDENTITY;
+    let skyOn = true;
     const tilting = s >= b.tilt[0];
-    const peeling = s >= b.peel[0];
+    const rewinding = s >= b.rewind[0];
+    const walking = s >= b.walk[0];
     const whipping = s >= b.whip[0];
     const marketing = s >= b.market[0];
     if (!tilting) {
       image = seq?.rise.pick(reduced ? 1 : clamp01(range(s, b.rise))) ?? null;
-    } else if (!peeling) {
+    } else if (!rewinding) {
       const t = reduced ? (s < (b.tilt[0] + b.tilt[1]) / 2 ? 0 : 1) : clamp01(range(s, b.tilt));
-      if (seq?.tilt && tiltSet) {
-        image = seq.tilt.pick(t);
-        const skies = Array.isArray(tiltSet.sky?.[0]) ? tiltSet.sky as number[][] : null;
-        if (skies) skyH = skies[Math.round(t * (skies.length - 1))] ?? IDENTITY;
-      } else {
-        image = seq?.rise.pick(1) ?? null;
-      }
+      image = seq?.tilt ? seq.tilt.pick(t) : seq?.rise.pick(1) ?? null;
+      skyH = seq?.tilt ? tiltSky(t) : IDENTITY;
+    } else if (!walking) {
+      // Rewind frame 0 is the tilt's last frame over the site's sky, so the
+      // sky layer can simply stop; until the rewind's frames are in, the tilt
+      // holds with its sky.
+      image = seq?.rewind?.pick(reduced ? 1 : clamp01(range(s, b.rewind))) ?? null;
+      skyOn = !image;
+      if (!image) { image = seq?.tilt?.pick(1) ?? null; skyH = tiltSky(1); }
     } else if (!whipping) {
-      const t = reduced ? 1 : clamp01(range(s, b.peel));
-      if (seq?.peel && peelSet) {
-        image = seq.peel.pick(t);
-        skyH = (Array.isArray(peelSet.sky?.[0]) ? null : peelSet.sky as number[] | undefined) ?? IDENTITY;
-      } else {
-        image = t < 0.5 ? (seq?.tilt?.pick(1) ?? seq?.rise.pick(1) ?? null) : null;
-      }
+      image = seq?.walk?.pick(reduced ? 1 : clamp01(range(s, b.walk))) ?? seq?.rewind?.pick(1) ?? null;
+      skyOn = false;
     } else if (!marketing) {
-      // The whip's frames are opaque: the 1792 picture streaking away, the cut
-      // at peak blur, then today's Broad Street coming out of the blur.
+      // Out of 1792 with the camera still turning, the cut at peak blur, then
+      // today's Broad Street coming out of the blur.
       image = seq?.whip?.pick(reduced ? 1 : clamp01(range(s, b.whip))) ?? null;
+      skyOn = false;
     } else {
       image = seq?.market?.pick(reduced ? 0 : clamp01(range(s, b.market))) ?? null;
+      skyOn = false;
     }
     // Sequences off screen let their decoded frames go.
     if (seq) {
       if (tilting) seq.rise.rest();
-      if (!tilting || peeling) seq.tilt?.rest();
-      if (!peeling || whipping) seq.peel?.rest();
+      if (!tilting || walking) seq.tilt?.rest();
+      if (!rewinding || whipping) seq.rewind?.rest();
+      if (!walking || whipping) seq.walk?.rest();
       if (!whipping || marketing) seq.whip?.rest();
       if (!marketing) seq.market?.rest();
     }
-    const hasWhip = !!seq?.whip;
-    const showFrames = (s > b.rise[0] - 0.02 && s < b.peel[1] + 0.02) || (hasWhip && whipping);
+    const showFrames = s > b.rise[0] - 0.02;
     setVisible(canvas.current, showFrames);
     if (showFrames) stage.current?.show(image);
 
@@ -315,37 +337,33 @@ export function HistoricalFlight() {
     // The title leaves through the top as the camera tilts down.
     const titleExit = s < b.tilt[0] ? 1 : titleLeft(skyH, titleBottom, clamp01(range(s, b.tilt)));
     const titleShown = s < b.tilt[1] && titleExit > 0.001;
-    setVisible(title.current, s < b.peel[1]);
+    setVisible(title.current, skyOn);
     skyTitle.current = {
       progress: clamp01(range(s, b.paint)),
       titleOpacity: titleShown ? titleExit : 0,
-      // Before the peel the sky is the modern one; it gives way to 1792's own sky.
-      skyOpacity: soft(range(s, b.dawn)) * (1 - soft((range(s, b.peel) - 0.2) / 0.55)),
+      skyOpacity: skyOn ? soft(range(s, b.dawn)) : 0,
       warp: multiply(invert(skyH), toFrame),
       frame: [frame.x / L.width, frame.y / L.height, frame.w / L.width, frame.h / L.height],
       skyBox: set?.skyBox ?? [0, 0, 1, 1],
     };
     setShown(wallHeading.current, s > b.paint[0] + 0.2 && s < b.tilt[0] + 0.3);
 
-    // 1790 beside the falling bond; 1792 once the modern street has gone.
-    // It stays through the pause at Federal Hall, so it can be read, and goes
-    // as the modern street starts to lift.
+    // 1790 beside the falling bond. It stays through the pause at Federal Hall,
+    // so it can be read, and goes as the towers start to lift.
     const bondRange: [number, number] = bondWindow.current
-      ? [b.tilt[0] + bondWindow.current[0] * (b.tilt[1] - b.tilt[0]), b.peel[0] + 0.04]
+      ? [b.tilt[0] + bondWindow.current[0] * (b.tilt[1] - b.tilt[0]), b.rewind[0] + 0.04]
       : b.bonds;
     setShown(bondStory.current, s > bondRange[0] && s < bondRange[1]);
-    // The 1792 picture holds still: the whip starts from it exactly as it is.
-    setVisible(photo.current, s > b.peel[0] - 0.02 && !(hasWhip && s > b.whip[0] + 0.05));
-    setShown(brokerStory.current, s > b.agreement[0] && s < b.agreement[1]);
+    // 1792 comes in once the walk has left room for it and stays until the whip.
+    const textFrom = walkSet ? (walkSet.textFrom ?? walkSet.frames - 1) / Math.max(1, walkSet.frames - 1) : 1;
+    const agreementFrom = b.walk[0] + (b.walk[1] - b.walk[0]) * textFrom;
+    setShown(brokerStory.current, s > agreementFrom && s < b.agreementEnd);
     setShown(marketLine.current, s > b.marketLine[0] && s < b.marketLine[1]);
   });
 
   const skySource = set ? `${plate.base}/${set.skyBox ? "skyWide.webp" : set.sky}` : undefined;
 
   return <section ref={host} className="historical-flight" aria-hidden="true" style={{ visibility: "hidden" }}>
-    <div className="historical-flight__photo" ref={photo}>
-      <img src={plate.photo} alt="" draggable={false} decoding="async" />
-    </div>
     <div className="historical-flight__title" ref={title}>
       <PaintTitle
         className="historical-flight__paint"
