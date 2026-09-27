@@ -37,10 +37,17 @@ class StockVariantChoice {
     required this.label,
     this.tradeable = true,
     this.reason,
+    this.marketNote,
+    this.marketOpen = true,
   });
   final String mint, label;
   final bool tradeable;
   final String? reason;
+
+  /// For a tradeable token whose market is not always open, such as
+  /// `Closed · opens Mon 1:05 AM`.
+  final String? marketNote;
+  final bool marketOpen;
 }
 
 class CompanyStockPage extends StatefulWidget {
@@ -1105,9 +1112,9 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                 ),
                 subtitle: Text(
                   choice.tradeable
-                      ? 'Tradeable'
+                      ? choice.marketNote ?? 'Tradeable'
                       : choice.reason ?? 'Not available to trade.',
-                  style: choice.tradeable
+                  style: choice.tradeable && choice.marketOpen
                       ? const TextStyle(
                           color: MarketPalette.pine,
                           fontWeight: FontWeight.w700,

@@ -1,4 +1,7 @@
 import {LiveStockOrders} from './live-stock-orders.js';
+import {OndoMarketStatusReader} from './ondo-market-status.js';
+import {StockMarketStates, StockMintPauseReader} from './stock-market-state.js';
+import {STOCK_TRADING_ASSETS} from './stock-trading-catalog.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -83,11 +86,18 @@ const raydiumStockQuotes = readRaydiumStockQuotes(process.env);
 const accountHoldings = linkedIdentities && practice.authenticateContext && holdingsReader
   ? {linkedIdentities, authenticate: practice.authenticateContext, holdings: holdingsReader} : undefined;
 const liveRpc = process.env['SOLANA_MAINNET_RPC_URL'];
+// Whether each stock can trade now: Ondo's live status for its tokens, and each
+// mint's on-chain pause flag. Both are cached and bounded; the session calendar
+// decides alone when they are unavailable.
+const marketStates = liveRpc ? new StockMarketStates({ondo: new OndoMarketStatusReader(),
+  pauses: new StockMintPauseReader({rpcUrl: liveRpc}), mints: STOCK_TRADING_ASSETS.map(asset => asset.mint)}) : undefined;
 const liveStocks = liveRpc &&
     practice.liveOrderStore && practice.authenticateContext && linkedIdentities
   ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
       executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet',
+      ...(marketStates ? {marketStates} : {}),
       service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore,
+        ...(marketStates ? {marketStates} : {}),
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
   : undefined;
 const paperAuthenticate = practice.authenticate && practice.guestSessionRepository

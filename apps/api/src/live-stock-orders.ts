@@ -7,7 +7,10 @@ import type {PrivyLinkedIdentityResolution} from './privy-linked-identities.js';
 import type {PracticeIdentity} from './practice-identity.js';
 import {STOCK_TRADING_ASSETS,findStockTradingAsset} from './stock-trading-catalog.js';
 import {LEGACY_STOCK_ISSUER,STOCK_ISSUER_IDS,acceptsIssuerTerms} from './stock-issuers.js';
-import {STOCK_UNAVAILABLE_VARIANTS,stockIssuerCapabilities} from './stock-market-availability.js';
+import {stockIssuerCapabilities,unavailableVariantsNow} from './stock-market-availability.js';
+import {calendarMarketStates} from './stock-market-state.js';
+import type {StockMarketStates,StockMarketStateOf} from './stock-market-state.js';
+import {usMarketMoment} from './us-equity-calendar.js';
 import type {StockIssuerId,StockTermsAcceptance} from './stock-issuers.js';
 import {JUPITER_QUOTE_ASSETS, orderSlippageBps, parseEstimate} from './jupiter-quote-reader.js';
 import {bindStockOrderDraft, copyStockDraftBytesForReview, STOCK_DRAFT_MAINNET_GENESIS} from './stock-order-draft.js';
@@ -112,7 +115,13 @@ export function verifyReviewedSignature(order:LiveOrder,encoded:string):string {
  }catch(e){if(e instanceof LiveTradeError)throw e;return fail('INVALID_SIGNATURE');}
 }
 
-interface Options {rpcUrl:string;store:LiveOrderStore;apiKey?:string;fetch?:typeof fetch;stages?:StockOrderReviewStages;now?:()=>number}
+interface Options {rpcUrl:string;store:LiveOrderStore;apiKey?:string;fetch?:typeof fetch;stages?:StockOrderReviewStages;now?:()=>number;
+ /** Live market states; without them the published session calendar alone decides. */
+ marketStates?:StockMarketStates}
+/** Market states now, live when configured. */
+export async function marketStatesNow(states:StockMarketStates|undefined,now:number):Promise<StockMarketStateOf>{
+ return states?states.snapshot():calendarMarketStates(now);
+}
 export class LiveStockOrders {
  readonly #fetch:typeof fetch;readonly #now:()=>number;readonly #stages:StockOrderReviewStages;
  readonly #inFlight=new Set<string>();readonly #next=new Map<string,number>();
@@ -188,7 +197,12 @@ export class LiveStockOrders {
    url.search=new URLSearchParams({inputMint:JUPITER_QUOTE_ASSETS[pair.inputAsset].mint,outputMint:JUPITER_QUOTE_ASSETS[pair.outputAsset].mint,amount:input.amountRaw,taker:wallet,slippageBps:String(slippageBps),excludeRouters:route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
    const started=this.#now();const payload=await this.json(url.toString(),{method:'GET',headers:this.headers()},true);const received=this.#now();
    const providerText=[payload?.error,payload?.errorMessage].filter(value=>typeof value==='string').join(' ');
-   if(/market hours/i.test(providerText))fail('MARKET_CLOSED');
+   if(/market hours/i.test(providerText)) {
+    // Ondo's market makers give one message for a closed market and for an order
+    // under their $1 minimum after fees; the token's own market state tells them apart.
+    const state=(await marketStatesNow(this.options.marketStates,this.#now()))(stock.issuerId,stock.symbol,stock.mint);
+    fail(route==='rfq' && /minimum trade size/i.test(providerText) && state.status==='open'?'BELOW_MINIMUM':'MARKET_CLOSED');
+   }
    if(payload?.router && payload.router!==expectedRouter)fail('NO_ROUTE');
    if(!payload?.transaction)fail(payload?.errorCode===1?(buying?'ADD_USDC':'INSUFFICIENT_HOLDINGS'):[2,3].includes(payload?.errorCode)?'ADD_SOL':'NO_ROUTE');
    if(route==='rfq') {
@@ -320,6 +334,8 @@ export interface LiveStockAdapters {
  authenticate(request:FastifyRequest):Promise<ExistingPracticeAccountAuthentication|null>;
  identities:{resolveFresh(identity:PracticeIdentity):Promise<PrivyLinkedIdentityResolution>};
  service:LiveStockOrders;
+ /** Live market states for capabilities; the calendar alone without them. */
+ marketStates?:StockMarketStates;
 }
 export function liveStockExecutionEnabled(adapters?:LiveStockAdapters):boolean {return !!adapters && adapters.executionEnabled!==false;}
 function publicOrder(order:LiveOrder|null) {
@@ -348,7 +364,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_CLOSED','MARKET_INPUT_INVALID'];
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_CLOSED','BELOW_MINIMUM','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
@@ -365,11 +381,19 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const legacy=STOCK_TRADING_ASSETS.filter(asset=>asset.issuerId===LEGACY_STOCK_ISSUER && asset.route==='aggregator').slice(0,120);
    return {...common,assets:legacy.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw}))};
   }
+  const now=Date.now();
+  const stateOf=await marketStatesNow(adapters?.marketStates,now);
+  const moment=usMarketMoment(now);
   return {schemaVersion:2,...common,issuers:stockIssuerCapabilities(),
+   // The US session in force, for context: most tokens trade around the clock regardless.
+   usMarket:{session:moment.session,between:moment.gap,changesAt:new Date(moment.changesAt).toISOString()},
    assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})=>
-    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})),
+    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route,
+     // Market makers need at least $1 after fees; $2 leaves room for the fee and price moves.
+     minBuyInputRaw:route==='rfq'?'2000000':'1',
+     market:stateOf(issuerId,symbol,mint)})),
    // Market variants that cannot be traded, with the reason to show instead of a buy button.
-   unavailable:STOCK_UNAVAILABLE_VARIANTS};
+   unavailable:unavailableVariantsNow(stateOf)};
  });
  app.get<{Params:{id:string}}>('/v1/trading/order/:id',{schema:{querystring:noQuery,params:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string',format:'uuid'}}}}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user,request.params.id)));
  app.get('/v1/trading/order',{schema:{querystring:noQuery}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user)));

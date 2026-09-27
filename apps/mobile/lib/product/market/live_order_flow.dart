@@ -36,6 +36,8 @@ class LiveOrderFailure implements Exception {
     'NO_ROUTE' => 'No route for this order right now. Try another amount.',
     'MARKET_CLOSED' =>
       'This stock trades while US markets are open. Try again then.',
+    'BELOW_MINIMUM' =>
+      'This order is under the market maker’s minimum. Try a larger amount.',
     'FEE_TOO_HIGH' => 'The fees are too high for this order. Try later.',
     'ACCOUNT_REQUIRED' => 'Sign in again to use your wallet.',
     'INVALID_REVIEW' ||
@@ -632,6 +634,15 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       _notice('Up to ${_amountLabel(_limitRaw)} per order.');
       return;
     }
+    final minimum = BigInt.parse(asset.minBuyInputRaw);
+    if (!_sell && BigInt.parse(raw) < minimum) {
+      _notice('Orders for this token start at ${_amountLabel(minimum)}.');
+      return;
+    }
+    if (!asset.marketOpen) {
+      _notice('${asset.market!.label(DateTime.now())}.');
+      return;
+    }
     final legacy = _capabilities!.legacy;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -978,6 +989,11 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             switcher,
           ],
         ),
+      if (asset.market case final market?
+          when !market.open || market.usSessions) ...[
+        const SizedBox(height: 18),
+        _MarketStateNote(state: market),
+      ],
       const SizedBox(height: 28),
       Container(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -1089,8 +1105,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         key: const ValueKey('live-order-review'),
         label: _busy
             ? 'Checking price and fees…'
-            : 'Review ${_sell ? 'sell' : 'buy'}',
-        onPressed: _busy || !accepted ? null : _preview,
+            : asset.marketOpen
+            ? 'Review ${_sell ? 'sell' : 'buy'}'
+            : asset.market!.label(DateTime.now()),
+        onPressed: _busy || !accepted || !asset.marketOpen ? null : _preview,
       ),
       if (_fundingNeeded ||
           (!_sell && (balance == null || balance == BigInt.zero))) ...[
@@ -1401,6 +1419,41 @@ class _IssuerCard extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// When a token can trade: shown when its market is not open, and for tokens
+/// that follow US sessions even while open.
+class _MarketStateNote extends StatelessWidget {
+  const _MarketStateNote({required this.state});
+  final LiveMarketState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = Theme.of(context).textTheme;
+    final hours = state.hours;
+    return Container(
+      key: const ValueKey('live-order-market-state'),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: ShapeDecoration(
+        color: state.open ? const Color(0xFFEFF7F1) : const Color(0xFFFFF4E5),
+        shape: productSquircle(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            state.label(DateTime.now()),
+            style: type.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          if (hours != null) ...[
+            const SizedBox(height: 4),
+            Text(hours, style: type.bodySmall),
+          ],
         ],
       ),
     );

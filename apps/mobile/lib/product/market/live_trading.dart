@@ -176,6 +176,126 @@ class LiveTradingIssuer {
   );
 }
 
+/// Whether a token can trade right now, as the server reads it. Most tokens
+/// trade around the clock; Ondo's trade only in the US sessions Ondo lists for
+/// each, and any issuer can pause its token.
+@immutable
+class LiveMarketState {
+  const LiveMarketState({
+    required this.status,
+    this.reason,
+    this.usSessions = false,
+    this.sessions = const [],
+    this.nextOpenAt,
+  });
+
+  /// `open`, `paused` or `closed`.
+  final String status;
+
+  /// `outside_sessions`, `session_break`, `market_paused` or `issuer_paused`.
+  final String? reason;
+
+  /// Trades only in the US [sessions] rather than around the clock.
+  final bool usSessions;
+  final List<String> sessions;
+  final DateTime? nextOpenAt;
+
+  bool get open => status == 'open';
+
+  /// Anything unreadable is null: the order review still decides.
+  static LiveMarketState? tryParse(Object? value) {
+    if (value is! Map) return null;
+    final status = value['status'], reason = value['reason'];
+    final sessions = value['sessions'], next = value['nextOpenAt'];
+    if (status is! String ||
+        !const {'open', 'paused', 'closed'}.contains(status)) {
+      return null;
+    }
+    return LiveMarketState(
+      status: status,
+      reason: reason is String && _reasonPattern.hasMatch(reason)
+          ? reason
+          : null,
+      usSessions: value['hours'] == 'us_sessions',
+      sessions: sessions is List
+          ? List.unmodifiable([
+              for (final session in sessions)
+                if (session is String && _reasonPattern.hasMatch(session))
+                  session,
+            ])
+          : const [],
+      nextOpenAt: next is String && next.length <= 40
+          ? DateTime.tryParse(next)?.toLocal()
+          : null,
+    );
+  }
+
+  /// One short line, such as `Closed · opens Mon 1:05 AM`.
+  String label(DateTime now) {
+    final next = nextOpenAt == null ? null : liveMarketTime(nextOpenAt!, now);
+    return switch (status) {
+      'open' when !usSessions => 'Open 24/7',
+      'open' =>
+        sessions.contains('offhours')
+            ? 'Open now, including weekends'
+            : 'Open now',
+      'paused' when reason == 'issuer_paused' => 'Paused by the issuer',
+      'paused' when reason == 'market_paused' =>
+        next == null ? 'Paused by the market' : 'Paused · resumes $next',
+      'paused' => next == null ? 'Short pause' : 'Short pause · resumes $next',
+      _ => next == null ? 'Closed' : 'Closed · opens $next',
+    };
+  }
+
+  /// When this token trades, for tokens that follow US sessions.
+  String? get hours {
+    if (!usSessions) return null;
+    final all = {'overnight', 'premarket', 'regular', 'postmarket'};
+    if (sessions.toSet().containsAll(all)) {
+      return sessions.contains('offhours')
+          ? 'Trades around the clock, with short pauses between US sessions.'
+          : 'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).';
+    }
+    if (sessions.length == 1 && sessions.single == 'regular') {
+      return 'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.';
+    }
+    return 'Trades during US market sessions only.';
+  }
+}
+
+/// A local time as a short phrase: `4:01 AM`, `tomorrow 9:31 AM`,
+/// `Mon 1:05 AM` or `Oct 5, 9:31 AM`.
+String liveMarketTime(DateTime at, DateTime now) {
+  final local = at.toLocal(), today = now.toLocal();
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final clock =
+      '$hour:${local.minute.toString().padLeft(2, '0')} ${local.hour < 12 ? 'AM' : 'PM'}';
+  final days = DateTime(
+    local.year,
+    local.month,
+    local.day,
+  ).difference(DateTime(today.year, today.month, today.day)).inDays;
+  if (days <= 0) return clock;
+  if (days == 1) return 'tomorrow $clock';
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  if (days < 7) return '${weekdays[local.weekday - 1]} $clock';
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[local.month - 1]} ${local.day}, $clock';
+}
+
 /// Capabilities are supplied by the execution API, never inferred from a logo,
 /// ticker or the discovery provider's choice of primary token.
 @immutable
@@ -190,6 +310,8 @@ class LiveTradingAsset {
     required this.maxSellInputRaw,
     this.issuerId = 'xstocks',
     this.transferFeeBps = 0,
+    this.minBuyInputRaw = '1',
+    this.market,
   });
 
   /// The company id. Several tokens from different issuers can share it.
@@ -199,6 +321,16 @@ class LiveTradingAsset {
 
   /// A Token-2022 transfer fee the issuer charges on every transfer.
   final int transferFeeBps;
+
+  /// The smallest USDC buy the route fills. Market makers need at least $1
+  /// after fees.
+  final String minBuyInputRaw;
+
+  /// Null when the server does not say; the order review still decides.
+  final LiveMarketState? market;
+
+  /// Whether this token can be ordered right now, as far as the app knows.
+  bool get marketOpen => market?.open ?? true;
 
   factory LiveTradingAsset.fromJson(Object? value, {required bool legacy}) {
     const error = 'Invalid trading asset';
@@ -253,6 +385,13 @@ class LiveTradingAsset {
       maxSellInputRaw: limit('maxSellInputRaw'),
       issuerId: issuerId,
       transferFeeBps: fee,
+      minBuyInputRaw:
+          !legacy &&
+              value['minBuyInputRaw'] is String &&
+              _rawLimitPattern.hasMatch(value['minBuyInputRaw'] as String)
+          ? value['minBuyInputRaw'] as String
+          : '1',
+      market: legacy ? null : LiveMarketState.tryParse(value['market']),
     );
   }
 }
@@ -265,9 +404,13 @@ class LiveUnavailableVariant {
     required this.mint,
     required this.issuerId,
     required this.reason,
+    this.market,
   });
   final String mint, reason;
   final String? issuerId;
+
+  /// For a token refused only because its market was closed: when it opens.
+  final LiveMarketState? market;
 }
 
 /// One of a company's tokens as Real mode sees it: tradeable with its asset,
@@ -415,6 +558,7 @@ class LiveTradingCapabilities {
           mint: mint,
           issuerId: issuer as String?,
           reason: reason,
+          market: LiveMarketState.tryParse(row['market']),
         ),
       );
     }
@@ -499,7 +643,11 @@ class LiveTradingCapabilities {
       'price_off_market' => 'Its price is too far from the real share price.',
       'held_back' => 'Paused while Trimmy checks this token.',
       'not_reviewed' => 'Not checked yet.',
+      'market_closed' when row.market?.nextOpenAt != null =>
+        'Its market is closed. It opens ${liveMarketTime(row.market!.nextOpenAt!, DateTime.now())}, then Trimmy checks it.',
       'market_closed' => 'Trades only while US markets are open.',
+      'awaiting_review' =>
+        'Its market is open. Trimmy is checking it before you can trade.',
       'no_market_maker_quote' => 'No market maker is quoting it right now.',
       _ => 'Not available to trade in Trimmy.',
     };

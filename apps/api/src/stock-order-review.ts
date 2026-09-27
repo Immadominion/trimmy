@@ -70,7 +70,10 @@ export interface ReviewedStockOrderIntent {
     readonly slippageBps: number;
     readonly platformFeeBps: number;
     readonly totalLamportsUpperBound: string;
+    /** SOL returned to the taker when the route closes their existing wrapped-SOL account ("0" otherwise). */
+    readonly takerLamportsReturnUpperBound: string;
     readonly simulatedOutputReceivedRaw: string;
+    /** Negative when the taker ends with more SOL (their wrapped SOL came back). */
     readonly simulatedTakerLamportsSpent: string;
     /** Token-2022 scaled UI multiplier in force for the stock mint at review:
      * shares = raw / 10^decimals x multiplier. "1" when the mint has none. */
@@ -78,6 +81,9 @@ export interface ReviewedStockOrderIntent {
     /** 'rfq': a market maker fills a fixed quote and pays the network fee; the
      * transaction is identified by the maker's signature, not the user's. */
     readonly route: 'aggregator' | 'rfq';
+    /** 'maker_delivers_at_fill': the market maker mints the shares just in time; the
+     * simulation ran up to its delivery, and the fill is all or nothing. */
+    readonly settlement: 'simulated' | 'maker_delivers_at_fill';
   }>;
   readonly evidence: Readonly<{
     readonly structureSha256: string;
@@ -165,9 +171,11 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
     inputAmountRaw: reconciliation.swap.inputAmountRaw, quotedOutputAmountRaw: reconciliation.swap.quotedOutputAmountRaw,
     minimumOutputAmountRaw: reconciliation.swap.minimumOutputAmountRaw, slippageBps: reconciliation.swap.slippageBps,
     platformFeeBps: reconciliation.swap.platformFeeBps, totalLamportsUpperBound: reconciliation.cost.totalLamportsUpperBound,
+    takerLamportsReturnUpperBound: reconciliation.cost.takerLamportsReturnUpperBound,
     simulatedOutputReceivedRaw: simulation.effects.outputReceivedRaw, simulatedTakerLamportsSpent: simulation.effects.takerLamportsSpent,
     stockUiMultiplier: stockUiMultiplier(semantics, summary.side === 'buy' ? summary.output.mint : summary.input.mint, reviewedAtMs),
     route: summary.route,
+    settlement: simulation.outcome.settlement,
   });
   const reviewedAt = new Date(reviewedAtMs).toISOString();
   const expiresAt = new Date(expiresAtMs).toISOString();
@@ -180,7 +188,8 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
     userId: summary.userId, taker: summary.taker, requestId: summary.requestId,
     transactionHash: summary.transactionHash, transactionMessageHash: summary.transactionMessageHash,
     draftBindingHash: summary.bindingHash, candidateTermsHash: summary.userApproval.candidateTermsHash,
-    reviewedAt, expiresAt, terms, evidence: evidenceDigests, reviewFlags: Object.freeze([...reconciliation.reviewFlags]),
+    reviewedAt, expiresAt, terms, evidence: evidenceDigests, reviewFlags: Object.freeze([...reconciliation.reviewFlags,
+      ...(simulation.outcome.settlement === 'maker_delivers_at_fill' ? ['rfq_maker_delivers_at_fill'] : [])]),
     reviewDigestSha256,
     approval: Object.freeze({status: 'required', method: 'explicit_user_confirmation_bound_to_review_digest',
       walletPossession: 'required_before_signing'}),

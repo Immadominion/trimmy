@@ -305,6 +305,76 @@ describe('JupiterZ RFQ orders', () => {
   });
 });
 
+// What a just-in-time market maker's fill looks like in simulation before it has
+// minted: the taker's transfer runs, the maker's transfer of the output cannot.
+const ENGINE = KNOWN_PROGRAMS.orderEngine;
+const JIT_LOGS: readonly string[] = [
+  `Program ${KNOWN_PROGRAMS.computeBudget} invoke [1]`, `Program ${KNOWN_PROGRAMS.computeBudget} success`,
+  `Program ${KNOWN_PROGRAMS.computeBudget} invoke [1]`, `Program ${KNOWN_PROGRAMS.computeBudget} success`,
+  `Program ${KNOWN_PROGRAMS.associatedToken} invoke [1]`, 'Program log: CreateIdempotent', `Program ${KNOWN_PROGRAMS.associatedToken} success`,
+  `Program ${ENGINE} invoke [1]`, 'Program log: Instruction: Fill',
+  `Program ${KNOWN_PROGRAMS.token} invoke [2]`, `Program ${KNOWN_PROGRAMS.token} consumed 76 of 185761 compute units`,
+  `Program ${KNOWN_PROGRAMS.token} success`,
+  `Program ${KNOWN_PROGRAMS.token2022} invoke [2]`, 'Program log: Instruction: TransferChecked', 'Program log: Error: insufficient funds',
+  `Program ${KNOWN_PROGRAMS.token2022} consumed 1414 of 182405 compute units`,
+  `Program ${KNOWN_PROGRAMS.token2022} failed: custom program error: 0x1`,
+  `Program ${ENGINE} consumed 12852 of 193843 compute units`, `Program ${ENGINE} failed: custom program error: 0x1`,
+];
+function failedSimulationFetch(logs: readonly string[] = JIT_LOGS, err: unknown = {InstructionError: [3, {Custom: 1}]}): typeof fetch {
+  return (async (_url: string | URL, init?: {body?: string}) => {
+    const request = JSON.parse(String(init?.body)) as {id: string; method: string};
+    const result = request.method === 'getGenesisHash' ? STOCK_DRAFT_MAINNET_GENESIS
+      : {context: {slot: 447_100_005, apiVersion: '3.1.10'}, value: {err, logs, unitsConsumed: 25_000, accounts: [null, null, null], returnData: null}};
+    return new Response(JSON.stringify({jsonrpc: '2.0', id: request.id, result}), {status: 200, headers: {'content-type': 'application/json'}});
+  }) as unknown as typeof fetch;
+}
+async function reviewSimulatedWith(simulation: typeof fetch, accountValues = values({
+  [makerOutput]: rpcAccount(stockToken(maker, 1n), KNOWN_PROGRAMS.token2022, 2_157_600)})) {
+  const message = rfqMessage();
+  const {clock, draft, bound, structure} = prepared(message);
+  return reviewStockOrder(draft, bound, {
+    lookupResolver: {resolve: async () => resolved(structure, message.staticAccounts as Address[])},
+    lifetimeVerifier: {verify: async () => lifetime(structure)},
+    semanticsReader: new SolanaMainnetStockOrderSemanticsReader({rpcUrl: 'https://rpc.example', fetch: semanticsFetch(accountValues), now: () => clock.now}),
+    simulator: new SolanaMainnetStockOrderSimulator({rpcUrl: 'https://rpc.example', fetch: simulation, now: () => clock.now}),
+    now: () => clock.now,
+  });
+}
+
+describe('just-in-time market makers', () => {
+  it('accepts a fill whose only failure is the maker\'s undelivered output, and says so', async () => {
+    const {intent, evidence} = await reviewSimulatedWith(failedSimulationFetch());
+    assert.equal(intent.terms.settlement, 'maker_delivers_at_fill');
+    assert.ok(intent.reviewFlags.includes('rfq_maker_delivers_at_fill'));
+    assert.equal(intent.terms.simulatedOutputReceivedRaw, OUTPUT_RAW.toString());
+    assert.equal(intent.terms.totalLamportsUpperBound, '0');
+    assert.equal(evidence.simulation.outcome.settlement, 'maker_delivers_at_fill');
+    assert.deepEqual(evidence.simulation.outcome.error, {kind: 'InstructionError:Custom', instructionIndex: 3, customCode: 1});
+    assert.equal(evidence.simulation.effects.inputSpentRaw, INPUT_RAW.toString());
+    // A fully simulated fill stays 'simulated'.
+    assert.equal((await review()).intent.terms.settlement, 'simulated');
+  });
+
+  it('refuses every other failure, including a maker that already holds the shares', async () => {
+    const takerShort = JIT_LOGS.map(line => line === `Program ${KNOWN_PROGRAMS.token} success`
+      ? `Program ${KNOWN_PROGRAMS.token} failed: custom program error: 0x1` : line);
+    const index = JIT_LOGS.indexOf(`Program ${ENGINE} consumed 12852 of 193843 compute units`);
+    const extraCall = [...JIT_LOGS.slice(0, 12), `Program ${KNOWN_PROGRAMS.token} invoke [2]`, `Program ${KNOWN_PROGRAMS.token} success`, ...JIT_LOGS.slice(12)];
+    for (const [label, simulation, accountValues] of [
+      ['maker holds enough', failedSimulationFetch(), values()],
+      ['taker transfer failed', failedSimulationFetch(takerShort), undefined],
+      ['another instruction failed', failedSimulationFetch(JIT_LOGS, {InstructionError: [2, {Custom: 1}]}), undefined],
+      ['another error code', failedSimulationFetch(JIT_LOGS, {InstructionError: [3, {Custom: 3}]}), undefined],
+      ['a program ran after the failure', failedSimulationFetch([...JIT_LOGS, `Program ${KNOWN_PROGRAMS.system} invoke [1]`]), undefined],
+      ['an extra token call', failedSimulationFetch(extraCall), undefined],
+      ['truncated logs', failedSimulationFetch(JIT_LOGS.slice(0, index)), undefined],
+      ['no insufficient-funds log', failedSimulationFetch(JIT_LOGS.filter(line => line !== 'Program log: Error: insufficient funds')), undefined],
+    ] as const) {
+      await assert.rejects(reviewSimulatedWith(simulation, accountValues), {code: 'SIMULATION_TRANSACTION_FAILED'}, label);
+    }
+  });
+});
+
 describe('RFQ quotes, signatures and settlement', () => {
   it('widens the order tolerance by a token transfer fee and parses only the tolerance requested', () => {
     assert.equal(orderSlippageBps(0), 50);

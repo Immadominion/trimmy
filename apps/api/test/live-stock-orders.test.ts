@@ -11,6 +11,8 @@ const terms=(asset:StockTradingAsset)=>({issuerId:asset.issuerId,version:STOCK_I
 import {LiveStockOrders,verifyReviewedSignature,registerLiveStockRoutes} from '../src/live-stock-orders.js';
 import type {LiveOrder,LiveOrderStore,LiveStockAdapters} from '../src/live-stock-orders.js';
 import type {ReviewedStockOrderIntent} from '../src/stock-order-review.js';
+import {StockMarketStates} from '../src/stock-market-state.js';
+import type {OndoMarketStatusReader} from '../src/ondo-market-status.js';
 function fixture(){
  const keys=generateKeyPairSync('ed25519');const publicBytes=keys.publicKey.export({type:'spki',format:'der'}).subarray(-32);const wallet=getAddressDecoder().decode(publicBytes);
  const message=getCompiledTransactionMessageEncoder().encode({version:0,header:{numSignerAccounts:1,numReadonlySignerAccounts:0,numReadonlyNonSignerAccounts:0},staticAccounts:[wallet],lifetimeToken:'11111111111111111111111111111111',instructions:[],addressTableLookups:[]} as CompiledTransactionMessage) as TransactionMessageBytes;
@@ -279,5 +281,24 @@ test('unsupported or moved routes decline the candidate with actionable public e
    const response=await app.inject({method:'POST',url:'/v1/trading/preview',payload:{assetId:asset.assetId,variantMint:asset.mint,side:'buy',amountRaw:'1000000'}});
    assert.equal(response.statusCode,status);assert.deepEqual(response.json(),{code:expected});assert.equal(attempts,1);
   }finally{await app.close();}
+ }
+});
+
+test('an RFQ refusal reads as under the minimum while its market is open, and as closed otherwise',async()=>{
+ const wallet=fixture().order.wallet;
+ const asset=STOCK_TRADING_ASSETS.find(item=>item.route==='rfq')!;
+ const ondoMessage='Ondo tokens are only available via JupiterZ. Trading is not available outside of market hours. There is a minimum trade size of $1.';
+ const sunday=Date.parse('2026-09-27T18:40:00Z');
+ for(const [sessions,code] of [[['overnight','premarket','regular','postmarket','offhours'],'BELOW_MINIMUM'],[['overnight','premarket','regular','postmarket'],'MARKET_CLOSED']] as const){
+  const status={observedAt:sunday,timestamp:sunday,isOpen:false,reasonCode:'MARKET_CLOSED',nextOpen:Date.parse('2026-09-28T00:05:00Z'),offhoursOpen:true,
+   sessions:new Map([[asset.symbol,new Set(sessions)]])};
+  const marketStates=new StockMarketStates({ondo:{read:async()=>status,peek:()=>status} as unknown as OndoMarketStatusReader,pauses:null,mints:[],now:()=>sunday});
+  const store={read:async()=>null,create:async()=>{throw Error('unexpected');}} as unknown as LiveOrderStore;
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,marketStates,fetch:async(rawUrl,options)=>{
+   if(String(rawUrl).includes('/order'))return Response.json({error:ondoMessage},{status:400});
+   const {method}=JSON.parse(String(options?.body));
+   return Response.json({jsonrpc:'2.0',id:1,result:method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':method==='getBlockHeight'?100:{context:{slot:501},value:9_435_303}});
+  }});
+  await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side:'buy',amountRaw:'1000000',termsAccepted:terms(asset)}),{code});
  }
 });
