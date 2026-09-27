@@ -9,7 +9,7 @@ import {STOCK_TRADING_ASSETS,findStockTradingAsset} from './stock-trading-catalo
 import {LEGACY_STOCK_ISSUER,STOCK_ISSUER_IDS,acceptsIssuerTerms} from './stock-issuers.js';
 import {STOCK_UNAVAILABLE_VARIANTS,stockIssuerCapabilities} from './stock-market-availability.js';
 import type {StockIssuerId,StockTermsAcceptance} from './stock-issuers.js';
-import {JUPITER_QUOTE_ASSETS, parseEstimate} from './jupiter-quote-reader.js';
+import {JUPITER_QUOTE_ASSETS, orderSlippageBps, parseEstimate} from './jupiter-quote-reader.js';
 import {bindStockOrderDraft, copyStockDraftBytesForReview, STOCK_DRAFT_MAINNET_GENESIS} from './stock-order-draft.js';
 import {SolanaMainnetLookupTableResolver} from './stock-order-lookup-resolver.js';
 import {SolanaMainnetStockOrderLifetimeVerifier} from './stock-order-lifetime-verifier.js';
@@ -98,7 +98,12 @@ export function verifyReviewedSignature(order:LiveOrder,encoded:string):string {
   if(encoded.length>1644 || Buffer.from(encoded,'base64').toString('base64')!==encoded) return fail('INVALID_SIGNATURE');
   const wire=Buffer.from(encoded,'base64'), unsigned=Buffer.from(order.unsignedTransaction,'base64');
   const before=getTransactionDecoder().decode(unsigned),after=getTransactionDecoder().decode(wire);
-  if(!Buffer.from(getTransactionEncoder().encode(after)).equals(wire) || !Buffer.from(before.messageBytes).equals(Buffer.from(after.messageBytes)) || Object.keys(after.signatures).length!==1) return fail('INVALID_SIGNATURE');
+  // The same signer slots as the reviewed transaction. Only the user's may be
+  // signed here; an RFQ market maker adds its signature later through Jupiter.
+  const expected=Object.keys(before.signatures),actual=Object.keys(after.signatures);
+  if(!Buffer.from(getTransactionEncoder().encode(after)).equals(wire) || !Buffer.from(before.messageBytes).equals(Buffer.from(after.messageBytes)) ||
+   actual.length<1 || actual.length>2 || actual.length!==expected.length || actual.some((key,index)=>key!==expected[index]) ||
+   !actual.includes(order.wallet) || actual.some(key=>key!==order.wallet && after.signatures[address(key)]!==null)) return fail('INVALID_SIGNATURE');
   const signature=after.signatures[address(order.wallet)];
   if(!signature || signature.length!==64) return fail('INVALID_SIGNATURE');
   const key=createPublicKey({key:Buffer.concat([Buffer.from('302a300506032b6570032100','hex'),Buffer.from(getAddressEncoder().encode(address(order.wallet)))]),format:'der',type:'spki'});
@@ -111,6 +116,8 @@ interface Options {rpcUrl:string;store:LiveOrderStore;apiKey?:string;fetch?:type
 export class LiveStockOrders {
  readonly #fetch:typeof fetch;readonly #now:()=>number;readonly #stages:StockOrderReviewStages;
  readonly #inFlight=new Set<string>();readonly #next=new Map<string,number>();
+ /** Order id to the RFQ transaction id Jupiter reported; verified before use. */
+ readonly #rfqHints=new Map<string,string>();
  constructor(private readonly options:Options) {
   const url=new URL(options.rpcUrl);if(url.protocol!=='https:'||url.username||url.password)fail('LIVE_UNAVAILABLE');
   this.#fetch=options.fetch??fetch;this.#now=options.now??Date.now;
@@ -152,6 +159,9 @@ export class LiveStockOrders {
   // quote. Older clients (no field) may only trade the original xStocks issuer.
   const selected=findStockTradingAsset(input.assetId,input.variantMint)!;
   if(!acceptsIssuerTerms(selected.issuerId,termsAccepted))fail('TERMS_REQUIRED');
+  // A legacy client cannot sign an RFQ order (a market maker co-signs), so it
+  // never receives one.
+  if(termsAccepted===undefined && selected.route!=='aggregator')fail('TERMS_REQUIRED');
   const acceptance:LiveOrderTermsAcceptance=Object.freeze({issuerId:selected.issuerId,
    version:termsAccepted?.version??'legacy_client_checkbox',acceptedAt:new Date(this.#now()).toISOString()});
   if(this.#inFlight.has(user)||(this.#next.get(user)??0)>this.#now()||this.#inFlight.size>=3)fail('LIVE_BUSY');
@@ -168,18 +178,33 @@ export class LiveStockOrders {
    if(balance.value<LIVE_STOCK_MIN_SOL_LAMPORTS)fail('ADD_SOL');
    const stock=findStockTradingAsset(input.assetId,input.variantMint)!;
    const buying=input.side==='buy';const pair={inputAsset:buying?'USDC':stock.symbol,outputAsset:buying?stock.symbol:'USDC',amountRaw:input.amountRaw} as const;
+   // Each issuer has one reviewed route: Jupiter's aggregator (metis), or JupiterZ
+   // market makers (RFQ) for issuers whose liquidity exists only there.
+   const route=stock.route;
+   // A token's own transfer fee is withheld from what arrives; Jupiter quotes before it.
+   const slippageBps=orderSlippageBps(stock.transferFeeBps);
+   const expectedRouter=route==='rfq'?'jupiterz':'metis';
    const url=new URL('https://api.jup.ag/swap/v2/order');
-   url.search=new URLSearchParams({inputMint:JUPITER_QUOTE_ASSETS[pair.inputAsset].mint,outputMint:JUPITER_QUOTE_ASSETS[pair.outputAsset].mint,amount:input.amountRaw,taker:wallet,slippageBps:'50',excludeRouters:'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
+   url.search=new URLSearchParams({inputMint:JUPITER_QUOTE_ASSETS[pair.inputAsset].mint,outputMint:JUPITER_QUOTE_ASSETS[pair.outputAsset].mint,amount:input.amountRaw,taker:wallet,slippageBps:String(slippageBps),excludeRouters:route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
    const started=this.#now();const payload=await this.json(url.toString(),{method:'GET',headers:this.headers()},true);const received=this.#now();
-   if(payload?.router && payload.router!=='metis')fail('NO_ROUTE');
+   const providerText=[payload?.error,payload?.errorMessage].filter(value=>typeof value==='string').join(' ');
+   if(/market hours/i.test(providerText))fail('MARKET_CLOSED');
+   if(payload?.router && payload.router!==expectedRouter)fail('NO_ROUTE');
    if(!payload?.transaction)fail(payload?.errorCode===1?(buying?'ADD_USDC':'INSUFFICIENT_HOLDINGS'):[2,3].includes(payload?.errorCode)?'ADD_SOL':'NO_ROUTE');
-   // Official opt-out: fee payer must be the taker. The draft decoder then
-   // independently proves there is exactly one signer and checks all fee payers.
-   if(payload.gasless===true || payload.signatureFeePayer!==wallet)fail('ADD_SOL');
-   if(payload.router!=='metis')fail('NO_ROUTE');
+   if(route==='rfq') {
+    // The market maker pays the network fee; the user pays only rent for their own
+    // accounts. Below 0.01 SOL Jupiter sponsors that rent for a much larger fee
+    // through a third signer: ask for a little SOL instead.
+    if(payload.gasless!==true || payload.signatureFeePayer!==payload.maker || payload.rentFeePayer!==wallet)fail('ADD_SOL');
+   } else if(payload.gasless===true || payload.signatureFeePayer!==wallet) {
+    // Official opt-out: fee payer must be the taker. The draft decoder then
+    // independently proves the signer set and checks all fee payers.
+    fail('ADD_SOL');
+   }
+   if(payload.router!==expectedRouter)fail('NO_ROUTE');
    // This reference is only an unsigned candidate. The existing pipeline
    // independently decodes instructions, resolves accounts and simulates it.
-   const quote=parseEstimate({...payload,transaction:null,taker:null},pair,started,received);
+   const quote=parseEstimate({...payload,transaction:null,taker:null},pair,started,received,slippageBps);
    if(quote.swapFee.basisPoints>100)fail('FEE_TOO_HIGH');
    const expected:StockEstimate={...quote,...input,executionEnabled:false,eligibility:'unverified',amountUnits:'raw_token_units'};
    const draft=bindStockOrderDraft(payload,{authenticatedUserId:user,verifiedTaker:wallet,expected,requestStartedAt:new Date(received).toISOString(),chainObservation:observation,validityAuthority:{now:this.#now,readChainObservation:()=>this.chain()}});
@@ -210,12 +235,19 @@ export class LiveStockOrders {
   const pending=await this.options.store.begin(user,id,digest,signature);
   if(!pending.dispatch)return (await this.status(user,id))!;
   try {
-   await this.json('https://api.jup.ag/swap/v2/execute',{method:'POST',headers:{...this.headers(),'content-type':'application/json'},body:JSON.stringify({signedTransaction:signed,requestId:order.review.requestId,lastValidBlockHeight:order.review.evidence.lastValidBlockHeight})});
+   const executed=await this.json('https://api.jup.ag/swap/v2/execute',{method:'POST',headers:{...this.headers(),'content-type':'application/json'},body:JSON.stringify({signedTransaction:signed,requestId:order.review.requestId,lastValidBlockHeight:order.review.evidence.lastValidBlockHeight})});
+   // An RFQ transaction is identified by the market maker's signature, known
+   // only after Jupiter co-signs. It is a hint: status() verifies it on chain.
+   if(order.review.terms?.route==='rfq' && typeof executed?.signature==='string' && TRANSACTION_SIGNATURE.test(executed.signature)) {
+    this.#rfqHints.set(order.id,executed.signature);
+    if(this.#rfqHints.size>1000)this.#rfqHints.delete(this.#rfqHints.keys().next().value!);
+   }
   }catch(_){return pending;}
   try{return (await this.status(user,id))!;}catch(_){return pending;}
  }
  async status(user:string,id?:string):Promise<LiveOrder|null> {
   const order=await this.options.store.read(user,id);if(order?.status==='reviewed' && Date.parse(order.expires_at)<=this.#now())return {...order,status:'expired'};if(!order||order.status!=='pending')return order;
+  if(order.review.terms?.route==='rfq')return this.rfqStatus(user,order);
   const result=await this.rpc('getSignatureStatuses',[[order.signature],{searchTransactionHistory:true}]);
   if(!Array.isArray(result?.value)||result.value.length!==1)fail('LIVE_UNAVAILABLE');
   const status=result.value[0];
@@ -237,7 +269,50 @@ export class LiveStockOrders {
   }
   return order;
  }
+ /** The confirmed transaction that carries the user's signature for this RFQ order.
+  * Solana indexes a transaction by its first signature (the market maker's), so
+  * the user's signature alone cannot be looked up. A hint from the execute reply
+  * is verified; otherwise the wallet's recent transactions are searched. */
+ private async rfqTransaction(order:LiveOrder):Promise<{signature:string;slot:number;err:unknown}|null> {
+  const owns=async(candidate:string)=>{
+   const tx=await this.rpc('getTransaction',[candidate,{commitment:'confirmed',maxSupportedTransactionVersion:0,encoding:'json'}]);
+   const signatures=tx?.transaction?.signatures;
+   if(tx===null || !Array.isArray(signatures) || !signatures.includes(order.signature) || signatures[0]!==candidate)return null;
+   if(!Number.isSafeInteger(tx.slot) || tx.slot<1 || tx.meta===null || typeof tx.meta!=='object' || !Object.hasOwn(tx.meta,'err'))fail('LIVE_UNAVAILABLE');
+   return {signature:candidate,slot:tx.slot as number,err:tx.meta.err as unknown};
+  };
+  const hint=this.#rfqHints.get(order.id);
+  if(hint!==undefined){const found=await owns(hint);if(found)return found;}
+  const since=Math.floor(Date.parse(order.review.reviewedAt)/1000)-60;
+  const recent=await this.rpc('getSignaturesForAddress',[order.wallet,{limit:25,commitment:'confirmed'}]);
+  if(!Array.isArray(recent))fail('LIVE_UNAVAILABLE');
+  for(const entry of recent) {
+   if(typeof entry?.signature!=='string' || !TRANSACTION_SIGNATURE.test(entry.signature))continue;
+   if(Number.isSafeInteger(entry.blockTime) && entry.blockTime<since)break;
+   const found=await owns(entry.signature);
+   if(found)return found;
+  }
+  return null;
+ }
+ private async rfqStatus(user:string,order:LiveOrder):Promise<LiveOrder> {
+  const found=await this.rfqTransaction(order);
+  if(found) {
+   if(found.err!==null && !reportedTransactionError(found.err))fail('LIVE_UNAVAILABLE');
+   const settled=await this.options.store.resolve(user,order.id,found.err===null?'confirmed':'failed');
+   return {...settled,confirmedSlot:found.slot};
+  }
+  // Same rule as aggregator orders: finalized and confirmed heights past the
+  // blockhash bound, then a fresh search, before declaring no execution.
+  const chain=await this.chain();
+  const finalized=await this.rpc('getBlockHeight',[{commitment:'finalized'}]);
+  const bound=BigInt(order.review.evidence.lastValidBlockHeight);
+  if(Number.isSafeInteger(finalized) && BigInt(finalized)>bound && BigInt(chain.blockHeight)>bound && await this.rfqTransaction(order)===null) {
+   return this.options.store.resolve(user,order.id,'expired');
+  }
+  return order;
+ }
 }
+const TRANSACTION_SIGNATURE=/^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 
 export interface LiveStockAdapters {
  /** Disable new financial requests without hiding settlement of existing orders. */
@@ -273,7 +348,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_INPUT_INVALID'];
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_CLOSED','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
@@ -284,14 +359,15 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
  app.get<{Querystring:{schema?:'2'}}>('/v1/trading/capabilities',{schema:{querystring:{type:'object',additionalProperties:false,properties:{schema:{enum:['2']}}}}},async request=>{
   const common={enabled:liveStockExecutionEnabled(adapters),network:'solana:mainnet-beta',maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)};
   if(request.query.schema!=='2') {
-   // Installed clients reject more than 128 assets and only know the original
-   // issuer's disclosure. Keep their contract exactly: active xStocks only.
-   const legacy=STOCK_TRADING_ASSETS.filter(asset=>asset.issuerId===LEGACY_STOCK_ISSUER).slice(0,120);
+   // Installed clients reject more than 128 assets, only know the original
+   // issuer's disclosure and sign single-signer transactions only. Keep their
+   // contract exactly: active xStocks on the aggregator route.
+   const legacy=STOCK_TRADING_ASSETS.filter(asset=>asset.issuerId===LEGACY_STOCK_ISSUER && asset.route==='aggregator').slice(0,120);
    return {...common,assets:legacy.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw}))};
   }
   return {schemaVersion:2,...common,issuers:stockIssuerCapabilities(),
-   assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps})=>
-    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps})),
+   assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})=>
+    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})),
    // Market variants that cannot be traded, with the reason to show instead of a buy button.
    unavailable:STOCK_UNAVAILABLE_VARIANTS};
  });

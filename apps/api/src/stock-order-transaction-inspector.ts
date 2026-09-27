@@ -37,12 +37,16 @@ export interface UnsignedV0TransactionStructure {
   readonly transactionSizeBytes: number;
   readonly transactionHash: string;
   readonly transactionMessageHash: string;
-  readonly requiredSigner: Readonly<{readonly address: string; readonly accountIndex: 0; readonly role: 'fee_payer_and_taker'}>;
+  /** The user's wallet. It pays fees itself, or signs second behind a market maker (RFQ). */
+  readonly requiredSigner: Readonly<{readonly address: string; readonly accountIndex: 0 | 1;
+    readonly role: 'fee_payer_and_taker' | 'taker'}>;
+  /** An RFQ market maker that pays the network fee and signs after the user; null otherwise. */
+  readonly coSigner: Readonly<{readonly address: string; readonly accountIndex: 0; readonly role: 'fee_payer_market_maker'}> | null;
   readonly signatures: Readonly<{
-    readonly required: 1; readonly present: 0; readonly absent: 1; readonly unsigned: true;
+    readonly required: 1 | 2; readonly present: 0; readonly absent: 1 | 2; readonly unsigned: true;
   }>;
   readonly header: Readonly<{
-    readonly numSignerAccounts: 1;
+    readonly numSignerAccounts: 1 | 2;
     readonly numReadonlySignerAccounts: 0;
     readonly numReadonlyNonSignerAccounts: number;
   }>;
@@ -127,10 +131,14 @@ function indexReference(index: number, staticAccounts: readonly string[],
 /**
  * Bounded, deterministic wire inspection only. This function performs no RPC,
  * lookup-table resolution, instruction decoding, simulation, signing or send.
+ * With a market maker, the message must list exactly the maker (fee payer) then
+ * the taker as its only signers, both still unsigned.
  */
 export function inspectUnsignedV0TransactionStructure(bytes: Uint8Array,
-  requiredTaker: string): UnsignedV0TransactionStructure {
+  requiredTaker: string, marketMaker?: string): UnsignedV0TransactionStructure {
   const taker = expectedSigner(requiredTaker);
+  const maker = marketMaker === undefined ? null : expectedSigner(marketMaker);
+  if (maker === taker) return fail('SIGNER_MISMATCH');
   if (!(bytes instanceof Uint8Array) || bytes.byteLength < 1 || bytes.byteLength > maximumTransactionBytes) {
     return fail('TRANSACTION_INVALID');
   }
@@ -146,9 +154,11 @@ export function inspectUnsignedV0TransactionStructure(bytes: Uint8Array,
     const header = message.header;
     const staticAccounts = Object.freeze([...message.staticAccounts]);
     const signatureAddresses = Object.keys(transaction.signatures);
-    if (header.numSignerAccounts !== 1 || header.numReadonlySignerAccounts !== 0 || staticAccounts[0] !== taker ||
-        signatureAddresses.length !== 1 || signatureAddresses[0] !== taker ||
-        !Object.hasOwn(transaction.signatures, taker) || transaction.signatures[address(taker)] !== null) {
+    const signers = maker === null ? [taker] : [maker, taker];
+    if (header.numSignerAccounts !== signers.length || header.numReadonlySignerAccounts !== 0 ||
+        signers.some((signer, index) => staticAccounts[index] !== signer) ||
+        signatureAddresses.length !== signers.length || signers.some((signer, index) => signatureAddresses[index] !== signer ||
+          !Object.hasOwn(transaction.signatures, signer) || transaction.signatures[address(signer)] !== null)) {
       return fail('SIGNER_MISMATCH');
     }
     if (staticAccounts.length < 2 || staticAccounts.length > maximumAccounts ||
@@ -191,9 +201,12 @@ export function inspectUnsignedV0TransactionStructure(bytes: Uint8Array,
 
     return Object.freeze({schemaVersion: 1, kind: 'unsigned_solana_v0_structure', transactionVersion: 0,
       transactionSizeBytes: wire.byteLength, transactionHash: digest(wire), transactionMessageHash: digest(messageBytes),
-      requiredSigner: Object.freeze({address: taker, accountIndex: 0, role: 'fee_payer_and_taker'}),
-      signatures: Object.freeze({required: 1, present: 0, absent: 1, unsigned: true}),
-      header: Object.freeze({numSignerAccounts: 1, numReadonlySignerAccounts: 0,
+      requiredSigner: maker === null ? Object.freeze({address: taker, accountIndex: 0 as const, role: 'fee_payer_and_taker' as const})
+        : Object.freeze({address: taker, accountIndex: 1 as const, role: 'taker' as const}),
+      coSigner: maker === null ? null : Object.freeze({address: maker, accountIndex: 0 as const, role: 'fee_payer_market_maker' as const}),
+      signatures: maker === null ? Object.freeze({required: 1 as const, present: 0 as const, absent: 1 as const, unsigned: true as const})
+        : Object.freeze({required: 2 as const, present: 0 as const, absent: 2 as const, unsigned: true as const}),
+      header: Object.freeze({numSignerAccounts: signers.length as 1 | 2, numReadonlySignerAccounts: 0,
         numReadonlyNonSignerAccounts: header.numReadonlyNonSignerAccounts}),
       lifetimeToken: Object.freeze({value: message.lifetimeToken, expectedUse: 'recent_blockhash',
         semanticKindVerified: false, mainnetRecencyVerified: false}),

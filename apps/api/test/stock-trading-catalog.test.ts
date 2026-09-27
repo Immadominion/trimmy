@@ -98,7 +98,7 @@ test('legacy capabilities keep the installed-app contract: active xStocks only, 
     const body = result.json();
     assert.deepEqual(Object.keys(body).sort(), ['assets', 'enabled', 'maxBuyUsdc', 'minimumSolBalanceLamports', 'network']);
     assert.equal(body.enabled, false);
-    const legacy = STOCK_TRADING_ASSETS.filter(asset => asset.issuerId === 'xstocks');
+    const legacy = STOCK_TRADING_ASSETS.filter(asset => asset.issuerId === 'xstocks' && asset.route === 'aggregator');
     assert.equal(body.assets.length, legacy.length);
     assert.ok(body.assets.length <= 128 && result.body.length < 64 * 1024);
     for (const asset of legacy) {
@@ -127,7 +127,7 @@ test('schema 2 capabilities publish every active identity with its issuer disclo
     for (const issuer of body.issuers) {
       const expected = STOCK_ISSUERS[issuer.issuerId as 'xstocks'];
       assert.deepEqual(issuer, JSON.parse(JSON.stringify({...expected.disclosure, offered: expected.offer.status === 'offered',
-        notOfferedReason: expected.offer.status === 'offered' ? null : expected.offer.reason})));
+        notOfferedReason: expected.offer.status === 'offered' ? null : expected.offer.reason, route: expected.identity.route})));
     }
     for (const asset of STOCK_TRADING_ASSETS) assert.equal(STOCK_ISSUERS[asset.issuerId].offer.status, 'offered');
     const tradeable = new Set(STOCK_TRADING_ASSETS.map(asset => asset.mint));
@@ -141,7 +141,8 @@ test('schema 2 capabilities publish every active identity with its issuer disclo
     for (const asset of STOCK_TRADING_ASSETS) {
       const actual = body.assets.find((item: {mint: string}) => item.mint === asset.mint);
       assert.deepEqual(actual, {assetId: asset.assetId, mint: asset.mint, symbol: asset.symbol, name: asset.name, issuerId: asset.issuerId,
-        decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.maxSellInputRaw, transferFeeBps: asset.transferFeeBps});
+        decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.maxSellInputRaw, transferFeeBps: asset.transferFeeBps,
+        route: asset.route});
     }
   } finally {await app.close();}
 });

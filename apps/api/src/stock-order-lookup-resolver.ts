@@ -283,11 +283,12 @@ function validateStructure(value: UnsignedV0TransactionStructure): Readonly<{
   staticAccounts: readonly string[];
   lookups: readonly StockTransactionLookupDescriptor[];
   readonlyNonSigners: number;
+  signerCount: 1 | 2;
   totalAccountIndexes: number;
 }> {
   const root = ownRecord(value, 'LOOKUP_STRUCTURE_INVALID', 20);
   const required = ['schemaVersion', 'kind', 'transactionVersion', 'transactionSizeBytes', 'transactionHash',
-    'transactionMessageHash', 'requiredSigner', 'signatures', 'header', 'lifetimeToken', 'staticAccountKeys',
+    'transactionMessageHash', 'requiredSigner', 'coSigner', 'signatures', 'header', 'lifetimeToken', 'staticAccountKeys',
     'addressTableLookups', 'accountIndexSpace', 'instructions', 'assessment'];
   exactKeys(root, [...required, 'networkContext', 'draftBindingHash', 'candidateTermsHash'], required);
   if (root['schemaVersion'] !== 1 || root['kind'] !== 'unsigned_solana_v0_structure' ||
@@ -302,23 +303,37 @@ function validateStructure(value: UnsignedV0TransactionStructure): Readonly<{
     if (Object.hasOwn(root, key)) hexHash(root[key]);
   }
 
+  // The taker alone (fee payer), or an RFQ market maker (fee payer) then the taker.
+  const walletKey = (value: unknown): string => {
+    const key = canonicalAddress(value, 'LOOKUP_STRUCTURE_INVALID');
+    try {
+      if (key === ZERO_ADDRESS || isOffCurveAddress(address(key))) return fail('LOOKUP_STRUCTURE_INVALID');
+    } catch { return fail('LOOKUP_STRUCTURE_INVALID'); }
+    return key;
+  };
+  let makerAddress: string | null = null;
+  if (root['coSigner'] !== null) {
+    const coSigner = ownRecord(root['coSigner'], 'LOOKUP_STRUCTURE_INVALID', 3);
+    exactKeys(coSigner, ['address', 'accountIndex', 'role']);
+    makerAddress = walletKey(coSigner['address']);
+    if (coSigner['accountIndex'] !== 0 || coSigner['role'] !== 'fee_payer_market_maker') return fail('LOOKUP_STRUCTURE_INVALID');
+  }
+  const signerCount: 1 | 2 = makerAddress === null ? 1 : 2;
   const signer = ownRecord(root['requiredSigner'], 'LOOKUP_STRUCTURE_INVALID', 3);
   exactKeys(signer, ['address', 'accountIndex', 'role']);
-  const signerAddress = canonicalAddress(signer['address'], 'LOOKUP_STRUCTURE_INVALID');
-  if (signer['accountIndex'] !== 0 || signer['role'] !== 'fee_payer_and_taker' || signerAddress === ZERO_ADDRESS) {
+  const signerAddress = walletKey(signer['address']);
+  if (signer['accountIndex'] !== signerCount - 1 || signer['role'] !== (makerAddress === null ? 'fee_payer_and_taker' : 'taker') ||
+      signerAddress === makerAddress) {
     return fail('LOOKUP_STRUCTURE_INVALID');
   }
-  try {
-    if (isOffCurveAddress(address(signerAddress))) return fail('LOOKUP_STRUCTURE_INVALID');
-  } catch { return fail('LOOKUP_STRUCTURE_INVALID'); }
   const signatures = ownRecord(root['signatures'], 'LOOKUP_STRUCTURE_INVALID', 4);
   exactKeys(signatures, ['required', 'present', 'absent', 'unsigned']);
-  if (signatures['required'] !== 1 || signatures['present'] !== 0 || signatures['absent'] !== 1 ||
+  if (signatures['required'] !== signerCount || signatures['present'] !== 0 || signatures['absent'] !== signerCount ||
       signatures['unsigned'] !== true) return fail('LOOKUP_STRUCTURE_INVALID');
 
   const header = ownRecord(root['header'], 'LOOKUP_STRUCTURE_INVALID', 3);
   exactKeys(header, ['numSignerAccounts', 'numReadonlySignerAccounts', 'numReadonlyNonSignerAccounts']);
-  if (header['numSignerAccounts'] !== 1 || header['numReadonlySignerAccounts'] !== 0) {
+  if (header['numSignerAccounts'] !== signerCount || header['numReadonlySignerAccounts'] !== 0) {
     return fail('LOOKUP_STRUCTURE_INVALID');
   }
   const readonlyNonSigners = integer(header['numReadonlyNonSignerAccounts'], 0, MAX_ACCOUNT_INDEXES - 1,
@@ -332,8 +347,9 @@ function validateStructure(value: UnsignedV0TransactionStructure): Readonly<{
 
   const staticInput = ownArray(root['staticAccountKeys'], 2, MAX_ACCOUNT_INDEXES, 'LOOKUP_STRUCTURE_INVALID');
   const staticAccounts = staticInput.map(item => canonicalAddress(item, 'LOOKUP_STRUCTURE_INVALID'));
-  if (staticAccounts[0] !== signerAddress || new Set(staticAccounts).size !== staticAccounts.length ||
-      readonlyNonSigners > staticAccounts.length - 1) return fail('LOOKUP_STRUCTURE_INVALID');
+  const expectedSigners = makerAddress === null ? [signerAddress] : [makerAddress, signerAddress];
+  if (expectedSigners.some((key, index) => staticAccounts[index] !== key) || new Set(staticAccounts).size !== staticAccounts.length ||
+      readonlyNonSigners > staticAccounts.length - signerCount) return fail('LOOKUP_STRUCTURE_INVALID');
 
   const lookupInput = ownArray(root['addressTableLookups'], 0, MAX_LOOKUP_TABLES, 'LOOKUP_STRUCTURE_INVALID');
   const tableAddresses = new Set<string>();
@@ -401,7 +417,7 @@ function validateStructure(value: UnsignedV0TransactionStructure): Readonly<{
   return {transactionHash, transactionMessageHash, staticAccounts: Object.freeze(staticAccounts),
     lookups: Object.freeze(lookups.map(table => Object.freeze({lookupTableAddress: table.lookupTableAddress,
       writableIndexes: Object.freeze([...table.writableIndexes]),
-      readonlyIndexes: Object.freeze([...table.readonlyIndexes])}))), readonlyNonSigners,
+      readonlyIndexes: Object.freeze([...table.readonlyIndexes])}))), readonlyNonSigners, signerCount,
     totalAccountIndexes: total};
 }
 
@@ -599,13 +615,15 @@ function parseBatch(value: unknown, tableAddresses: readonly string[]): TableBat
   }))};
 }
 
-function staticWritable(index: number, staticCount: number, readonlyNonSigners: number): boolean {
-  return index === 0 || index < staticCount - readonlyNonSigners;
+/** Signers are all writable here (the structure admits no readonly signer). */
+function staticWritable(index: number, staticCount: number, readonlyNonSigners: number, signerCount: number): boolean {
+  return index < signerCount || index < staticCount - readonlyNonSigners;
 }
 
-function frozenStaticIndexes(staticAccounts: readonly string[], readonlyNonSigners: number): ResolvedStockAccountIndex[] {
+function frozenStaticIndexes(staticAccounts: readonly string[], readonlyNonSigners: number,
+  signerCount: number): ResolvedStockAccountIndex[] {
   return staticAccounts.map((accountAddress, index) => Object.freeze({accountIndex: index, address: accountAddress,
-    signer: index === 0, writable: staticWritable(index, staticAccounts.length, readonlyNonSigners),
+    signer: index < signerCount, writable: staticWritable(index, staticAccounts.length, readonlyNonSigners, signerCount),
     source: 'static' as const, staticAccountIndex: index}));
 }
 
@@ -680,7 +698,7 @@ export class SolanaMainnetLookupTableResolver {
       }
 
       const map: ResolvedStockAccountIndex[] = frozenStaticIndexes(validated.staticAccounts,
-        validated.readonlyNonSigners);
+        validated.readonlyNonSigners, validated.signerCount);
       const evidence: StockLookupTableEvidence[] = [];
       const selected = new Set<string>(validated.staticAccounts);
       if (second) {

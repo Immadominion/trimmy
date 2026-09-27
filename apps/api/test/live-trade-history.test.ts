@@ -40,7 +40,7 @@ test('history projects trusted asset identity and reviewed raw quantities, never
     const result=(await app.inject({url:'/v1/trading/history',headers:auth})).json();
     assert.deepEqual(result,{schemaVersion:1,network:'solana:mainnet-beta',orders:[{
       id:data.id,wallet:data.wallet,status:'confirmed',signature:data.signature,createdAt:data.createdAt,updatedAt:data.updatedAt,
-      asset:{assetId:'apple',mint:STOCK_TRADING_ASSETS[0]!.mint,symbol:'AAPLx',name:'Apple xStock',decimals:8},
+      asset:{assetId:'apple',mint:STOCK_TRADING_ASSETS[0]!.mint,symbol:'AAPLx',name:'Apple xStock',decimals:8,route:'aggregator'},
       terms:data.terms,amountUnits:'raw_token_units',amountsStatus:'reviewed_quote',
     }],nextCursor:null});
   }finally{await app.close();}

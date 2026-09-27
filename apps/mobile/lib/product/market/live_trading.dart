@@ -499,6 +499,8 @@ class LiveTradingCapabilities {
       'price_off_market' => 'Its price is too far from the real share price.',
       'held_back' => 'Paused while Trimmy checks this token.',
       'not_reviewed' => 'Not checked yet.',
+      'market_closed' => 'Trades only while US markets are open.',
+      'no_market_maker_quote' => 'No market maker is quoting it right now.',
       _ => 'Not available to trade in Trimmy.',
     };
   }

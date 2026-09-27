@@ -43,8 +43,8 @@ const REGISTRY_PATH = new URL('../../apps/api/src/stock-trading-registry.generat
 const ATTRIBUTION_PATH = new URL('../../apps/api/src/stock-market-attribution.generated.ts', import.meta.url);
 /** Mints kept out regardless of checks, with the reason recorded in evidence. */
 const HELD_BACK = Object.freeze({
-  // Backpack BABA: the catalog marks it not redeemable and Backpack gives no reason (research 2026-09-27).
-  BABANGA4JE7Kkam4nTrALAwAVgsNJUuFJnnkF7S16BZp: 'Redemption status unexplained by the issuer',
+  // Empty since 27 Sept 2026: Backpack's own API lists BABA with deposits and
+  // withdrawals enabled, so the catalog's "not redeemable" label was not upheld.
 });
 const RPC_URL = 'https://api.mainnet-beta.solana.com';
 const MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
@@ -53,7 +53,6 @@ const TOKEN_2022 = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 const ASSOCIATED_TOKEN_PROGRAM = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
 const SYSTEM_PROGRAM = '11111111111111111111111111111111';
 const JUPITER_ORDER = 'https://api.jup.ag/swap/v2/order';
-const ROUTE_PARAMS = {slippageBps: '50', excludeRouters: 'jupiterz,dflow,okx'};
 const LIMITS = Object.freeze({
   minimumCatalogLiquidityUsd: 25_000,
   /** Buy $2 then sell the proceeds: total loss (fees + spread) excluding issuer transfer fees. */
@@ -104,7 +103,10 @@ async function readOnlyFetch(url, options = {}) {
 }
 async function getJson(url, limit = 8 * 1024 * 1024) {
   const response = await readOnlyFetch(url, {redirect: 'error', signal: AbortSignal.timeout(30000), headers: {accept: 'application/json'}});
-  if (!response.ok) throw Error(`HTTP_${response.status} ${new URL(url).origin}`);
+  if (!response.ok) {
+    const body = (await response.text().catch(() => '')).slice(0, 300);
+    throw Object.assign(Error(`HTTP_${response.status} ${new URL(url).origin}`), {status: response.status, body});
+  }
   const bytes = await response.arrayBuffer();
   if (bytes.byteLength > limit) throw Error('RESPONSE_TOO_LARGE');
   return JSON.parse(new TextDecoder().decode(bytes));
@@ -164,6 +166,8 @@ if (process.argv[2] === '--simulate') {
         if (!asset) break;
       }
       attempts.push({taker, status: result.status, code: result.code ?? null});
+      // A closed market will not reopen within these retries.
+      if (result.code === 'MARKET_CLOSED') break;
     }
     result.attempts = attempts;
     result.durationMs = Date.now() - started;
@@ -203,6 +207,8 @@ const evidence = {observedAt, tool: 'stock-admission', signed: false, transactio
 function attributionReason(stage, reason) {
   if (reason === 'ISSUER_NOT_OFFERED') return 'issuer_not_offered';
   if (reason === 'HELD_BACK') return 'held_back';
+  if (/MARKET_CLOSED/.test(reason)) return 'market_closed';
+  if (reason === 'NO_MARKET_MAKER_QUOTE') return 'no_market_maker_quote';
   if (['DEFAULT_FROZEN', 'PAUSED', 'TRANSFER_HOOK_PROGRAM', 'NON_TRANSFERABLE', 'TRANSFER_FEE_ABOVE_ISSUER_CAP',
     'ONDO_ASSET_PAUSED'].includes(reason)) return 'token_restricted';
   if (stage === 'identity' || stage === 'issuer_source') return 'identity_unverified';
@@ -233,7 +239,8 @@ const variants = new Map();
 for (const row of rows) for (const variant of row.variants ?? []) {
   if (variants.has(variant.mint) || existingMints.has(variant.mint) || (onlyMints && !onlyMints.includes(variant.mint))) continue;
   variants.set(variant.mint, {assetId: row.assetId, companyName: row.name, mint: variant.mint,
-    catalogSymbol: variant.symbol ?? null, liquidityUsd: variant.market?.liquidityUsd ?? 0});
+    catalogSymbol: variant.symbol ?? null, liquidityUsd: variant.market?.liquidityUsd ?? 0,
+    catalogPriceUsd: typeof variant.market?.priceUsd === 'number' ? variant.market.priceUsd : null});
 }
 console.log(`catalog: ${rows.length} companies, ${variants.size} unadmitted variants`);
 
@@ -260,7 +267,6 @@ for (const variant of variants.values()) {
   const candidate = {...variant, issuerId, symbol: metadata.symbol, name: metadata.name, metadataUri: metadata.uri};
   if (!issuerId) {reject(candidate, 'identity', 'NO_ISSUER_FINGERPRINT'); continue;}
   if (!issuerFilter.includes(issuerId)) continue;
-  if (variant.liquidityUsd < LIMITS.minimumCatalogLiquidityUsd) {reject(candidate, 'catalog', 'LIQUIDITY_BELOW_FLOOR', variant.liquidityUsd); continue;}
   const identity = STOCK_ISSUERS[issuerId].identity;
   const fee = ext.transferFeeConfig;
   const feeBps = fee ? Math.max(fee.newerTransferFee?.transferFeeBasisPoints ?? 0, fee.olderTransferFee?.transferFeeBasisPoints ?? 0) : 0;
@@ -312,6 +318,9 @@ for (const candidate of candidates) {
       const match = sources.backpack.find(asset => (asset.tokens ?? []).some(token =>
         token.blockchain === 'Solana' && token.contractAddress === candidate.mint && token.nativeDecimals === candidate.decimals));
       if (!match) {reject(candidate, 'issuer_source', 'BACKPACK_API_MISSING'); continue;}
+      // The disclosed way to redeem is depositing into a verified Backpack account.
+      const token = match.tokens.find(item => item.contractAddress === candidate.mint);
+      if (token.depositEnabled !== true) {reject(candidate, 'issuer_source', 'BACKPACK_DEPOSITS_DISABLED'); continue;}
       candidate.issuerProof = {source: registry.url, symbol: match.symbol};
     } else if (registry.kind === 'ondo_assets_api') {
       sources.ondo ??= await getJson(registry.url, 16 * 1024 * 1024);
@@ -320,6 +329,10 @@ for (const candidate of candidates) {
       const pauseReason = match.assetTradingStatus?.assetPauseReason ?? null;
       if (pauseReason !== null) {reject(candidate, 'issuer_source', 'ONDO_ASSET_PAUSED', pauseReason); continue;}
       candidate.issuerProof = {source: registry.url, symbol: match.symbol, ticker: match.ticker};
+      // Ondo's own session status: its market makers fill only while its market is open.
+      const status = match.assetTradingStatus ?? {};
+      candidate.issuerSession = {isMarketOpen: status.isMarketOpen === true, currentSession: status.currentSession ?? null,
+        nextMarketOpen: status.nextMarketOpen ?? null, isOffhoursTradable: status.isOffhoursTradable === true};
     } else {
       const document = await getJson(candidate.metadataUri, 256 * 1024);
       if (document.symbol !== candidate.symbol) {reject(candidate, 'issuer_source', 'METADATA_SYMBOL_MISMATCH'); continue;}
@@ -341,15 +354,26 @@ for (const candidate of official) {
 }
 console.log(`policy: ${offered.length} candidates from offered issuers`);
 
-// 4. Market quality through the same router the order path uses.
-async function quote(inputMint, outputMint, amount) {
-  const query = new URLSearchParams({inputMint, outputMint, amount: String(amount), ...ROUTE_PARAMS});
+// 4. Market quality through the route orders will use. Each token tries its
+// issuer's route first, then the other one: Jupiter's aggregator (needs catalog
+// liquidity above the floor) or JupiterZ market makers (RFQ). Makers quote many
+// tokens only during US market hours, so their refusals are recorded as such.
+function classifyQuoteFailure(text) {
+  if (/market hours/i.test(text)) return 'MARKET_CLOSED';
+  if (/market maker|failed to get quotes/i.test(text)) return 'NO_MARKET_MAKER_QUOTE';
+  return 'NO_ROUTE';
+}
+async function quote(inputMint, outputMint, amount, route) {
+  const query = new URLSearchParams({inputMint, outputMint, amount: String(amount), slippageBps: '50',
+    excludeRouters: route === 'rfq' ? 'metis,dflow,okx' : 'jupiterz,dflow,okx'});
   const result = await getJson(`${JUPITER_ORDER}?${query}`, 512 * 1024).catch(error => {
-    // Jupiter answers 400 when it has no route for the pair or size.
-    throw String(error.message).startsWith('HTTP_400') ? Object.assign(Error('NO_ROUTE'), {detail: 'HTTP_400'}) : error;
+    // Jupiter answers 400 when it has no route or no maker quote for the pair or size.
+    throw error.status === 400 ? Object.assign(Error(classifyQuoteFailure(error.body ?? '')), {detail: error.body ?? 'HTTP_400'}) : error;
   });
-  if (result.router !== 'metis' || !/^[1-9][0-9]*$/.test(String(result.outAmount ?? ''))) {
-    throw Object.assign(Error('NO_ROUTE'), {detail: result.errorMessage ?? result.error ?? result.router ?? null});
+  const expected = route === 'rfq' ? 'jupiterz' : 'metis';
+  if (result.router !== expected || !/^[1-9][0-9]*$/.test(String(result.outAmount ?? ''))) {
+    const text = String(result.errorMessage ?? result.error ?? '');
+    throw Object.assign(Error(text ? classifyQuoteFailure(text) : 'NO_ROUTE'), {detail: text || result.router || null});
   }
   return {inAmount: String(amount), outAmount: String(result.outAmount), router: result.router, feeBps: result.feeBps ?? null};
 }
@@ -361,51 +385,101 @@ for (let index = 0; index < offered.length; index += 50) {
   for (const id of ids) if (page[id]) prices.set(id, page[id]);
   await pause(1100);
 }
-for (const candidate of offered.slice(0, maxCandidates)) {
+/** Current scaled-UI multiplier from the finalized mint read (1 without the extension). */
+function uiMultiplier(candidate) {
+  const scaled = candidate.mintPolicy.scaledUiMultiplier;
+  if (!scaled) return 1;
+  const effective = Date.now() / 1000 >= Number(scaled.newMultiplierEffectiveTimestamp) ? Number(scaled.newMultiplier) : Number(scaled.multiplier);
+  return effective > 0 ? effective : 1;
+}
+async function marketCheck(candidate, route) {
+  const fail = (stage, reason, detail = null) => ({ok: false, route, stage, reason, detail});
+  if (route === 'aggregator' && candidate.liquidityUsd < LIMITS.minimumCatalogLiquidityUsd) {
+    return fail('catalog', 'LIQUIDITY_BELOW_FLOOR', candidate.liquidityUsd);
+  }
+  if (route === 'rfq' && candidate.issuerSession && !candidate.issuerSession.isMarketOpen) {
+    return fail('market', 'MARKET_CLOSED', `issuer session ${candidate.issuerSession.currentSession}; next open ${candidate.issuerSession.nextMarketOpen}`);
+  }
   try {
-    const buy2 = await quote(USDC_MINT, candidate.mint, 2_000_000);
-    const sellBack = await quote(candidate.mint, USDC_MINT, buy2.outAmount);
-    const buy100 = await quote(USDC_MINT, candidate.mint, 100_000_000);
+    const buy2 = await quote(USDC_MINT, candidate.mint, 2_000_000, route);
+    const sellBack = await quote(candidate.mint, USDC_MINT, buy2.outAmount, route);
+    const buy100 = await quote(USDC_MINT, candidate.mint, 100_000_000, route);
     const rawPerUsd = BigInt(buy2.outAmount) / 2n;
     const oneShare = 10n ** BigInt(candidate.decimals);
-    const sellCapRaw = (() => {
-      const byValue = rawPerUsd * BigInt(LIMITS.sellCapUsd);
-      return byValue > oneShare ? byValue : oneShare;
-    })();
-    const sellCap = await quote(candidate.mint, USDC_MINT, sellCapRaw);
+    const byValue = rawPerUsd * BigInt(LIMITS.sellCapUsd);
+    const sellCapRaw = byValue > oneShare ? byValue : oneShare;
+    const sellCap = await quote(candidate.mint, USDC_MINT, sellCapRaw, route);
     // Losses in basis points. Issuer transfer fees are charged on both legs and disclosed separately.
     const roundTripLossBps = Number(10_000n - BigInt(sellBack.outAmount) * 10_000n / 2_000_000n);
     const allowedRoundTrip = LIMITS.maximumRoundTripLossBps + 2 * candidate.transferFeeBps;
     const buyImpactBps = Number(10_000n - (BigInt(buy100.outAmount) * 2n * 10_000n) / (BigInt(buy2.outAmount) * 100n));
     const expectedSellUsdc = sellCapRaw * 1_000_000n / rawPerUsd;
     const sellCapImpactBps = Number(10_000n - BigInt(sellCap.outAmount) * 10_000n / expectedSellUsdc);
-    candidate.market = {buy2, sellBack, buy100, sellCap, roundTripLossBps, allowedRoundTripLossBps: allowedRoundTrip,
+    const market = {route, buy2, sellBack, buy100, sellCap, roundTripLossBps, allowedRoundTripLossBps: allowedRoundTrip,
       buyImpactBps, sellCapImpactBps, sellCapRaw: sellCapRaw.toString(), rawPerUsd: rawPerUsd.toString()};
-    if (roundTripLossBps > allowedRoundTrip) {reject(candidate, 'market', 'ROUND_TRIP_LOSS', roundTripLossBps); continue;}
-    if (buyImpactBps > LIMITS.maximumBuyImpactBps) {reject(candidate, 'market', 'BUY_IMPACT', buyImpactBps); continue;}
-    if (sellCapImpactBps > LIMITS.maximumSellCapImpactBps + 2 * candidate.transferFeeBps) {
-      reject(candidate, 'market', 'SELL_CAP_IMPACT', sellCapImpactBps); continue;
-    }
-    // Fair price: the $2 quote per unscaled token against Jupiter's reference, and the
-    // per-display-token price against the underlying share where Jupiter reports it.
+    if (roundTripLossBps > allowedRoundTrip) return fail('market', 'ROUND_TRIP_LOSS', roundTripLossBps);
+    if (buyImpactBps > LIMITS.maximumBuyImpactBps) return fail('market', 'BUY_IMPACT', buyImpactBps);
+    if (sellCapImpactBps > LIMITS.maximumSellCapImpactBps + 2 * candidate.transferFeeBps) return fail('market', 'SELL_CAP_IMPACT', sellCapImpactBps);
+    // Fair price: the $2 quote per unscaled token against Jupiter's reference (or, when
+    // Jupiter has none, the catalog price in either unit), and the per-display-token
+    // price against the underlying share where Jupiter reports it. A transfer fee
+    // lowers what arrives, so it widens the allowance by its own size.
+    const quotedPrescaled = 2 / (Number(buy2.outAmount) / 10 ** candidate.decimals);
+    const quotedDisplay = quotedPrescaled / uiMultiplier(candidate);
     const reference = prices.get(candidate.mint);
     const prescaled = reference?.scaledUiConfig?.usdPricePrescaled ?? reference?.usdPrice;
-    if (!(prescaled > 0) || !(reference.usdPrice > 0)) {reject(candidate, 'market', 'PRICE_UNAVAILABLE'); continue;}
-    const quotedPrescaled = 2 / (Number(buy2.outAmount) / 10 ** candidate.decimals);
-    const referenceDeviationBps = Math.round(Math.abs(quotedPrescaled / prescaled - 1) * 10_000);
-    const quotedDisplay = quotedPrescaled * reference.usdPrice / prescaled;
-    const underlying = reference.stockData?.price;
-    const underlyingDeviationBps = underlying > 0 ? Math.round(Math.abs(quotedDisplay / underlying - 1) * 10_000) : null;
-    Object.assign(candidate.market, {quotedPrescaledUsd: quotedPrescaled, referencePrescaledUsd: prescaled,
-      referenceDeviationBps, underlyingUsd: underlying ?? null, underlyingDeviationBps});
-    if (referenceDeviationBps > LIMITS.maximumReferenceDeviationBps) {reject(candidate, 'market', 'PRICE_REFERENCE_DEVIATION', referenceDeviationBps); continue;}
-    if (underlyingDeviationBps !== null && underlyingDeviationBps > LIMITS.maximumUnderlyingDeviationBps) {
-      reject(candidate, 'market', 'PRICE_UNDERLYING_DEVIATION', underlyingDeviationBps); continue;
+    let referenceDeviationBps;
+    let referenceSource;
+    if (prescaled > 0) {
+      referenceDeviationBps = Math.round(Math.abs(quotedPrescaled / prescaled - 1) * 10_000);
+      referenceSource = 'jupiter_price_v3';
+    } else if (candidate.catalogPriceUsd > 0) {
+      referenceDeviationBps = Math.round(Math.min(Math.abs(quotedPrescaled / candidate.catalogPriceUsd - 1),
+        Math.abs(quotedDisplay / candidate.catalogPriceUsd - 1)) * 10_000);
+      referenceSource = 'catalog_price';
+    } else {
+      return fail('market', 'PRICE_UNAVAILABLE');
     }
-    marketReady.push(candidate);
-    console.log(`market ok ${candidate.symbol} (${candidate.issuerId}) round trip ${roundTripLossBps} bps, $100 impact ${buyImpactBps} bps`);
+    const underlying = reference?.stockData?.price;
+    const displayForUnderlying = reference?.usdPrice > 0 && prescaled > 0 ? quotedPrescaled * reference.usdPrice / prescaled : quotedDisplay;
+    const underlyingDeviationBps = underlying > 0 ? Math.round(Math.abs(displayForUnderlying / underlying - 1) * 10_000) : null;
+    Object.assign(market, {quotedPrescaledUsd: quotedPrescaled, referencePrescaledUsd: prescaled ?? null, referenceSource,
+      referenceDeviationBps, underlyingUsd: underlying ?? null, underlyingDeviationBps});
+    if (referenceDeviationBps > LIMITS.maximumReferenceDeviationBps + candidate.transferFeeBps) {
+      return fail('market', 'PRICE_REFERENCE_DEVIATION', referenceDeviationBps);
+    }
+    if (underlyingDeviationBps !== null && underlyingDeviationBps > LIMITS.maximumUnderlyingDeviationBps + candidate.transferFeeBps) {
+      return fail('market', 'PRICE_UNDERLYING_DEVIATION', underlyingDeviationBps);
+    }
+    return {ok: true, market};
   } catch (error) {
-    reject(candidate, 'market', error.message === 'NO_ROUTE' ? 'NO_ROUTE' : 'QUOTE_UNAVAILABLE', error.detail ?? String(error.message).slice(0, 120));
+    const known = ['NO_ROUTE', 'MARKET_CLOSED', 'NO_MARKET_MAKER_QUOTE'];
+    return fail('market', known.includes(error.message) ? error.message : 'QUOTE_UNAVAILABLE', error.detail ?? String(error.message).slice(0, 160));
+  }
+}
+// When both routes fail, report the most informative refusal.
+const FAILURE_PRIORITY = ['PRICE_REFERENCE_DEVIATION', 'PRICE_UNDERLYING_DEVIATION', 'ROUND_TRIP_LOSS', 'BUY_IMPACT', 'SELL_CAP_IMPACT',
+  'PRICE_UNAVAILABLE', 'MARKET_CLOSED', 'NO_MARKET_MAKER_QUOTE', 'LIQUIDITY_BELOW_FLOOR', 'NO_ROUTE', 'QUOTE_UNAVAILABLE'];
+for (const candidate of offered.slice(0, maxCandidates)) {
+  const issuerRoute = STOCK_ISSUERS[candidate.issuerId].identity.route;
+  const failures = [];
+  for (const route of issuerRoute === 'rfq' ? ['rfq', 'aggregator'] : ['aggregator', 'rfq']) {
+    const result = await marketCheck(candidate, route);
+    if (result.ok) {
+      candidate.route = route;
+      candidate.market = result.market;
+      break;
+    }
+    failures.push(result);
+  }
+  if (candidate.route) {
+    marketReady.push(candidate);
+    const m = candidate.market;
+    console.log(`market ok ${candidate.symbol} (${candidate.issuerId}, ${candidate.route}) round trip ${m.roundTripLossBps} bps, $100 impact ${m.buyImpactBps} bps`);
+  } else {
+    const chosen = failures.sort((a, b) => FAILURE_PRIORITY.indexOf(a.reason) - FAILURE_PRIORITY.indexOf(b.reason))[0];
+    candidate.marketAttempts = failures;
+    reject(candidate, chosen.stage, chosen.reason, chosen.detail);
   }
 }
 console.log(`market: ${marketReady.length} candidates quote both ways`);
@@ -445,7 +519,7 @@ const quoted = value => `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "
 const entryLine = candidate => `  {assetId: ${quoted(candidate.assetId)}, symbol: ${quoted(candidate.symbol)}, ` +
   `name: ${quoted(candidate.name.trim())}, mint: ${quoted(candidate.mint)}, issuerId: ${quoted(candidate.issuerId)}, ` +
   `decimals: ${candidate.decimals}, maxSellInputRaw: ${quoted(candidate.market.sellCapRaw)}, transferFeeBps: ${candidate.transferFeeBps}, ` +
-  `status: 'active', admittedAt: ${quoted(today)}, admissionSlot: ${identitySlot}},`;
+  `status: 'active', admittedAt: ${quoted(today)}, admissionSlot: ${identitySlot}, route: ${quoted(candidate.route)}},`;
 function registryWith(entries) {
   const marker = '] as const;';
   const at = originalRegistry.lastIndexOf(marker);

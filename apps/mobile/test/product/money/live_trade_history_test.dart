@@ -131,6 +131,22 @@ void main() {
       expect(page.orders.last.minimumOutputLabel, '4.9 USDC');
       expect(page.orders.first.createdAt.microsecond, 456);
       expect(page.orders.first.explorer.host, 'solscan.io');
+      expect(page.orders.first.explorer.path, '/tx/${'2' * 88}');
+    },
+  );
+
+  test(
+    'a market maker fill links to the wallet, since its id is the maker signature',
+    () {
+      final rfq = _trade(3);
+      (rfq['asset'] as Map<String, Object?>)['route'] = 'rfq';
+      final aggregator = _trade(4);
+      (aggregator['asset'] as Map<String, Object?>)['route'] = 'aggregator';
+      final page = LiveTradeHistoryPage.fromJson(_page([rfq, aggregator]));
+      expect(page.orders.first.rfq, isTrue);
+      expect(page.orders.first.explorer.path, '/account/${fixtures.wallet}');
+      expect(page.orders.last.rfq, isFalse);
+      expect(page.orders.last.explorer.path, '/tx/${'2' * 88}');
     },
   );
 

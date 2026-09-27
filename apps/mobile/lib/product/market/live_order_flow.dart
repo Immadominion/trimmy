@@ -34,6 +34,8 @@ class LiveOrderFailure implements Exception {
     'QUOTE_EXPIRED' => 'That price expired. Get a fresh quote.',
     'LIVE_BUSY' => 'Quotes are busy. Try again in a moment.',
     'NO_ROUTE' => 'No route for this order right now. Try another amount.',
+    'MARKET_CLOSED' =>
+      'This stock trades while US markets are open. Try again then.',
     'FEE_TOO_HIGH' => 'The fees are too high for this order. Try later.',
     'ACCOUNT_REQUIRED' => 'Sign in again to use your wallet.',
     'INVALID_REVIEW' ||
@@ -1154,6 +1156,8 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
               '≤ ${liveDecimal(terms['totalLamportsUpperBound'] as String, 9)} SOL',
             ),
             _line('Swap fee', livePercent(terms['platformFeeBps'] as int)),
+            if (terms['route'] == 'rfq')
+              _line('Price', 'Fixed quote from a market maker'),
             _line('Issuer', issuer.name),
             if (asset.transferFeeBps > 0)
               _line('Issuer fee', livePercent(asset.transferFeeBps)),
@@ -1222,16 +1226,26 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       if (_order?['signature'] case final String signature)
         TextButton(
           onPressed: () async {
+            // A market maker's signature identifies an RFQ transaction, so
+            // link to the wallet's activity instead of the user's signature.
+            final rfq = (_order?['terms'] as Map?)?['route'] == 'rfq';
+            final wallet = _order?['wallet'];
             try {
               await launchUrl(
-                Uri.https('solscan.io', '/tx/$signature'),
+                rfq && wallet is String
+                    ? Uri.https('solscan.io', '/account/$wallet')
+                    : Uri.https('solscan.io', '/tx/$signature'),
                 mode: LaunchMode.externalApplication,
               );
             } catch (_) {
               _notice('Couldn’t open the transaction. Try again.');
             }
           },
-          child: const Text('View transaction ↗'),
+          child: Text(
+            (_order?['terms'] as Map?)?['route'] == 'rfq'
+                ? 'View wallet activity ↗'
+                : 'View transaction ↗',
+          ),
         ),
       if (done)
         ProductButton(label: 'Done', onPressed: widget.onBack)

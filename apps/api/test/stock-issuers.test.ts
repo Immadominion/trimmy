@@ -42,8 +42,10 @@ test('every issuer publishes a complete, plain disclosure and a dated attestatio
       assert.doesNotMatch(offer.reason, /[\u2013\u2014]/);
     }
   }
-  // Offer decisions recorded 2026-09-27 from the issuers' own terms (see stock-issuers.ts).
-  assert.deepEqual(STOCK_ISSUER_IDS.filter(id => STOCK_ISSUERS[id].offer.status === 'offered').sort(), ['backpack', 'xstocks']);
+  // Every issuer is offered (owner's direction, 27 Sept 2026); each shows its own warning first.
+  assert.deepEqual(STOCK_ISSUER_IDS.filter(id => STOCK_ISSUERS[id].offer.status === 'offered').sort(),
+    ['backpack', 'ondo', 'prestocks', 'tessera', 'xstocks']);
+  assert.deepEqual(STOCK_ISSUER_IDS.filter(id => STOCK_ISSUERS[id].identity.route === 'rfq'), ['ondo']);
 });
 
 test('terms acceptance must name the exact issuer and current version; only xStocks has a legacy path', () => {

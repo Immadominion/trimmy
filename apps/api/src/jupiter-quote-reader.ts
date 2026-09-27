@@ -178,7 +178,14 @@ export class JupiterQuoteReader {
     }
   }
 }
-export function parseEstimate(payload: unknown, input: JupiterQuoteInput, started: number, received: number): MarketEstimate {
+/** Slippage requested for an order in a token with an issuer transfer fee: Jupiter
+ * quotes before that fee, so the tolerance must also cover it or every swap fails. */
+export function orderSlippageBps(transferFeeBps: number): number {
+  return JUPITER_RESEARCH_SLIPPAGE_BPS + transferFeeBps;
+}
+
+export function parseEstimate(payload: unknown, input: JupiterQuoteInput, started: number, received: number,
+  expectedSlippageBps: number = JUPITER_RESEARCH_SLIPPAGE_BPS): MarketEstimate {
   if (!Number.isSafeInteger(received) || received < started || received >= started + refreshWindowMs) throw new MarketEstimateError('MARKET_ESTIMATE_STALE');
   if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) invalid();
   const data = payload as Record<string, unknown>;
@@ -193,15 +200,25 @@ export function parseEstimate(payload: unknown, input: JupiterQuoteInput, starte
         parseRawAmount(minimum) <= 0n || parseRawAmount(minimum) > parseRawAmount(out)) invalid();
   } catch { invalid(); }
   const slippage = data['slippageBps']; const fee = data['feeBps']; const feeMint = data['feeMint']; const router = data['router'];
-  // The provider must echo the requested tolerance; any other value is not our floor.
-  if (slippage !== JUPITER_RESEARCH_SLIPPAGE_BPS ||
+  // A JupiterZ RFQ quote is a fixed price: no tolerance, minimum equal to the quote.
+  const rfq = router === 'jupiterz' && data['swapType'] === 'rfq';
+  // Otherwise the provider must echo the requested tolerance; any other value is not our floor.
+  if (!Number.isInteger(expectedSlippageBps) || expectedSlippageBps < JUPITER_RESEARCH_SLIPPAGE_BPS || expectedSlippageBps > 1_000) invalid();
+  if ((rfq ? slippage !== 0 || minimum !== out : slippage !== expectedSlippageBps) ||
+      typeof slippage !== 'number' ||
       typeof fee !== 'number' || !Number.isInteger(fee) || fee < 0 || fee > 10_000 ||
       typeof feeMint !== 'string' || (feeMint !== from.mint && feeMint !== to.mint) ||
       typeof router !== 'string' || !['metis', 'jupiterz', 'dflow', 'okx'].includes(router)) invalid();
   // Both values are provider estimates, but an incoherent threshold cannot be shown.
-  if (BigInt(minimum as string) < BigInt(out as string) * BigInt(10_000 - slippage) / 10_000n) invalid();
+  if (BigInt(minimum as string) < BigInt(out as string) * BigInt(10_000 - (slippage as number)) / 10_000n) invalid();
   let expires: number | null = null;
-  if (data['expireAt'] !== undefined && data['expireAt'] !== null) {
+  if (rfq && data['expireAt'] !== undefined && data['expireAt'] !== null) {
+    // RFQ quotes state expiry in unix seconds.
+    const raw = data['expireAt'];
+    if (typeof raw !== 'string' || !/^[1-9][0-9]{9}$/.test(raw)) invalid();
+    expires = Number(raw) * 1000;
+    if (expires <= received) throw new MarketEstimateError('MARKET_ESTIMATE_STALE');
+  } else if (data['expireAt'] !== undefined && data['expireAt'] !== null) {
     const raw = data['expireAt'];
     if (typeof raw !== 'string' || raw.length > 40 || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(raw)) invalid();
     expires = Date.parse(raw);
@@ -215,7 +232,7 @@ export function parseEstimate(payload: unknown, input: JupiterQuoteInput, starte
     executable: false, walletChecked: false, networkFees: null,
     input: Object.freeze({symbol: from.symbol, mint: from.mint, decimals: from.decimals, amountRaw: input.amountRaw}),
     output: Object.freeze({symbol: to.symbol, mint: to.mint, decimals: to.decimals, estimatedAmountRaw: out as string, quotedMinimumAmountRaw: minimum as string}),
-    slippageBps: slippage, swapFee: Object.freeze({basisPoints: fee, mint: feeMint}), router: router as MarketEstimate['router'],
+    slippageBps: slippage as number, swapFee: Object.freeze({basisPoints: fee, mint: feeMint}), router: router as MarketEstimate['router'],
     requestedAt: new Date(started).toISOString(), receivedAt: new Date(received).toISOString(),
     refreshAfter: new Date(Math.min(started + refreshWindowMs, expires ?? Infinity)).toISOString(),
     providerExpiresAt: expires === null ? null : new Date(expires).toISOString(),

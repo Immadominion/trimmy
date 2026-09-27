@@ -70,6 +70,10 @@ export interface StockDraftSummary {
   readonly slippageBps: number;
   readonly swapFee: StockEstimate['swapFee'];
   readonly router: StockEstimate['router'];
+  /** 'rfq': a JupiterZ market maker fills a fixed quote and pays the network fee. */
+  readonly route: 'aggregator' | 'rfq';
+  /** The RFQ market maker that co-signs after the user; null for aggregator routes. */
+  readonly marketMaker: string | null;
   readonly orderMode: 'manual';
   readonly referenceEstimate: {
     readonly output: StockEstimate['output'];
@@ -262,6 +266,19 @@ export function bindStockOrderDraft(payload: unknown, context: StockOrderDraftCo
       inAmount: expected.input.amountRaw, swapMode: 'ExactIn', slippageBps: expected.slippageBps, mode: 'manual'})) {
       if (data[key] !== value) fail('STOCK_DRAFT_TERMS_MISMATCH');
     }
+    // JupiterZ RFQ: the market maker is the fee payer and co-signs after the user.
+    // The user may only pay rent for their own accounts; a sponsored order (a third
+    // signer paying rent in exchange for a larger fee) is refused.
+    const rfq = data['router'] === 'jupiterz';
+    let maker: string | null = null;
+    if (rfq) {
+      if (data['swapType'] !== 'rfq') fail('STOCK_DRAFT_TERMS_MISMATCH');
+      try { maker = taker(data['maker']); } catch { return fail('STOCK_DRAFT_SIGNER_MISMATCH'); }
+      if (maker === wallet || data['gasless'] !== true || data['signatureFeePayer'] !== maker ||
+          data['prioritizationFeePayer'] !== maker || data['rentFeePayer'] !== wallet) fail('STOCK_DRAFT_SIGNER_MISMATCH');
+    } else if (data['swapType'] === 'rfq') {
+      fail('STOCK_DRAFT_TERMS_MISMATCH');
+    }
     const outAmount = raw(data['outAmount'], 'STOCK_DRAFT_TERMS_MISMATCH');
     const minimumAmount = raw(data['otherAmountThreshold'], 'STOCK_DRAFT_TERMS_MISMATCH');
     const output = BigInt(outAmount); const minimum = BigInt(minimumAmount);
@@ -273,16 +290,33 @@ export function bindStockOrderDraft(payload: unknown, context: StockOrderDraftCo
         typeof router !== 'string' || !['metis', 'jupiterz', 'dflow', 'okx'].includes(router)) fail('STOCK_DRAFT_TERMS_MISMATCH');
     // These paths introduce different recipients, signers or fee routing; review separately.
     for (const key of ['receiver', 'payer', 'referralAccount']) if (data[key] !== undefined && data[key] !== null) fail('STOCK_DRAFT_TERMS_MISMATCH');
-    if (data['gasless'] !== undefined && data['gasless'] !== false) fail('STOCK_DRAFT_SIGNER_MISMATCH');
-    for (const key of ['signatureFeePayer', 'prioritizationFeePayer', 'rentFeePayer']) {
-      if (data[key] !== undefined && data[key] !== null && data[key] !== wallet) fail('STOCK_DRAFT_SIGNER_MISMATCH');
+    if (!rfq) {
+      if (data['gasless'] !== undefined && data['gasless'] !== false) fail('STOCK_DRAFT_SIGNER_MISMATCH');
+      for (const key of ['signatureFeePayer', 'prioritizationFeePayer', 'rentFeePayer']) {
+        if (data[key] !== undefined && data[key] !== null && data[key] !== wallet) fail('STOCK_DRAFT_SIGNER_MISMATCH');
+      }
     }
     let expires: number | null = null;
-    if (data['expireAt'] !== undefined && data['expireAt'] !== null) expires = instant(data['expireAt'], 'STOCK_DRAFT_VALIDITY_INVALID');
+    if (data['expireAt'] !== undefined && data['expireAt'] !== null) {
+      // RFQ quotes state their expiry in unix seconds; the fill program enforces it on chain.
+      if (rfq) {
+        if (typeof data['expireAt'] !== 'string' || !/^[1-9][0-9]{9}$/.test(data['expireAt'])) fail('STOCK_DRAFT_VALIDITY_INVALID');
+        expires = Number(data['expireAt']) * 1000;
+      } else {
+        expires = instant(data['expireAt'], 'STOCK_DRAFT_VALIDITY_INVALID');
+      }
+    }
+    if (rfq && expires === null) fail('STOCK_DRAFT_VALIDITY_INVALID');
     if (expires !== null && (expires <= received || expires > received + 120_000)) fail('STOCK_DRAFT_VALIDITY_INVALID');
     const admittedHeight = ctx['chainObservation'] === undefined ? null : observation(context.chainObservation, received);
     let lastHeight: string | null = null;
-    if (data['lastValidBlockHeight'] !== undefined && data['lastValidBlockHeight'] !== null) {
+    if (rfq) {
+      // RFQ orders carry no block height. Bound the blockhash lifetime from the
+      // admission observation; settlement also relies on the quote's expiry.
+      if (data['lastValidBlockHeight'] !== undefined && data['lastValidBlockHeight'] !== null) fail('STOCK_DRAFT_VALIDITY_INVALID');
+      if (admittedHeight === null || authority.readChainObservation === undefined) fail('STOCK_DRAFT_VALIDITY_INVALID');
+      lastHeight = (admittedHeight! + 150n).toString();
+    } else if (data['lastValidBlockHeight'] !== undefined && data['lastValidBlockHeight'] !== null) {
       lastHeight = raw(data['lastValidBlockHeight'], 'STOCK_DRAFT_VALIDITY_INVALID');
       if (admittedHeight === null || authority.readChainObservation === undefined) fail('STOCK_DRAFT_VALIDITY_INVALID');
       // Conservative local admission cap, not a derivation of blockhash lifetime.
@@ -296,7 +330,7 @@ export function bindStockOrderDraft(payload: unknown, context: StockOrderDraftCo
     if (wire.length > 1232 || wire.toString('base64') !== base64) fail('STOCK_DRAFT_TRANSACTION_INVALID');
     let structure: UnsignedV0TransactionStructure;
     try {
-      structure = inspectUnsignedV0TransactionStructure(wire, wallet);
+      structure = inspectUnsignedV0TransactionStructure(wire, wallet, maker ?? undefined);
     } catch (error) {
       if (error instanceof StockTransactionStructureError && error.code === 'SIGNER_MISMATCH') {
         return fail('STOCK_DRAFT_SIGNER_MISMATCH');
@@ -325,6 +359,7 @@ export function bindStockOrderDraft(payload: unknown, context: StockOrderDraftCo
     const candidateTermsHash = hash(JSON.stringify({
       userId: owner, taker: wallet, requestId, assetId: expected.assetId, variantMint: expected.variantMint, side: expected.side,
       input: expected.input, output: actualOutput, slippageBps: expected.slippageBps, swapFee: actualFee, router: actualRouter,
+      route: rfq ? 'rfq' : 'aggregator', marketMaker: maker,
       orderMode: 'manual', approvalPolicy, requestStartedAt, receivedAt, notAfter, providerExpiresAt,
       lastValidBlockHeight: lastHeight, admittedAtBlockHeight,
       lifetimeToken: structure.lifetimeToken.value, transactionMessageHash, transactionHash,
@@ -332,7 +367,8 @@ export function bindStockOrderDraft(payload: unknown, context: StockOrderDraftCo
     const withoutHash = {
       schemaVersion: 2 as const, kind: 'stock_order_draft' as const, network: 'solana:mainnet-beta' as const, userId: owner, taker: wallet,
       assetId: expected.assetId, variantMint: expected.variantMint, side: expected.side, input: expected.input, output: actualOutput,
-      slippageBps: expected.slippageBps, swapFee: actualFee, router: actualRouter, orderMode: 'manual' as const,
+      slippageBps: expected.slippageBps, swapFee: actualFee, router: actualRouter,
+      route: rfq ? 'rfq' as const : 'aggregator' as const, marketMaker: maker, orderMode: 'manual' as const,
       referenceEstimate: Object.freeze({output: expected.output, swapFee: expected.swapFee, router: expected.router,
         receivedAt: expected.receivedAt, refreshAfter: expected.refreshAfter, providerExpiresAt: expected.providerExpiresAt}),
       approvalPolicy,
@@ -417,7 +453,7 @@ export function inspectStockDraftStructure(draft: StockOrderDraft,
   const state = boundState(draft, binding);
   const summary = draft.summary;
   let structure: UnsignedV0TransactionStructure;
-  try { structure = inspectUnsignedV0TransactionStructure(state.bytes, summary.taker); }
+  try { structure = inspectUnsignedV0TransactionStructure(state.bytes, summary.taker, summary.marketMaker ?? undefined); }
   catch (error) {
     if (error instanceof StockTransactionStructureError && error.code === 'SIGNER_MISMATCH') {
       return fail('STOCK_DRAFT_SIGNER_MISMATCH');

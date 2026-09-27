@@ -373,3 +373,58 @@ describe('Jupiter route_v2', () => {
     assert.equal(result.program === 'jupiter_v6' && result.platformFeeAccount, null);
   });
 });
+
+describe('JupiterZ order engine fill', () => {
+  const maker = key(20);
+  const makerInput = key(21);
+  const makerOutput = key(22);
+  const usdc = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+  // Argument bytes from a live unsigned sell order (27 Sept 2026): 10,000,000 in,
+  // 2,240,706 out, expiry 1790493954, fee 10 bps and three reserved zero bytes.
+  const liveArgs = Buffer.from('8096980000000000c23022000000000002c5b86a000000000a00000000', 'hex');
+  const fillData = (args: Uint8Array = liveArgs) => bytes([...discriminator('fill'), ...args]);
+  const fillAccounts = (overrides: Partial<Record<number, string>> = {}) => [taker, maker, source, makerInput, destination,
+    makerOutput, mint, KNOWN_PROGRAMS.token2022, usdc, KNOWN_PROGRAMS.token, KNOWN_PROGRAMS.system]
+    .map((value, index) => overrides[index] ?? value);
+
+  it('decodes the live layout: exact amounts, expiry, fee and every account role', () => {
+    assert.deepEqual(Buffer.from(discriminator('fill')).toString('hex'), 'a860b7a35c0a28a0');
+    const decoded = decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), fillData()));
+    assert.deepEqual(decoded, {program: 'order_engine', kind: 'fill', taker, maker,
+      takerInputTokenAccount: source, makerInputTokenAccount: makerInput, takerOutputTokenAccount: destination,
+      makerOutputTokenAccount: makerOutput, inputMint: mint, inputTokenProgram: KNOWN_PROGRAMS.token2022, outputMint: usdc,
+      outputTokenProgram: KNOWN_PROGRAMS.token, inputAmount: 10_000_000n, outputAmount: 2_240_706n, expireAt: 1_790_493_954n,
+      feeBps: 10});
+    assert.ok(Object.isFrozen(decoded));
+  });
+
+  it('refuses unknown entry points, other layouts and set reserved bytes', () => {
+    const other = bytes([...discriminator('cancel'), ...liveArgs]);
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), other)), errorIs('UNSUPPORTED_INSTRUCTION'));
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), fillData(liveArgs.subarray(0, 24)))),
+      errorIs('UNSUPPORTED_INSTRUCTION'));
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), bytes([...fillData(), 0]))),
+      errorIs('UNSUPPORTED_INSTRUCTION'));
+    for (const position of [26, 27, 28]) {
+      const args = Buffer.from(liveArgs); args[position] = 1;
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), fillData(args))),
+        errorIs('UNSUPPORTED_INSTRUCTION'));
+    }
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), bytes([1, 2]))), errorIs('INSTRUCTION_INVALID'));
+  });
+
+  it('refuses zero amounts, a negative or zero expiry, an oversized fee and malformed accounts', () => {
+    const variant = (offset: number, value: number[]) => { const args = Buffer.from(liveArgs); Buffer.from(value).copy(args, offset); return args; };
+    for (const args of [variant(0, u64(0n)), variant(8, u64(0n)), variant(16, u64(0n)), variant(16, [0, 0, 0, 0, 0, 0, 0, 0x80]),
+      variant(24, [0x11, 0x27])]) {
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts(), fillData(args))), errorIs('INSTRUCTION_INVALID'));
+    }
+    for (const accounts of [fillAccounts({10: KNOWN_PROGRAMS.token}), fillAccounts({7: KNOWN_PROGRAMS.system}),
+      fillAccounts({9: poolAccount}), fillAccounts({1: taker}), fillAccounts({3: source}), fillAccounts({8: mint}),
+      fillAccounts({0: 'D8cy77BBepLMngZx6ZukaTff5hCt1HrWyKk3Hnd9oitf'})]) {
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, accounts, fillData())), errorIs('INSTRUCTION_INVALID'));
+    }
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.orderEngine, fillAccounts().slice(0, 10), fillData())),
+      errorIs('UNSUPPORTED_INSTRUCTION'));
+  });
+});

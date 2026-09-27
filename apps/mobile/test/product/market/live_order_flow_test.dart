@@ -140,6 +140,7 @@ Map<String, Object?> _order(
   String? minimumOutput,
   String? multiplier,
   String? delivered,
+  String? route,
 }) => {
   'id': _orderId,
   'status': status,
@@ -165,6 +166,7 @@ Map<String, Object?> _order(
     'platformFeeBps': 0,
     'stockUiMultiplier': ?multiplier,
     'simulatedOutputReceivedRaw': ?delivered,
+    'route': ?route,
   },
 };
 http.Response _reply(Object? value, {int status = 200}) => http.Response(
@@ -863,6 +865,7 @@ void main() {
                   quotedOutput: '29510000',
                   minimumOutput: '29000000',
                   multiplier: '5',
+                  route: 'rfq',
                 ),
               });
             }
@@ -890,6 +893,8 @@ void main() {
         expect(find.text('0.145 NVDAon'), findsOneWidget);
         expect(find.text('Issuer'), findsOneWidget);
         expect(find.text('Issuer fee'), findsNothing);
+        // Ondo fills come from a market maker at a fixed price.
+        expect(find.text('Fixed quote from a market maker'), findsOneWidget);
         expectNoRawUnits();
         await clean(tester);
       },

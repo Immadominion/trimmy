@@ -64,6 +64,8 @@ export const KNOWN_PROGRAMS = Object.freeze({
   computeBudget: 'ComputeBudget111111111111111111111111111111',
   jupiterV6: 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
   memo: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+  /** Jupiter's RFQ (JupiterZ) order engine: a market maker fills a fixed quote. */
+  orderEngine: '61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH',
 } as const);
 
 export type TokenProgramName = 'token' | 'token_2022';
@@ -99,6 +101,13 @@ export type DecodedInstruction =
       readonly token2022Program: string | null; readonly eventAuthority: string; readonly routeAccounts: readonly string[];
       readonly inAmount: bigint; readonly quotedOutAmount: bigint; readonly slippageBps: number;
       readonly platformFeeBps: number; readonly routePlanStepCount: number; readonly destinationTokenProgram?: string}
+  | {readonly program: 'order_engine'; readonly kind: 'fill'; readonly taker: string; readonly maker: string;
+      readonly takerInputTokenAccount: string; readonly makerInputTokenAccount: string;
+      readonly takerOutputTokenAccount: string; readonly makerOutputTokenAccount: string;
+      readonly inputMint: string; readonly inputTokenProgram: string; readonly outputMint: string;
+      readonly outputTokenProgram: string; readonly inputAmount: bigint; readonly outputAmount: bigint;
+      /** Unix seconds; the program refuses to fill after it. */
+      readonly expireAt: bigint; readonly feeBps: number}
   | {readonly program: 'memo'; readonly kind: 'memo'; readonly byteLength: number};
 
 const MAX_EXTRA_ACCOUNTS = 32;
@@ -120,6 +129,10 @@ const JUPITER_DISCRIMINATORS = Object.freeze({
   route_with_token_ledger: anchorDiscriminator('route_with_token_ledger'),
   shared_accounts_route_with_token_ledger: anchorDiscriminator('shared_accounts_route_with_token_ledger'),
 });
+
+const ORDER_ENGINE_FILL = anchorDiscriminator('fill');
+/** Discriminator, input_amount u64, output_amount u64, expire_at i64, fee_bps u16 and three reserved zero bytes. */
+const ORDER_ENGINE_FILL_BYTES = 37;
 
 function checkedAddress(value: unknown): string {
   try {
@@ -463,6 +476,42 @@ function decodeJupiter(instruction: DecodableInstruction): DecodedInstruction {
   } as const);
 }
 
+/**
+ * JupiterZ fill, verified against the program's on-chain Anchor IDL
+ * (ARpUTgSk6XR8aoHGxmQ7RnVvSTFw8mtW6j9Xuxwj9HW1, 2026-09-27) and live unsigned
+ * orders: the taker's input moves to the maker and the maker's output to the
+ * taker, for exactly these amounts. The deployed program appends a u16 fee
+ * and three bytes that are always zero; any other layout is refused.
+ */
+function decodeOrderEngine(instruction: DecodableInstruction): DecodedInstruction {
+  const {data, accountAddresses: list} = instruction;
+  if (data.length < 8) return fail('INSTRUCTION_INVALID');
+  if (!sameBytes(data.subarray(0, 8), ORDER_ENGINE_FILL)) return fail('UNSUPPORTED_INSTRUCTION');
+  if (data.length !== ORDER_ENGINE_FILL_BYTES) return fail('UNSUPPORTED_INSTRUCTION');
+  if (data[34] !== 0 || data[35] !== 0 || data[36] !== 0) return fail('UNSUPPORTED_INSTRUCTION');
+  const inputAmount = readU64(data, 8);
+  const outputAmount = readU64(data, 16);
+  const expireAtBits = readU64(data, 24);
+  // expire_at is an i64; a set sign bit is a negative (already expired) time.
+  if (expireAtBits >= 1n << 63n) return fail('INSTRUCTION_INVALID');
+  const feeBps = data[32]! | (data[33]! << 8);
+  if (inputAmount <= 0n || outputAmount <= 0n || expireAtBits === 0n || feeBps > 10_000) return fail('INSTRUCTION_INVALID');
+  const [taker, maker, takerInputTokenAccount, makerInputTokenAccount, takerOutputTokenAccount, makerOutputTokenAccount,
+    inputMint, inputTokenProgram, outputMint, outputTokenProgram, systemProgram] = accounts(list, 11);
+  const tokenPrograms: readonly string[] = [KNOWN_PROGRAMS.token, KNOWN_PROGRAMS.token2022];
+  if (systemProgram !== KNOWN_PROGRAMS.system || !tokenPrograms.includes(inputTokenProgram!) ||
+      !tokenPrograms.includes(outputTokenProgram!)) return fail('INSTRUCTION_INVALID');
+  const takerWallet = walletAddress(taker!);
+  const makerWallet = walletAddress(maker!);
+  const tokenAccounts = [takerInputTokenAccount!, makerInputTokenAccount!, takerOutputTokenAccount!, makerOutputTokenAccount!];
+  if (takerWallet === makerWallet || new Set(tokenAccounts).size !== 4 || inputMint === outputMint) return fail('INSTRUCTION_INVALID');
+  return Object.freeze({program: 'order_engine', kind: 'fill', taker: takerWallet, maker: makerWallet,
+    takerInputTokenAccount: checkedAddress(takerInputTokenAccount!), makerInputTokenAccount: checkedAddress(makerInputTokenAccount!),
+    takerOutputTokenAccount: checkedAddress(takerOutputTokenAccount!), makerOutputTokenAccount: checkedAddress(makerOutputTokenAccount!),
+    inputMint: checkedAddress(inputMint!), inputTokenProgram: inputTokenProgram!, outputMint: checkedAddress(outputMint!),
+    outputTokenProgram: outputTokenProgram!, inputAmount, outputAmount, expireAt: expireAtBits, feeBps} as const);
+}
+
 export function decodeInstruction(instruction: DecodableInstruction): DecodedInstruction {
   const checked = validated(instruction);
   switch (checked.programAddress) {
@@ -472,6 +521,7 @@ export function decodeInstruction(instruction: DecodableInstruction): DecodedIns
     case KNOWN_PROGRAMS.token: return decodeTokenProgram(checked, 'token');
     case KNOWN_PROGRAMS.token2022: return decodeTokenProgram(checked, 'token_2022');
     case KNOWN_PROGRAMS.jupiterV6: return decodeJupiter(checked);
+    case KNOWN_PROGRAMS.orderEngine: return decodeOrderEngine(checked);
     case KNOWN_PROGRAMS.memo: {
       if (checked.data.length < 1 || checked.data.length > MAX_MEMO_BYTES) return fail('INSTRUCTION_INVALID');
       return Object.freeze({program: 'memo', kind: 'memo', byteLength: checked.data.length} as const);

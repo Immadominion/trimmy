@@ -169,8 +169,9 @@ test('live preview requests each selected stock in both directions and reports n
     orderRequests++;
     assert.equal(url.searchParams.get(side==='buy'?'outputMint':'inputMint'),asset.mint);
     assert.equal(url.searchParams.get('taker'),wallet);
-    assert.equal(url.searchParams.get('slippageBps'),'50');
-    assert.equal(url.searchParams.get('excludeRouters'),'jupiterz,dflow,okx');
+    // Transfer-fee tokens widen the tolerance by their own fee; RFQ tokens use market makers only.
+    assert.equal(url.searchParams.get('slippageBps'),String(50+asset.transferFeeBps));
+    assert.equal(url.searchParams.get('excludeRouters'),asset.route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx');
     return Response.json({error:'Failed to get quotes'},{status:400});
    }
    const request=JSON.parse(String(options?.body));

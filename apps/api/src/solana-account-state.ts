@@ -223,6 +223,24 @@ function strictDecode<TArgs, T extends TArgs>(decoder: Decoder<T>, encoder: Enco
   }
 }
 
+/**
+ * SPL Token writes only the 4-byte tag when it clears a COption (a revoked
+ * delegate, a removed close or mint authority), so the old value's bytes stay
+ * behind the None tag. That is valid on-chain state; zero those unused bytes
+ * before the strict round-trip comparison. Tags other than 0 and 1 still fail.
+ * Offsets are the base layouts, shared by the legacy program and Token-2022.
+ */
+const ACCOUNT_OPTION_BODIES: readonly (readonly [tag: number, body: number, size: number])[] =
+  [[72, 76, 32], [109, 113, 8], [129, 133, 32]];
+const MINT_OPTION_BODIES: readonly (readonly [tag: number, body: number, size: number])[] = [[0, 4, 32], [46, 50, 32]];
+function clearedOptionBodies(bytes: Uint8Array, options: typeof ACCOUNT_OPTION_BODIES): Uint8Array {
+  const copy = Uint8Array.from(bytes);
+  for (const [tag, body, size] of options) {
+    if (copy[tag] === 0 && copy[tag + 1] === 0 && copy[tag + 2] === 0 && copy[tag + 3] === 0) copy.fill(0, body, body + size);
+  }
+  return copy;
+}
+
 type ExtensionKind = Extension['__kind'];
 
 function findExtension<K extends ExtensionKind>(extensions: readonly Extension[], kind: K):
@@ -331,10 +349,11 @@ function tokenProgramAccount(account: ObservedAccount, tokenProgram: TokenProgra
   if (tokenProgram === 'token') {
     if (length === TOKEN_ACCOUNT_LENGTH) {
       return tokenAccountState(account, tokenProgram,
-        strictDecode(getLegacyTokenDecoder(), getLegacyTokenEncoder(), bytes), []);
+        strictDecode(getLegacyTokenDecoder(), getLegacyTokenEncoder(), clearedOptionBodies(bytes, ACCOUNT_OPTION_BODIES)), []);
     }
     if (length === MINT_LENGTH) {
-      return mintState(account, tokenProgram, strictDecode(getLegacyMintDecoder(), getLegacyMintEncoder(), bytes), []);
+      return mintState(account, tokenProgram,
+        strictDecode(getLegacyMintDecoder(), getLegacyMintEncoder(), clearedOptionBodies(bytes, MINT_OPTION_BODIES)), []);
     }
     return fail('ACCOUNT_DATA_INVALID');
   }
@@ -342,11 +361,11 @@ function tokenProgramAccount(account: ObservedAccount, tokenProgram: TokenProgra
     length === TOKEN_ACCOUNT_LENGTH ? ACCOUNT_TYPE_TOKEN_ACCOUNT :
     length > TOKEN_ACCOUNT_LENGTH && length !== MULTISIG_LENGTH ? bytes[TOKEN_ACCOUNT_LENGTH] : undefined;
   if (accountType === ACCOUNT_TYPE_MINT) {
-    const mint = strictDecode(getMintDecoder(), getMintEncoder(), bytes);
+    const mint = strictDecode(getMintDecoder(), getMintEncoder(), clearedOptionBodies(bytes, MINT_OPTION_BODIES));
     return mintState(account, tokenProgram, mint, unwrapOption(mint.extensions) ?? []);
   }
   if (accountType === ACCOUNT_TYPE_TOKEN_ACCOUNT) {
-    const token = strictDecode(getTokenDecoder(), getTokenEncoder(), bytes);
+    const token = strictDecode(getTokenDecoder(), getTokenEncoder(), clearedOptionBodies(bytes, ACCOUNT_OPTION_BODIES));
     return tokenAccountState(account, tokenProgram, token, unwrapOption(token.extensions) ?? []);
   }
   return fail('ACCOUNT_DATA_INVALID');

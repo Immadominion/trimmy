@@ -180,7 +180,11 @@ class NativePrivySdkFacade
   }) async {
     if (_walletSigningPending) throw const WalletTradeException('WALLET_BUSY');
     final bytes = base64Decode(transaction);
-    if (bytes.length < 65 || bytes.length > 1232 || bytes[0] != 1) {
+    // One signer, or an RFQ order where a market maker signs after the user.
+    if (bytes.length < 65 ||
+        bytes.length > 1232 ||
+        bytes[0] < 1 ||
+        bytes[0] > 2) {
       throw const WalletTradeException('INVALID_TRANSACTION');
     }
     _walletSigningPending = true;
