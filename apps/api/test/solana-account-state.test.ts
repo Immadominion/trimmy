@@ -261,7 +261,7 @@ it('decodes Token-2022 mint extension flags that matter for a swap', () => {
       'ScaledUiAmountConfig', 'TransferFeeConfig', 'NonTransferable', 'MintCloseAuthority',
       'ConfidentialTransferMint', 'MetadataPointer', 'InterestBearingConfig'],
     defaultAccountState: 'frozen', paused: true, transferHookProgram: addr(3), transferHookAuthority: addr(2),
-    permanentDelegate: addr(4), transferFee: {basisPoints: 75, maximumFee: 20n},
+    permanentDelegate: addr(4), transferFee: {basisPoints: 75, maximumFee: 20n, olderBasisPoints: 50},
     scaledUiAmount: {multiplier: 1.5, newMultiplier: 2.25, newMultiplierEffectiveTimestamp: 1_760_000_000n},
     nonTransferable: true, confidentialTransfer: true, mintCloseAuthority: addr(8), lamports: 5_000_000n});
   assert.ok(state.kind === 'mint' && Object.isFrozen(state) && Object.isFrozen(state.extensions) &&

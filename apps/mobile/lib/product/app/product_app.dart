@@ -207,31 +207,50 @@ class _ProductExperienceState extends State<ProductExperience>
     if (mounted) _portfolioViewRevision.value++;
   }
 
-  Future<List<MarketCompany>> _availableLiveCompanies() async {
+  /// Every token Real mode can buy, straight from the capabilities. Company
+  /// names and logos are added only when the catalog already has them, so
+  /// hundreds of tokens never mean hundreds of lookups.
+  Future<List<FastBuyAsset>> _tradeableFastBuyAssets() async {
     await _refreshLiveCapabilities();
     final caps = _liveCapabilities;
     if (caps == null) throw const FormatException('Trading unavailable');
     if (!caps.enabled) return const [];
-    final companies = await Future.wait(
-      caps.assets.map((asset) async {
-        try {
-          return _knownCompany(asset.assetId) ??
-              await _market?.findCompany(asset.assetId);
-        } catch (_) {
-          return null;
-        }
-      }),
-    );
-    final available = <MarketCompany>[];
-    for (final company in companies) {
-      if (company == null) continue;
-      final asset = caps.forCompany(company);
-      if (asset != null) available.add(company.withVariant(asset.mint));
+    final known = <String, MarketCompany?>{};
+    final rows = <FastBuyAsset>[];
+    for (final asset in caps.tradeableAssets) {
+      final company = known.putIfAbsent(
+        asset.assetId,
+        () => _knownCompany(asset.assetId),
+      );
+      rows.add(
+        FastBuyAsset(
+          assetId: asset.assetId,
+          mint: asset.mint,
+          name: asset.name,
+          symbol: asset.symbol,
+          issuer: caps.issuerFor(asset).name,
+          companyName: company?.name,
+          logoUrl: company?.logoUrl,
+          brandColor: company?.brandColor ?? const Color(0xFFE7E0FA),
+        ),
+      );
     }
-    if (available.isEmpty && caps.assets.isNotEmpty) {
-      throw const FormatException('Market unavailable');
+    return rows;
+  }
+
+  /// The company behind a chosen Fast buy token, with that token selected.
+  /// Discovery must list the same token for the same company.
+  Future<MarketCompany?> _openTradeableAsset(FastBuyAsset asset) async {
+    final company =
+        _knownCompany(asset.assetId) ??
+        await _market?.findCompany(asset.assetId);
+    final caps = _liveCapabilities;
+    if (company == null ||
+        caps == null ||
+        !caps.variantsFor(company).any((v) => v.mint == asset.mint)) {
+      return null;
     }
-    return available;
+    return company.withVariant(asset.mint);
   }
 
   void _realPortfolioChanged() {
@@ -1544,6 +1563,8 @@ class _ProductExperienceState extends State<ProductExperience>
                 account: widget.account,
                 logoForAsset: (holding) =>
                     _knownCompany(holding.assetId)?.logoUrl,
+                nameForAsset: (holding) =>
+                    _liveCapabilities?.forMint(holding.mint)?.name,
                 onAddMoney: _openFunding,
                 onAsset: (holding) => unawaited(
                   _openAssetId(holding.assetId, variantMint: holding.mint),
@@ -1731,6 +1752,8 @@ class _ProductExperienceState extends State<ProductExperience>
             )
           : null,
       onOpenCompany: _openCompany,
+      realMoney: _realMoney,
+      liveCapabilities: _liveCapabilities,
     );
   }
 
@@ -1749,6 +1772,7 @@ class _ProductExperienceState extends State<ProductExperience>
 
   Future<void> _openLiveAsset(
     MarketCompany company, {
+    required String? variantMint,
     bool sell = false,
   }) async {
     if (!_realMoney || !_signedIn || widget.account == null) return;
@@ -1769,6 +1793,7 @@ class _ProductExperienceState extends State<ProductExperience>
           account: widget.account!,
           origin: origin,
           company: company,
+          variantMint: variantMint,
           initialSell: sell,
           onBack: () => Navigator.pop(sheet),
           onAddMoney: _openFunding,
@@ -1836,14 +1861,8 @@ class _ProductExperienceState extends State<ProductExperience>
             removeBottom: true,
             child: FastBuySheet(
               gateway: market.search,
-              loadAvailableCompanies: _realMoney
-                  ? _availableLiveCompanies
-                  : null,
-              canSelect: _realMoney
-                  ? (company) =>
-                        _liveCapabilities?.enabled == true &&
-                        _liveCapabilities?.forCompany(company) != null
-                  : null,
+              loadTradeable: _realMoney ? _tradeableFastBuyAssets : null,
+              openTradeable: _realMoney ? _openTradeableAsset : null,
               companies: market.companies.isEmpty
                   ? market.starterCompanies
                   : market.companies,
@@ -1853,6 +1872,7 @@ class _ProductExperienceState extends State<ProductExperience>
                       account: widget.account!,
                       origin: PracticeAccountConfig.fromEnvironment().apiUri!,
                       company: company,
+                      variantMint: company.primaryVariant?.mint,
                       onBack: back,
                       onAddMoney: _openFunding,
                     )
@@ -1901,19 +1921,36 @@ class _ProductExperienceState extends State<ProductExperience>
     }
   }
 
-  Future<void> _openCompany(MarketCompany company) async {
+  Future<void> _openCompany(
+    MarketCompany company, {
+    String? variantMint,
+  }) async {
     if (_realMoney) unawaited(_refreshLiveCapabilities());
     final generation = _portfolioGeneration;
     final principalKey = _paperPrincipalKey;
     final orderRepository = _httpOrders;
+    // The Real mode token chosen on this page. It starts on the token the
+    // caller named, such as a holding, or else on the most liquid one.
+    final chosenMint = ValueNotifier<String?>(variantMint);
     final route = MaterialPageRoute<PaperOrderReceipt>(
-      builder: (_) => ValueListenableBuilder<int>(
-        valueListenable: _portfolioViewRevision,
-        builder: (context, revision, _) {
+      builder: (_) => ListenableBuilder(
+        listenable: Listenable.merge([_portfolioViewRevision, chosenMint]),
+        builder: (context, _) {
           // Keep an already-open asset route aligned with mode changes made in Settings.
-          MoneyModeScope.of(context);
-          final liveAsset = _liveCapabilities?.forCompany(company);
-          final selectedCompany = _realMoney && liveAsset != null
+          final mode = MoneyModeScope.of(context);
+          final real = _realMoney;
+          final caps = _liveCapabilities;
+          final variants = real && caps != null
+              ? caps.variantsFor(company)
+              : const <LiveTradingAsset>[];
+          // Every token of this company, tradeable first, the rest with why.
+          final options = real && caps != null
+              ? caps.optionsFor(company)
+              : const <LiveVariantOption>[];
+          final liveAsset =
+              variants.where((v) => v.mint == chosenMint.value).firstOrNull ??
+              variants.firstOrNull;
+          final selectedCompany = real && liveAsset != null
               ? company.withVariant(liveAsset.mint)
               : company;
           final liveHolding = realWalletHoldings(widget.account)
@@ -1959,9 +1996,32 @@ class _ProductExperienceState extends State<ProductExperience>
                 : receipt?.positionShares ?? persisted?.quantity ?? '0',
             realPositionLabel: liveHolding == null
                 ? null
-                : '${liveHolding.displayAmount ?? liveHolding.rawTokenUnits} ${liveHolding.symbol}',
+                : '${liveGroupedDecimal(liveHolding.displayAmount ?? liveHolding.rawTokenUnits)} ${liveHolding.symbol}',
             onRetryTrading: _realMoney && _liveCapabilitiesFailed
                 ? () => unawaited(_refreshLiveCapabilities())
+                : null,
+            variantChoices: options.length > 1
+                ? [
+                    for (final option in options)
+                      StockVariantChoice(
+                        mint: option.mint,
+                        label: option.label,
+                        tradeable: option.tradeable,
+                        reason: option.reason,
+                      ),
+                  ]
+                : const [],
+            onSelectVariant: (mint) => chosenMint.value = mint,
+            // Leaving Real mode is the person's own choice, made here.
+            onPracticeInPaper:
+                real &&
+                    mode != null &&
+                    caps?.enabled == true &&
+                    liveAsset == null
+                ? () async {
+                    await mode.select(false);
+                    if (mounted) _message('Switched to Paper.');
+                  }
                 : null,
             recentOrders: _realMoney
                 ? const []
@@ -1988,22 +2048,27 @@ class _ProductExperienceState extends State<ProductExperience>
               repository: orderRepository,
             ),
             reasonCaptureAvailable: _paperDeskReady,
-            onRealTrade: _realMoney
-                ? (side) =>
-                      _openLiveAsset(company, sell: side == PaperOrderSide.sell)
+            onRealTrade: real
+                ? (side) => _openLiveAsset(
+                    selectedCompany,
+                    variantMint: liveAsset?.mint,
+                    sell: side == PaperOrderSide.sell,
+                  )
                 : null,
-            tradingAvailable: _realMoney
-                ? _liveCapabilities?.enabled == true && liveAsset != null
+            tradingAvailable: real
+                ? caps?.enabled == true && liveAsset != null
                 : _paperDeskReady,
-            tradingMessage: _realMoney
+            tradingMessage: real
                 ? _liveCapabilitiesFailed
                       ? 'Trading could not connect.'
-                      : _liveCapabilities == null
+                      : caps == null
                       ? 'Checking trading…'
-                      : !_liveCapabilities!.enabled
+                      : !caps.enabled
                       ? 'Trading is temporarily paused.'
                       : liveAsset == null
-                      ? 'This stock isn’t available to trade yet.'
+                      ? options.length == 1
+                            ? options.single.reason
+                            : 'Not tradeable with real money yet.'
                       : null
                 : _paperDeskReady
                 ? null
@@ -2552,8 +2617,13 @@ class _ProductExperienceState extends State<ProductExperience>
         _message('This stock couldn’t open. Try again.');
         return;
       }
+      // A held token that discovery does not list still opens its company.
+      final listed =
+          variantMint != null &&
+          company.asset.variants.any((v) => v.mint == variantMint);
       await _openCompany(
-        variantMint == null ? company : company.withVariant(variantMint),
+        listed ? company.withVariant(variantMint) : company,
+        variantMint: listed ? variantMint : null,
       );
     } catch (_) {
       if (mounted) _message('This stock couldn’t open. Try again.');
@@ -2579,6 +2649,10 @@ class _ProductExperienceState extends State<ProductExperience>
             origin: origin,
             onBack: () => Navigator.pop(pageContext),
             logoForAsset: (assetId, mint) => _knownCompany(assetId)?.logoUrl,
+            nameForAsset: (assetId, mint) =>
+                _liveCapabilities?.forMint(mint)?.name,
+            shareScale: (mint, decimals) =>
+                liveShareScale(account, mint, decimals),
             onOpenAsset: (assetId, mint) =>
                 _openAssetId(assetId, variantMint: mint),
           ),

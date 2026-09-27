@@ -218,8 +218,10 @@ export class SolanaMainnetStockOrderSemanticsReader {
     }
     this.#rpc = new BoundedSolanaRpc<RpcMethod, StockOrderSemanticsError>({
       rpcUrl: options.rpcUrl, methods: ['getGenesisHash', 'getMultipleAccounts'], errors: RPC_ERRORS,
-      // Real routes include executable ATA/Memo binaries; their base64 data alone exceeds 256 KiB.
-      maxBodyBytes: 1_048_576,
+      // Real routes include executable ATA/Memo binaries (their base64 data alone
+      // exceeds 256 KiB) and market-maker state: one observed venue account is
+      // about 720 KiB. Allow the bounded client's maximum for this one read.
+      maxBodyBytes: 4_194_304,
       ...(options.fetch ? {fetch: options.fetch} : {}), ...(options.timeoutMs !== undefined ? {timeoutMs: options.timeoutMs} : {}),
     });
     this.#now = options.now ?? Date.now;

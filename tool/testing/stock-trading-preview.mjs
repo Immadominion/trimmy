@@ -4,6 +4,7 @@ import {setTimeout as pause} from 'node:timers/promises';
 import {address} from '@solana/kit';
 import {LiveStockOrders} from '../../apps/api/src/live-stock-orders.ts';
 import {STOCK_TRADING_ASSETS} from '../../apps/api/src/stock-trading-catalog.ts';
+import {STOCK_ISSUERS} from '../../apps/api/src/stock-issuers.ts';
 
 const [flag, wallet, ...specs] = process.argv.slice(2);
 if (flag !== '--read-only' || !wallet || !specs.length) throw Error('Use --read-only PUBLIC_WALLET SYMBOL:buy|sell:RAW_AMOUNT ...');
@@ -11,7 +12,7 @@ address(wallet);
 const requests = specs.map(spec => {
   const [symbol, side, amountRaw] = spec.split(':');
   const asset = STOCK_TRADING_ASSETS.find(asset => asset.symbol === symbol);
-  if (!asset || !['buy', 'sell'].includes(side) || !/^[1-9][0-9]{0,8}$/.test(amountRaw ?? '')) throw Error('INVALID_REQUEST');
+  if (!asset || !['buy', 'sell'].includes(side) || !/^[1-9][0-9]{0,19}$/.test(amountRaw ?? '')) throw Error('INVALID_REQUEST');
   return {asset, side, amountRaw};
 });
 const store = {
@@ -37,8 +38,10 @@ const evidence = {observedAt: new Date().toISOString(), signed: false, transacti
 for (const {asset, side, amountRaw} of requests) {
   const start = Date.now();
   try {
+    // A harness run stands in for the user's attestation to the issuer's current terms.
+    const termsAccepted = {issuerId: asset.issuerId, version: STOCK_ISSUERS[asset.issuerId].disclosure.attestation.version};
     const order = await service.preview('12345678-1234-4567-8123-123456789abc', wallet,
-      {assetId: asset.assetId, variantMint: asset.mint, side, amountRaw});
+      {assetId: asset.assetId, variantMint: asset.mint, side, amountRaw, termsAccepted});
     const result = {symbol: asset.symbol, side, status: order.status, terms: order.review.terms,
       observationSlot: order.review.evidence.observationSlot, simulationSlot: order.review.evidence.simulationSlot, durationMs: Date.now() - start};
     evidence.results.push(result); console.log(JSON.stringify(result));

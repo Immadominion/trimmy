@@ -2,7 +2,7 @@ import { address, getAddressEncoder, getProgramDerivedAddress } from '@solana/ki
 import type { Address } from '@solana/kit';
 import {BoundedProviderRead} from './bounded-provider-read.js';
 import { JUPITER_QUOTE_ASSETS } from './jupiter-quote-reader.js';
-import {STOCK_TRADING_ASSETS} from './stock-trading-catalog.js';
+import {STOCK_TRADING_IDENTITIES} from './stock-trading-catalog.js';
 
 export const STOCK_HOLDINGS_MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
 export const STOCK_HOLDINGS_TOKEN_PROGRAMS = Object.freeze({
@@ -634,7 +634,12 @@ export class SolanaStockHoldingsReader {
     const token2022 = programTokenAccounts(token2022Result, owner.address, address(STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022));
     const usdc = tokenHolding({context: legacy.context, value: legacy.byMint.get(USDC.mint) ?? []},
       owner.address, USDC, await associatedTokenAddress(owner.address, USDC));
-    const allStocks = await Promise.all(STOCK_TRADING_ASSETS.map(async asset => {
+    // Every admitted identity, including suspended ones, so a position never
+    // disappears from the wallet view. Only held mints (plus the legacy Apple
+    // alias) pay for an associated-address derivation.
+    const held = STOCK_TRADING_IDENTITIES.filter(asset => asset.mint === AAPLX.mint ||
+      (asset.tokenProgram === 'token_2022' ? token2022 : legacy).byMint.has(asset.mint));
+    const allStocks = await Promise.all(held.map(async asset => {
       const token: TokenDefinition = {
         symbol: asset.symbol, mint: address(asset.mint), decimals: asset.decimals,
         tokenProgram: address(asset.tokenProgramAddress),

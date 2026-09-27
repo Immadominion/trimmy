@@ -140,4 +140,43 @@ void main() {
       repository.dispose();
     },
   );
+
+  testWidgets('rows use the trading name and grouped share amounts', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: fixtures.holdingsEnvelopeV2()),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    await repository.refresh();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: Scaffold(
+          body: RealHoldings(
+            account: account,
+            onAddMoney: () {},
+            nameForAsset: (holding) =>
+                holding.mint == fixtures.nvidiaMint ? 'NVIDIA xStock' : null,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('NVIDIA xStock'), findsOneWidget);
+    expect(find.text('NVIDIA'), findsNothing);
+    // Without a trading name the wallet's own name stays.
+    expect(find.text('Apple'), findsOneWidget);
+    expect(find.text('90,071,992.54741 AAPLx'), findsOneWidget);
+    expect(find.text('2.46913578 NVDAx'), findsOneWidget);
+    // No dollar value is invented for either token.
+    expect(
+      find.bySemanticsLabel(RegExp('Value unavailable')),
+      findsNWidgets(2),
+    );
+    semantics.dispose();
+    repository.dispose();
+  });
 }

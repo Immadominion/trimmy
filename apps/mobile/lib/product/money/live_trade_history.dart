@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../account/account_amounts.dart';
 import '../../account/account_controller.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../design/product_components.dart';
@@ -57,12 +58,20 @@ class LiveTradeRecord {
     minimumOutputAmountRaw: minimumOutputAmountRaw,
   );
 
-  String get inputLabel =>
-      '${liveDecimal(inputAmountRaw, buy ? 6 : decimals)} ${buy ? 'USDC' : '$symbol raw units'}';
-  String get quotedOutputLabel =>
-      '${liveDecimal(quotedOutputAmountRaw, buy ? decimals : 6)} ${buy ? '$symbol raw units' : 'USDC'}';
-  String get minimumOutputLabel =>
-      '${liveDecimal(minimumOutputAmountRaw, buy ? decimals : 6)} ${buy ? '$symbol raw units' : 'USDC'}';
+  /// USDC, or shares of the token. Shares use [scale] when the wallet's
+  /// multiplier is known and plain token units otherwise.
+  String _label(String raw, bool usdc, LiveShareScale? scale) => usdc
+      ? '${formatRawUnits(raw, 6) ?? liveDecimal(raw, 6)} USDC'
+      : '${(scale ?? LiveShareScale.plain(decimals)).exact(raw)} $symbol';
+  String inputLabelWith([LiveShareScale? scale]) =>
+      _label(inputAmountRaw, buy, scale);
+  String quotedOutputLabelWith([LiveShareScale? scale]) =>
+      _label(quotedOutputAmountRaw, !buy, scale);
+  String minimumOutputLabelWith([LiveShareScale? scale]) =>
+      _label(minimumOutputAmountRaw, !buy, scale);
+  String get inputLabel => inputLabelWith();
+  String get quotedOutputLabel => quotedOutputLabelWith();
+  String get minimumOutputLabel => minimumOutputLabelWith();
   Uri get explorer => Uri.https('solscan.io', '/tx/$signature');
   String get statusLabel => switch (status) {
     LiveTradeStatus.pending => 'Confirming',
@@ -300,6 +309,8 @@ class LiveTradeHistoryScreen extends StatefulWidget {
     required this.onBack,
     this.onOpenAsset,
     this.logoForAsset,
+    this.nameForAsset,
+    this.shareScale,
     this.httpClient,
     this.openExplorer,
   });
@@ -308,6 +319,12 @@ class LiveTradeHistoryScreen extends StatefulWidget {
   final VoidCallback onBack;
   final Future<void> Function(String assetId, String mint)? onOpenAsset;
   final String? Function(String assetId, String mint)? logoForAsset;
+
+  /// The trading capabilities' token name, when known.
+  final String? Function(String assetId, String mint)? nameForAsset;
+
+  /// Share conversion for a token the wallet holds. Plain units otherwise.
+  final LiveShareScale Function(String mint, int decimals)? shareScale;
   final http.Client? httpClient;
   final Future<bool> Function(Uri uri)? openExplorer;
   @override
@@ -644,6 +661,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
     final date = order.createdAt.toLocal();
     final dateLabel =
         '${date.day}/${date.month}/${date.year} · ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    final scale = widget.shareScale?.call(order.mint, order.decimals);
     return Padding(
       key: ValueKey('trade-${order.id}'),
       padding: const EdgeInsets.only(bottom: 14),
@@ -659,7 +677,9 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CompanyLogo(
-                  name: order.name,
+                  name:
+                      widget.nameForAsset?.call(order.assetId, order.mint) ??
+                      order.name,
                   logoUrl: widget.logoForAsset?.call(order.assetId, order.mint),
                   color: ProductColor.violet,
                   size: 42,
@@ -674,7 +694,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
                         style: type.titleMedium,
                       ),
                       const SizedBox(height: 4),
-                      Text(order.inputLabel, style: type.bodyMedium),
+                      Text(order.inputLabelWith(scale), style: type.bodyMedium),
                     ],
                   ),
                 ),
@@ -704,10 +724,10 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
             if (expanded) ...[
               const SizedBox(height: 18),
               Text('Quoted output', style: type.bodySmall),
-              Text(order.quotedOutputLabel, style: type.titleMedium),
+              Text(order.quotedOutputLabelWith(scale), style: type.titleMedium),
               const SizedBox(height: 10),
               Text('Minimum output', style: type.bodySmall),
-              Text(order.minimumOutputLabel, style: type.bodyMedium),
+              Text(order.minimumOutputLabelWith(scale), style: type.bodyMedium),
               const SizedBox(height: 10),
               Text(
                 'Order estimates. See the transaction for the final amounts.',

@@ -16,7 +16,10 @@ enum MarketList {
   health('Health'),
   consumer('Consumer'),
   etfs('ETFs'),
-  preIpo('Pre-IPO');
+  preIpo('Pre-IPO'),
+
+  /// Real mode only: companies with at least one token Trimmy can trade.
+  tradeable('Tradeable');
 
   const MarketList(this.label);
   final String label;

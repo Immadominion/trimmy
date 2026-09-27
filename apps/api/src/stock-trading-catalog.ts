@@ -1,39 +1,105 @@
-/** Server-owned execution identities, checked against the xStocks issuer API and
- * finalized Solana mint accounts on 2026-09-25 (slot 450355321); MSTRx, CRCLx
- * and PLTRx were additionally verified on 2026-09-26 (slot 450695517).
+/** Server-owned execution identities. Each entry in the generated registry was
+ * proven by tool/testing/stock-admission.mjs: issuer source of truth, pinned
+ * on-chain authorities, finalized mint policy, Jupiter routes and an unsigned
+ * order that passed the full review and simulation below.
  * Discovery metadata never adds an executable asset. Every order independently
  * re-reads mint/account state and must pass transaction reconciliation + simulation.
- * Sources: https://api.xstocks.fi/api/v2/public/assets/{symbol}
- * Verification: tool/testing/stock-trading-catalog.mjs --read-only
+ * Verification: tool/testing/stock-admission.mjs --read-only
  */
+import {STOCK_ISSUERS, isStockIssuerId, stockIssuerOffered} from './stock-issuers.js';
+import type {StockIssuerId} from './stock-issuers.js';
+import {STOCK_TRADING_REGISTRY} from './stock-trading-registry.generated.js';
+
 export const STOCK_TOKEN_PROGRAM = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
-const identities = [
-  {assetId: 'apple', symbol: 'AAPLx', name: 'Apple xStock', mint: 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp'},
-  {assetId: 'tesla', symbol: 'TSLAx', name: 'Tesla xStock', mint: 'XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB'},
-  {assetId: 'nvidia', symbol: 'NVDAx', name: 'NVIDIA xStock', mint: 'Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh'},
-  {assetId: 'microsoft', symbol: 'MSFTx', name: 'Microsoft xStock', mint: 'XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX'},
-  {assetId: 'amazon', symbol: 'AMZNx', name: 'Amazon.com xStock', mint: 'Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg'},
-  {assetId: 'alphabet', symbol: 'GOOGLx', name: 'Alphabet xStock', mint: 'XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN'},
-  {assetId: 'meta', symbol: 'METAx', name: 'Meta xStock', mint: 'Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu'},
-  {assetId: 'coinbase', symbol: 'COINx', name: 'Coinbase xStock', mint: 'Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu'},
-  {assetId: 'robinhood', symbol: 'HOODx', name: 'Robinhood xStock', mint: 'XsvNBAYkrDRNhA7wPHQfX3ZUXZyZLdnCQDfHZ56bzpg'},
-  {assetId: 'netflix', symbol: 'NFLXx', name: 'Netflix xStock', mint: 'XsEH7wWfJJu2ZT3UCFeVfALnVA6CP5ur7Ee11KmzVpL'},
-  {assetId: 'amd', symbol: 'AMDx', name: 'AMD xStock', mint: 'XsXcJ6GZ9kVnjqGsjBnktRcuwMBmvKWh8S93RefZ1rF'},
-  {assetId: 'microstrategy', symbol: 'MSTRx', name: 'MicroStrategy xStock', mint: 'XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ'},
-  {assetId: 'circle', symbol: 'CRCLx', name: 'Circle xStock', mint: 'XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1'},
-  {assetId: 'palantir', symbol: 'PLTRx', name: 'Palantir xStock', mint: 'XsoBhf2ufR8fTyNSjqfU71DYGaE6Z3SUGAidpzriAA4'},
-] as const;
-export const STOCK_TRADING_ASSETS = Object.freeze(identities.map(asset => Object.freeze({
-  ...asset, decimals: 8 as const, tokenProgram: 'token_2022' as const,
-  tokenProgramAddress: STOCK_TOKEN_PROGRAM, maxBuyInputRaw: '100000000', maxSellInputRaw: '100000000',
-  issuerUrl: 'https://api.xstocks.fi/api/v2/public/assets/' + asset.symbol,
-})));
-export type StockTradingAsset = (typeof STOCK_TRADING_ASSETS)[number];
-export type StockTradingAssetId = StockTradingAsset['assetId'];
-export type StockTradingSymbol = StockTradingAsset['symbol'];
-export function findStockTradingAsset(assetId: unknown, mint: unknown): StockTradingAsset | undefined {
-  return STOCK_TRADING_ASSETS.find(asset => asset.assetId === assetId && asset.mint === mint);
+/** 100 USDC at 6 decimals; the per-order buy ceiling for every asset. */
+export const STOCK_MAX_BUY_INPUT_RAW = '100000000';
+
+type RegistryEntry = (typeof STOCK_TRADING_REGISTRY)[number];
+export type StockTradingAssetId = RegistryEntry['assetId'];
+export type StockTradingSymbol = RegistryEntry['symbol'];
+export type StockTradingStatus = 'active' | 'suspended';
+
+export interface StockTradingIdentity {
+  readonly assetId: StockTradingAssetId;
+  readonly symbol: StockTradingSymbol;
+  readonly name: string;
+  readonly mint: string;
+  readonly issuerId: StockIssuerId;
+  readonly decimals: number;
+  readonly tokenProgram: 'token_2022';
+  readonly tokenProgramAddress: typeof STOCK_TOKEN_PROGRAM;
+  readonly maxBuyInputRaw: typeof STOCK_MAX_BUY_INPUT_RAW;
+  readonly maxSellInputRaw: string;
+  /** Token-2022 transfer fee charged by the issuer on every transfer, in basis points. */
+  readonly transferFeeBps: number;
+  readonly status: StockTradingStatus;
+  readonly admittedAt: string;
+  readonly admissionSlot: number;
+  /** Where the admission tool proved this mint's identity. */
+  readonly issuerUrl: string;
 }
-export function findStockTradingAssetByMint(mint: unknown): StockTradingAsset | undefined {
-  return STOCK_TRADING_ASSETS.find(asset => asset.mint === mint);
+export type StockTradingAsset = StockTradingIdentity & {readonly status: 'active'};
+
+const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const RAW = /^[1-9][0-9]{0,19}$/;
+/** Quote-asset keys (jupiter-quote-reader.ts) a stock symbol must never shadow. */
+const RESERVED_SYMBOLS = new Set(['sol', 'usdc']);
+
+function identitySource(entry: RegistryEntry): string {
+  const registry = STOCK_ISSUERS[entry.issuerId].identity.registry;
+  if (registry.kind === 'xstocks_api') return registry.url + entry.symbol;
+  if (registry.kind === 'issuer_metadata') return STOCK_ISSUERS[entry.issuerId].identity.metadataUriPrefixes[0]!;
+  return registry.url;
+}
+
+function load(): readonly StockTradingIdentity[] {
+  const mints = new Set<string>(), symbols = new Set<string>();
+  return Object.freeze(STOCK_TRADING_REGISTRY.map(entry => {
+    const issuer = isStockIssuerId(entry.issuerId) ? STOCK_ISSUERS[entry.issuerId] : undefined;
+    if (!issuer || !BASE58.test(entry.mint) || !SLUG.test(entry.assetId) || entry.assetId.length > 100 ||
+        typeof entry.symbol !== 'string' || !/^[A-Za-z0-9.]{1,32}$/.test(entry.symbol) ||
+        typeof entry.name !== 'string' || entry.name.length < 1 || entry.name.length > 160 ||
+        entry.decimals !== issuer.identity.decimals || !RAW.test(entry.maxSellInputRaw) ||
+        !Number.isInteger(entry.transferFeeBps) || entry.transferFeeBps < 0 ||
+        entry.transferFeeBps > issuer.identity.maxTransferFeeBps ||
+        (entry.status !== 'active' && entry.status !== 'suspended') ||
+        !/^\d{4}-\d\d-\d\d$/.test(entry.admittedAt) || !Number.isSafeInteger(entry.admissionSlot) || entry.admissionSlot < 1 ||
+        mints.has(entry.mint) || symbols.has(entry.symbol.toLowerCase()) || RESERVED_SYMBOLS.has(entry.symbol.toLowerCase())) {
+      throw new Error(`Invalid stock trading registry entry: ${String(entry.mint)}`);
+    }
+    mints.add(entry.mint); symbols.add(entry.symbol.toLowerCase());
+    return Object.freeze({
+      assetId: entry.assetId, symbol: entry.symbol, name: entry.name, mint: entry.mint, issuerId: entry.issuerId,
+      decimals: entry.decimals, tokenProgram: 'token_2022' as const, tokenProgramAddress: STOCK_TOKEN_PROGRAM,
+      maxBuyInputRaw: STOCK_MAX_BUY_INPUT_RAW, maxSellInputRaw: entry.maxSellInputRaw,
+      transferFeeBps: entry.transferFeeBps, status: entry.status, admittedAt: entry.admittedAt,
+      admissionSlot: entry.admissionSlot, issuerUrl: identitySource(entry),
+    });
+  }));
+}
+
+/** Every identity ever admitted, including suspended ones. Use for holdings and history recognition. */
+export const STOCK_TRADING_IDENTITIES: readonly StockTradingIdentity[] = load();
+
+/** Active and from an issuer Trimmy offers. Withdrawing an issuer's offer stops
+ * trading in all of its tokens without deleting their identities. */
+const tradeable = (asset: StockTradingIdentity): asset is StockTradingAsset =>
+  asset.status === 'active' && stockIssuerOffered(asset.issuerId);
+
+/** Identities that may be quoted and traded now. */
+export const STOCK_TRADING_ASSETS: readonly StockTradingAsset[] = Object.freeze(STOCK_TRADING_IDENTITIES.filter(tradeable));
+
+const byMint = new Map(STOCK_TRADING_IDENTITIES.map(asset => [asset.mint, asset]));
+
+/** A tradeable asset bound to both its company and exact mint. */
+export function findStockTradingAsset(assetId: unknown, mint: unknown): StockTradingAsset | undefined {
+  if (typeof mint !== 'string') return undefined;
+  const asset = byMint.get(mint);
+  return asset && tradeable(asset) && asset.assetId === assetId ? asset : undefined;
+}
+
+/** Any admitted identity, active or suspended, for display and reconciliation of what a wallet holds or did. */
+export function findStockTradingAssetByMint(mint: unknown): StockTradingIdentity | undefined {
+  return typeof mint === 'string' ? byMint.get(mint) : undefined;
 }

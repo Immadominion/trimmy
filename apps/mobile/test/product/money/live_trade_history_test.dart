@@ -9,6 +9,7 @@ import 'package:trimmy/account/account_controller.dart';
 import 'package:trimmy/practice_sync/http_transport.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/market/live_trading.dart';
+import 'package:trimmy/product/market/market_craft.dart';
 import 'package:trimmy/product/money/live_trade_history.dart';
 
 import '../../support/account_data_fixtures.dart' as fixtures;
@@ -125,8 +126,8 @@ void main() {
         _page([_trade(1), _trade(2, buy: false)]),
       );
       expect(page.orders.first.inputLabel, '5 USDC');
-      expect(page.orders.first.quotedOutputLabel, '0.12345678 NVDAx raw units');
-      expect(page.orders.last.inputLabel, '0.12345678 NVDAx raw units');
+      expect(page.orders.first.quotedOutputLabel, '0.12345678 NVDAx');
+      expect(page.orders.last.inputLabel, '0.12345678 NVDAx');
       expect(page.orders.last.minimumOutputLabel, '4.9 USDC');
       expect(page.orders.first.createdAt.microsecond, 456);
       expect(page.orders.first.explorer.host, 'solscan.io');
@@ -310,10 +311,65 @@ void main() {
       await tester.tap(find.byKey(ValueKey('trade-${_id(1)}')));
       await tester.pump();
       expect(find.text('Quoted output'), findsOneWidget);
-      expect(find.text('0.12345678 NVDAx raw units'), findsOneWidget);
+      expect(find.text('0.12345678 NVDAx'), findsOneWidget);
+      expect(find.textContaining('raw units'), findsNothing);
       await tester.tap(find.text('View transaction'));
       await _pump(tester);
       expect(opened, Uri.https('solscan.io', '/tx/${'2' * 88}'));
+      await _close(tester, account);
+    },
+  );
+
+  testWidgets(
+    'another issuer’s trade reads in shares with its own name and symbol',
+    (tester) async {
+      final account = _Account();
+      const ondoMint = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+      final trade = _trade(3, buy: false);
+      trade['asset'] = {
+        'assetId': 'nvidia',
+        'mint': ondoMint,
+        'symbol': 'NVDAon',
+        'name': 'NVIDIA Ondo',
+        'decimals': 9,
+      };
+      (trade['terms'] as Map)
+        ..['inputMint'] = ondoMint
+        ..['inputAmountRaw'] = '200000000';
+      final plain = LiveTradeHistoryPage.fromJson(_page([trade])).orders.single;
+      expect(plain.inputLabel, '0.2 NVDAon');
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          home: LiveTradeHistoryScreen(
+            account: account,
+            origin: _origin,
+            httpClient: MockClient((_) async => _reply(_page([trade]))),
+            onBack: () {},
+            nameForAsset: (assetId, mint) =>
+                mint == ondoMint ? 'NVIDIA (Ondo Tokenized)' : null,
+            // The wallet shows each of these tokens as 1.5 shares.
+            shareScale: (mint, decimals) => mint == ondoMint
+                ? LiveShareScale.fromDisplay(
+                    decimals: decimals,
+                    amountRaw: '1000000000',
+                    displayAmount: '1.5',
+                  )
+                : LiveShareScale.plain(decimals),
+          ),
+        ),
+      );
+      await _pump(tester);
+      expect(find.text('Sell NVDAon'), findsOneWidget);
+      expect(find.text('0.3 NVDAon'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is CompanyLogo && widget.name == 'NVIDIA (Ondo Tokenized)',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('raw units'), findsNothing);
       await _close(tester, account);
     },
   );

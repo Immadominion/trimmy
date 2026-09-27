@@ -1,8 +1,10 @@
-/** Read-only issuer / mainnet / quote verification. No wallet, taker, signer or execution endpoint. */
+/** Read-only issuer / mainnet / quote re-verification of admitted assets. No wallet, taker, signer or
+ * execution endpoint. Admission itself (all issuers, simulated orders) is tool/testing/stock-admission.mjs. */
 import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {setTimeout as pause} from 'node:timers/promises';
 import {STOCK_TRADING_ASSETS, STOCK_TOKEN_PROGRAM} from '../../apps/api/src/stock-trading-catalog.ts';
+import {STOCK_ISSUERS} from '../../apps/api/src/stock-issuers.ts';
 import {JUPITER_QUOTE_ASSETS} from '../../apps/api/src/jupiter-quote-reader.ts';
 
 const [flag,...symbols] = process.argv.slice(2);
@@ -29,16 +31,24 @@ assert.equal(await rpc('getGenesisHash'), '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc14
 const mints = await rpc('getMultipleAccounts', [assets.map(asset => asset.mint), {encoding: 'jsonParsed', commitment: 'finalized'}]);
 evidence.slot = mints.context.slot;
 for (const [index, asset] of assets.entries()) {
-  const issuer = await json(asset.issuerUrl);
-  assert.equal(issuer.symbol, asset.symbol);
-  const deployments = issuer.deployments.filter(row => row.network === 'Solana');
-  assert.equal(deployments.length, 1); assert.equal(deployments[0].address, asset.mint);
+  if (asset.issuerId === 'xstocks') {
+    const issuer = await json(asset.issuerUrl);
+    assert.equal(issuer.symbol, asset.symbol);
+    const deployments = issuer.deployments.filter(row => row.network === 'Solana');
+    assert.equal(deployments.length, 1); assert.equal(deployments[0].address, asset.mint);
+  }
   const account = mints.value[index], info = account.data.parsed.info;
+  const identity = STOCK_ISSUERS[asset.issuerId].identity;
   assert.equal(account.owner, STOCK_TOKEN_PROGRAM); assert.equal(info.decimals, asset.decimals); assert.equal(info.isInitialized, true);
-  const extensions = info.extensions;
-  assert.equal(extensions.find(e => e.extension === 'defaultAccountState')?.state.accountState, 'initialized');
-  assert.equal(extensions.find(e => e.extension === 'pausableConfig')?.state.paused, false);
-  assert.equal(extensions.find(e => e.extension === 'transferHook')?.state.programId, null);
+  assert.ok(identity.freezeAuthorities.includes(info.freezeAuthority));
+  const extensions = info.extensions ?? [];
+  const find = kind => extensions.find(e => e.extension === kind);
+  assert.equal(find('tokenMetadata')?.state.updateAuthority, identity.metadataUpdateAuthority);
+  assert.ok(!find('defaultAccountState') || find('defaultAccountState').state.accountState === 'initialized');
+  assert.ok(!find('pausableConfig') || find('pausableConfig').state.paused === false);
+  assert.ok(!find('transferHook') || find('transferHook').state.programId === null);
+  const fee = find('transferFeeConfig')?.state.newerTransferFee?.transferFeeBasisPoints ?? 0;
+  assert.ok(fee <= asset.transferFeeBps, 'transfer fee raised since admission');
   const results = [];
   for (const side of ['buy', 'sell']) {
     const inputMint = side === 'buy' ? JUPITER_QUOTE_ASSETS.USDC.mint : asset.mint;
@@ -47,7 +57,7 @@ for (const [index, asset] of assets.entries()) {
     const query = new URLSearchParams({inputMint, outputMint, amount, slippageBps: '50', excludeRouters: 'jupiterz,dflow,okx'});
     const quote = await json('https://api.jup.ag/swap/v2/order?' + query);
     assert.equal(quote.inputMint, inputMint); assert.equal(quote.outputMint, outputMint); assert.equal(quote.inAmount, amount);
-    assert.equal(quote.router, 'metis'); assert.equal(quote.transaction, null); assert.equal(quote.taker, null);
+    assert.equal(quote.router, 'metis'); assert.ok(!quote.transaction); assert.ok(!quote.taker);
     assert.ok(BigInt(quote.outAmount) > 0n); assert.ok(BigInt(quote.otherAmountThreshold) > 0n);
     results.push({side, inAmount: amount, outAmount: quote.outAmount, minimumOutput: quote.otherAmountThreshold, router: quote.router});
     await pause(2200);

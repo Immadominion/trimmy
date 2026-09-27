@@ -6,6 +6,9 @@ import type {ExistingPracticeAccountAuthentication} from './practice-session-rou
 import type {PrivyLinkedIdentityResolution} from './privy-linked-identities.js';
 import type {PracticeIdentity} from './practice-identity.js';
 import {STOCK_TRADING_ASSETS,findStockTradingAsset} from './stock-trading-catalog.js';
+import {LEGACY_STOCK_ISSUER,STOCK_ISSUER_IDS,acceptsIssuerTerms} from './stock-issuers.js';
+import {STOCK_UNAVAILABLE_VARIANTS,stockIssuerCapabilities} from './stock-market-availability.js';
+import type {StockIssuerId,StockTermsAcceptance} from './stock-issuers.js';
 import {JUPITER_QUOTE_ASSETS, parseEstimate} from './jupiter-quote-reader.js';
 import {bindStockOrderDraft, copyStockDraftBytesForReview, STOCK_DRAFT_MAINNET_GENESIS} from './stock-order-draft.js';
 import {SolanaMainnetLookupTableResolver} from './stock-order-lookup-resolver.js';
@@ -17,15 +20,18 @@ import type {ReviewedStockOrderIntent,StockOrderReviewStages} from './stock-orde
 import {validateStockEstimateInput} from './stock-estimates.js';
 import type {StockEstimateInput,StockEstimate} from './stock-estimates.js';
 
+/** What the user accepted before this order was quoted. A legacy client only
+ * ever showed the original xStocks checkbox, recorded as its own version. */
+export interface LiveOrderTermsAcceptance {readonly issuerId:StockIssuerId;readonly version:string;readonly acceptedAt:string}
 export interface LiveOrder {
- id:string;user_id:string;wallet:string;review:ReviewedStockOrderIntent;unsignedTransaction:string;
+ id:string;user_id:string;wallet:string;review:ReviewedStockOrderIntent&{termsAcceptance?:LiveOrderTermsAcceptance};unsignedTransaction:string;
  expires_at:string;status:'reviewed'|'pending'|'confirmed'|'failed'|'expired';signature:string|null;dispatch?:boolean;
  /** Confirmed RPC slot for a newly settled order; absent on legacy persisted reads. */
  confirmedSlot?:number;
 }
 export interface LiveOrderStore {
  read(user:string,id?:string):Promise<LiveOrder|null>;
- create(user:string,id:string,wallet:string,review:ReviewedStockOrderIntent,wire:Uint8Array):Promise<LiveOrder>;
+ create(user:string,id:string,wallet:string,review:ReviewedStockOrderIntent,wire:Uint8Array,terms?:LiveOrderTermsAcceptance):Promise<LiveOrder>;
  begin(user:string,id:string,digest:string,signature:string):Promise<LiveOrder>;
  resolve(user:string,id:string,status:'confirmed'|'failed'|'expired'):Promise<LiveOrder>;
 }
@@ -39,7 +45,11 @@ export class PostgresLiveOrderStore implements LiveOrderStore {
   } catch(e) {await client.query('ROLLBACK');throw e;}finally{client.release();}
  }
  read(user:string,id?:string){return this.call(user,'SELECT trimmy.live_order_read($1,$2) AS value',[user,id??null]);}
- async create(user:string,id:string,wallet:string,review:ReviewedStockOrderIntent,wire:Uint8Array){return (await this.call(user,'SELECT trimmy.live_order_create($1,$2,$3,$4,$5,$6) AS value',[user,id,wallet,JSON.stringify(review),Buffer.from(wire),review.expiresAt]))!;}
+ async create(user:string,id:string,wallet:string,review:ReviewedStockOrderIntent,wire:Uint8Array,terms?:LiveOrderTermsAcceptance){
+  // The acceptance is stored beside the reviewed intent; its digest is unchanged.
+  const stored=terms===undefined?review:{...review,termsAcceptance:terms};
+  return (await this.call(user,'SELECT trimmy.live_order_create($1,$2,$3,$4,$5,$6) AS value',[user,id,wallet,JSON.stringify(stored),Buffer.from(wire),review.expiresAt]))!;
+ }
  async begin(user:string,id:string,digest:string,signature:string){return (await this.call(user,'SELECT trimmy.live_order_begin($1,$2,$3,$4) AS value',[user,id,digest,signature]))!;}
  async resolve(user:string,id:string,status:'confirmed'|'failed'|'expired'){return (await this.call(user,'SELECT trimmy.live_order_resolve($1,$2,$3) AS value',[user,id,status]))!;}
 }
@@ -77,6 +87,12 @@ function reportedTransactionError(value:unknown):boolean {
 // Jupiter's 0.01 SOL sponsorship heuristic is NOT a minimum trading balance:
 // self-paid orders can still be built below it. Never infer solvency from it.
 export const LIVE_STOCK_MIN_SOL_LAMPORTS = 5_000;
+/** An issuer can raise its Token-2022 transfer fee after admission. Never open a
+ * position above the fee disclosed at admission; selling out stays possible
+ * (review and simulation already price the fee into the reviewed terms). */
+export function transferFeeWithinDisclosure(side:'buy'|'sell',outputMint:{readonly transferFeeMaxBasisPoints:number|null},disclosedBps:number):boolean {
+ return side!=='buy' || (outputMint.transferFeeMaxBasisPoints??0)<=disclosedBps;
+}
 export function verifyReviewedSignature(order:LiveOrder,encoded:string):string {
  try {
   if(encoded.length>1644 || Buffer.from(encoded,'base64').toString('base64')!==encoded) return fail('INVALID_SIGNATURE');
@@ -124,12 +140,20 @@ export class LiveStockOrders {
   if(!Number.isSafeInteger(height)||height<1)fail('LIVE_UNAVAILABLE');
   return {genesisHash:STOCK_DRAFT_MAINNET_GENESIS,blockHeight:String(height),observedAt:new Date(this.#now()).toISOString()} as const;
  }
- async preview(user:string,wallet:string,input:StockEstimateInput):Promise<LiveOrder> {
+ async preview(user:string,wallet:string,request:StockEstimateInput&{termsAccepted?:StockTermsAcceptance}):Promise<LiveOrder> {
+  if(!request || typeof request!=='object')fail('MARKET_INPUT_INVALID');
+  const {termsAccepted,...input}=request;
   const requestedAsset=input && findStockTradingAsset(input.assetId,input.variantMint);
   if(requestedAsset && Object.keys(input).length===4 && ['buy','sell'].includes(input.side) &&
     typeof input.amountRaw==='string' && /^[1-9][0-9]{0,19}$/.test(input.amountRaw) &&
     BigInt(input.amountRaw)>BigInt(input.side==='buy'?requestedAsset.maxBuyInputRaw:requestedAsset.maxSellInputRaw))fail('TRADE_LIMIT');
   validateStockEstimateInput(input);
+  // Each issuer's disclosure must be accepted at its current version before any
+  // quote. Older clients (no field) may only trade the original xStocks issuer.
+  const selected=findStockTradingAsset(input.assetId,input.variantMint)!;
+  if(!acceptsIssuerTerms(selected.issuerId,termsAccepted))fail('TERMS_REQUIRED');
+  const acceptance:LiveOrderTermsAcceptance=Object.freeze({issuerId:selected.issuerId,
+   version:termsAccepted?.version??'legacy_client_checkbox',acceptedAt:new Date(this.#now()).toISOString()});
   if(this.#inFlight.has(user)||(this.#next.get(user)??0)>this.#now()||this.#inFlight.size>=3)fail('LIVE_BUSY');
   this.#inFlight.add(user);this.#next.set(user,this.#now()+3000);
   if(this.#next.size>1000)for(const [id,time]of this.#next)if(time<this.#now())this.#next.delete(id);
@@ -166,7 +190,8 @@ export class LiveStockOrders {
     throw error;
    });
    if(BigInt(reviewed.intent.terms.totalLamportsUpperBound)>10000000n)fail('FEE_TOO_HIGH');
-   return await this.options.store.create(user,randomUUID(),wallet,reviewed.intent,await copyStockDraftBytesForReview(draft,binding));
+   if(!transferFeeWithinDisclosure(input.side,reviewed.evidence.reconciliation.accountState.outputMint,stock.transferFeeBps))fail('FEE_TOO_HIGH');
+   return await this.options.store.create(user,randomUUID(),wallet,reviewed.intent,await copyStockDraftBytesForReview(draft,binding),acceptance);
   }finally{this.#inFlight.delete(user);}
  }
  async execute(user:string,wallet:string,id:string,digest:string,signed:string):Promise<LiveOrder> {
@@ -248,7 +273,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','MARKET_INPUT_INVALID'];
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
@@ -256,9 +281,23 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='MARKET_INPUT_INVALID'?400:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
   }
  }
- app.get('/v1/trading/capabilities',{schema:{querystring:noQuery}},async()=>({enabled:liveStockExecutionEnabled(adapters),network:'solana:mainnet-beta',assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})),maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)}));
+ app.get<{Querystring:{schema?:'2'}}>('/v1/trading/capabilities',{schema:{querystring:{type:'object',additionalProperties:false,properties:{schema:{enum:['2']}}}}},async request=>{
+  const common={enabled:liveStockExecutionEnabled(adapters),network:'solana:mainnet-beta',maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)};
+  if(request.query.schema!=='2') {
+   // Installed clients reject more than 128 assets and only know the original
+   // issuer's disclosure. Keep their contract exactly: active xStocks only.
+   const legacy=STOCK_TRADING_ASSETS.filter(asset=>asset.issuerId===LEGACY_STOCK_ISSUER).slice(0,120);
+   return {...common,assets:legacy.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw}))};
+  }
+  return {schemaVersion:2,...common,issuers:stockIssuerCapabilities(),
+   assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps})=>
+    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps})),
+   // Market variants that cannot be traded, with the reason to show instead of a buy button.
+   unavailable:STOCK_UNAVAILABLE_VARIANTS};
+ });
  app.get<{Params:{id:string}}>('/v1/trading/order/:id',{schema:{querystring:noQuery,params:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string',format:'uuid'}}}}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user,request.params.id)));
  app.get('/v1/trading/order',{schema:{querystring:noQuery}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user)));
- app.post<{Body:StockEstimateInput}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.assetId)},variantMint:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.mint)},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,19}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body),true));
+ app.post<{Body:StockEstimateInput&{termsAccepted?:StockTermsAcceptance}}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{enum:[...new Set(STOCK_TRADING_ASSETS.map(asset=>asset.assetId))]},variantMint:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.mint)},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,19}$'},
+   termsAccepted:{type:'object',additionalProperties:false,required:['issuerId','version'],properties:{issuerId:{enum:[...STOCK_ISSUER_IDS]},version:{type:'string',pattern:'^[0-9]{4}-[0-9]{2}-[0-9]{2}$'}}}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body),true));
  app.post<{Body:{id:string;reviewDigest:string;signedTransaction:string}}>('/v1/trading/execute',{bodyLimit:4096,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['id','reviewDigest','signedTransaction'],properties:{id:{type:'string',format:'uuid'},reviewDigest:{type:'string',pattern:'^[0-9a-f]{64}$'},signedTransaction:{type:'string',minLength:88,maxLength:1644,pattern:'^[A-Za-z0-9+/]+={0,2}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.execute(user,wallet,request.body.id,request.body.reviewDigest,request.body.signedTransaction),true));
 }

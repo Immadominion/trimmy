@@ -400,7 +400,10 @@ function zeroAddress(): string {
 it('comparison HTTP quotes preserve each admitted stock identity in both directions', async () => {
   for (const stock of STOCK_TRADING_ASSETS.slice(1)) for (const side of ['buy', 'sell'] as const) {
     const pair = side === 'buy' ? {inputMint: usdc, outputMint: stock.mint} : {inputMint: stock.mint, outputMint: usdc};
-    const payload = fixture(side, {...pair, routePlan: [route(side, {...pair, feeMint: pair.inputMint})]});
+    // Sell amounts stay inside each token's own cap (its issuer's decimals differ).
+    const amountRaw = side === 'buy' || BigInt(stock.maxSellInputRaw) >= 10_000_000n ? '10000000' : stock.maxSellInputRaw;
+    const payload = fixture(side, {...pair, inputAmount: amountRaw, actualInputAmount: amountRaw,
+      routePlan: [route(side, {...pair, feeMint: pair.inputMint})]});
     const app = testApp(client(payload, {fetch: async rawUrl => {
       const url = new URL(String(rawUrl));
       assert.equal(url.searchParams.get('inputMint'), pair.inputMint);
@@ -408,7 +411,7 @@ it('comparison HTTP quotes preserve each admitted stock identity in both directi
       return Response.json(payload);
     }}));
     try {
-      const result = await app.inject(query({assetId: stock.assetId, variantMint: stock.mint, side}));
+      const result = await app.inject(query({assetId: stock.assetId, variantMint: stock.mint, side, amountRaw}));
       assert.equal(result.statusCode, 200);
       assert.equal(result.json().assetId, stock.assetId);
       assert.equal(side === 'buy' ? result.json().output.symbol : result.json().input.symbol, stock.symbol);

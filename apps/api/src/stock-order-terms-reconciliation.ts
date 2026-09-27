@@ -132,6 +132,8 @@ export interface MintReview {
   readonly transferHookProgram: string | null;
   readonly permanentDelegate: string | null;
   readonly transferFeeBasisPoints: number | null;
+  /** The higher of the older and newer fee rates: the most a transfer can cost in either epoch. */
+  readonly transferFeeMaxBasisPoints: number | null;
   readonly scaledUiAmount: boolean;
   readonly nonTransferable: boolean;
   readonly extensions: readonly string[];
@@ -181,6 +183,7 @@ function mintReview(address: string, accounts: AccountByAddress, expectedProgram
     defaultAccountState: mint.defaultAccountState, transferHookProgram: mint.transferHookProgram,
     permanentDelegate: mint.permanentDelegate,
     transferFeeBasisPoints: mint.transferFee === null ? null : mint.transferFee.basisPoints,
+    transferFeeMaxBasisPoints: mint.transferFee === null ? null : Math.max(mint.transferFee.basisPoints, mint.transferFee.olderBasisPoints),
     scaledUiAmount: mint.scaledUiAmount !== null, nonTransferable: mint.nonTransferable,
     extensions: Object.freeze([...mint.extensions]),
   });

@@ -72,6 +72,9 @@ export interface ReviewedStockOrderIntent {
     readonly totalLamportsUpperBound: string;
     readonly simulatedOutputReceivedRaw: string;
     readonly simulatedTakerLamportsSpent: string;
+    /** Token-2022 scaled UI multiplier in force for the stock mint at review:
+     * shares = raw / 10^decimals x multiplier. "1" when the mint has none. */
+    readonly stockUiMultiplier: string;
   }>;
   readonly evidence: Readonly<{
     readonly structureSha256: string;
@@ -160,6 +163,7 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
     minimumOutputAmountRaw: reconciliation.swap.minimumOutputAmountRaw, slippageBps: reconciliation.swap.slippageBps,
     platformFeeBps: reconciliation.swap.platformFeeBps, totalLamportsUpperBound: reconciliation.cost.totalLamportsUpperBound,
     simulatedOutputReceivedRaw: simulation.effects.outputReceivedRaw, simulatedTakerLamportsSpent: simulation.effects.takerLamportsSpent,
+    stockUiMultiplier: stockUiMultiplier(semantics, summary.side === 'buy' ? summary.output.mint : summary.input.mint, reviewedAtMs),
   });
   const reviewedAt = new Date(reviewedAtMs).toISOString();
   const expiresAt = new Date(expiresAtMs).toISOString();
@@ -183,6 +187,16 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
     }),
   });
   return Object.freeze({intent, evidence});
+}
+
+function stockUiMultiplier(semantics: StockOrderSemantics, stockMint: string, atMs: number): string {
+  const state = semantics.accounts.find(account => account.address === stockMint)?.state;
+  if (state === undefined || state.kind !== 'mint') return fail('REVIEW_EVIDENCE_MISMATCH');
+  const scaled = state.scaledUiAmount;
+  if (scaled === null) return '1';
+  const effective = BigInt(Math.floor(atMs / 1000)) >= BigInt(scaled.newMultiplierEffectiveTimestamp) ? scaled.newMultiplier : scaled.multiplier;
+  if (!Number.isFinite(effective) || effective <= 0) return fail('REVIEW_EVIDENCE_MISMATCH');
+  return String(effective);
 }
 
 /** True while the reviewed intent is inside its validity window. */

@@ -41,6 +41,7 @@
     "test:stock-orders": "npm run build:backend && node --import tsx --test apps/api/test/stock-order-draft.test.ts",
     "test:stock-inspection": "node --import tsx --test tool/testing/stock-order-wallet.test.mjs tool/testing/mainnet-stock-order-inspection.test.mjs tool/testing/stock-order-return.test.mjs",
     "verify:stock-funding": "node --import tsx tool/testing/mainnet-stock-order-inspection.mjs --balances",
+    "admit:stocks": "node --import tsx tool/testing/stock-admission.mjs --read-only",
     "verify:prestocks-live": "node --import tsx tool/testing/prestocks-live.mjs --live-read",
     "verify:stock-return-local": "node --import tsx tool/testing/stock-order-return-local.mjs",
     "return:mainnet": "node --import tsx tool/testing/stock-order-return.mjs",

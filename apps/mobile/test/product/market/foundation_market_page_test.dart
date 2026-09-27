@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/product/market/market.dart';
 
+import 'package:trimmy/product/market/live_trading.dart';
+
+import 'live_trading_test_support.dart';
 import 'market_test_support.dart';
 
 void main() {
@@ -272,5 +275,147 @@ void main() {
       find.byKey(const ValueKey('market-search-result-apple')),
       findsOneWidget,
     );
+  });
+
+  group('real mode', () {
+    final caps = LiveTradingCapabilities.fromJson(capabilitiesV2Json());
+    final companies = [
+      testCompany(assetId: 'tesla', name: 'Tesla', symbol: 'TSLA'),
+      testCompany(),
+      testCompany(assetId: 'hims', name: 'Hims', symbol: 'HIMS'),
+      discoveryCompany('nvidia', [(xNvidiaMint, 10), (ondoNvidiaMint, 20)]),
+    ];
+
+    Future<void> show(
+      WidgetTester tester, {
+      required bool real,
+      LiveTradingCapabilities? capabilities,
+    }) async {
+      tester.view.physicalSize = const Size(420, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeMarketSearchGateway();
+      addTearDown(gateway.dispose);
+      await tester.pumpWidget(
+        app(
+          home: FoundationMarketPage(
+            companies: companies,
+            searchGateway: gateway,
+            recents: MarketRecentsController(),
+            onOpenCompany: (_) {},
+            realMoney: real,
+            liveCapabilities: capabilities ?? caps,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    List<String> order(WidgetTester tester) {
+      final ids = ['tesla', 'apple', 'hims', 'nvidia']
+          .where(
+            (id) => find
+                .byKey(ValueKey('market-company-$id'))
+                .evaluate()
+                .isNotEmpty,
+          )
+          .toList();
+      ids.sort(
+        (a, b) => tester
+            .getTopLeft(find.byKey(ValueKey('market-company-$a')))
+            .dy
+            .compareTo(
+              tester.getTopLeft(find.byKey(ValueKey('market-company-$b'))).dy,
+            ),
+      );
+      return ids;
+    }
+
+    testWidgets('marks tradeable companies and lists them first', (
+      tester,
+    ) async {
+      await show(tester, real: true);
+      expect(order(tester), ['apple', 'nvidia', 'tesla', 'hims']);
+      expect(
+        find.byKey(const ValueKey('market-tradeable-apple')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('market-tradeable-nvidia')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('market-tradeable-tesla')),
+        findsNothing,
+      );
+      expect(find.text('Tradeable'), findsNWidgets(3));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the Tradeable chip filters to tradeable companies', (
+      tester,
+    ) async {
+      await show(tester, real: true);
+      await tester.tap(find.byKey(const ValueKey('market-list-tradeable')));
+      await tester.pumpAndSettle();
+      expect(order(tester), ['apple', 'nvidia']);
+      await tester.tap(find.byKey(const ValueKey('market-list-all')));
+      await tester.pumpAndSettle();
+      expect(order(tester), ['apple', 'nvidia', 'tesla', 'hims']);
+    });
+
+    testWidgets('the marker fits a 320px phone at 200% text', (tester) async {
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeMarketSearchGateway();
+      addTearDown(gateway.dispose);
+      await tester.pumpWidget(
+        app(
+          textScale: 2,
+          home: FoundationMarketPage(
+            companies: [
+              testCompany(name: 'A very long technology company name'),
+            ],
+            searchGateway: gateway,
+            recents: MarketRecentsController(),
+            onOpenCompany: (_) {},
+            onSignIn: () {},
+            realMoney: true,
+            liveCapabilities: caps,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        find.byKey(const ValueKey('market-tradeable-apple')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('paper mode is unchanged', (tester) async {
+      await show(tester, real: false);
+      expect(order(tester), ['tesla', 'apple', 'hims', 'nvidia']);
+      expect(find.text('Tradeable'), findsNothing);
+      expect(find.byKey(const ValueKey('market-list-tradeable')), findsNothing);
+    });
+
+    testWidgets('paused trading claims nothing is tradeable', (tester) async {
+      await show(
+        tester,
+        real: true,
+        capabilities: LiveTradingCapabilities.fromJson(
+          capabilitiesV2Json(enabled: false),
+        ),
+      );
+      expect(order(tester), ['tesla', 'apple', 'hims', 'nvidia']);
+      expect(find.text('Tradeable'), findsNothing);
+    });
   });
 }
