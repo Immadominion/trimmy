@@ -35,10 +35,13 @@ import {useCareerMilestones} from './career-milestones';
 import {useCareerDayContext} from './use-career-day-context';
 import {useFollowing, useSearchRecents} from './market-social';
 import type {CompanySocial} from './company-social';
+import {CommunityPreview, CommunityScreen} from './community-screen';
+import {FastBuySheet} from './fast-buy';
+import {HomeActions, HomeInvitations, type HomeParity} from './home-extras';
 import {PracticeError} from './practice-client';
 import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares} from './ui';
 
-type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work' | 'settings';
+type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work' | 'settings' | 'community' | 'updates';
 type Route = {page: Page; assetId?: string; mint?: string; assignmentId?: string};
 const pages: readonly {page: Page; title: string; icon: string}[] = [
   {page: 'desk', title: 'Desk', icon: 'nav-plumpy-desk.png'},
@@ -54,7 +57,7 @@ function readRoute(): Route {
     const mint = new URLSearchParams(search).get('mint');
     return {page, assetId, ...(mint && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint) ? {mint} : {})};
   }
-  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || page === 'settings' || pages.some(item => item.page === page) ? page as Page : 'desk'};
+  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || page === 'settings' || page === 'community' || page === 'updates' || pages.some(item => item.page === page) ? page as Page : 'desk'};
 }
 function browserStorage(): PracticeStorage {
   try {return window.localStorage;} catch {return {getItem() {throw new Error('Storage unavailable');}, setItem() {throw new Error('Storage unavailable');}};}
@@ -220,6 +223,13 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   useCareerDayContext({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
     enabled: Boolean(session?.hasIdentity) && !storageChanged && !restoring && !startupRoutingPending.current && !session?.guestRecovery,
     onConfigured: () => void careerRefresh(), onNewDay: () => {void careerRefresh(); void workdays.refresh();}});
+  // Home and community parity: compact Fast buy (practice), Updates, trader invitation and Community.
+  const [fastBuy, setFastBuy] = useState(false);
+  const home: HomeParity = {onFastBuy: () => setFastBuy(true),
+    onUpdates: session?.isAccount && accountAccess ? () => navigate({page: 'updates'}) : undefined,
+    onChooseTrader: snapshot.profile && !snapshot.profile.onboarding.persona ? () => navigate({page: 'profile'}) : undefined,
+    community: <CommunityPreview api={productApi} account={session?.isAccount ? accountAccess ?? null : null}
+      onOpen={() => session?.isAccount ? navigate({page: 'community'}) : openSignIn('app')}/>};
   const [oneTimeNotice, setOneTimeNotice] = useState<string | null>(null);
   useEffect(() => {const text = journey.store?.consumeOneTimeNotice(); if (text) setOneTimeNotice(text);}, [journey.store]);
   const preservedExpired = useMemo(() => {
@@ -461,7 +471,13 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
           onRetryEvidence={() => void refresh()} onFinish={finishIntroduction}/>
         : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} expiredGuestRecovery={guestRecovery !== null} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
         {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)} {...(companySocial ? {social: companySocial} : {})}/> : <MarketScreen client={market} onSelect={select} social={marketSocial}/>)}
-        {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => openSignIn('app')} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}/> : null)}
+        {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => openSignIn('app')} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})} home={home}/> : null)}
+        {(route.page === 'community' || route.page === 'updates') && (productApi && session?.isAccount && accountAccess
+          ? <CommunityScreen key={route.page} api={productApi} account={accountAccess} initialScope={route.page === 'updates' ? 'notifications' : 'everyone'}
+            onOpenAsset={assetId => navigate({page: 'market', assetId})} onBack={() => navigate({page: 'desk'})}/>
+          : <div className="empty-page"><h1>See what traders are saying</h1><p>Sign in to join the Trimmy community.</p><button className="primary" onClick={() => openSignIn('app')}>Sign in</button></div>)}
+        {fastBuy && session && market && <FastBuySheet market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk}
+          onCommitted={committed} onPending={() => setRevision(value => value + 1)} saveReason={productApi ? milestones.saveReasonFor : null} onClose={() => setFastBuy(false)}/>}
         {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title="Your career starts here." onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle} milestones={milestones}/>)}
         {progress.pending && route.page !== 'daily' && <div className="work-recovery" role="status"><span>Your earlier desk story needs confirmation.</span><button className="text-button" onClick={() => navigate({page:'daily'})}>Check clock-out</button></div>}
         {route.page === 'daily' && progress.pending && <DailyStoryScreen progress={progress} onBack={() => navigate({page:'career'})}/>}
@@ -484,7 +500,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   </div>;
 }
 
-function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, onSignIn, onPosition}: {snapshot: Snapshot; market: ProductMarketClient; workdays: WorkdaysState; onWork: (id: string) => void; motion: boolean; onMarket: () => void; onCareer: () => void; onSignIn?: (() => void) | undefined; onPosition: (assetId: string, mint: string) => void}) {
+function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, onSignIn, onPosition, home}: {snapshot: Snapshot; market: ProductMarketClient; workdays: WorkdaysState; onWork: (id: string) => void; motion: boolean; onMarket: () => void; onCareer: () => void; onSignIn?: (() => void) | undefined; onPosition: (assetId: string, mint: string) => void; home?: HomeParity}) {
   const portfolio = snapshot.portfolio!;
   const identities = useCompanyIdentities(market, [...portfolio.positions.map(p => p.assetId), ...portfolio.recentOrders.map(o => o.assetId)], portfolio);
   const [clock, setClock] = useState(Date.now());
@@ -513,6 +529,7 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
         <div className="desk-mentor-copy"><span className="desk-mentor-label">A note from Sal{career && <span>{career.rank.label}</span>}</span><h2>{salTitle}</h2><p>{salCopy}</p><button className="text-button" onClick={salAction}>{salActionLabel}<span aria-hidden="true">↗</span></button></div>
       </aside>
     </div>
+    {home && <HomeActions home={home}/>}
     <WorkdayEntry workdays={workdays} onOpen={onWork}/>
     <div className={`desk-holdings${portfolio.recentOrders.length ? ' has-activity' : ''}`}>
       <section className="desk-section desk-positions">
@@ -525,6 +542,7 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
       </section>
       {portfolio.recentOrders.length > 0 && <section className="desk-section desk-activity"><div className="section-line"><h2>Recent moves</h2></div>{portfolio.recentOrders.slice(0, 5).map(order => <div className="activity-row" key={order.id}><CompanyLogo name={identities.get(order.assetId)?.name ?? order.symbol} url={identities.get(order.assetId)?.imageUrl ?? null} size={34}/><div className="activity-copy"><strong>{order.action === 'buy' ? 'Bought' : 'Sold'} {identities.get(order.assetId)?.name ?? order.symbol}</strong><span>{shares(order.quantityMicros)} shares · {dateLabel(order.committedAt)}</span></div><div className="activity-value">{micros(order.action === 'buy' ? order.cashDebitPaperMicros : order.cashCreditPaperMicros)}<small>paper</small></div></div>)}</section>}
     </div>
+    {home && <div className="home-invitations"><HomeInvitations home={home}/></div>}
   </section>;
 }
 

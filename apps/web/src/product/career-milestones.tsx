@@ -164,11 +164,12 @@ export function useCareerMilestones(options: {
     setMessage(null); setComposer(target); return true;
   }, []);
 
-  const saveComment = useCallback(async (note: string): Promise<TradeReasonReceipt> => {
-    if (!api || !identity || !principal || !pending || !composer) throw new PracticeError('CAREER_UNAVAILABLE', 'Unavailable.');
+  /** Saves a reason for one confirmed buy, replaying an unconfirmed identical command. */
+  const saveReasonFor = useCallback(async (orderId: string, note: string): Promise<TradeReasonReceipt> => {
+    if (!api || !identity || !principal || !pending) throw new PracticeError('CAREER_UNAVAILABLE', 'Unavailable.');
     const saved = pending.read<TradeReasonWrite>('trade-reason', principal);
-    const body: TradeReasonWrite = saved && saved.orderId === composer.orderId && saved.note === note ? saved
-      : {schemaVersion: 1, mutationId: newMutationId(), orderId: composer.orderId, note};
+    const body: TradeReasonWrite = saved && saved.orderId === orderId && saved.note === note ? saved
+      : {schemaVersion: 1, mutationId: newMutationId(), orderId, note};
     if (saved !== body) pending.save('trade-reason', principal, body);
     try {
       const receipt = await careerApi.saveTradeReason(api, identity, body);
@@ -179,11 +180,15 @@ export function useCareerMilestones(options: {
       if (!ambiguous(error)) pending.clear('trade-reason', principal);
       throw error;
     }
-  }, [api, identity, principal, pending, composer]);
+  }, [api, identity, principal, pending]);
+  const saveComment = useCallback(async (note: string): Promise<TradeReasonReceipt> => {
+    if (!composer) throw new PracticeError('CAREER_UNAVAILABLE', 'Unavailable.');
+    return saveReasonFor(composer.orderId, note);
+  }, [composer, saveReasonFor]);
 
   const closeComment = useCallback((saved: boolean) => {setComposer(null); if (saved) void latest.current.refresh();}, []);
   const pendingComment = principal && pending ? pending.read<TradeReasonWrite>('trade-reason', principal) : null;
   return {eligible, promote, promoting, promotion, moment: moment && promotion !== null, dismissPromotion: () => setMoment(false), message, dismissMessage: () => setMessage(null),
-    composer, openComment, saveComment, closeComment, pendingComment};
+    composer, openComment, saveComment, closeComment, pendingComment, saveReasonFor};
 }
 export type CareerMilestones = ReturnType<typeof useCareerMilestones>;

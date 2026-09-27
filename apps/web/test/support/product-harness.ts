@@ -46,6 +46,7 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
     sharedReasons: [] as Record<string, unknown>[], ownReasons: [] as Record<string, unknown>[], reports: [] as Record<string, unknown>[],
     holders: [{owner: 'So11111111111111111111111111111111111111112', primaryDomain: 'bigholder.sol', amount: '1250.5', tokenAccounts: 2},
       {owner: 'Vote111111111111111111111111111111111111111', primaryDomain: null, amount: '12.25', tokenAccounts: 1}] as Record<string, unknown>[],
+    community: [] as Record<string, unknown>[], blocks: [] as string[],
   };
   const refreshAfter = new Date(now + 60000).toISOString();
   const facts = {schemaVersion: 1, provider: 'tokens-xyz-v1', requestedAt: at, observedAt: at, refreshAfter, displayOnly: true, executionEnabled: false, eligibility: 'unverified'};
@@ -218,6 +219,22 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
       const scope = parsed.searchParams.get('scope'), assetId = parsed.searchParams.get('assetId'), variantMint = parsed.searchParams.get('variantMint');
       const rows = (scope === 'self' ? state.ownReasons : state.sharedReasons).filter(row => (row['stock'] as {assetId: string}).assetId === assetId);
       return json({schemaVersion: 1, scope, filter: assetId ? {assetId, variantMint} : null, reasons: rows, page: {limit: Number(parsed.searchParams.get('limit') ?? 20), nextCursor: null}});
+    }
+    if (call.path === '/v1/community') {
+      const scope = parsed.searchParams.get('scope') ?? 'everyone';
+      const items = scope === 'notifications' ? [] : state.community.filter(post => scope !== 'following' || post['following'] === true);
+      return json({items, next: null});
+    }
+    if (call.path.startsWith('/v1/community/following/')) {
+      const socialId = call.path.split('/').at(-1);
+      state.community = state.community.map(post => post['socialId'] === socialId ? {...post, following: call.body?.['following'], notifications: call.body?.['notifications']} : post);
+      return json({following: call.body?.['following']});
+    }
+    if (call.path.startsWith('/v1/social/blocks/')) {
+      const socialId = call.path.split('/').at(-1)!;
+      if (call.method === 'PUT') {state.blocks.push(socialId); return json({schemaVersion: 1, mutationId: call.body?.['mutationId'], appliedRevision: 1,
+        block: {socialId, handle: null, revision: 1, blocked: true, updatedAt: at}});}
+      return json({schemaVersion: 1, block: {socialId, revision: 0, blocked: false, updatedAt: null}});
     }
     if (call.path === '/v1/social/reason-reports') {
       state.reports.push(call.body ?? {});
