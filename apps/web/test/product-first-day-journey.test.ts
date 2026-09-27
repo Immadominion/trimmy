@@ -1,165 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {webcrypto} from 'node:crypto';
-import {setTimeout as delay} from 'node:timers/promises';
 import {act, createElement} from 'react';
 import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
-import {ProductApp} from '../src/product/ProductApp.js';
 import {ProductMarketClient} from '../src/product/market-client.js';
-import {PracticeClient, PORTFOLIO_MEDIA_TYPE, PROFILE_MEDIA_TYPE} from '../src/product/practice-client.js';
-import type {LaunchCheckpoint} from '../src/product/practice-client.js';
-import type {PracticeStorage} from '../src/product/practice-session.js';
 import {practiceStorageKey} from '../src/product/practice-session.js';
 import {JourneyStore, journeyPrincipal} from '../src/product/journey-store.js';
 import {registerFundWalletOpener} from '../src/product/fund-wallet.js';
 import type {FundWalletSource} from '../src/product/fund-wallet.js';
 import {JourneyScreens} from '../src/product/journey-screens.js';
-import {searchFixture, variantFixture} from '../src/markets/fixtures.test-support.js';
-import {RESEARCH_AAPLX_MINT as MINT} from '../src/markets/estimate.js';
+import {GUEST_ID, ORDER_ID, MemoryStorage, harness, json} from './support/product-harness.js';
+import type {Harness} from './support/product-harness.js';
 
-const GUEST_ID = '11111111-1111-4111-8111-111111111111';
-const ACCOUNT_ID = '22222222-2222-4222-8222-222222222222';
-const PREVIEW_ID = '44444444-4444-4444-8444-444444444444';
-const ORDER_ID = '33333333-3333-4333-8333-333333333333';
-class MemoryStorage implements PracticeStorage {
-  readonly data = new Map<string, string>();
-  getItem(key: string) {return this.data.get(key) ?? null;}
-  setItem(key: string, value: string) {this.data.set(key, value);}
-}
-interface Call {path: string; method: string; body: Record<string, unknown> | null}
-const json = (value: unknown, status = 200, media = 'application/json') => Response.json(value, {status, headers: {'content-type': media}});
-
-/** A small fake of the practice API with the server's real launch transition table. */
-function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: boolean} = {}) {
-  const now = Date.now(), at = new Date(now).toISOString();
-  const state = {
-    profile: options.checkpoint === null || options.checkpoint === undefined ? null : {revision: 3,
-      onboarding: {goal: null, knowledge: null, persona: null, dailyGoal: null, handle: null},
-      launchCheckpoint: options.checkpoint, hasConfirmedPaperTrade: options.traded ?? options.checkpoint !== 'first-trade', createdAt: at, updatedAt: at},
-    traded: options.traded ?? (options.checkpoint !== null && options.checkpoint !== undefined && options.checkpoint !== 'first-trade'),
-    lastRequestId: GUEST_ID, launches: [] as string[],
-  };
-  const source = {provider: 'tokens-xyz-v1', providerReference: '/v1/assets/apple', marketSource: null, metricsSource: null,
-    providerTimestamps: {asOf: null, lastFetchedAt: null, lastTradeAt: null, unit: 'not_declared'}, observedAt: at, acceptedAt: at};
-  const calculation = {action: 'buy', assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', accountRevision: 0, pricePaperMicros: '50000000',
-    quantityMicros: '2000000', cashDebitPaperMicros: '100000000', cashCreditPaperMicros: '0', cashAfterPaperMicros: '9900000000',
-    positionQuantityAfterMicros: '2000000', positionCostBasisAfterPaperMicros: '100000000', realizedGainDeltaPaperMicros: '0', lockedGainDeltaPaperMicros: '0', source};
-  const envelope = (kind: string, value: unknown) => ({schemaVersion: 1, mode: 'paper', unit: {kind: 'paper', scaleDigits: 6}, [kind]: value,
-    fees: {paperMicros: '0'}, reward: {trimsAwarded: 0, reason: 'Trade completion alone does not award Trims.'},
-    execution: {walletUsed: false, transactionBuilt: false, transactionSigned: false, transactionBroadcast: false}});
-  const portfolio = () => {
-    const base = {schemaVersion: 2, mode: 'paper', unit: {kind: 'paper', scaleDigits: 6}, startingCashPaperMicros: '10000000000'};
-    if (!state.traded) return {...base, revision: 0, cashPaperMicros: '10000000000', openedAt: null, updatedAt: null, positions: [], recentOrders: [],
-      valuation: {status: 'complete', portfolioRevision: 0, openPositionCount: 0, pricedPositionCount: 0, cashPaperMicros: '10000000000',
-        knownValuePaperMicros: '10000000000', totalPaperMicros: '10000000000', positions: []}};
-    return {...base, revision: 1, cashPaperMicros: '9900000000', openedAt: at, updatedAt: at,
-      positions: [{assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', quantityMicros: '2000000', costBasisPaperMicros: '100000000',
-        averageCostPricePaperMicros: '50000000', realizedGainPaperMicros: '0', lockedGainPaperMicros: '0', updatedAt: at}],
-      recentOrders: [{...calculation, accountRevision: 1, id: ORDER_ID, previewId: PREVIEW_ID, committedAt: at}],
-      valuation: {status: 'complete', portfolioRevision: 1, openPositionCount: 1, pricedPositionCount: 1, cashPaperMicros: '9900000000',
-        knownValuePaperMicros: '10000000000', totalPaperMicros: '10000000000', positions: [{assetId: 'apple', variantMint: MINT, status: 'priced',
-          pricePaperMicros: '50000000', marketValuePaperMicros: '100000000', unrealizedGainPaperMicros: '0', observedAt: at, acceptedAt: at,
-          expiresAt: new Date(now + 600000).toISOString()}]}};
-  };
-  const guest = {guestId: GUEST_ID, token: `tg1_${'A'.repeat(43)}`, expiresAt: new Date(now + 30 * 86400000).toISOString(), hardExpiresAt: new Date(now + 60 * 86400000).toISOString()};
-  const calls: Call[] = [];
-  const fetcher: typeof fetch = async (url, init = {}) => {
-    const parsed = new URL(String(url), 'https://trimmy.example');
-    const call: Call = {path: parsed.pathname.replace(/^\/api/, ''), method: init.method ?? 'GET', body: init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null};
-    calls.push(call);
-    if (call.path === '/v1/guest/session') return json({schemaVersion: 1, requestId: call.body?.['requestId'], ...guest}, 201);
-    if (call.path === '/v1/guest/session/refresh') return json({schemaVersion: 1, ...guest});
-    if (call.path === '/v1/product/profile') {
-      if (call.method === 'PUT') state.profile = {revision: Number(call.body?.['baseRevision']) + 1, onboarding: call.body?.['onboarding'] as never,
-        launchCheckpoint: call.body?.['launchCheckpoint'] as LaunchCheckpoint, hasConfirmedPaperTrade: state.traded, createdAt: at, updatedAt: at};
-      return json({schemaVersion: 2, profile: state.profile}, 200, PROFILE_MEDIA_TYPE);
-    }
-    if (call.path === '/v1/product/launch') {
-      const action = String(call.body?.['action']), profile = state.profile;
-      if (!profile || profile.launchCheckpoint === 'app' || call.body?.['baseRevision'] !== profile.revision ||
-        (action === 'paper-trade-confirmed' && profile.launchCheckpoint !== 'first-trade')) {
-        return json({error: {code: 'PRODUCT_PROFILE_CHECKPOINT_CONFLICT', message: 'Conflict.', requestId: GUEST_ID}}, 409);
-      }
-      if ((action === 'paper-trade-confirmed' || action === 'introduction-completed') && !state.traded) {
-        return json({error: {code: 'PRODUCT_PROFILE_LAUNCH_EVIDENCE_REQUIRED', message: 'Trade required.', requestId: GUEST_ID}}, 409);
-      }
-      state.launches.push(action);
-      state.profile = {...profile, revision: profile.revision + 1, launchCheckpoint: action === 'paper-trade-confirmed' ? 'first-position' : 'app', hasConfirmedPaperTrade: state.traded};
-      return json({schemaVersion: 2, profile: state.profile}, 200, PROFILE_MEDIA_TYPE);
-    }
-    if (call.path === '/v1/account/paper/portfolio') return json(portfolio(), 200, PORTFOLIO_MEDIA_TYPE);
-    if (call.path === '/v1/account/paper/orders/preview') {
-      state.lastRequestId = String(call.body?.['requestId']);
-      return json(envelope('preview', {...calculation, id: PREVIEW_ID, requestId: state.lastRequestId, state: 'open',
-        amount: {kind: 'paper_amount', paperMicros: '100000000'}, expiresAt: new Date(Date.now() + 30000).toISOString(), committedAt: null}));
-    }
-    if (call.path === '/v1/account/paper/orders/commit') {
-      state.traded = true; if (state.profile) state.profile = {...state.profile, hasConfirmedPaperTrade: true};
-      return json(envelope('order', {...calculation, accountRevision: 1, id: ORDER_ID, previewId: PREVIEW_ID, committedAt: at}));
-    }
-    if (call.path === '/v1/career/summary') return json({schemaVersion: 1, career: {revision: 0, trims: {total: 0, today: 0, thisWeek: 0},
-      rank: {id: 'rookie', label: 'Rookie', paperLimit: '10000', threshold: 0}, nextRank: {id: 'analyst', label: 'Analyst', threshold: 300, trimsRemaining: 300, promotionRequired: true},
-      streak: {days: 0, status: 'not-started', lastActiveDate: null}, careerStarted: false,
-      firstConfirmedBuy: state.traded ? {orderId: ORDER_ID, assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', quantityMicros: '2000000', confirmedAt: at} : null,
-      serverDate: at.slice(0, 10), updatedAt: null}});
-    if (call.path === '/v1/career/missions') return json({schemaVersion: 1, career: {revision: 0, currentRank: 'rookie'}, missions: []});
-    if (call.path.endsWith('/search')) {
-      const page = {...searchFixture(parsed.searchParams.get('query')!, Number(parsed.searchParams.get('limit'))), requestedAt: at, observedAt: at,
-        refreshAfter: new Date(now + 60000).toISOString()};
-      page.results = [{...page.results[0]!, variants: [variantFixture()]}];
-      return json(page);
-    }
-    if (call.path.endsWith('/facts')) return json({schemaVersion: 1, provider: 'tokens-xyz-v1', requestedAt: at, observedAt: at, refreshAfter: new Date(now + 60000).toISOString(),
-      displayOnly: true, executionEnabled: false, eligibility: 'unverified', sourceUrls: ['https://api.tokens.xyz/v1/assets/apple'], assetId: 'apple', name: 'Apple', symbol: 'AAPL',
-      imageUrl: null, description: null, stock: null, sparkline: null, sparklineStatus: 'unavailable'});
-    return json({error: {code: 'NOT_IN_THIS_TEST', message: 'Not used by this test.', requestId: GUEST_ID}}, 404);
-  };
-  return {state, calls, fetcher};
-}
-
-async function harness(options: {checkpoint?: LaunchCheckpoint | null; traded?: boolean; account?: boolean; savedGuest?: boolean; hash?: string; storage?: MemoryStorage} = {}) {
-  const dom = new JSDOM('<!doctype html><div id="root"></div>', {url: `https://trimmy.example/${options.hash ?? ''}`, pretendToBeVisual: true});
-  const saved = new Map<string, PropertyDescriptor | undefined>();
-  const expose = (name: string, value: unknown) => {saved.set(name, Object.getOwnPropertyDescriptor(globalThis, name)); Object.defineProperty(globalThis, name, {configurable: true, writable: true, value});};
-  expose('window', dom.window); expose('document', dom.window.document); expose('navigator', dom.window.navigator);
-  expose('HTMLElement', dom.window.HTMLElement); expose('Event', dom.window.Event); expose('localStorage', dom.window.localStorage);
-  expose('crypto', webcrypto); expose('IS_REACT_ACT_ENVIRONMENT', true);
-  Object.defineProperty(dom.window, 'matchMedia', {value: () => ({matches: true, addEventListener() {}, removeEventListener() {}})});
-  Object.defineProperty(dom.window.navigator, 'locks', {value: {request: async (_name: string, _options: unknown, callback: () => Promise<unknown>) => callback()}});
-  const permission: string[] = [];
-  Object.defineProperty(dom.window, 'Notification', {configurable: true, value: {permission: 'default', requestPermission: async () => {permission.push('asked'); return 'granted';}}});
-  const api = server(options), storage = options.storage ?? new MemoryStorage();
-  const practice = new PracticeClient({baseUrl: '/api', fetch: api.fetcher, timeoutMs: 1000});
-  const market = new ProductMarketClient({baseUrl: '/api', fetch: api.fetcher, timeoutMs: 1000});
-  const account = {subject: 'did:privy:journeyTester', accountId: ACCOUNT_ID, signal: new AbortController().signal, freshAccessToken: async () => 'test.account.proof'};
-  const store = new JourneyStore(storage, '/api');
-  if (options.savedGuest) {
-    const {PracticeSession} = await import('../src/product/practice-session.js');
-    await new PracticeSession({client: practice, storage}).ensureGuest();
-  }
-  const root = createRoot(dom.window.document.getElementById('root')!);
-  const flush = async (ms = 25) => {await act(async () => {await delay(ms);});};
-  const app = async () => {
-    await act(async () => {root.render(createElement(ProductApp, {apiBase: '/api', practiceClient: practice, marketClient: market, storage,
-      authConfig: {kind: 'disabled'}, ...(options.account ? {accountAccess: account} : {})}));});
-    await flush();
-  };
-  const reload = async () => {await act(async () => {root.render(createElement('div', null, 'Reloading'));}); await flush(); await app();};
-  const text = () => dom.window.document.body.textContent ?? '';
-  const button = (label: string) => [...dom.window.document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent?.trim() === label || item.getAttribute('aria-label') === label);
-  const click = async (label: string) => {const target = button(label); assert.ok(target, `Button exists: ${label}`); await act(async () => {target.click();}); await flush();};
-  const pick = async (label: string) => {
-    const target = [...dom.window.document.querySelectorAll<HTMLButtonElement>('.setup-choice')].find(item => item.querySelector('strong')?.textContent === label);
-    assert.ok(target, `Choice exists: ${label}`); await act(async () => {target.click();}); await flush();
-  };
-  const back = async () => {await act(async () => {dom.window.dispatchEvent(new dom.window.PopStateEvent('popstate'));}); await flush();};
-  const escape = async () => {await act(async () => {dom.window.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));}); await flush();};
-  const close = async () => {await act(async () => {root.unmount();}); market.close(); dom.window.close();
-    for (const [name, descriptor] of saved) {if (descriptor) Object.defineProperty(globalThis, name, descriptor); else Reflect.deleteProperty(globalThis, name);}};
-  return {dom, api, storage, store, app, reload, text, button, click, pick, back, escape, flush, close, permission};
-}
-type Harness = Awaited<ReturnType<typeof harness>>;
 async function buyFirstStock(h: Harness) {
   await h.app(); await h.click('Start my first day'); await h.click('Continue');
   await h.click('Choose Apple'); await h.click('Review paper buy'); await h.click('Confirm paper buy');

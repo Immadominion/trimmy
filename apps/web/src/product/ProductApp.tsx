@@ -26,6 +26,7 @@ import {useFirstDayJourney} from './use-first-day-journey';
 import {isJourneyScreen} from './journey';
 import type {SignInIntent} from './journey-store';
 import {openFundWallet, type FundWalletSource} from './fund-wallet';
+import {GuestDeskRecovery} from './guest-desk-recovery';
 import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares} from './ui';
 
 type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work';
@@ -300,6 +301,14 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     if (intent === 'app' && profile && profile.launchCheckpoint !== 'app') await exitIntroduction(false);
     else if (intent === 'fund' && workspaceActive.current) requestFunding('first-day');
   }
+  /** Explicit, confirmed replacement of an expired guest desk. The old record is archived, never deleted. */
+  async function startNewGuestDesk() {
+    if (!session) throw new Error('Practice unavailable');
+    await session.startNewGuestDesk();
+    if (!workspaceActive.current) return;
+    ++loadEpoch.current; setError(null); setSnapshot(emptySnapshot); introSettled.current = false;
+    setIntroInitial('welcome'); navigate({page: 'start'}, true);
+  }
   async function chooseGuest() {
     // A half-finished provider sign-in is dropped before the explicit guest choice is saved.
     if (auth.subject && !(await auth.logout())) throw new Error('Sign-out did not finish.');
@@ -359,29 +368,32 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const selectedCard = route.assetId ? cards.current.get(route.assetId) : undefined;
   const hasGuest = Boolean(session?.hasIdentity);
   const signIn = route.page === 'sign-in' || (auth.subject !== null && !auth.authenticated) || auth.phase === 'connecting' || auth.phase === 'account-choice';
-  const journeyScreen = Boolean(apiBase && session && market && !storageChanged && !restoring && (isJourneyScreen(journey.view) || journey.preservedNotice));
-  const firstDay = !journeyScreen && !signIn && (route.page === 'start' || route.page === 'welcome' || (route.page === 'desk' && !hasGuest && !busy));
+  const guestRecovery = session && !storageChanged ? session.guestRecovery : null;
+  const journeyScreen = Boolean(apiBase && session && market && !storageChanged && !restoring && !guestRecovery && (isJourneyScreen(journey.view) || journey.preservedNotice));
+  const recoveryScreen = guestRecovery !== null && !signIn;
+  const firstDay = !journeyScreen && !recoveryScreen && !signIn && (route.page === 'start' || route.page === 'welcome' || (route.page === 'desk' && !hasGuest && !busy));
 
-  return <div className={`product-shell${firstDay || signIn || journeyScreen ? ' onboarding-shell' : ''}${route.page === 'market' && !route.assetId ? ' market-shell' : ''}${route.page === 'career' || route.page === 'daily' && !progress.pending ? ' career-shell' : ''}`} data-revision={revision}>
+  return <div className={`product-shell${firstDay || signIn || journeyScreen || recoveryScreen ? ' onboarding-shell' : ''}${route.page === 'market' && !route.assetId ? ' market-shell' : ''}${route.page === 'career' || route.page === 'daily' && !progress.pending ? ' career-shell' : ''}`} data-revision={revision}>
     <a className="skip" href="#main-content" onClick={event => {event.preventDefault(); heading.current?.focus();}}>Skip to content</a>
     <aside className="product-nav"><button className="product-brand" aria-label="Trimmy desk" onClick={() => navigate({page: 'desk'})}><img src={art('trimmy-mark.png')} alt=""/>trimmy</button>
       <nav aria-label="Main navigation">{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{item.title}</span></button>)}</nav>
       {snapshot.profile?.onboarding.persona && <button className="nav-identity" onClick={() => navigate({page:'profile'})}><img src={art(`persona-${snapshot.profile.onboarding.persona}-avatar-v1.png`)} alt=""/><span><strong>{snapshot.profile.onboarding.handle ? `@${snapshot.profile.onboarding.handle}` : `The ${snapshot.profile.onboarding.persona[0]!.toUpperCase()}${snapshot.profile.onboarding.persona.slice(1)}`}</strong>{snapshot.career && <small>{snapshot.career.rank.label}</small>}</span></button>}
     </aside>
-    <div className="product-body">{(firstDay || signIn || journeyScreen) && <header className="onboard-header"><span className="product-brand"><img src={art('trimmy-mark.png')} alt=""/>trimmy</span>{firstDay && <button className="text-button" onClick={() => navigate({page: 'sign-in'})}>Sign in</button>}</header>}
+    <div className="product-body">{(firstDay || signIn || journeyScreen || recoveryScreen) && <header className="onboard-header"><span className="product-brand"><img src={art('trimmy-mark.png')} alt=""/>trimmy</span>{firstDay && <button className="text-button" onClick={() => navigate({page: 'sign-in'})}>Sign in</button>}</header>}
       <main id="main-content" ref={heading} tabIndex={-1} className="product-main">
       {!apiBase ? <div className="empty-page"><SalArt motion={motion}/><h1>Your desk is almost ready.</h1><p>Practice is unavailable here right now. Please try again later.</p></div>
       : storageChanged ? <div className="empty-page"><h1>Your desk changed in another tab.</h1><p>Reload to restore the latest desk before making another move.</p><button className="primary" onClick={() => window.location.reload()}>Reload your desk</button></div>
       : <>
-        {error !== null && <Failure title="Your desk needs a moment." message={errorCopy(error)} onRetry={() => void retryDesk()}/>}
+        {error !== null && !recoveryScreen && !guestRecovery && <Failure title="Your desk needs a moment." message={errorCopy(error)} onRetry={() => void retryDesk()}/>}
         {session?.pendingCommit && <div className="pending-order" role="status"><strong>Let’s check your last order.</strong><p>The connection ended before its receipt arrived. Checking uses the same order so it won’t be placed twice.</p><button className="text-button" disabled={busy} onClick={() => void recover()}>{busy ? 'Checking…' : 'Check order'}</button></div>}
         {recovered && <div className="notice" role="status">Your order is confirmed. The same receipt and updated desk are restored.</div>}
         {workdays.pending && !['career', 'work', 'daily'].includes(route.page) && <div className="work-recovery" role="status"><span>Your assignment has an unconfirmed save.</span><button className="text-button" disabled={workdays.working} onClick={() => void workdays.recover()}>{workdays.working ? 'Checking…' : 'Check saved work'}</button></div>}
         {fundingUnavailable && !journeyScreen && !signIn && <div className="notice" role="status">Adding money isn’t available on the web yet. You can keep practicing with free money.<button className="text-button" onClick={() => setFundingUnavailable(false)}>Dismiss</button></div>}
-        {journeyScreen && market ? <JourneyScreens journey={journey} market={market} career={snapshot.career} portfolio={snapshot.portfolio} careerLoading={busy && !snapshot.career}
+        {recoveryScreen && guestRecovery ? <GuestDeskRecovery failure={guestRecovery} canSignIn={auth.enabled} onSignIn={() => openSignIn('app')} onStartNew={startNewGuestDesk}/>
+        : journeyScreen && market ? <JourneyScreens journey={journey} market={market} career={snapshot.career} portfolio={snapshot.portfolio} careerLoading={busy && !snapshot.career}
           motion={motion} preservedExpired={preservedExpired} onGuest={chooseGuest} onAccount={() => navigate({page: 'desk'}, true)}
           onRetryEvidence={() => void refresh()} onFinish={finishIntroduction}/>
-        : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
+        : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} expiredGuestRecovery={guestRecovery !== null} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
         {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)}/> : <MarketScreen client={market} onSelect={select}/>)}
         {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => openSignIn('app')} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}/> : null)}
         {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title="Your career starts here." onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle}/>)}
