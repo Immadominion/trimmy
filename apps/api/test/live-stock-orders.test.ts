@@ -4,6 +4,10 @@ import {generateKeyPairSync,sign} from 'node:crypto';
 import {getAddressDecoder,getCompiledTransactionMessageEncoder,getTransactionEncoder} from '@solana/kit';
 import type {CompiledTransactionMessage,TransactionMessageBytes} from '@solana/kit';
 import {STOCK_TRADING_ASSETS} from '../src/stock-trading-catalog.js';
+import type {StockTradingAsset} from '../src/stock-trading-catalog.js';
+import {STOCK_ISSUERS} from '../src/stock-issuers.js';
+/** The current attestation for the asset's issuer, as a new client sends it. */
+const terms=(asset:StockTradingAsset)=>({issuerId:asset.issuerId,version:STOCK_ISSUERS[asset.issuerId].disclosure.attestation.version});
 import {LiveStockOrders,verifyReviewedSignature,registerLiveStockRoutes} from '../src/live-stock-orders.js';
 import type {LiveOrder,LiveOrderStore,LiveStockAdapters} from '../src/live-stock-orders.js';
 import type {ReviewedStockOrderIntent} from '../src/stock-order-review.js';
@@ -175,7 +179,8 @@ test('live preview requests each selected stock in both directions and reports n
    return Response.json({jsonrpc:'2.0',id:1,result});
   };
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
-  await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side,amountRaw:'1000000'}),/NO_ROUTE/);
+  const amountRaw=side==='sell' && BigInt(asset.maxSellInputRaw)<1000000n?asset.maxSellInputRaw:'1000000';
+  await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side,amountRaw,termsAccepted:terms(asset)}),/NO_ROUTE/);
   assert.equal(orderRequests,1);
  }
 });
@@ -196,12 +201,14 @@ test('buy and sell caps return an explicit limit error before reading providers 
  } as unknown as LiveStockAdapters;
  const app=Fastify();registerLiveStockRoutes(app,adapters);
  try {
-  for(const asset of STOCK_TRADING_ASSETS)for(const side of ['buy','sell'] as const)for(const amountRaw of ['100000001','1000000000']) {
+  for(const asset of STOCK_TRADING_ASSETS)for(const side of ['buy','sell'] as const) {
+   const cap=BigInt(side==='buy'?asset.maxBuyInputRaw:asset.maxSellInputRaw);
+   for(const amountRaw of [String(cap+1n),String(cap*10n)]) {
    const input={assetId:asset.assetId,variantMint:asset.mint,side,amountRaw};
    await assert.rejects(service.preview('user',wallet,input),{code:'TRADE_LIMIT'});
    const response=await app.inject({method:'POST',url:'/v1/trading/preview',payload:input});
    assert.equal(response.statusCode,409);assert.deepEqual(response.json(),{code:'TRADE_LIMIT'});
-  }
+  }}
   assert.equal(reads,0);
  }finally{await app.close();}
 });

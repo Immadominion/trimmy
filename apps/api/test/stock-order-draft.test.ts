@@ -310,9 +310,10 @@ it('binds each catalog stock identity and rejects substituted company metadata',
     const draft = bindStockOrderDraft(candidate, ctx);
     assert.equal(draft.summary.assetId, stock.assetId);
     assert.equal(draft.summary.output.mint, stock.mint);
-    assert.throws(() => bindStockOrderDraft(candidate, {...ctx, expected: {...quote, assetId: 'apple'}}),
+    const otherCompany = stock.assetId === 'apple' ? 'tesla' : 'apple';
+    assert.throws(() => bindStockOrderDraft(candidate, {...ctx, expected: {...quote, assetId: otherCompany}}),
       errorIs('STOCK_DRAFT_CONTEXT_INVALID'));
-    assert.throws(() => bindStockOrderDraft(candidate, {...ctx, expected: {...quote, output: {...quote.output, decimals: 6}}}),
+    assert.throws(() => bindStockOrderDraft(candidate, {...ctx, expected: {...quote, output: {...quote.output, decimals: stock.decimals + 1}}}),
       errorIs('STOCK_DRAFT_CONTEXT_INVALID'));
     assert.throws(() => bindStockOrderDraft(payload(), ctx), errorIs('STOCK_DRAFT_TERMS_MISMATCH'));
   }

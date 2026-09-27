@@ -659,6 +659,7 @@ describe('composed review', () => {
     assert.equal(intent.terms.inputAmountRaw, INPUT_RAW.toString());
     assert.equal(intent.terms.minimumOutputAmountRaw, MINIMUM_OUT.toString());
     assert.equal(intent.terms.simulatedOutputReceivedRaw, QUOTED_OUT.toString());
+    assert.equal(intent.terms.stockUiMultiplier, '1');
     assert.match(intent.reviewDigestSha256, /^[0-9a-f]{64}$/);
     assert.equal(intent.evidence.semanticsSha256, evidence.semantics.provenance.digestSha256);
     assert.equal(intent.evidence.simulationSha256, evidence.simulation.provenance.digestSha256);
@@ -763,13 +764,19 @@ describe('multi-stock composed review', () => {
         item === aaplxMint ? stockMint : item === destinationAta ? address(stockAta) : item)};
       const ref = estimate();
       const quote: StockEstimate = {...ref, assetId: stock.assetId, variantMint: stock.mint,
-        output: {...ref.output, symbol: stock.symbol, mint: stock.mint}};
+        output: {...ref.output, symbol: stock.symbol, mint: stock.mint, decimals: stock.decimals}};
       const clock = {now: Date.parse(at(3))};
       const draft = bindStockOrderDraft(payload({outputMint: stock.mint}, message), {...context(clock), expected: quote});
       const bound = binding(draft);
       const structure = inspectStockDraftStructure(draft, bound);
       const values = accountValues();
-      values[stockMint] = values[aaplxMint]; delete values[aaplxMint];
+      // Each issuer's own decimals, with a scheduled scaled-UI change already in force.
+      values[stockMint] = rpcAccount(Uint8Array.from(getMintEncoder().encode({
+        mintAuthority: key('stock-authority'), supply: 15_376_355_897_326n, decimals: stock.decimals, isInitialized: true,
+        freezeAuthority: key('stock-freeze'), extensions: [...AAPLX_EXTENSIONS, {__kind: 'ScaledUiAmountConfig',
+          authority: key('scale-authority'), multiplier: 1, newMultiplier: 5, newMultiplierEffectiveTimestamp: BigInt(Math.floor(clock.now / 1000) - 60)}],
+      })), KNOWN_PROGRAMS.token2022, 4_000_000);
+      delete values[aaplxMint];
       delete values[destinationAta];
       values[stockAta] = rpcAccount(Uint8Array.from(getTokenEncoder().encode({
         mint: stockMint, owner: taker, amount: 0n, delegate: null, state: AccountState.Initialized,
@@ -783,6 +790,7 @@ describe('multi-stock composed review', () => {
       });
       assert.equal(intent.terms.outputMint, stock.mint);
       assert.equal(intent.terms.simulatedOutputReceivedRaw, QUOTED_OUT.toString());
+      assert.equal(intent.terms.stockUiMultiplier, '5');
       assert.equal(intent.approval.status, 'required');
     }
   });

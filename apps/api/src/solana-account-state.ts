@@ -101,7 +101,7 @@ export type DecodedAccountState =
       isInitialized: boolean; mintAuthority: string | null; freezeAuthority: string | null;
       extensions: readonly string[]; defaultAccountState: 'initialized' | 'frozen' | null; paused: boolean | null;
       transferHookProgram: string | null; transferHookAuthority: string | null; permanentDelegate: string | null;
-      transferFee: {readonly basisPoints: number; readonly maximumFee: bigint} | null;
+      transferFee: {readonly basisPoints: number; readonly maximumFee: bigint; readonly olderBasisPoints: number} | null;
       scaledUiAmount: {readonly multiplier: number; readonly newMultiplier: number;
         readonly newMultiplierEffectiveTimestamp: bigint} | null;
       nonTransferable: boolean; confidentialTransfer: boolean; mintCloseAuthority: string | null; lamports: bigint}
@@ -287,9 +287,10 @@ function mintState(account: ObservedAccount, tokenProgram: TokenProgramKind, min
     transferHookProgram: hook ? nonZeroAddress(hook.programId) : null,
     transferHookAuthority: hook ? nonZeroAddress(hook.authority) : null,
     permanentDelegate: permanentDelegate ? nonZeroAddress(permanentDelegate.delegate) : null,
-    // The newer fee schedule is reported; which one is active depends on the current epoch (not known here).
+    // The newer fee schedule is reported with the older rate; which one is active
+    // depends on the current epoch (not known here), so callers bound by both.
     transferFee: fee ? Object.freeze({basisPoints: fee.newerTransferFee.transferFeeBasisPoints,
-      maximumFee: fee.newerTransferFee.maximumFee}) : null,
+      maximumFee: fee.newerTransferFee.maximumFee, olderBasisPoints: fee.olderTransferFee.transferFeeBasisPoints}) : null,
     scaledUiAmount: scaled ? Object.freeze({multiplier: scaled.multiplier, newMultiplier: scaled.newMultiplier,
       newMultiplierEffectiveTimestamp: scaled.newMultiplierEffectiveTimestamp}) : null,
     nonTransferable: kinds.includes('NonTransferable'),

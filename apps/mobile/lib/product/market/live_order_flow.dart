@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../account/account_amounts.dart';
 import '../../account/account_controller.dart';
 import '../../account/account_data_models.dart';
 import '../../ui_review/review_animated_splash.dart';
@@ -27,6 +28,7 @@ class LiveOrderFailure implements Exception {
     'ADD_SOL' => 'Add SOL to cover network and account fees.',
     'INSUFFICIENT_HOLDINGS' => 'You don’t have enough of this token to sell.',
     'TRADE_LIMIT' => 'This order is above the current trade limit.',
+    'TERMS_REQUIRED' => 'Confirm the issuer terms to continue.',
     'WALLET_REQUIRED' => 'Create your wallet to continue.',
     'ORDER_PENDING' => 'Your previous trade is still confirming.',
     'QUOTE_EXPIRED' => 'That price expired. Get a fresh quote.',
@@ -39,6 +41,51 @@ class LiveOrderFailure implements Exception {
     'LIVE_UNAVAILABLE' => 'Trading couldn’t connect. Try again.',
     _ => 'Couldn’t complete this step. Try again.',
   };
+}
+
+/// Eligibility ticks per account, issuer and terms version. They are held for
+/// the app session and saved, so the same terms are not asked for again. A
+/// new terms version needs a new tick.
+abstract final class LiveIssuerTerms {
+  static final Map<String, Set<String>> _accepted = {};
+
+  static String _key(String account) => 'trimmy.issuer-terms.v1.$account';
+
+  static String _entry(LiveTradingIssuer issuer) =>
+      jsonEncode([issuer.issuerId, issuer.attestation.version]);
+
+  static bool accepted(String account, LiveTradingIssuer issuer) =>
+      _accepted[account]?.contains(_entry(issuer)) ?? false;
+
+  /// Adds this account's saved ticks to the session.
+  static Future<void> restore(String account) async {
+    final saved = (await SharedPreferences.getInstance()).getStringList(
+      _key(account),
+    );
+    (_accepted[account] ??= {}).addAll(saved ?? const []);
+  }
+
+  /// Updates the session at once, then saves. A failed save still leaves
+  /// the choice in place for this session.
+  static Future<void> record(
+    String account,
+    LiveTradingIssuer issuer,
+    bool accepted,
+  ) async {
+    final entries = _accepted[account] ??= {};
+    if (accepted) {
+      entries.add(_entry(issuer));
+    } else {
+      entries.remove(_entry(issuer));
+    }
+    await (await SharedPreferences.getInstance()).setStringList(
+      _key(account),
+      entries.toList()..sort(),
+    );
+  }
+
+  @visibleForTesting
+  static void resetSession() => _accepted.clear();
 }
 
 class LiveOrderClient {
@@ -172,10 +219,15 @@ class LiveOrderFlow extends StatefulWidget {
     required this.onBack,
     required this.onAddMoney,
     this.company,
+    this.variantMint,
     this.initialSell = false,
     this.httpClient,
   });
   final MarketCompany? company;
+
+  /// The exact token chosen for this order. When it stops being tradeable
+  /// the flow says so instead of trading another issuer's token.
+  final String? variantMint;
   final bool initialSell;
   final AccountController account;
   final Uri origin;
@@ -196,20 +248,52 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     client: widget.httpClient,
   );
   final _amount = TextEditingController(text: '5');
+  final _termsKey = GlobalKey();
   Map<String, dynamic>? _order;
   LiveTradingCapabilities? _capabilities;
   Timer? _poll, _noticeTimer, _quoteTimer;
-  bool _busy = false, _checking = true, _sell = false, _terms = false;
+  bool _busy = false, _checking = true, _sell = false;
   bool _restoring = false, _recoveryFailed = false, _capabilitiesFailed = false;
   bool _foreground = true, _polling = false, _initialAmountSet = false;
   bool _fundingNeeded = false;
   String? _error, _uncertainId;
+
+  /// A preset writes rounded shares into the field. Its exact raw amount is
+  /// kept, so Max sells everything without leaving dust behind.
+  ({String text, String raw})? _preset;
+
+  /// The preset that the order limit cut down, such as Max or 75%.
+  String? _cappedPreset;
   late final _pendingKey =
       'trimmy.pending-live-order.${widget.account.accountId}';
 
-  LiveTradingAsset? get _asset => widget.company == null
-      ? _capabilities?.assets.firstOrNull
-      : _capabilities?.forCompany(widget.company!);
+  LiveTradingAsset? get _asset {
+    final capabilities = _capabilities;
+    if (capabilities == null) return null;
+    final company = widget.company, mint = widget.variantMint;
+    if (company == null) {
+      // Only an offered issuer's token ever gets a tick or a trade button.
+      final tradeable = capabilities.tradeableAssets;
+      return mint == null
+          ? tradeable.firstOrNull
+          : tradeable.where((asset) => asset.mint == mint).firstOrNull;
+    }
+    final variants = capabilities.variantsFor(company);
+    final preferred = mint ?? company.primaryVariant?.mint;
+    return variants.where((asset) => asset.mint == preferred).firstOrNull ??
+        (mint == null ? variants.firstOrNull : null);
+  }
+
+  LiveTradingIssuer? get _issuer =>
+      _asset == null ? null : _capabilities!.issuerFor(_asset!);
+
+  bool get _termsAccepted {
+    final issuer = _issuer, account = widget.account.accountId;
+    return issuer != null &&
+        account != null &&
+        LiveIssuerTerms.accepted(account, issuer);
+  }
+
   LiveTradingAsset? get _orderAsset {
     final terms = _order?['terms'];
     if (terms is! Map) return null;
@@ -228,7 +312,6 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
               ? (_holding?.availableToTradeRaw ?? '0')
               : _holdings!.usdc.availableToTradeRaw,
         );
-  int get _decimals => _sell ? (_asset?.decimals ?? 8) : 6;
   BigInt get _limitRaw =>
       BigInt.parse(_sell ? _asset!.maxSellInputRaw : _asset!.maxBuyInputRaw);
   BigInt? get _maxRaw {
@@ -238,15 +321,25 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
   }
 
   String get _symbol => _asset?.symbol ?? widget.company?.symbol ?? 'token';
-  bool get _scaledHolding {
-    String normalize(String value) => value.contains('.')
-        ? value
-              .replaceFirst(RegExp(r'0+$'), '')
-              .replaceFirst(RegExp(r'\.$'), '')
-        : value;
-    final holding = _holding;
-    return holding?.displayAmount != null &&
-        normalize(holding!.displayAmount!) != normalize(holding.rawTokenUnits);
+
+  LiveShareScale get _scale =>
+      liveShareScale(widget.account, _asset!.mint, _asset!.decimals);
+
+  /// USDC for buys, shares of the token for sells, grouped for reading.
+  String _amountLabel(BigInt raw) => _sell
+      ? '${_scale.label(raw.toString())} $_symbol'
+      : '${_usdc(raw.toString())} USDC';
+
+  static String _usdc(String raw) =>
+      formatRawUnits(raw, 6) ?? liveDecimal(raw, 6);
+
+  /// The raw amount this order sends. A preset keeps its exact amount while
+  /// the field still shows what the preset wrote.
+  String? get _enteredRaw {
+    final text = _amount.text.trim();
+    final preset = _preset;
+    if (preset != null && preset.text == text) return preset.raw;
+    return _sell ? _scale.raw(text) : liveAmountRaw(text, 6);
   }
 
   bool get _pending => _order?['status'] == 'pending';
@@ -386,12 +479,35 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       }
     }
 
-    await Future.wait([readOrder(), readCapabilities(), _refreshBalance()]);
+    Future<void> readTerms() async {
+      final account = widget.account.accountId;
+      if (account == null) return;
+      try {
+        await LiveIssuerTerms.restore(account);
+      } catch (_) {
+        // Unreadable storage only means the terms are asked for again.
+      }
+    }
+
+    await Future.wait([
+      readOrder(),
+      readCapabilities(),
+      _refreshBalance(),
+      readTerms(),
+    ]);
     if (mounted) {
       _setInitialAmount();
       setState(() => _checking = false);
     }
     _restoring = false;
+  }
+
+  /// Writes [raw] into the field as USDC or shares and keeps it exact.
+  void _fill(BigInt raw) {
+    _amount.text = _sell
+        ? _scale.shares(raw.toString())
+        : liveDecimal(raw.toString(), 6);
+    _preset = (text: _amount.text, raw: raw.toString());
   }
 
   void _setInitialAmount() {
@@ -402,9 +518,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     if (max == null || max <= BigInt.zero) return;
     _initialAmountSet = true;
     if (_sell) {
-      _amount.text = liveDecimal(max.toString(), _decimals);
+      _fill(max);
+      _cappedPreset = _balanceRaw! > _limitRaw ? 'Max' : null;
     } else if (max < BigInt.from(5000000)) {
-      _amount.text = liveDecimal(max.toString(), 6);
+      _fill(max);
     }
   }
 
@@ -412,47 +529,112 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     final balance = _balanceRaw;
     if (balance == null || _asset == null) return;
     final portion = balance * BigInt.from(percent) ~/ BigInt.from(100);
-    final raw = portion > _limitRaw ? _limitRaw : portion;
+    final capped = portion > _limitRaw;
     _initialAmountSet = true;
-    setState(() => _amount.text = liveDecimal(raw.toString(), _decimals));
+    setState(() {
+      _fill(capped ? _limitRaw : portion);
+      _cappedPreset = capped ? (percent == 100 ? 'Max' : '$percent%') : null;
+    });
+  }
+
+  void _typed(String _) {
+    _initialAmountSet = true;
+    if (_cappedPreset != null && _preset?.text != _amount.text.trim()) {
+      setState(() => _cappedPreset = null);
+    }
   }
 
   void _switchSide() {
     setState(() {
       _sell = !_sell;
-      _terms = false;
       _error = null;
       _fundingNeeded = false;
       _initialAmountSet = false;
+      _preset = null;
+      _cappedPreset = null;
       _amount.text = _sell ? '' : '5';
       _setInitialAmount();
     });
   }
 
+  void _setTerms(bool accepted) {
+    final issuer = _issuer, account = widget.account.accountId;
+    if (issuer == null || account == null) return;
+    unawaited(
+      LiveIssuerTerms.record(
+        account,
+        issuer,
+        accepted,
+      ).catchError((Object _) {}),
+    );
+    setState(() {});
+  }
+
+  void _showTerms() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _termsKey.currentContext;
+      if (!mounted || target == null) return;
+      unawaited(
+        Scrollable.ensureVisible(
+          target,
+          alignment: .2,
+          duration: productDuration(context, 280),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    });
+  }
+
+  /// The server wants a fresh tick, usually because the issuer's terms
+  /// changed. Clear the old one, reread the terms and return to the checkbox.
+  Future<void> _termsRequired(LiveTradingIssuer issuer) async {
+    final account = widget.account.accountId;
+    if (account != null) {
+      try {
+        await LiveIssuerTerms.record(account, issuer, false);
+      } catch (_) {
+        // The session already forgot the tick.
+      }
+    }
+    if (!mounted) return;
+    setState(() {});
+    _showTerms();
+    try {
+      final capabilities = await _client.capabilities();
+      if (mounted) setState(() => _capabilities = capabilities);
+    } catch (_) {
+      // Keep the last read. The next quote is checked by the server again.
+    }
+  }
+
   Future<void> _preview() async {
-    final asset = _asset;
+    final asset = _asset, issuer = _issuer;
     if (_busy ||
         asset == null ||
+        issuer == null ||
         _capabilities?.enabled != true ||
         _recoveryFailed) {
       return;
     }
-    final raw = liveAmountRaw(_amount.text, _decimals);
+    if (!_termsAccepted) {
+      _notice('Confirm the issuer terms first.');
+      _showTerms();
+      return;
+    }
+    final raw = _enteredRaw;
     if (raw == null) {
-      _notice('Enter a valid ${_sell ? 'token amount' : 'USDC amount'}.');
+      _notice('Enter a valid ${_sell ? 'share amount' : 'USDC amount'}.');
       return;
     }
     if (BigInt.parse(raw) > _limitRaw) {
-      _notice(
-        'Up to ${_sell ? '' : r'$'}${liveDecimal(_limitRaw.toString(), _decimals)} ${_sell ? _symbol : 'USDC'} per order.',
-      );
+      _notice('Up to ${_amountLabel(_limitRaw)} per order.');
       return;
     }
+    final legacy = _capabilities!.legacy;
     FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;
       _error = null;
-      _terms = false;
       _fundingNeeded = false;
     });
     try {
@@ -469,6 +651,13 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         'variantMint': asset.mint,
         'side': _sell ? 'sell' : 'buy',
         'amountRaw': raw,
+        // Issuer-aware servers require the tick. Older servers reject any
+        // field they do not know, and they list only xStocks.
+        if (!legacy)
+          'termsAccepted': {
+            'issuerId': issuer.issuerId,
+            'version': issuer.attestation.version,
+          },
       });
       final terms = order?['terms'];
       if (order == null ||
@@ -489,6 +678,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         setState(() => _fundingNeeded = true);
       }
       _notice(error.message);
+      if (error.code == 'TERMS_REQUIRED') await _termsRequired(issuer);
       if (error.code == 'ORDER_PENDING') await _restore();
     } catch (_) {
       _notice('Couldn’t get a verified quote. Try again.');
@@ -512,16 +702,13 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     if (!mounted || _order?['status'] != 'reviewed' || _busy) return;
     final expiry = DateTime.tryParse(_order?['expiresAt'] as String? ?? '');
     if (expiry == null || !DateTime.now().toUtc().isBefore(expiry)) {
-      setState(() {
-        _order = {..._order!, 'status': 'expired'};
-        _terms = false;
-      });
+      setState(() => _order = {..._order!, 'status': 'expired'});
     }
   }
 
   Future<void> _confirm() async {
     final order = _order;
-    if (order == null || _busy || !_terms || order['status'] != 'reviewed') {
+    if (order == null || _busy || order['status'] != 'reviewed') {
       return;
     }
     final expiry = DateTime.tryParse(order['expiresAt'] as String? ?? '');
@@ -619,10 +806,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     }
   }
 
-  Future<void> _openIssuer() async {
+  Future<void> _openTerms(LiveTradingIssuer issuer) async {
     try {
       if (!await launchUrl(
-        Uri.parse('https://assets.backed.fi/legal-documentation'),
+        issuer.termsUrl,
         mode: LaunchMode.externalApplication,
       )) {
         _notice('Couldn’t open the issuer’s terms. Try again.');
@@ -694,10 +881,14 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                   ..._unavailable(
                     context,
                     'This token isn’t tradable here yet',
-                    'Choose another stock to trade.',
+                    widget.variantMint == null
+                        ? 'Choose another stock to trade.'
+                        : _capabilities!.reasonFor(widget.variantMint!),
                     retry: false,
                   )
-                else if (status == 'reviewed' && _order?['terms'] is Map)
+                else if (status == 'reviewed' &&
+                    _order?['terms'] is Map &&
+                    _orderAsset != null)
                   ..._review(context)
                 else
                   ..._entry(context),
@@ -738,38 +929,53 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
 
   List<Widget> _entry(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final asset = _asset!, issuer = _issuer!;
     final balance = _balanceRaw;
     final available = balance == null
         ? 'Checking balance…'
-        : '${liveDecimal(balance.toString(), _decimals)} ${_sell ? '$_symbol raw units' : 'USDC'} available';
+        : '${_amountLabel(balance)} available';
+    final limit = _amountLabel(_limitRaw);
+    final accepted = _termsAccepted;
+    final identity = Row(
+      children: [
+        CompanyLogo(
+          name: asset.name,
+          logoUrl: widget.company?.logoUrl,
+          color: widget.company?.brandColor ?? ProductColor.violet,
+          size: 52,
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_sell ? 'Sell' : 'Buy'} $_symbol',
+                style: type.headlineMedium,
+              ),
+              Text('Solana', style: type.bodySmall),
+            ],
+          ),
+        ),
+      ],
+    );
+    final switcher = TextButton(
+      onPressed: _busy ? null : _switchSide,
+      child: Text(_sell ? 'Buy instead' : 'Sell instead'),
+    );
+    // Large text stacks the switch under the title instead of squeezing it.
+    final large = MediaQuery.textScalerOf(context).scale(14) > 20;
     return [
-      Row(
-        children: [
-          CompanyLogo(
-            name: _asset!.name,
-            logoUrl: widget.company?.logoUrl,
-            color: widget.company?.brandColor ?? ProductColor.violet,
-            size: 52,
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${_sell ? 'Sell' : 'Buy'} $_symbol',
-                  style: type.headlineMedium,
-                ),
-                Text('Solana', style: type.bodySmall),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: _busy ? null : _switchSide,
-            child: Text(_sell ? 'Buy instead' : 'Sell instead'),
-          ),
-        ],
-      ),
+      if (large) ...[
+        identity,
+        Align(alignment: Alignment.centerLeft, child: switcher),
+      ] else
+        Row(
+          children: [
+            Expanded(child: identity),
+            switcher,
+          ],
+        ),
       const SizedBox(height: 28),
       Container(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -780,11 +986,11 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_sell ? 'Raw token units' : 'You pay', style: type.bodyMedium),
+            Text(_sell ? 'You sell' : 'You pay', style: type.bodyMedium),
             TextField(
               key: const ValueKey('live-order-amount'),
               controller: _amount,
-              onChanged: (_) => _initialAmountSet = true,
+              onChanged: _typed,
               enabled: !_busy,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -801,7 +1007,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 filled: false,
                 hintText: '0',
                 prefixText: _sell ? null : r'$ ',
-                suffixText: _sell ? null : 'USDC',
+                suffixText: _sell ? _symbol : 'USDC',
                 suffixStyle: type.bodyMedium,
               ),
             ),
@@ -852,30 +1058,37 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                     ? null
                     : () => setState(() {
                         _initialAmountSet = true;
+                        _preset = null;
+                        _cappedPreset = null;
                         _amount.text = '$amount';
                       }),
               ),
         ],
       ),
       const SizedBox(height: 12),
-      if (_sell && _scaledHolding) ...[
-        Text(
-          'Holdings shows ${_holding!.displayAmount} $_symbol. Orders use raw token units.',
-          style: type.bodySmall,
-        ),
-        const SizedBox(height: 12),
-      ],
       Text(
-        'Order limit: ${_sell ? '' : r'$'}${liveDecimal(_limitRaw.toString(), _decimals)} ${_sell ? '$_symbol raw units' : 'USDC'}',
+        _cappedPreset == null
+            ? 'Order limit: $limit'
+            : '$_cappedPreset capped at the order limit of $limit.',
+        key: const ValueKey('live-order-limit'),
         style: type.bodySmall,
       ),
-      const SizedBox(height: 26),
+      const SizedBox(height: 20),
+      _IssuerCard(
+        key: _termsKey,
+        issuer: issuer,
+        transferFeeBps: asset.transferFeeBps,
+        accepted: accepted,
+        onAccepted: _busy ? null : _setTerms,
+        onOpenTerms: () => _openTerms(issuer),
+      ),
+      const SizedBox(height: 22),
       ProductButton(
         key: const ValueKey('live-order-review'),
         label: _busy
             ? 'Checking price and fees…'
             : 'Review ${_sell ? 'sell' : 'buy'}',
-        onPressed: _busy ? null : _preview,
+        onPressed: _busy || !accepted ? null : _preview,
       ),
       if (_fundingNeeded ||
           (!_sell && (balance == null || balance == BigInt.zero))) ...[
@@ -891,11 +1104,28 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
   List<Widget> _review(BuildContext context) {
     final terms = _order!['terms'] as Map;
     final asset = _orderAsset!;
+    final issuer = _capabilities!.issuerFor(asset);
     final buying = terms['side'] == 'buy';
-    final inputDecimals = buying ? 6 : asset.decimals,
-        outputDecimals = buying ? asset.decimals : 6;
-    final inputSymbol = buying ? 'USDC' : '${asset.symbol} raw units',
-        outputSymbol = buying ? '${asset.symbol} raw units' : 'USDC';
+    // The multiplier in force when the server reviewed this order. Older
+    // servers send none, which reads as plain token units.
+    final scale = LiveShareScale.fromMultiplier(
+      asset.decimals,
+      terms['stockUiMultiplier'],
+    );
+    String usdc(Object? raw) => '${_usdc(raw as String)} USDC';
+    String quoted(Object? raw) =>
+        '${scale.approx(raw as String)} ${asset.symbol}';
+    String least(Object? raw) =>
+        '${scale.label(raw as String)} ${asset.symbol}';
+    // An issuer fee comes out of every transfer, so for those tokens the
+    // simulated delivery is closer to what arrives than the swap quote.
+    final delivered = terms['simulatedOutputReceivedRaw'];
+    final received =
+        asset.transferFeeBps > 0 &&
+            delivered is String &&
+            RegExp(r'^(?:0|[1-9][0-9]{0,19})$').hasMatch(delivered)
+        ? delivered
+        : terms['quotedOutputAmountRaw'];
     return [
       Text(
         'Review your ${buying ? 'buy' : 'sell'}',
@@ -908,61 +1138,40 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
           children: [
             _line(
               'You pay',
-              '${liveDecimal(terms['inputAmountRaw'] as String, inputDecimals)} $inputSymbol',
+              buying
+                  ? usdc(terms['inputAmountRaw'])
+                  : quoted(terms['inputAmountRaw']),
             ),
-            _line(
-              'You receive ≈',
-              '${liveDecimal(terms['quotedOutputAmountRaw'] as String, outputDecimals)} $outputSymbol',
-            ),
+            _line('You receive ≈', buying ? quoted(received) : usdc(received)),
             _line(
               'Minimum received',
-              '${liveDecimal(terms['minimumOutputAmountRaw'] as String, outputDecimals)} $outputSymbol',
+              buying
+                  ? least(terms['minimumOutputAmountRaw'])
+                  : usdc(terms['minimumOutputAmountRaw']),
             ),
             _line(
               'Network + account fees',
               '≤ ${liveDecimal(terms['totalLamportsUpperBound'] as String, 9)} SOL',
             ),
-            _line('Swap fee', '${(terms['platformFeeBps'] as num) / 100}%'),
+            _line('Swap fee', livePercent(terms['platformFeeBps'] as int)),
+            _line('Issuer', issuer.name),
+            if (asset.transferFeeBps > 0)
+              _line('Issuer fee', livePercent(asset.transferFeeBps)),
           ],
         ),
       ),
-      const SizedBox(height: 16),
-      Text(
-        '${asset.symbol} is a tokenized stock. Raw units can differ from the amount in Holdings.',
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-      CheckboxListTile(
-        key: const ValueKey('live-order-terms'),
-        contentPadding: EdgeInsets.zero,
-        value: _terms,
-        onChanged: _busy
-            ? null
-            : (value) => setState(() => _terms = value ?? false),
-        title: const Text('I’m eligible under the issuer’s terms.'),
-        controlAffinity: ListTileControlAffinity.leading,
-      ),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton(
-          onPressed: _openIssuer,
-          child: const Text('Issuer terms ↗'),
-        ),
-      ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 22),
       ProductButton(
         key: const ValueKey('live-order-confirm'),
         label: _busy ? 'Confirming…' : 'Confirm ${buying ? 'buy' : 'sell'}',
-        onPressed: _busy || !_terms ? null : _confirm,
+        onPressed: _busy ? null : _confirm,
       ),
       TextButton(
         onPressed: _busy
             ? null
             : () {
                 _quoteTimer?.cancel();
-                setState(() {
-                  _order = null;
-                  _terms = false;
-                });
+                setState(() => _order = null);
               },
         child: const Text('Edit amount'),
       ),
@@ -1033,7 +1242,6 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             setState(() {
               _order = null;
               _error = null;
-              _terms = false;
             });
             if (_capabilities?.enabled == true && _asset != null) {
               unawaited(_preview());
@@ -1064,4 +1272,123 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       ],
     ),
   );
+}
+
+/// The issuer behind the chosen token and the one eligibility tick it needs.
+/// The face carries the facts; the tinted bottom edge carries the tick.
+class _IssuerCard extends StatelessWidget {
+  const _IssuerCard({
+    super.key,
+    required this.issuer,
+    required this.transferFeeBps,
+    required this.accepted,
+    required this.onAccepted,
+    required this.onOpenTerms,
+  });
+  final LiveTradingIssuer issuer;
+  final int transferFeeBps;
+  final bool accepted;
+  final ValueChanged<bool>? onAccepted;
+  final VoidCallback onOpenTerms;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = Theme.of(context).textTheme;
+    final facts = [
+      if (issuer.productType.isNotEmpty) issuer.productType,
+      if (issuer.holderRights.isNotEmpty) issuer.holderRights,
+      if (issuer.excludedRegions.isNotEmpty)
+        'Not for residents of ${issuer.excludedRegions.join(', ')}',
+    ];
+    return Material(
+      color: const Color(0xFFEDE7FB),
+      shape: productSquircle(26),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(3, 6, 3, 0),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: Colors.white,
+                shape: productSquircle(23),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Column(
+                  key: const ValueKey('live-order-issuer'),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(issuer.name, style: type.titleMedium),
+                    for (final fact in facts) ...[
+                      const SizedBox(height: 4),
+                      Text(fact, style: type.bodySmall),
+                    ],
+                    if (transferFeeBps > 0) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Issuer fee: ${livePercent(transferFeeBps)} on every buy and sell',
+                        key: const ValueKey('live-order-issuer-fee'),
+                        style: type.bodySmall?.copyWith(
+                          color: ProductColor.loss,
+                        ),
+                      ),
+                    ],
+                    if (issuer.warning.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 1),
+                            child: Icon(
+                              Icons.error_outline_rounded,
+                              size: 18,
+                              color: ProductColor.loss,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              issuer.warning,
+                              key: const ValueKey('live-order-issuer-warning'),
+                              style: type.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          CheckboxListTile(
+            key: const ValueKey('live-order-terms'),
+            value: accepted,
+            onChanged: onAccepted == null
+                ? null
+                : (value) => onAccepted!(value ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: const EdgeInsets.fromLTRB(8, 4, 14, 0),
+            title: Text(issuer.attestation.text, style: type.bodyMedium),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const ValueKey('live-order-issuer-terms'),
+                onPressed: onOpenTerms,
+                child: const Text('Issuer terms ↗'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

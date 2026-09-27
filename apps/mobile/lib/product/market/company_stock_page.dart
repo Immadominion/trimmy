@@ -28,6 +28,21 @@ import 'stock_reasons_tab.dart';
 
 enum MarketStockSection { about, holders, reasons }
 
+/// One of this company's tokens in Real mode, labelled by issuer and symbol,
+/// such as `Ondo · NVDAon`. An unavailable token carries its reason.
+@immutable
+class StockVariantChoice {
+  const StockVariantChoice({
+    required this.mint,
+    required this.label,
+    this.tradeable = true,
+    this.reason,
+  });
+  final String mint, label;
+  final bool tradeable;
+  final String? reason;
+}
+
 class CompanyStockPage extends StatefulWidget {
   const CompanyStockPage({
     super.key,
@@ -56,9 +71,21 @@ class CompanyStockPage extends StatefulWidget {
     this.onRealTrade,
     this.realPositionLabel,
     this.onRetryTrading,
+    this.variantChoices = const [],
+    this.onSelectVariant,
+    this.onPracticeInPaper,
   });
 
   final Future<void> Function(PaperOrderSide side)? onRealTrade;
+
+  /// Every Real mode token of this company, tradeable ones first. With more
+  /// than one, a picker sits above Buy and Sell; [details] carries the
+  /// chosen token.
+  final List<StockVariantChoice> variantChoices;
+  final ValueChanged<String>? onSelectVariant;
+
+  /// Offered when real money cannot trade this company at all.
+  final VoidCallback? onPracticeInPaper;
   final MarketStockDetails details;
   final PaperOrderRepository orderRepository;
   final String Function() clientOrderId;
@@ -401,7 +428,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                         const SizedBox(height: 8),
                         Text(
                           widget.realPositionLabel ??
-                              '${widget.availableShares} ${_company.symbol} units',
+                              '${widget.availableShares} ${_company.primaryVariant?.symbol ?? _company.symbol}',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                       ],
@@ -947,7 +974,17 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                   onPressed: widget.onRetryTrading,
                   child: const Text('Retry'),
                 ),
+              if (widget.onPracticeInPaper != null)
+                TextButton(
+                  key: const ValueKey('stock-practice-paper'),
+                  onPressed: widget.onPracticeInPaper,
+                  child: const Text('Practice in Paper'),
+                ),
               const SizedBox(height: 9),
+            ],
+            if (widget.variantChoices.length > 1) ...[
+              _variantPicker(),
+              const SizedBox(height: 10),
             ],
             Row(
               children: [
@@ -977,6 +1014,123 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
         ),
       ),
     );
+  }
+
+  Widget _variantPicker() {
+    final selected = widget.variantChoices
+        .where((c) => c.tradeable && c.mint == _company.primaryVariant?.mint)
+        .firstOrNull;
+    return Semantics(
+      button: true,
+      label: selected == null
+          ? 'Token versions'
+          : 'Token version ${selected.label}. Change',
+      onTap: _chooseVariant,
+      child: ExcludeSemantics(
+        child: Material(
+          color: const Color(0xFFF0EFF8),
+          shape: marketSquircle(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: const ValueKey('stock-variant-picker'),
+            onTap: _chooseVariant,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 46),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selected?.label ??
+                            '${widget.variantChoices.length} versions',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.expand_more_rounded,
+                      color: MarketPalette.muted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _chooseVariant() async {
+    final selected = _company.primaryVariant?.mint;
+    final mint = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: MarketPalette.paper,
+      shape: marketSquircle(28),
+      builder: (sheet) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheet).height * .8,
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Text(
+                'Versions',
+                style: Theme.of(
+                  sheet,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+            for (final choice in widget.variantChoices)
+              ListTile(
+                key: ValueKey('stock-variant-${choice.mint}'),
+                enabled: choice.tradeable,
+                shape: marketSquircle(16),
+                tileColor: choice.mint == selected
+                    ? const Color(0xFFF1EBFF)
+                    : null,
+                title: Text(
+                  choice.label,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  choice.tradeable
+                      ? 'Tradeable'
+                      : choice.reason ?? 'Not available to trade.',
+                  style: choice.tradeable
+                      ? const TextStyle(
+                          color: MarketPalette.pine,
+                          fontWeight: FontWeight.w700,
+                        )
+                      : null,
+                ),
+                trailing: choice.mint == selected
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: MarketPalette.violet,
+                      )
+                    : null,
+                onTap: choice.tradeable
+                    ? () => Navigator.pop(sheet, choice.mint)
+                    : null,
+              ),
+          ],
+        ),
+      ),
+    );
+    if (mint != null && mint != selected && mounted) {
+      widget.onSelectVariant?.call(mint);
+    }
   }
 
   static String _time(DateTime value) {

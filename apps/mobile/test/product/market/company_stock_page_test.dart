@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/product/market/market.dart';
 
 import 'market_test_support.dart';
+import 'market_variant_test_support.dart';
 import '../../stock_facts_models_test.dart' as facts_fixtures;
 
 final class _FactsRepository implements StockFactsRepository {
@@ -77,6 +78,11 @@ void main() {
     Future<void> Function(PaperOrderSide)? onRealTrade,
     String? availableShares,
     String? realPositionLabel,
+    List<StockVariantChoice> variantChoices = const [],
+    ValueChanged<String>? onSelectVariant,
+    VoidCallback? onPracticeInPaper,
+    bool tradingAvailable = true,
+    String? tradingMessage,
   }) => MaterialApp(
     theme: ThemeData(useMaterial3: true, fontFamily: 'Manrope'),
     builder: (context, child) => MediaQuery(
@@ -94,6 +100,11 @@ void main() {
       realPositionLabel: realPositionLabel,
       factsController: factsController,
       onRealTrade: onRealTrade,
+      variantChoices: variantChoices,
+      onSelectVariant: onSelectVariant,
+      onPracticeInPaper: onPracticeInPaper,
+      tradingAvailable: tradingAvailable,
+      tradingMessage: tradingMessage,
     ),
   );
 
@@ -418,5 +429,130 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('real mode versions', () {
+    const choices = [
+      StockVariantChoice(mint: testMint, label: 'xStocks · AAPLx'),
+      StockVariantChoice(mint: otherIssuerMint, label: 'Backpack · AAPLbp'),
+      StockVariantChoice(
+        mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+        label: 'Ondo · AAPLon',
+        tradeable: false,
+        reason: 'Ondo tokens are not offered in Trimmy yet.',
+      ),
+    ];
+
+    testWidgets('the picker lists every version, tradeable first', (
+      tester,
+    ) async {
+      final picked = <String>[];
+      await tester.pumpWidget(
+        app(
+          details(position: false),
+          onRealTrade: (_) async {},
+          variantChoices: choices,
+          onSelectVariant: picked.add,
+        ),
+      );
+      final picker = find.byKey(const ValueKey('stock-variant-picker'));
+      expect(picker, findsOneWidget);
+      expect(find.text('xStocks · AAPLx'), findsOneWidget);
+      // The picker sits above Buy and Sell.
+      expect(
+        tester.getTopLeft(picker).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const ValueKey('stock-buy-button'))).dy,
+        ),
+      );
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      expect(find.text('Versions'), findsOneWidget);
+      expect(find.text('Tradeable'), findsNWidgets(2));
+      expect(
+        find.text('Ondo tokens are not offered in Trimmy yet.'),
+        findsOneWidget,
+      );
+      final ondo = find.byKey(
+        const ValueKey(
+          'stock-variant-Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+        ),
+      );
+      expect(tester.widget<ListTile>(ondo).enabled, isFalse);
+      await tester.tap(ondo);
+      await tester.pumpAndSettle();
+      expect(picked, isEmpty);
+      await tester.tap(
+        find.byKey(const ValueKey('stock-variant-$otherIssuerMint')),
+      );
+      await tester.pumpAndSettle();
+      expect(picked, [otherIssuerMint]);
+      expect(find.text('Versions'), findsNothing);
+    });
+
+    testWidgets('the picker fits a 320px phone at 200% text', (tester) async {
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        app(
+          details(position: false),
+          textScale: 2,
+          onRealTrade: (_) async {},
+          variantChoices: choices,
+          onSelectVariant: (_) {},
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const ValueKey('stock-variant-picker')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        find.text('Ondo tokens are not offered in Trimmy yet.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('one version needs no picker, and Paper never shows one', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        app(details(position: false), onRealTrade: (_) async {}),
+      );
+      expect(find.byKey(const ValueKey('stock-variant-picker')), findsNothing);
+      await tester.pumpWidget(app(details(position: false)));
+      expect(find.byKey(const ValueKey('stock-variant-picker')), findsNothing);
+    });
+
+    testWidgets('an untradeable company offers Paper and keeps trades off', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      var paper = 0;
+      await tester.pumpWidget(
+        app(
+          details(position: false),
+          onRealTrade: (_) async {},
+          tradingAvailable: false,
+          tradingMessage: 'Not tradeable with real money yet.',
+          onPracticeInPaper: () => paper++,
+        ),
+      );
+      expect(find.text('Not tradeable with real money yet.'), findsOneWidget);
+      for (final key in ['stock-buy-button', 'stock-sell-button']) {
+        expect(
+          tester
+              .getSemantics(find.byKey(ValueKey(key)))
+              .getSemanticsData()
+              .hasAction(SemanticsAction.tap),
+          isFalse,
+        );
+      }
+      await tester.tap(find.text('Practice in Paper'));
+      expect(paper, 1);
+      semantics.dispose();
+    });
   });
 }

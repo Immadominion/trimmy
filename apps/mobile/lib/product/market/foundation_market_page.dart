@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../markets/followed_stocks_controller.dart';
 import '../../markets/followed_stocks.dart';
+import 'live_trading.dart';
 import 'market_craft.dart';
 import 'market_models.dart';
 import 'market_research_gateway.dart';
@@ -33,8 +34,14 @@ class FoundationMarketPage extends StatefulWidget {
     this.statusMessage,
     this.onRetry,
     this.onRefresh,
+    this.realMoney = false,
+    this.liveCapabilities,
   });
 
+  /// The app shell passes the money mode and trading capabilities in, so this
+  /// page never changes mode on its own. Paper mode ignores capabilities.
+  final bool realMoney;
+  final LiveTradingCapabilities? liveCapabilities;
   final int total;
   final bool hasMore, loadingMore;
   final String? loadMoreMessage;
@@ -133,9 +140,18 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
     }
   }
 
+  /// Real mode marks what can be traded. Without a live capabilities read, or
+  /// while trading is paused, nothing claims to be tradeable.
+  bool get _marksTradeable =>
+      widget.realMoney && widget.liveCapabilities?.enabled == true;
+
+  bool _tradeable(MarketCompany company) =>
+      _marksTradeable && widget.liveCapabilities!.tradeable(company);
+
   List<MarketList> get _availableLists => [
     MarketList.all,
     if (widget.following != null) MarketList.following,
+    if (_marksTradeable) MarketList.tradeable,
   ];
 
   MarketList get _activeList {
@@ -222,6 +238,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
       if (list == MarketList.following) {
         return following?.isFollowing(company.assetId) ?? false;
       }
+      if (list == MarketList.tradeable) return _tradeable(company);
       return list == MarketList.all || company.lists.contains(list);
     }).toList();
     switch (_activeSort) {
@@ -250,7 +267,17 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
           (a, b) => (b.floorHolders ?? -1).compareTo(a.floorHolders ?? -1),
         );
     }
-    return companies;
+    if (!_marksTradeable) return companies;
+    // Tradeable companies first, each group keeping the order chosen above.
+    final tradeable = companies.where(_tradeable).toList();
+    if (tradeable.isEmpty || tradeable.length == companies.length) {
+      return companies;
+    }
+    final ids = {for (final company in tradeable) company.assetId};
+    return [
+      ...tradeable,
+      ...companies.where((company) => !ids.contains(company.assetId)),
+    ];
   }
 
   @override
@@ -414,6 +441,8 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                   Text(
                     _activeList == MarketList.following
                         ? 'Your watchlist starts here.'
+                        : _activeList == MarketList.tradeable
+                        ? 'No tradeable stocks here yet.'
                         : 'No stocks to show yet.',
                     style: const TextStyle(
                       fontSize: 20,
@@ -447,6 +476,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                   child: MarketCompanyCard(
                     company: company,
+                    tradeable: _tradeable(company),
                     followed:
                         widget.following?.isFollowing(company.assetId) ?? false,
                     onTap: () {
@@ -588,11 +618,15 @@ class MarketCompanyCard extends StatelessWidget {
     required this.followed,
     required this.onTap,
     this.onLongPress,
+    this.tradeable = false,
   });
   final MarketCompany company;
   final bool followed;
   final VoidCallback onTap;
   final Future<void> Function()? onLongPress;
+
+  /// Real mode: at least one of this company's tokens can be traded.
+  final bool tradeable;
 
   @override
   Widget build(BuildContext context) {
@@ -664,9 +698,67 @@ class MarketCompanyCard extends StatelessWidget {
         ),
       ],
     );
+    final symbol = company.primaryVariant?.symbol ?? cashtag(company.symbol);
+    const tagStyle = TextStyle(fontSize: 12, color: MarketPalette.muted);
+    final Widget tags = tradeable
+        ? Wrap(
+            spacing: 8,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                symbol,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tagStyle,
+              ),
+              Text(
+                'Tradeable',
+                key: ValueKey('market-tradeable-${company.assetId}'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tagStyle.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: MarketPalette.pine,
+                ),
+              ),
+            ],
+          )
+        : Text(symbol, overflow: TextOverflow.ellipsis, style: tagStyle);
+    final actions = <Widget>[
+      if (onLongPress != null)
+        TextButton(
+          key: ValueKey('market-follow-${company.assetId}'),
+          style: TextButton.styleFrom(
+            foregroundColor: MarketPalette.ink,
+            minimumSize: const Size(44, 44),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.standard,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+          onPressed: onLongPress,
+          child: Text(
+            followed ? 'Following' : '+ Follow',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: MarketPalette.ink,
+          minimumSize: const Size(44, 44),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.standard,
+        ),
+        child: const Text(
+          'Open',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
+      ),
+    ];
     return Semantics(
       label:
-          '${company.name}, ${company.symbol}, ${shortPrice(company.priceUsd)}, ${change == null ? 'change unavailable' : signedPercent(change)}',
+          '${company.name}, ${company.symbol}, ${shortPrice(company.priceUsd)}, ${change == null ? 'change unavailable' : signedPercent(change)}${tradeable ? ', tradeable' : ''}',
       child: Material(
         color: tint,
         shape: marketSquircle(24),
@@ -708,52 +800,23 @@ class MarketCompanyCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      company.primaryVariant?.symbol ?? cashtag(company.symbol),
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: MarketPalette.muted,
-                      ),
+              // Large text stacks a tradeable card's actions under its tags,
+              // so the marker never has to squeeze in beside them.
+              child: large && tradeable
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 8),
+                        tags,
+                        Wrap(alignment: WrapAlignment.end, children: actions),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: tags),
+                        ...actions,
+                      ],
                     ),
-                  ),
-                  if (onLongPress != null)
-                    TextButton(
-                      key: ValueKey('market-follow-${company.assetId}'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: MarketPalette.ink,
-                        minimumSize: const Size(44, 44),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.standard,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      onPressed: onLongPress,
-                      child: Text(
-                        followed ? 'Following' : '+ Follow',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  TextButton(
-                    onPressed: onTap,
-                    style: TextButton.styleFrom(
-                      foregroundColor: MarketPalette.ink,
-                      minimumSize: const Size(44, 44),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.standard,
-                    ),
-                    child: const Text(
-                      'Open',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),

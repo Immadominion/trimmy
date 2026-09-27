@@ -15,7 +15,7 @@ export function registerRaydiumStockQuoteRoute(app: FastifyInstance,
       type: 'object', additionalProperties: false,
       required: ['assetId', 'variantMint', 'side', 'amountRaw'],
       properties: {
-        assetId: {type: 'string', enum: STOCK_TRADING_ASSETS.map(asset => asset.assetId)},
+        assetId: {type: 'string', enum: [...new Set(STOCK_TRADING_ASSETS.map(asset => asset.assetId))]},
         variantMint: {type: 'string', enum: STOCK_TRADING_ASSETS.map(asset => asset.mint)},
         side: {type: 'string', enum: ['buy', 'sell']},
         amountRaw: {type: 'string', pattern: '^[1-9][0-9]{0,8}$', maxLength: 9},

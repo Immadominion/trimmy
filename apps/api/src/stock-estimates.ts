@@ -11,7 +11,7 @@ export interface StockEstimateInput {
   readonly assetId: StockTradingAssetId;
   readonly variantMint: string;
   readonly side: 'buy' | 'sell';
-  /** Raw integer input units: buy USDC (6 decimals), sell the selected stock token (8 decimals). */
+  /** Raw integer input units: buy USDC (6 decimals), sell the selected stock token (its issuer's decimals). */
   readonly amountRaw: string;
 }
 export interface StockEstimate extends MarketEstimate {

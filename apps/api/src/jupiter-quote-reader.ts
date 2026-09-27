@@ -3,9 +3,11 @@ import { parseRawAmount } from '@trimmy/domain';
 import { STOCK_TRADING_ASSETS } from './stock-trading-catalog.js';
 import type { StockTradingSymbol } from './stock-trading-catalog.js';
 
+// Active assets only: a suspended identity stays recognizable for history and
+// holdings (stock-trading-catalog.ts) but can no longer be quoted.
 const stocks = Object.fromEntries(STOCK_TRADING_ASSETS.map(asset => [asset.symbol, Object.freeze({
   symbol: asset.symbol, mint: asset.mint, decimals: asset.decimals, maxInputRaw: asset.maxSellInputRaw,
-})])) as Readonly<Record<StockTradingSymbol, Readonly<{symbol: StockTradingSymbol; mint: string; decimals: 8; maxInputRaw: string}>>>;
+})])) as Readonly<Record<StockTradingSymbol, Readonly<{symbol: StockTradingSymbol; mint: string; decimals: number; maxInputRaw: string}>>>;
 export const JUPITER_QUOTE_ASSETS = Object.freeze({
   SOL: Object.freeze({symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112', decimals: 9, maxInputRaw: '1000000000'}),
   USDC: Object.freeze({symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6, maxInputRaw: '100000000'}),

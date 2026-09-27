@@ -9,18 +9,70 @@ import 'package:trimmy/account/account_controller.dart';
 import 'package:trimmy/account/account_data.dart';
 import 'package:trimmy/markets/discovery.dart';
 import 'package:trimmy/practice_sync/http_transport.dart';
+import 'package:trimmy/product/design/product_components.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/market/live_order_flow.dart';
 import 'package:trimmy/product/market/live_trading.dart';
 import 'package:trimmy/product/market/market_models.dart';
 import '../../support/account_data_fixtures.dart' as fixtures;
+import 'live_trading_test_support.dart';
 
 const _appleMint = 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
 const _orderId = '44444444-4444-4444-8444-444444444444';
 final _origin = Uri.parse('https://trimmy.example');
+final _termsKey = 'trimmy.issuer-terms.v1.${fixtures.account}';
+String _accepted(String issuerId) => jsonEncode([issuerId, termsVersion]);
 
-Map<String, Object?> _caps({bool enabled = true}) => {
-  'enabled': enabled,
+Map<String, Object?> _caps({
+  bool enabled = true,
+  String ondoSellLimit = '1000000000',
+}) => capabilitiesV2Json(
+  enabled: enabled,
+  assets: [
+    assetJson(
+      assetId: 'apple',
+      mint: _appleMint,
+      symbol: 'AAPLx',
+      name: 'Apple',
+    ),
+    assetJson(
+      assetId: 'nvidia',
+      mint: fixtures.nvidiaMint,
+      symbol: 'NVDAx',
+      name: 'NVIDIA',
+    ),
+    assetJson(
+      assetId: 'nvidia',
+      mint: ondoNvidiaMint,
+      symbol: 'NVDAon',
+      name: 'NVIDIA Ondo',
+      issuerId: 'ondo',
+      decimals: 9,
+      maxSellInputRaw: ondoSellLimit,
+    ),
+    assetJson(
+      assetId: 'nvidia',
+      mint: backpackNvidiaMint,
+      symbol: 'NVDAbp',
+      name: 'NVIDIA Backpack',
+      issuerId: 'backpack',
+      decimals: 6,
+    ),
+    assetJson(
+      assetId: 'spacex',
+      mint: preStocksMint,
+      symbol: 'SPACEX',
+      name: 'SpaceX',
+      issuerId: 'prestocks',
+      decimals: 9,
+      transferFeeBps: 300,
+    ),
+  ],
+);
+
+/// The shape served by servers from before issuer terms.
+Map<String, Object?> _legacyCaps() => {
+  'enabled': true,
   'network': 'solana:mainnet-beta',
   'minimumSolBalanceLamports': '5000',
   'assets': [
@@ -39,6 +91,7 @@ Map<String, Object?> _caps({bool enabled = true}) => {
       },
   ],
 };
+
 MarketCompany _company(String assetId, {bool unsupportedPrimary = false}) {
   final mint = assetId == 'apple' ? _appleMint : fixtures.nvidiaMint;
   Map<String, Object?> variant(String value) => {
@@ -70,12 +123,23 @@ MarketCompany _company(String assetId, {bool unsupportedPrimary = false}) {
   );
 }
 
+/// NVIDIA as discovery lists it with all three issuers' tokens.
+MarketCompany _nvidia() => discoveryCompany('nvidia', [
+  (fixtures.nvidiaMint, 900000),
+  (ondoNvidiaMint, 400000),
+  (backpackNvidiaMint, 1000),
+]);
+
 Map<String, Object?> _order(
   String status, {
   String side = 'buy',
   String raw = '5000000',
   String mint = fixtures.nvidiaMint,
   int? confirmedSlot,
+  String? quotedOutput,
+  String? minimumOutput,
+  String? multiplier,
+  String? delivered,
 }) => {
   'id': _orderId,
   'status': status,
@@ -93,10 +157,14 @@ Map<String, Object?> _order(
     'inputMint': side == 'buy' ? liveUsdcMint : mint,
     'outputMint': side == 'buy' ? mint : liveUsdcMint,
     'inputAmountRaw': raw,
-    'quotedOutputAmountRaw': side == 'buy' ? '1234567' : '5000000',
-    'minimumOutputAmountRaw': side == 'buy' ? '1230000' : '4950000',
+    'quotedOutputAmountRaw':
+        quotedOutput ?? (side == 'buy' ? '1234567' : '5000000'),
+    'minimumOutputAmountRaw':
+        minimumOutput ?? (side == 'buy' ? '1230000' : '4950000'),
     'totalLamportsUpperBound': '5000',
     'platformFeeBps': 0,
+    'stockUiMultiplier': ?multiplier,
+    'simulatedOutputReceivedRaw': ?delivered,
   },
 };
 http.Response _reply(Object? value, {int status = 200}) => http.Response(
@@ -115,6 +183,27 @@ class _Reader implements AccountPortfolioReader {
     usdc['availableToTradeRaw'] = '80000000';
     usdc['hasFrozenAccounts'] = false;
   }
+
+  /// Adds a 9 decimal Ondo holding: 1 token that shows as 1.5 shares.
+  void holdOndo({String display = '1.5'}) {
+    final balances = (envelope['holdings'] as Map)['balances'] as Map;
+    (balances['tokens'] as List).add({
+      'assetId': 'nvidia',
+      'name': 'NVIDIA Ondo',
+      ...fixtures.tokenBalance(
+        symbol: 'NVDAon',
+        mint: ondoNvidiaMint,
+        decimals: 9,
+        amountRaw: '1000000000',
+        slot: 447040361,
+      ),
+      'displayAmount': display,
+      'availableToTradeRaw': '1000000000',
+      'displayResolution': 'rpc_ui_amount',
+      'displayUnits': 'token_units',
+    });
+  }
+
   @override
   String get accountId => fixtures.account;
   @override
@@ -192,7 +281,11 @@ void main() {
   late AccountPortfolioRepository portfolio;
   late _Account account;
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // Most orders here are xStocks; that issuer's current terms are ticked.
+    SharedPreferences.setMockInitialValues({
+      _termsKey: [_accepted('xstocks')],
+    });
+    LiveIssuerTerms.resetSession();
     reader = _Reader();
     portfolio = AccountPortfolioRepository(
       reader: reader,
@@ -213,6 +306,7 @@ void main() {
     WidgetTester tester,
     Future<http.Response> Function(http.Request) handler, {
     MarketCompany? company,
+    String? variantMint,
     bool sell = false,
   }) async {
     await tester.pumpWidget(
@@ -222,6 +316,7 @@ void main() {
           account: account,
           origin: _origin,
           company: company ?? _company('nvidia'),
+          variantMint: variantMint,
           initialSell: sell,
           httpClient: MockClient(handler),
           onBack: () {},
@@ -244,10 +339,29 @@ void main() {
     await pump(tester);
   }
 
+  String field(WidgetTester tester) => tester
+      .widget<TextField>(find.byKey(const ValueKey('live-order-amount')))
+      .controller!
+      .text;
+
+  bool reviewEnabled(WidgetTester tester) =>
+      tester
+          .widget<ProductButton>(
+            find.byKey(const ValueKey('live-order-review')),
+          )
+          .onPressed !=
+      null;
+
   Future<http.Response> defaults(http.Request request) async =>
       request.url.path.endsWith('capabilities')
       ? _reply(_caps())
       : _reply({'order': null});
+
+  void expectNoRawUnits() {
+    expect(find.textContaining('raw units'), findsNothing);
+    expect(find.textContaining('Raw token units'), findsNothing);
+    expect(find.textContaining('raw token units'), findsNothing);
+  }
 
   testWidgets(
     'buys capability matched variant even when discovery primary is different',
@@ -274,9 +388,13 @@ void main() {
         'variantMint': fixtures.nvidiaMint,
         'side': 'buy',
         'amountRaw': '2123456',
+        'termsAccepted': {'issuerId': 'xstocks', 'version': termsVersion},
       });
-      expect(find.text('0.01234567 NVDAx raw units'), findsOneWidget);
+      // No reviewed multiplier from this server: plain token units.
+      expect(find.text('0.012346 NVDAx'), findsOneWidget);
+      expect(find.text('0.0123 NVDAx'), findsOneWidget);
       expect(find.text('AAPLx'), findsNothing);
+      expectNoRawUnits();
       expect(account.signatures, 0);
       await clean(tester);
     },
@@ -294,36 +412,25 @@ void main() {
               'reviewed',
               side: 'sell',
               raw: preview!['amountRaw'] as String,
+              multiplier: '2',
             ),
           });
         }
         return defaults(request);
       }, sell: true);
-      expect(find.text('1 NVDAx raw units available'), findsOneWidget);
-      expect(find.text('Raw token units'), findsOneWidget);
-      expect(
-        find.textContaining('Orders use raw token units.'),
-        findsOneWidget,
-      );
+      // 1 spendable token shows as 2 shares, as it does in Holdings.
+      expect(find.text('2 NVDAx available'), findsOneWidget);
+      expect(find.text('You sell'), findsOneWidget);
+      expectNoRawUnits();
       await tap(tester, 'live-order-percent-25');
-      expect(
-        tester
-            .widget<TextField>(find.byKey(const ValueKey('live-order-amount')))
-            .controller!
-            .text,
-        '0.25',
-      );
+      expect(field(tester), '0.5');
       await tap(tester, 'live-order-max');
-      expect(
-        tester
-            .widget<TextField>(find.byKey(const ValueKey('live-order-amount')))
-            .controller!
-            .text,
-        '1',
-      );
+      expect(field(tester), '2');
       await tap(tester, 'live-order-review');
       expect(preview!['amountRaw'], '100000000');
       expect(preview!['side'], 'sell');
+      expect(find.text('2 NVDAx'), findsOneWidget);
+      expectNoRawUnits();
       await clean(tester);
     },
   );
@@ -363,13 +470,12 @@ void main() {
     reader.envelope = fixtures.holdingsEnvelopeV2();
     ((reader.envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
     await mount(tester, defaults, sell: true);
-    final field = find.byKey(const ValueKey('live-order-amount'));
-    expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+    expect(field(tester), isEmpty);
     reader.envelope = original;
     await account.refreshPortfolio();
     await pump(tester);
-    expect(tester.widget<TextField>(field).controller!.text, '1');
-    expect(find.text('1 NVDAx raw units available'), findsOneWidget);
+    expect(field(tester), '2');
+    expect(find.text('2 NVDAx available'), findsOneWidget);
     await clean(tester);
   });
 
@@ -380,12 +486,12 @@ void main() {
     reader.envelope = fixtures.holdingsEnvelopeV2();
     ((reader.envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
     await mount(tester, defaults, sell: true);
-    final field = find.byKey(const ValueKey('live-order-amount'));
-    await tester.enterText(field, '0.25');
+    final amount = find.byKey(const ValueKey('live-order-amount'));
+    await tester.enterText(amount, '0.25');
     reader.envelope = original;
     await account.refreshPortfolio();
     await pump(tester);
-    expect(tester.widget<TextField>(field).controller!.text, '0.25');
+    expect(field(tester), '0.25');
     await clean(tester);
   });
 
@@ -590,10 +696,14 @@ void main() {
     },
   );
 
-  test('a trade-cap rejection has actionable copy', () {
+  test('trade-cap and terms rejections have actionable copy', () {
     expect(
       const LiveOrderFailure('TRADE_LIMIT').message,
       'This order is above the current trade limit.',
+    );
+    expect(
+      const LiveOrderFailure('TERMS_REQUIRED').message,
+      'Confirm the issuer terms to continue.',
     );
     portfolio.dispose();
     account.dispose();
@@ -635,7 +745,8 @@ void main() {
         return defaults(request);
       });
       await tap(tester, 'live-order-review');
-      await tap(tester, 'live-order-terms');
+      // Eligibility was ticked before the quote; the review asks nothing more.
+      expect(find.byKey(const ValueKey('live-order-terms')), findsNothing);
       await tap(tester, 'live-order-confirm');
       expect(find.text('Confirming your trade'), findsOneWidget);
       expect(
@@ -675,5 +786,567 @@ void main() {
     expect(find.byKey(const ValueKey('live-order-confirm')), findsNothing);
     expect(account.signatures, 0);
     await clean(tester);
+  });
+
+  group('issuer terms', () {
+    testWidgets(
+      'the issuer card gates Review until ticked and is remembered per version',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        var quotes = 0;
+        Future<http.Response> handler(http.Request request) async {
+          if (request.url.path.endsWith('preview')) quotes++;
+          return defaults(request);
+        }
+
+        await mount(tester, handler);
+        expect(find.text('xStocks'), findsOneWidget);
+        expect(find.text('Tracker certificate'), findsOneWidget);
+        expect(
+          find.text('No voting rights. Dividends are reinvested.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Not for residents of United States, United Kingdom, Canada, Australia',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('I accept the xStocks terms.'), findsOneWidget);
+        expect(find.text('Issuer terms ↗'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('live-order-issuer-fee')),
+          findsNothing,
+        );
+        expect(reviewEnabled(tester), isFalse);
+        await tap(tester, 'live-order-review');
+        expect(quotes, 0);
+
+        await tap(tester, 'live-order-terms');
+        expect(reviewEnabled(tester), isTrue);
+        expect(
+          (await SharedPreferences.getInstance()).getStringList(_termsKey),
+          [_accepted('xstocks')],
+        );
+
+        // A new flow in a later session is not asked again.
+        await tester.pumpWidget(const SizedBox());
+        LiveIssuerTerms.resetSession();
+        await mount(tester, handler);
+        expect(reviewEnabled(tester), isTrue);
+
+        // Unticking withdraws the saved acceptance.
+        await tap(tester, 'live-order-terms');
+        expect(reviewEnabled(tester), isFalse);
+        expect(
+          (await SharedPreferences.getInstance()).getStringList(_termsKey),
+          isEmpty,
+        );
+        await clean(tester);
+      },
+    );
+
+    testWidgets(
+      'a chosen Ondo token needs Ondo’s tick and sends it with the quote',
+      (tester) async {
+        Map<String, dynamic>? preview;
+        await mount(
+          tester,
+          (request) async {
+            if (request.url.path.endsWith('preview')) {
+              preview = jsonDecode(request.body) as Map<String, dynamic>;
+              return _reply({
+                'order': _order(
+                  'reviewed',
+                  raw: preview!['amountRaw'] as String,
+                  mint: ondoNvidiaMint,
+                  quotedOutput: '29510000',
+                  minimumOutput: '29000000',
+                  multiplier: '5',
+                ),
+              });
+            }
+            return defaults(request);
+          },
+          company: _nvidia(),
+          variantMint: ondoNvidiaMint,
+        );
+        expect(find.text('Buy NVDAon'), findsOneWidget);
+        expect(find.text('Ondo'), findsOneWidget);
+        expect(find.text('Not for residents of United States'), findsOneWidget);
+        // xStocks was accepted, but that does not cover another issuer.
+        expect(reviewEnabled(tester), isFalse);
+        await tap(tester, 'live-order-terms');
+        await tap(tester, 'live-order-review');
+        expect(preview, {
+          'assetId': 'nvidia',
+          'variantMint': ondoNvidiaMint,
+          'side': 'buy',
+          'amountRaw': '5000000',
+          'termsAccepted': {'issuerId': 'ondo', 'version': termsVersion},
+        });
+        // The reviewed multiplier is 5: each token is five shares.
+        expect(find.text('0.14755 NVDAon'), findsOneWidget);
+        expect(find.text('0.145 NVDAon'), findsOneWidget);
+        expect(find.text('Issuer'), findsOneWidget);
+        expect(find.text('Issuer fee'), findsNothing);
+        expectNoRawUnits();
+        await clean(tester);
+      },
+    );
+
+    testWidgets(
+      'TERMS_REQUIRED clears the tick, rereads the terms and asks again',
+      (tester) async {
+        var capabilityReads = 0, quotes = 0;
+        await mount(tester, (request) async {
+          if (request.url.path.endsWith('capabilities')) {
+            capabilityReads++;
+            return _reply(_caps());
+          }
+          if (request.url.path.endsWith('preview')) {
+            quotes++;
+            return _reply({'code': 'TERMS_REQUIRED'}, status: 409);
+          }
+          return _reply({'order': null});
+        });
+        expect(reviewEnabled(tester), isTrue);
+        await tap(tester, 'live-order-review');
+        expect(quotes, 1);
+        expect(
+          find.text('Confirm the issuer terms to continue.'),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<CheckboxListTile>(
+                find.byKey(const ValueKey('live-order-terms')),
+              )
+              .value,
+          isFalse,
+        );
+        expect(reviewEnabled(tester), isFalse);
+        expect(capabilityReads, 2);
+        expect(
+          (await SharedPreferences.getInstance()).getStringList(_termsKey),
+          isEmpty,
+        );
+        expect(find.byKey(const ValueKey('live-order-confirm')), findsNothing);
+        expect(account.signatures, 0);
+        await clean(tester);
+      },
+    );
+
+    testWidgets(
+      'a legacy server keeps the generic tick and gets no terms field',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        Map<String, dynamic>? preview;
+        await mount(tester, (request) async {
+          if (request.url.path.endsWith('capabilities')) {
+            return _reply(_legacyCaps());
+          }
+          if (request.url.path.endsWith('preview')) {
+            preview = jsonDecode(request.body) as Map<String, dynamic>;
+            return _reply({'order': _order('reviewed')});
+          }
+          return _reply({'order': null});
+        });
+        expect(find.text('xStocks'), findsOneWidget);
+        expect(
+          find.text('I’m eligible under the issuer’s terms.'),
+          findsOneWidget,
+        );
+        expect(find.text('Tracker certificate'), findsNothing);
+        expect(reviewEnabled(tester), isFalse);
+        await tap(tester, 'live-order-terms');
+        await tap(tester, 'live-order-review');
+        expect(preview, {
+          'assetId': 'nvidia',
+          'variantMint': fixtures.nvidiaMint,
+          'side': 'buy',
+          'amountRaw': '5000000',
+        });
+        expect(
+          find.byKey(const ValueKey('live-order-confirm')),
+          findsOneWidget,
+        );
+        await clean(tester);
+      },
+    );
+
+    testWidgets('the issuer’s warning sits above the tick', (tester) async {
+      const warning =
+          'This product is not suitable for all investors. Read the terms.';
+      await mount(tester, (request) async {
+        if (request.url.path.endsWith('capabilities')) {
+          final caps = _caps();
+          ((caps['issuers'] as List).first as Map)['warning'] = warning;
+          return _reply(caps);
+        }
+        return _reply({'order': null});
+      });
+      final shown = find.byKey(const ValueKey('live-order-issuer-warning'));
+      expect(tester.widget<Text>(shown).data, warning);
+      expect(
+        tester.getTopLeft(shown).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const ValueKey('live-order-terms'))).dy,
+        ),
+      );
+      await clean(tester);
+    });
+
+    testWidgets('the entry fits a 320px phone at 200% text', (tester) async {
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('prestocks')],
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: LiveOrderFlow(
+            account: account,
+            origin: _origin,
+            company: discoveryCompany('spacex', [
+              (preStocksMint, null),
+            ], name: 'SpaceX'),
+            httpClient: MockClient((request) async {
+              if (request.url.path.endsWith('capabilities')) {
+                final caps = _caps();
+                for (final issuer in caps['issuers'] as List) {
+                  (issuer as Map)['warning'] =
+                      'The issuer does not recognise wallet holders as '
+                      'shareholders. Read the terms before you trade.';
+                }
+                return _reply(caps);
+              }
+              return _reply({'order': null});
+            }),
+            onBack: () {},
+            onAddMoney: () async {},
+          ),
+        ),
+      );
+      await pump(tester);
+      expect(tester.takeException(), isNull);
+      final page = find.byType(SingleChildScrollView).first;
+      for (var index = 0; index < 6; index++) {
+        await tester.drag(page, const Offset(0, -300));
+        await pump(tester);
+        expect(tester.takeException(), isNull);
+      }
+      expect(
+        find.byKey(const ValueKey('live-order-issuer-warning')),
+        findsOneWidget,
+      );
+      await clean(tester);
+    });
+
+    testWidgets('a token of an issuer that is not offered gets no tick', (
+      tester,
+    ) async {
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('capabilities')) {
+            final caps = _caps();
+            final ondo =
+                (caps['issuers'] as List).firstWhere(
+                      (issuer) => (issuer as Map)['issuerId'] == 'ondo',
+                    )
+                    as Map;
+            ondo
+              ..['offered'] = false
+              ..['notOfferedReason'] = 'Ondo is not offered in Trimmy yet.';
+            return _reply(caps);
+          }
+          return _reply({'order': null});
+        },
+        company: _nvidia(),
+        variantMint: ondoNvidiaMint,
+      );
+      expect(find.text('This token isn’t tradable here yet'), findsOneWidget);
+      expect(find.text('Ondo is not offered in Trimmy yet.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('live-order-terms')), findsNothing);
+      expect(find.byKey(const ValueKey('live-order-review')), findsNothing);
+      await clean(tester);
+    });
+
+    testWidgets('an issuer fee shows before the quote and in the review', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('prestocks')],
+      });
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('preview')) {
+            return _reply({
+              'order': _order(
+                'reviewed',
+                mint: preStocksMint,
+                quotedOutput: '48500000',
+                minimumOutput: '48000000',
+                multiplier: '1',
+                delivered: '47000000',
+              ),
+            });
+          }
+          return defaults(request);
+        },
+        company: discoveryCompany('spacex', [
+          (preStocksMint, null),
+        ], name: 'SpaceX'),
+      );
+      expect(find.text('PreStocks'), findsOneWidget);
+      expect(find.text('Issuer fee: 3% on every buy and sell'), findsOneWidget);
+      await tap(tester, 'live-order-review');
+      expect(find.text('Issuer fee'), findsOneWidget);
+      expect(find.text('3%'), findsOneWidget);
+      expect(find.text('PreStocks'), findsOneWidget);
+      // After the 3% fee the simulation delivered less than the swap quote.
+      expect(find.text('0.047 SPACEX'), findsOneWidget);
+      expect(find.text('0.0485 SPACEX'), findsNothing);
+      expect(find.text('0.048 SPACEX'), findsOneWidget);
+      await clean(tester);
+    });
+  });
+
+  group('shares', () {
+    testWidgets(
+      'a 9 decimal sell converts shares through the wallet multiplier',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          _termsKey: [_accepted('ondo')],
+        });
+        reader.holdOndo();
+        Map<String, dynamic>? preview;
+        await mount(
+          tester,
+          (request) async {
+            if (request.url.path.endsWith('preview')) {
+              preview = jsonDecode(request.body) as Map<String, dynamic>;
+              return _reply({
+                'order': _order(
+                  'reviewed',
+                  side: 'sell',
+                  raw: preview!['amountRaw'] as String,
+                  mint: ondoNvidiaMint,
+                  multiplier: '1.5',
+                ),
+              });
+            }
+            return defaults(request);
+          },
+          company: _nvidia(),
+          variantMint: ondoNvidiaMint,
+          sell: true,
+        );
+        // 1 token shows as 1.5 shares.
+        expect(find.text('1.5 NVDAon available'), findsOneWidget);
+        expect(find.text('Order limit: 1.5 NVDAon'), findsOneWidget);
+        expect(field(tester), '1.5');
+        await tester.enterText(
+          find.byKey(const ValueKey('live-order-amount')),
+          '0.3',
+        );
+        await tap(tester, 'live-order-review');
+        expect(preview!['amountRaw'], '200000000');
+        expect(find.text('0.3 NVDAon'), findsOneWidget);
+        expect(find.text('5 USDC'), findsOneWidget);
+        expectNoRawUnits();
+        await clean(tester);
+      },
+    );
+
+    testWidgets('Max says when the order limit capped it', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('ondo')],
+      });
+      reader.holdOndo();
+      Map<String, dynamic>? preview;
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('capabilities')) {
+            return _reply(_caps(ondoSellLimit: '500000000'));
+          }
+          if (request.url.path.endsWith('preview')) {
+            preview = jsonDecode(request.body) as Map<String, dynamic>;
+            return _reply({
+              'order': _order(
+                'reviewed',
+                side: 'sell',
+                raw: preview!['amountRaw'] as String,
+                mint: ondoNvidiaMint,
+              ),
+            });
+          }
+          return _reply({'order': null});
+        },
+        company: _nvidia(),
+        variantMint: ondoNvidiaMint,
+        sell: true,
+      );
+      expect(find.text('1.5 NVDAon available'), findsOneWidget);
+      await tap(tester, 'live-order-percent-25');
+      expect(field(tester), '0.375');
+      expect(find.text('Order limit: 0.75 NVDAon'), findsOneWidget);
+      await tap(tester, 'live-order-percent-75');
+      expect(field(tester), '0.75');
+      expect(
+        find.text('75% capped at the order limit of 0.75 NVDAon.'),
+        findsOneWidget,
+      );
+      await tap(tester, 'live-order-max');
+      expect(
+        find.text('Max capped at the order limit of 0.75 NVDAon.'),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('live-order-amount')),
+        '0.9',
+      );
+      // Let the field's caret scroll settle before tapping below it.
+      await pump(tester);
+      expect(find.text('Order limit: 0.75 NVDAon'), findsOneWidget);
+      await tap(tester, 'live-order-review');
+      expect(find.text('Up to 0.75 NVDAon per order.'), findsOneWidget);
+      expect(preview, isNull);
+      await tap(tester, 'live-order-max');
+      await tap(tester, 'live-order-review');
+      expect(preview!['amountRaw'], '500000000');
+      await clean(tester);
+    });
+
+    testWidgets('a 6 decimal token reads in its own precision', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('backpack')],
+      });
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('preview')) {
+            return _reply({
+              'order': _order(
+                'reviewed',
+                mint: backpackNvidiaMint,
+                quotedOutput: '2500000',
+                minimumOutput: '2475000',
+              ),
+            });
+          }
+          return defaults(request);
+        },
+        company: _nvidia(),
+        variantMint: backpackNvidiaMint,
+      );
+      expect(find.text('Buy NVDAbp'), findsOneWidget);
+      await tap(tester, 'live-order-review');
+      expect(find.text('2.5 NVDAbp'), findsOneWidget);
+      expect(find.text('2.475 NVDAbp'), findsOneWidget);
+      expect(find.text('Backpack'), findsOneWidget);
+      await clean(tester);
+    });
+
+    testWidgets('a chosen token that stops trading is never swapped out', (
+      tester,
+    ) async {
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('capabilities')) {
+            final caps = _caps();
+            (caps['assets'] as List).removeWhere(
+              (asset) => (asset as Map)['mint'] == ondoNvidiaMint,
+            );
+            return _reply(caps);
+          }
+          return _reply({'order': null});
+        },
+        company: _nvidia(),
+        variantMint: ondoNvidiaMint,
+      );
+      expect(find.text('This token isn’t tradable here yet'), findsOneWidget);
+      expect(find.text('Buy NVDAx'), findsNothing);
+      await clean(tester);
+    });
+
+    testWidgets('an unusable reviewed multiplier reads as token units', (
+      tester,
+    ) async {
+      await mount(tester, (request) async {
+        if (request.url.path.endsWith('preview')) {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          return _reply({
+            'order': _order(
+              'reviewed',
+              side: 'sell',
+              raw: body['amountRaw'] as String,
+              multiplier: 'NaN',
+            ),
+          });
+        }
+        return defaults(request);
+      }, sell: true);
+      await tap(tester, 'live-order-max');
+      await tap(tester, 'live-order-review');
+      // The wallet counts 2 shares, but without a usable multiplier the
+      // review shows the 1 token being sold, never a guess.
+      expect(find.text('1 NVDAx'), findsOneWidget);
+      expect(find.text('2 NVDAx'), findsNothing);
+      await clean(tester);
+    });
+
+    testWidgets('a typed sell reads back unchanged through a real multiplier', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('ondo')],
+      });
+      // The wallet truncates 1.0009180758490996 shares per token.
+      reader.holdOndo(display: '1.000918075');
+      Map<String, dynamic>? preview;
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('preview')) {
+            preview = jsonDecode(request.body) as Map<String, dynamic>;
+            return _reply({
+              'order': _order(
+                'reviewed',
+                side: 'sell',
+                raw: preview!['amountRaw'] as String,
+                mint: ondoNvidiaMint,
+                multiplier: '1.0009180758490996',
+              ),
+            });
+          }
+          return defaults(request);
+        },
+        company: _nvidia(),
+        variantMint: ondoNvidiaMint,
+        sell: true,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('live-order-amount')),
+        '0.5',
+      );
+      await tap(tester, 'live-order-review');
+      expect(preview!['amountRaw'], '499541384');
+      expect(find.text('0.5 NVDAon'), findsOneWidget);
+      await clean(tester);
+    });
   });
 }

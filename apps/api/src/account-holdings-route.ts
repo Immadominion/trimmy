@@ -1,7 +1,7 @@
 import {address, getAddressEncoder, isOffCurveAddress} from '@solana/kit';
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
 import {JUPITER_QUOTE_ASSETS} from './jupiter-quote-reader.js';
-import {STOCK_TRADING_ASSETS, findStockTradingAssetByMint} from './stock-trading-catalog.js';
+import {STOCK_TRADING_IDENTITIES, findStockTradingAssetByMint} from './stock-trading-catalog.js';
 import {parsePracticeIdentity} from './practice-identity.js';
 import type {PracticeIdentity} from './practice-identity.js';
 import {parsePracticeUserId} from './practice-repository.js';
@@ -373,7 +373,7 @@ function projectTokenBalance(value: unknown, expected: TokenProjectionExpectatio
 }
 
 function projectStockBalances(value: unknown): readonly AccountHoldingsStockBalance[] {
-  if (!Array.isArray(value) || value.length > STOCK_TRADING_ASSETS.length) return responseInvalid();
+  if (!Array.isArray(value) || value.length > STOCK_TRADING_IDENTITIES.length) return responseInvalid();
   const seenMints = new Set<string>();
   const seenAccounts = new Set<string>();
   return Object.freeze(value.map(item => {

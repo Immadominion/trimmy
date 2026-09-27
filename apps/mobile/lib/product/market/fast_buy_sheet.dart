@@ -1,12 +1,50 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../ui_review/review_feedback.dart';
+import '../design/product_notice.dart';
 import '../design/product_theme.dart';
 import '../design/product_motion_icon.dart';
 import '../../ui_review/review_animated_splash.dart';
 import 'market_craft.dart';
 import 'market_models.dart';
 import 'market_research_gateway.dart';
+
+/// A token that can be bought with real money. Rows come straight from the
+/// trading capabilities, so a long list opens without a lookup per company.
+@immutable
+class FastBuyAsset {
+  const FastBuyAsset({
+    required this.assetId,
+    required this.mint,
+    required this.name,
+    required this.symbol,
+    required this.issuer,
+    this.companyName,
+    this.logoUrl,
+    this.brandColor = const Color(0xFFE7E0FA),
+  });
+
+  final String assetId, mint, name, symbol, issuer;
+
+  /// The company name when the market catalog already knows it.
+  final String? companyName;
+  final String? logoUrl;
+  final Color brandColor;
+
+  String get title => companyName ?? name;
+
+  /// Company name, token name, symbol or issuer, ignoring case and a `$`.
+  bool matches(String query) {
+    final text = query.trim().toLowerCase().replaceFirst(r'$', '');
+    if (text.isEmpty) return true;
+    return [
+      ?companyName,
+      name,
+      symbol,
+      issuer,
+    ].any((field) => field.toLowerCase().contains(text));
+  }
+}
 
 /// Search and order entry stay in one sheet, preserving the chosen asset.
 class FastBuySheet extends StatefulWidget {
@@ -15,11 +53,16 @@ class FastBuySheet extends StatefulWidget {
     required this.gateway,
     required this.companies,
     required this.orderBuilder,
-    this.loadAvailableCompanies,
-    this.canSelect,
+    this.loadTradeable,
+    this.openTradeable,
   });
-  final Future<List<MarketCompany>> Function()? loadAvailableCompanies;
-  final bool Function(MarketCompany company)? canSelect;
+
+  /// Real mode: every tradeable token, searched on this device.
+  final Future<List<FastBuyAsset>> Function()? loadTradeable;
+
+  /// Real mode: the company behind a chosen token with that token selected,
+  /// or null when it cannot open.
+  final Future<MarketCompany?> Function(FastBuyAsset asset)? openTradeable;
   final MarketSearchGateway gateway;
   final List<MarketCompany> companies;
   final Widget Function(MarketCompany company, VoidCallback back) orderBuilder;
@@ -29,26 +72,29 @@ class FastBuySheet extends StatefulWidget {
 
 class _FastBuySheetState extends State<FastBuySheet> {
   final _query = TextEditingController();
-  Timer? _debounce;
+  Timer? _debounce, _noticeTimer;
   MarketCompany? _selected;
-  List<MarketCompany>? _available;
-  bool _loadingAvailable = false;
-  bool _availabilityFailed = false;
+  List<FastBuyAsset>? _tradeable;
+  bool _loadingTradeable = false;
+  bool _tradeableFailed = false;
+  String? _opening, _notice;
 
-  Future<void> _loadAvailable() async {
-    final load = widget.loadAvailableCompanies;
-    if (load == null || _loadingAvailable) return;
+  bool get _real => widget.loadTradeable != null;
+
+  Future<void> _loadTradeable() async {
+    final load = widget.loadTradeable;
+    if (load == null || _loadingTradeable) return;
     setState(() {
-      _loadingAvailable = true;
-      _availabilityFailed = false;
+      _loadingTradeable = true;
+      _tradeableFailed = false;
     });
     try {
       final rows = await load();
-      if (mounted) setState(() => _available = rows);
+      if (mounted) setState(() => _tradeable = rows);
     } catch (_) {
-      if (mounted) setState(() => _availabilityFailed = true);
+      if (mounted) setState(() => _tradeableFailed = true);
     } finally {
-      if (mounted) setState(() => _loadingAvailable = false);
+      if (mounted) setState(() => _loadingTradeable = false);
     }
   }
 
@@ -56,7 +102,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
   void initState() {
     super.initState();
     widget.gateway.addListener(_changed);
-    unawaited(_loadAvailable());
+    unawaited(_loadTradeable());
   }
 
   void _changed() {
@@ -66,6 +112,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _noticeTimer?.cancel();
     _query.dispose();
     widget.gateway.removeListener(_changed);
     super.dispose();
@@ -74,7 +121,8 @@ class _FastBuySheetState extends State<FastBuySheet> {
   void _search(String text) {
     _debounce?.cancel();
     setState(() {});
-    if (text.trim().isEmpty) return;
+    // Real mode already holds every tradeable token and filters locally.
+    if (_real || text.trim().isEmpty) return;
     _debounce = Timer(const Duration(milliseconds: 280), () async {
       try {
         await widget.gateway.search(text.trim());
@@ -85,14 +133,43 @@ class _FastBuySheetState extends State<FastBuySheet> {
   }
 
   void _choose(MarketCompany company) {
-    if (company.primaryVariant == null ||
-        widget.canSelect?.call(company) == false) {
-      return;
-    }
+    if (company.primaryVariant == null) return;
     _debounce?.cancel();
     FocusScope.of(context).unfocus();
     ReviewFeedback.shared.press(selection: true);
     setState(() => _selected = company);
+  }
+
+  void _showNotice(String message) {
+    _noticeTimer?.cancel();
+    setState(() => _notice = message);
+    _noticeTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _notice = null);
+    });
+  }
+
+  Future<void> _open(FastBuyAsset asset) async {
+    final open = widget.openTradeable;
+    if (open == null || _opening != null) return;
+    FocusScope.of(context).unfocus();
+    ReviewFeedback.shared.press(selection: true);
+    setState(() {
+      _opening = asset.mint;
+      _notice = null;
+    });
+    MarketCompany? company;
+    try {
+      company = await open(asset);
+    } catch (_) {
+      company = null;
+    }
+    if (!mounted) return;
+    setState(() => _opening = null);
+    if (company?.primaryVariant?.mint == asset.mint) {
+      setState(() => _selected = company);
+    } else {
+      _showNotice('This stock couldn’t open. Try again.');
+    }
   }
 
   @override
@@ -103,20 +180,6 @@ class _FastBuySheetState extends State<FastBuySheet> {
         () => setState(() => _selected = null),
       );
     }
-    final query = _query.text.trim();
-    final state = widget.gateway.snapshot;
-    final matching = state.query.toLowerCase() == query.toLowerCase();
-    final searching =
-        query.isNotEmpty &&
-        (!matching || state.phase == MarketSearchPhase.loading);
-    final candidates = query.isEmpty
-        ? _available ?? widget.companies
-        : matching
-        ? state.companies
-        : <MarketCompany>[];
-    final rows = candidates
-        .where((c) => widget.canSelect?.call(c) ?? true)
-        .toList();
     return Material(
       color: Colors.white,
       child: SafeArea(
@@ -178,73 +241,149 @@ class _FastBuySheetState extends State<FastBuySheet> {
                 ),
               ),
             ),
-            Expanded(
-              child: searching || _loadingAvailable
-                  ? const Center(child: TrimmyLiquidMark(size: 52))
-                  : _availabilityFailed || rows.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _availabilityFailed
-                                ? 'Trading could not connect.'
-                                : query.isEmpty
-                                ? 'No stocks available to buy right now.'
-                                : state.message ??
-                                      (widget.canSelect == null
-                                          ? 'No matches yet.'
-                                          : 'This stock isn’t available to buy yet.'),
-                          ),
-                          if (_availabilityFailed || state.message != null)
-                            TextButton(
-                              onPressed: _availabilityFailed
-                                  ? _loadAvailable
-                                  : () => widget.gateway.search(query),
-                              child: const Text('Retry'),
-                            ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-                      itemCount: rows.length,
-                      itemBuilder: (context, index) {
-                        final company = rows[index];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 5,
-                          ),
-                          leading: CompanyLogo(
-                            name: company.name,
-                            color: company.brandColor,
-                            logoUrl: company.logoUrl,
-                            size: 46,
-                          ),
-                          title: Text(
-                            company.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          subtitle: Text(
-                            '\$${company.symbol.replaceAll(r'$', '')}',
-                          ),
-                          trailing: const Icon(
-                            Icons.chevron_right_rounded,
-                            color: ProductColor.violet,
-                          ),
-                          enabled: company.primaryVariant != null,
-                          onTap: () => _choose(company),
-                        );
-                      },
-                    ),
-            ),
+            Expanded(child: _real ? _tradeableList() : _paperList()),
+            if (_notice != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
+                child: ProductNotice(
+                  key: const ValueKey('fast-buy-notice'),
+                  message: _notice!,
+                  onDismiss: () => setState(() => _notice = null),
+                ),
+              ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _message(String text, {VoidCallback? retry}) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text, textAlign: TextAlign.center),
+          if (retry != null)
+            TextButton(onPressed: retry, child: const Text('Retry')),
+        ],
+      ),
+    ),
+  );
+
+  Widget _tradeableList() {
+    if (_loadingTradeable) {
+      return const Center(child: TrimmyLiquidMark(size: 52));
+    }
+    if (_tradeableFailed || _tradeable == null) {
+      return _message('Trading could not connect.', retry: _loadTradeable);
+    }
+    final query = _query.text.trim();
+    final rows = query.isEmpty
+        ? _tradeable!
+        : _tradeable!.where((asset) => asset.matches(query)).toList();
+    if (rows.isEmpty) {
+      return _message(
+        query.isEmpty
+            ? 'No stocks available to buy right now.'
+            : 'No tradeable stock matches that.',
+      );
+    }
+    return ListView.builder(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+      itemCount: rows.length,
+      itemBuilder: (context, index) {
+        final asset = rows[index];
+        final opening = _opening == asset.mint;
+        return ListTile(
+          key: ValueKey('fast-buy-${asset.mint}'),
+          contentPadding: const EdgeInsets.symmetric(vertical: 5),
+          leading: CompanyLogo(
+            name: asset.title,
+            color: asset.brandColor,
+            logoUrl: asset.logoUrl,
+            size: 46,
+          ),
+          title: Text(
+            asset.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          subtitle: Text(
+            '${asset.symbol} · ${asset.issuer}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: opening
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(
+                  Icons.chevron_right_rounded,
+                  color: ProductColor.violet,
+                ),
+          enabled: _opening == null || opening,
+          onTap: () => _open(asset),
+        );
+      },
+    );
+  }
+
+  Widget _paperList() {
+    final query = _query.text.trim();
+    final state = widget.gateway.snapshot;
+    final matching = state.query.toLowerCase() == query.toLowerCase();
+    final searching =
+        query.isNotEmpty &&
+        (!matching || state.phase == MarketSearchPhase.loading);
+    final rows = query.isEmpty
+        ? widget.companies
+        : matching
+        ? state.companies
+        : <MarketCompany>[];
+    if (searching) return const Center(child: TrimmyLiquidMark(size: 52));
+    if (rows.isEmpty) {
+      return _message(
+        query.isEmpty
+            ? 'No stocks available to buy right now.'
+            : state.message ?? 'No matches yet.',
+        retry: state.message == null
+            ? null
+            : () => widget.gateway.search(query),
+      );
+    }
+    return ListView.builder(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+      itemCount: rows.length,
+      itemBuilder: (context, index) {
+        final company = rows[index];
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(vertical: 5),
+          leading: CompanyLogo(
+            name: company.name,
+            color: company.brandColor,
+            logoUrl: company.logoUrl,
+            size: 46,
+          ),
+          title: Text(
+            company.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          subtitle: Text('\$${company.symbol.replaceAll(r'$', '')}'),
+          trailing: const Icon(
+            Icons.chevron_right_rounded,
+            color: ProductColor.violet,
+          ),
+          enabled: company.primaryVariant != null,
+          onTap: () => _choose(company),
+        );
+      },
     );
   }
 }
