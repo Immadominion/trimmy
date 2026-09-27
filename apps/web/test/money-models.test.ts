@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {amountRaw, formatRawUnits, groupedDecimal, percentFromBps, rawDecimal, ShareScale, signedLamports, usdcDollars} from '../src/product/money/amounts.js';
-import {parseTradingCapabilities, type DiscoveryVariantRef} from '../src/product/money/live-trading.js';
+import {marketHours, marketLabel, marketTime, parseMarketState, parseTradingCapabilities, type DiscoveryVariantRef} from '../src/product/money/live-trading.js';
 import {base58Decode, base58Encode, base64ToBytes, bytesToBase64, checkSignedTransaction, MAX_SIGNED_TRANSACTION_BASE64,
   parseTransaction, planSigning, TransactionCheckError} from '../src/product/money/solana-wire.js';
 import {parseHoldings} from '../src/product/money/wallet-models.js';
@@ -14,7 +14,7 @@ const capabilities = () => parseTradingCapabilities(fixture('trading-capabilitie
 const discovery = (name: string): DiscoveryVariantRef[] => (fixture(name)['variants'] as {mint: string; issuer: string | null; label: string | null; symbol: string | null; market: {liquidityUsd: number | null} | null}[])
   .map(variant => ({mint: variant.mint, issuer: variant.issuer, label: variant.label, symbol: variant.symbol, liquidityUsd: variant.market?.liquidityUsd ?? null}));
 
-test('recorded capabilities v2 list every tradeable token, issuer and refusal from the API', () => {
+test('an earlier recorded capabilities v2 (before market states) still lists every token, issuer and refusal', () => {
   const caps = capabilities();
   assert.equal(caps.schemaVersion, 2); assert.equal(caps.enabled, true);
   assert.equal(caps.assets.length, 60); assert.equal(caps.issuers.size, 5); assert.equal(caps.unavailable.size, 447);
@@ -50,7 +50,7 @@ test('capabilities read the nested disclosure shape, market state and offer stat
     : index === 1 ? {...asset, market: {status: 'halted-by-provider'}} : index === 2 ? {...asset, market: {status: 'open', session: 'regular'}} : asset);
   const caps = parseTradingCapabilities({...raw, issuers: nested, assets});
   assert.equal(caps.issuers.get('backpack')?.attestation.version, '2026-10-01');
-  assert.equal(caps.tradeableNow(caps.assets[0]!), false); assert.match(caps.reasonFor(caps.assets[0]!.mint), /US markets are open\. Opens/);
+  assert.equal(caps.tradeableNow(caps.assets[0]!), false); assert.match(caps.reasonFor(caps.assets[0]!.mint), /^Closed · opens .+\.$/);
   assert.equal(caps.assets[1]!.market?.status, 'unknown'); assert.equal(caps.tradeableNow(caps.assets[1]!), false, 'unknown status never trades');
   assert.equal(caps.tradeableNow(caps.assets[2]!), true);
   const withdrawn = parseTradingCapabilities({...raw, issuers: raw.issuers.map(issuer => issuer['issuerId'] === 'prestocks'
@@ -170,4 +170,38 @@ test('live orders and history parse the API contract and reject shapes that coul
   assert.equal(explorerUrl({...page.orders[0]!, rfq: false}), `https://solscan.io/tx/${'4'.repeat(88)}`);
   assert.throws(() => parseTradeHistory({schemaVersion: 1, network: 'solana:mainnet-beta', orders: [row, row], nextCursor: null}));
   assert.throws(() => parseTradeHistory({schemaVersion: 1, network: 'solana:mainnet-beta', orders: [], nextCursor: 'abc'}));
+});
+
+test('the live capabilities with market states: minimums, US-session tokens, and refusals that say when they open', () => {
+  const caps = parseTradingCapabilities(fixture('trading-capabilities-v2-2026-09-27-market-state.json'));
+  assert.equal(caps.assets.length, 75); assert.equal(caps.unavailable.size, 432);
+  assert.deepEqual(caps.usMarket, {session: 'offhours', between: null, changesAt: '2026-09-28T00:05:00.000Z'});
+  const meta = caps.assets.find(asset => asset.symbol === 'METAon')!, apple = caps.forMint(AAPLX)!;
+  assert.equal(meta.route, 'rfq'); assert.equal(meta.minBuyInputRaw, '2000000'); assert.equal(apple.minBuyInputRaw, '1');
+  assert.equal(marketLabel(apple.market!), 'Open 24/7'); assert.equal(marketLabel(meta.market!), 'Open now, including weekends');
+  assert.equal(marketHours(meta.market!), 'Trades around the clock, with short pauses between US sessions.');
+  assert.equal(caps.assets.filter(asset => caps.tradeableNow(asset)).length, 75);
+  const abnb = caps.unavailable.get('128qNYovdGv2YqayErcJgU7gDwbNVX1VuoxbtWz8ondo')!;
+  assert.equal(abnb.symbol, 'ABNBon'); assert.equal(abnb.market?.status, 'closed');
+  assert.match(caps.reasonFor(abnb.mint, Date.parse('2026-09-27T20:00:00Z')), /^Its market is closed\. It opens .+, then Trimmy checks it\.$/);
+  assert.equal(caps.reasonFor('1FWZtdWN7y38BSXGzbs8D6Shk88oL9atDNgbVz9ondo'), 'Its market is open. Trimmy is checking it before you can trade.');
+});
+
+test('market states read in mobile’s words, in local time, and a present but unreadable state never trades', () => {
+  const now = new Date(2026, 8, 26, 22, 0).getTime(); // Saturday 10 PM, local time
+  const at = (day: number, hour: number, minute: number) => new Date(2026, 8, day, hour, minute).toISOString();
+  const state = (fields: Record<string, unknown>) => parseMarketState({hours: 'us_sessions', sessions: ['overnight', 'premarket', 'regular', 'postmarket'], ...fields})!;
+  assert.equal(marketLabel(state({status: 'closed', reason: 'outside_sessions', nextOpenAt: at(28, 1, 5)}), now), 'Closed · opens Mon 1:05 AM');
+  assert.equal(marketLabel(state({status: 'closed', nextOpenAt: at(27, 1, 5)}), now), 'Closed · opens tomorrow 1:05 AM');
+  assert.equal(marketLabel(state({status: 'closed', nextOpenAt: at(26, 23, 30)}), now), 'Closed · opens 11:30 PM');
+  assert.equal(marketLabel(state({status: 'closed', nextOpenAt: at(10 + 30, 9, 31)}), now), 'Closed · opens Oct 10, 9:31 AM');
+  assert.equal(marketLabel(state({status: 'paused', reason: 'session_break', nextOpenAt: at(26, 22, 5)}), now), 'Short pause · resumes 10:05 PM');
+  assert.equal(marketLabel(state({status: 'paused', reason: 'market_paused', nextOpenAt: at(27, 9, 30)}), now), 'Paused · resumes tomorrow 9:30 AM');
+  assert.equal(marketLabel(state({status: 'paused', reason: 'issuer_paused'}), now), 'Paused by the issuer');
+  assert.equal(marketLabel(state({status: 'open', sessions: ['regular']}), now), 'Open now');
+  assert.equal(marketHours(state({status: 'open', sessions: ['regular']})), 'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.');
+  assert.equal(marketHours(state({status: 'open'})), 'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).');
+  assert.equal(marketTime(at(26, 12, 0), now), '12:00 PM');
+  assert.equal(parseMarketState({status: 'halted'})?.status, 'unknown'); assert.equal(parseMarketState('open')?.status, 'unknown');
+  assert.equal(parseMarketState(undefined), null);
 });

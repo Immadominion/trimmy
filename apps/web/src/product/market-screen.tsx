@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import type {ProductMarketClient, StockCard} from './market-client';
 import {CompanyLogo, Failure, Loading, change, errorCopy, usd} from './ui';
 import type {TradingCapabilities} from './money/live-trading';
-import {companyTradeable, discoveryRefs, tradeableCompanies, type DiscoveryIndex} from './money/market-tradeable';
+import {companyMarketNote, companyTradeable, discoveryRefs, tradeableCompanies, type DiscoveryIndex} from './money/market-tradeable';
 
 /** Real mode marks what can be traded and offers a Tradeable list; Paper shows the Market unchanged. */
 export function MarketScreen({client, onSelect, real = false, capabilities = null}: {client: ProductMarketClient; onSelect: (card: StockCard) => void;
@@ -123,7 +123,8 @@ export function MarketScreen({client, onSelect, real = false, capabilities = nul
     <div className="market-results" role="region" aria-label="Companies" tabIndex={0}>
       {error !== null && <Failure title="Market is taking a moment." message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}
       {shown.length > 0 && <div className="stock-list">{shown.map(card => <button key={card.assetId} className="stock-row" onClick={() => onSelect(card)} aria-label={`Open ${card.name ?? card.assetId}`} aria-describedby={`market-price-${card.assetId} market-change-${card.assetId}`}>
-        <span className="stock-company"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl}/><span className="stock-company-text"><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? 'Stock'}{tradeable(card) && <span className="market-tradeable" data-testid={`market-tradeable-${card.assetId}`}>Tradeable</span>}</small></span></span>
+        <span className="stock-company"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl}/><span className="stock-company-text"><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? 'Stock'}{tradeable(card) ? <span className="market-tradeable" data-testid={`market-tradeable-${card.assetId}`}>Tradeable</span>
+          : marks && companyMarketNote(capabilities, card.assetId, known) && <span className="market-tradeable waiting">{companyMarketNote(capabilities, card.assetId, known)}</span>}</small></span></span>
         <span className="stock-price" id={`market-price-${card.assetId}`}><span className="sr-only">Stock price </span>{usd(card.stock?.priceUsd)}</span><span id={`market-change-${card.assetId}`} className={`stock-change ${!card.stock?.changePercent24h ? 'neutral' : card.stock.changePercent24h < 0 ? 'negative' : 'positive'}`}><span className="sr-only">24 hour change </span>{card.stock?.changePercent24h == null ? <><span aria-hidden="true">{change(null)}</span><span className="sr-only">unavailable</span></> : change(card.stock.changePercent24h)}</span><span className="stock-open" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="m8 5 5 5-5 5"/></svg></span>
       </button>)}</div>}
       {busy && <Loading>Finding companies…</Loading>}

@@ -58,22 +58,35 @@ export interface TradingIssuer {
   readonly route: 'aggregator' | 'rfq' | null;
 }
 
-/** Market hours for a token. An unknown status never trades. */
-export type MarketStatus = 'open' | 'closed' | 'paused' | 'verifying' | 'unknown';
+/** Whether a token can trade right now, as the server reads it. An unknown status never trades. */
+export type MarketStatus = 'open' | 'paused' | 'closed' | 'unknown';
 export interface MarketState {
   readonly status: MarketStatus; readonly wireStatus: string;
-  readonly nextOpenAt: string | null; readonly reason: string | null;
-  readonly session: string | null; readonly schedule: string | null;
+  /** `outside_sessions`, `session_break`, `market_paused` or `issuer_paused`. */
+  readonly reason: string | null;
+  /** Trades only in the US `sessions` rather than around the clock. */
+  readonly usSessions: boolean;
+  readonly sessions: readonly string[];
+  readonly session: string | null;
+  readonly nextOpenAt: string | null; readonly closesAt: string | null;
 }
+/** The US session in force: context only, since most tokens trade around the clock. */
+export interface UsMarket {readonly session: string | null; readonly between: string | null; readonly changesAt: string | null}
 export interface TradingAsset {
   /** The company id. Several tokens from different issuers can share it. */
   readonly assetId: string; readonly mint: string; readonly symbol: string; readonly name: string;
   readonly decimals: number; readonly maxBuyInputRaw: string; readonly maxSellInputRaw: string;
   readonly issuerId: string; readonly transferFeeBps: number; readonly route: 'aggregator' | 'rfq';
-  /** Null when the server sends no market state; the token then trades whenever trading is enabled. */
+  /** The smallest USDC buy the route fills: market makers need at least $1 after fees. */
+  readonly minBuyInputRaw: string;
+  /** Null when the server sends no market state; the order review then decides. */
   readonly market: MarketState | null;
 }
-export interface UnavailableVariant {readonly mint: string; readonly issuerId: string | null; readonly reason: string}
+export interface UnavailableVariant {
+  readonly mint: string; readonly issuerId: string | null; readonly reason: string; readonly symbol: string | null;
+  /** For a token refused only because its market is closed: when it opens. */
+  readonly market: MarketState | null;
+}
 /** One of a company's tokens as Real mode sees it. */
 export interface VariantOption {
   readonly mint: string; readonly label: string; readonly asset: TradingAsset | null;
@@ -134,23 +147,57 @@ const LEGACY_XSTOCKS: TradingIssuer = Object.freeze({
   offered: true, notOfferedReason: null, route: 'aggregator',
 });
 
-const MARKET_KEYS = ['market', 'marketState', 'marketStatus', 'trading'] as const;
-function parseMarket(asset: Record<string, unknown>): MarketState | null {
-  for (const key of MARKET_KEYS) {
-    const value = asset[key];
-    if (value === undefined || value === null) continue;
-    // A bare status string is accepted as well as the object form.
-    const data = typeof value === 'string' ? {status: value} : value;
-    if (typeof data !== 'object' || Array.isArray(data)) return Object.freeze({status: 'unknown', wireStatus: 'invalid', nextOpenAt: null, reason: null, session: null, schedule: null});
-    const fields = data as Record<string, unknown>;
-    const wire = typeof fields['status'] === 'string' ? fields['status'] : 'missing';
-    const status: MarketStatus = ['open', 'closed', 'paused', 'verifying'].includes(wire) ? wire as MarketStatus : 'unknown';
-    const next = typeof fields['nextOpenAt'] === 'string' && Number.isFinite(Date.parse(fields['nextOpenAt'])) ? fields['nextOpenAt'] : null;
-    return Object.freeze({status, wireStatus: wire.slice(0, 40), nextOpenAt: next,
-      reason: optionalText(fields['reason'], 300), session: optionalText(fields['session'], 80),
-      schedule: optionalText(fields['schedule'], 200)});
+const CODE = /^[a-z0-9_]{1,64}$/;
+const instant = (value: unknown): string | null => typeof value === 'string' && value.length <= 40 && Number.isFinite(Date.parse(value)) ? value : null;
+/** A present but unreadable state fails closed; a missing one leaves the decision to the order review. */
+export function parseMarketState(value: unknown): MarketState | null {
+  if (value === undefined || value === null) return null;
+  const fields = typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const wire = typeof fields['status'] === 'string' ? fields['status'].slice(0, 40) : 'missing';
+  const sessions = Array.isArray(fields['sessions']) ? fields['sessions'].filter((item): item is string => typeof item === 'string' && CODE.test(item)).slice(0, 8) : [];
+  return Object.freeze({status: ['open', 'paused', 'closed'].includes(wire) ? wire as MarketStatus : 'unknown', wireStatus: wire,
+    reason: typeof fields['reason'] === 'string' && CODE.test(fields['reason']) ? fields['reason'] : null,
+    usSessions: fields['hours'] === 'us_sessions', sessions: Object.freeze(sessions),
+    session: typeof fields['session'] === 'string' && CODE.test(fields['session']) ? fields['session'] : null,
+    nextOpenAt: instant(fields['nextOpenAt']), closesAt: instant(fields['closesAt'])});
+}
+
+/** A local time as a short phrase: `4:01 AM`, `tomorrow 9:31 AM`, `Mon 1:05 AM` or `Oct 5, 9:31 AM` (mobile liveMarketTime). */
+export function marketTime(at: string, now = Date.now()): string {
+  const local = new Date(at), today = new Date(now);
+  const hour = local.getHours() % 12 === 0 ? 12 : local.getHours() % 12;
+  const clock = `${hour}:${String(local.getMinutes()).padStart(2, '0')} ${local.getHours() < 12 ? 'AM' : 'PM'}`;
+  const days = Math.round((new Date(local.getFullYear(), local.getMonth(), local.getDate()).getTime() -
+    new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000);
+  if (days <= 0) return clock;
+  if (days === 1) return `tomorrow ${clock}`;
+  if (days < 7) return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][local.getDay()]} ${clock}`;
+  return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][local.getMonth()]} ${local.getDate()}, ${clock}`;
+}
+
+/** One short line, such as `Closed · opens Mon 1:05 AM`, in mobile's words. */
+export function marketLabel(state: MarketState, now = Date.now()): string {
+  const next = state.nextOpenAt === null ? null : marketTime(state.nextOpenAt, now);
+  if (state.status === 'open') return !state.usSessions ? 'Open 24/7' : state.sessions.includes('offhours') ? 'Open now, including weekends' : 'Open now';
+  if (state.status === 'paused') {
+    if (state.reason === 'issuer_paused') return 'Paused by the issuer';
+    if (state.reason === 'market_paused') return next === null ? 'Paused by the market' : `Paused · resumes ${next}`;
+    return next === null ? 'Short pause' : `Short pause · resumes ${next}`;
   }
-  return null;
+  if (state.status === 'closed') return next === null ? 'Closed' : `Closed · opens ${next}`;
+  return 'Not trading right now';
+}
+
+/** When a token that follows US sessions trades, in one sentence; null for tokens that trade around the clock. */
+export function marketHours(state: MarketState): string | null {
+  if (!state.usSessions) return null;
+  const sessions = new Set(state.sessions);
+  if (['overnight', 'premarket', 'regular', 'postmarket'].every(session => sessions.has(session))) {
+    return sessions.has('offhours') ? 'Trades around the clock, with short pauses between US sessions.'
+      : 'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).';
+  }
+  if (sessions.size === 1 && sessions.has('regular')) return 'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.';
+  return 'Trades during US market sessions only.';
 }
 
 function parseAsset(value: unknown, legacy: boolean): TradingAsset {
@@ -174,9 +221,12 @@ function parseAsset(value: unknown, legacy: boolean): TradingAsset {
   }
   const route = data['route'];
   if (route !== undefined && route !== null && route !== 'aggregator' && route !== 'rfq') fail(detail);
+  const minimum = data['minBuyInputRaw'];
   return Object.freeze({assetId, mint, symbol, name: legacy && typeof data['name'] !== 'string' ? symbol : text(data['name'], 160, detail),
     decimals, maxBuyInputRaw: limit('maxBuyInputRaw'), maxSellInputRaw: limit('maxSellInputRaw'), issuerId,
-    transferFeeBps: fee, route: route === 'rfq' ? 'rfq' : 'aggregator', market: parseMarket(data)});
+    transferFeeBps: fee, route: route === 'rfq' ? 'rfq' : 'aggregator',
+    minBuyInputRaw: !legacy && typeof minimum === 'string' && RAW_LIMIT.test(minimum) ? minimum : '1',
+    market: legacy ? null : parseMarketState(data['market'])});
 }
 
 /** The list only words a reason, so a malformed row is skipped rather than taking trading down. */
@@ -186,10 +236,11 @@ function parseUnavailable(value: unknown): Map<string, UnavailableVariant> {
   if (!Array.isArray(value) || value.length > CAPABILITIES_MAX_UNAVAILABLE) fail('Invalid unavailable tokens');
   for (const row of value) {
     if (row === null || typeof row !== 'object') continue;
-    const {mint, issuerId, reason} = row as Record<string, unknown>;
+    const {mint, issuerId, reason, symbol, market} = row as Record<string, unknown>;
     if (typeof mint !== 'string' || !MINT.test(mint) || issuerId !== null && issuerId !== undefined &&
         (typeof issuerId !== 'string' || !ISSUER_ID.test(issuerId)) || typeof reason !== 'string' || !REASON.test(reason)) continue;
-    if (!rows.has(mint)) rows.set(mint, Object.freeze({mint, issuerId: typeof issuerId === 'string' ? issuerId : null, reason}));
+    if (!rows.has(mint)) rows.set(mint, Object.freeze({mint, issuerId: typeof issuerId === 'string' ? issuerId : null, reason,
+      symbol: optionalText(symbol, 32), market: parseMarketState(market)}));
   }
   return rows;
 }
@@ -204,29 +255,10 @@ const REASONS: Readonly<Record<string, string>> = Object.freeze({
   held_back: 'Paused while Trimmy checks this token.',
   not_reviewed: 'Not checked yet.',
   market_closed: 'Trades only while US markets are open.',
+  awaiting_review: 'Its market is open. Trimmy is checking it before you can trade.',
   no_market_maker_quote: 'No market maker is quoting it right now.',
 });
 
-/** When a closed token opens next, in the person's own time zone. */
-export function marketOpensLabel(nextOpenAt: string | null, now = Date.now()): string | null {
-  const at = nextOpenAt === null ? NaN : Date.parse(nextOpenAt);
-  if (!Number.isFinite(at) || at <= now) return null;
-  const date = new Date(at);
-  const sameDay = new Date(now).toDateString() === date.toDateString();
-  const time = date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
-  return sameDay ? `Opens at ${time}` : `Opens ${date.toLocaleDateString([], {weekday: 'short'})} ${time}`;
-}
-
-export function marketStateReason(market: MarketState, now = Date.now()): string {
-  const opens = marketOpensLabel(market.nextOpenAt, now);
-  switch (market.status) {
-    case 'open': return '';
-    case 'closed': return opens ? `Trades while US markets are open. ${opens}.` : 'Trades while US markets are open.';
-    case 'paused': return market.reason ?? 'Trading in this token is paused for now.';
-    case 'verifying': return 'Trimmy is checking this token’s market right now.';
-    default: return 'Not available to trade in Trimmy right now.';
-  }
-}
 
 export class TradingCapabilities {
   readonly #byMint: Map<string, TradingAsset>;
@@ -236,6 +268,7 @@ export class TradingCapabilities {
     readonly schemaVersion: 1 | 2, readonly enabled: boolean, readonly assets: readonly TradingAsset[],
     readonly issuers: ReadonlyMap<string, TradingIssuer>, readonly unavailable: ReadonlyMap<string, UnavailableVariant>,
     readonly minimumSolBalanceLamports: string, readonly maxBuyUsdc: string | null,
+    readonly usMarket: UsMarket | null = null,
   ) {
     this.#byMint = new Map(assets.map(asset => [asset.mint, asset]));
     this.#byAssetId = new Map();
@@ -287,7 +320,7 @@ export class TradingCapabilities {
         const issuerId = this.#byMint.get(variant.mint)?.issuerId ?? this.unavailable.get(variant.mint)?.issuerId ?? null;
         const issuer = issuerId ? this.issuers.get(issuerId) ?? null : null;
         return Object.freeze({mint: variant.mint,
-          label: `${issuer?.name ?? variant.issuer ?? variant.label ?? 'Other issuer'} · ${this.#byMint.get(variant.mint)?.symbol ?? variant.symbol ?? variant.label ?? fallbackSymbol}`,
+          label: `${issuer?.name ?? variant.issuer ?? variant.label ?? 'Other issuer'} · ${this.#byMint.get(variant.mint)?.symbol ?? variant.symbol ?? this.unavailable.get(variant.mint)?.symbol ?? variant.label ?? fallbackSymbol}`,
           asset: null, issuer, reason: this.reasonFor(variant.mint, now), tradeable: false});
       }),
     ];
@@ -300,13 +333,14 @@ export class TradingCapabilities {
     if (asset) {
       const issuer = this.issuers.get(asset.issuerId);
       if (issuer && !issuer.offered) return issuer.notOfferedReason ?? NOT_OFFERED;
-      if (asset.market && asset.market.status !== 'open') return marketStateReason(asset.market, now);
+      if (asset.market && asset.market.status !== 'open') return `${marketLabel(asset.market, now)}.`;
       // Offered, but discovery does not list this token for the company shown.
       return 'Not available to trade in Trimmy yet.';
     }
     const row = this.unavailable.get(mint);
     if (!row) return 'Not available to trade in Trimmy yet.';
     if (row.reason === 'issuer_not_offered') return (row.issuerId && this.issuers.get(row.issuerId)?.notOfferedReason) || NOT_OFFERED;
+    if (row.reason === 'market_closed' && row.market?.nextOpenAt) return `Its market is closed. It opens ${marketTime(row.market.nextOpenAt, now)}, then Trimmy checks it.`;
     return REASONS[row.reason] ?? 'Not available to trade in Trimmy.';
   }
 
@@ -343,6 +377,11 @@ export function parseTradingCapabilities(value: unknown): TradingCapabilities {
   const minimum = data['minimumSolBalanceLamports'];
   if (typeof minimum !== 'string' || !/^[0-9]{1,16}$/.test(minimum)) fail('Invalid fee reserve');
   const maxBuy = typeof data['maxBuyUsdc'] === 'string' && /^[0-9]{1,12}$/.test(data['maxBuyUsdc']) ? data['maxBuyUsdc'] : null;
+  const us = data['usMarket'];
+  const usMarket = us && typeof us === 'object' && !Array.isArray(us) ? Object.freeze({
+    session: typeof (us as Record<string, unknown>)['session'] === 'string' ? (us as Record<string, string>)['session']! : null,
+    between: typeof (us as Record<string, unknown>)['between'] === 'string' ? (us as Record<string, string>)['between']! : null,
+    changesAt: instant((us as Record<string, unknown>)['changesAt'])}) : null;
   return new TradingCapabilities(legacy ? 1 : 2, data['enabled'], Object.freeze(assets), issuers,
-    legacy ? new Map() : parseUnavailable(data['unavailable']), minimum, maxBuy);
+    legacy ? new Map() : parseUnavailable(data['unavailable']), minimum, maxBuy, usMarket);
 }

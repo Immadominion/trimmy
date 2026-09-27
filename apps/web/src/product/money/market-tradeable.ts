@@ -3,12 +3,19 @@
  * read from the trading capabilities and matched to discovery's own tokens.
  */
 import type {StockCard} from '../market-client.js';
-import type {DiscoveryVariantRef, TradingCapabilities} from './live-trading.js';
+import {marketLabel, type DiscoveryVariantRef, type TradingCapabilities} from './live-trading.js';
 
 export type DiscoveryIndex = ReadonlyMap<string, readonly DiscoveryVariantRef[]>;
 
 export function companyTradeable(caps: TradingCapabilities | null, assetId: string, discovery?: DiscoveryIndex): boolean {
   return caps !== null && caps.companyTradeable(assetId, discovery?.get(assetId));
+}
+
+/** For a company whose offered tokens are all outside their market hours: when one opens. */
+export function companyMarketNote(caps: TradingCapabilities | null, assetId: string, discovery?: DiscoveryIndex): string | null {
+  if (!caps?.enabled || companyTradeable(caps, assetId, discovery)) return null;
+  const waiting = caps.variantsFor(assetId, discovery?.get(assetId)).find(asset => asset.market && asset.market.status !== 'open');
+  return waiting?.market ? marketLabel(waiting.market) : null;
 }
 
 /**

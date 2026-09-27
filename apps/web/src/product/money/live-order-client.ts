@@ -27,6 +27,7 @@ export function liveOrderMessage(code: string): string {
     case 'LIVE_BUSY': return 'Quotes are busy. Try again in a moment.';
     case 'NO_ROUTE': return 'No route for this order right now. Try another amount.';
     case 'MARKET_CLOSED': return 'This stock trades while US markets are open. Try again then.';
+    case 'BELOW_MINIMUM': return 'This order is under the market maker’s minimum. Try a larger amount.';
     case 'FEE_TOO_HIGH': return 'The fees are too high for this order. Try later.';
     case 'ACCOUNT_REQUIRED': return 'Sign in again to use your wallet.';
     case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': return 'This order needs a fresh quote.';
@@ -38,7 +39,7 @@ export function liveOrderMessage(code: string): string {
 
 const KNOWN = new Set(['ACCOUNT_REQUIRED', 'WALLET_REQUIRED', 'ORDER_PENDING', 'QUOTE_EXPIRED', 'INVALID_REVIEW',
   'INVALID_SIGNATURE', 'ADD_USDC', 'ADD_SOL', 'INSUFFICIENT_HOLDINGS', 'NO_ROUTE', 'FEE_TOO_HIGH', 'LIVE_BUSY',
-  'TRADE_LIMIT', 'TERMS_REQUIRED', 'MARKET_CLOSED', 'MARKET_INPUT_INVALID', 'LIVE_UNAVAILABLE']);
+  'TRADE_LIMIT', 'TERMS_REQUIRED', 'MARKET_CLOSED', 'BELOW_MINIMUM', 'MARKET_INPUT_INVALID', 'LIVE_UNAVAILABLE']);
 
 export type LiveOrderStatus = 'reviewed' | 'pending' | 'confirmed' | 'failed' | 'expired';
 export interface LiveOrderTerms {
@@ -54,6 +55,12 @@ export interface LiveOrderTerms {
   readonly takerLamportsReturnUpperBound: string | null;
   readonly stockUiMultiplier: string | null;
   readonly route: 'aggregator' | 'rfq' | null;
+  /**
+   * `maker_delivers_at_fill`: an Ondo market maker mints just in time after the
+   * user signs, and the fill is all or nothing. `simulated`: the review
+   * simulated the delivery. Null from servers that do not say.
+   */
+  readonly settlement: 'simulated' | 'maker_delivers_at_fill' | null;
 }
 export interface LiveOrder {
   readonly id: string; readonly status: LiveOrderStatus; readonly wallet: string; readonly signature: string | null;
@@ -89,7 +96,8 @@ function parseTerms(value: unknown): LiveOrderTerms {
     simulatedTakerLamportsSpent: optionalRaw('simulatedTakerLamportsSpent', SIGNED_RAW),
     takerLamportsReturnUpperBound: optionalRaw('takerLamportsReturnUpperBound'),
     stockUiMultiplier: typeof multiplier === 'string' && multiplier.length <= 64 && /^[0-9]+(?:\.[0-9]+)?$/.test(multiplier) ? multiplier : null,
-    route: t['route'] === 'rfq' || t['route'] === 'aggregator' ? t['route'] : null});
+    route: t['route'] === 'rfq' || t['route'] === 'aggregator' ? t['route'] : null,
+    settlement: t['settlement'] === 'simulated' || t['settlement'] === 'maker_delivers_at_fill' ? t['settlement'] : null});
 }
 
 export function parseLiveOrder(value: unknown): LiveOrder {

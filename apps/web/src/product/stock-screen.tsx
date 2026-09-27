@@ -6,7 +6,7 @@ import {CompanyLogo, Failure, Loading, change, compactUsd, errorCopy, micros, sh
 import {useMoney} from './money/money-api';
 import {discoveryRefs} from './money/market-tradeable';
 import {LiveOrderPanel} from './money/live-order-panel';
-import type {VariantOption} from './money/live-trading';
+import {marketLabel, type VariantOption} from './money/live-trading';
 
 const ranges: readonly [StockInsightPeriod, string][] = [['day', '1D'], ['week', '1W'], ['month', '1M'], ['year', '1Y']];
 
@@ -53,7 +53,8 @@ export interface StockScreenProps {
 function LiveVersions({options, selected, onSelect}: {options: readonly VariantOption[]; selected: string | null; onSelect(mint: string): void}) {
   return <fieldset className="live-versions"><legend>Versions</legend>{options.map(option => <label key={option.mint} className={`live-version${option.asset ? '' : ' refused'}`}>
     <input type="radio" name="live-version" value={option.mint} checked={selected === option.mint} disabled={!option.asset} onChange={() => onSelect(option.mint)}/>
-    <span><strong>{option.label}</strong><small className={option.tradeable ? 'tradeable' : ''}>{option.tradeable ? 'Tradeable' : option.reason ?? 'Not available to trade.'}</small></span>
+    <span><strong>{option.label}</strong><small className={option.tradeable ? 'tradeable' : ''}>{option.tradeable
+      ? option.asset?.market?.usSessions ? marketLabel(option.asset.market) : 'Tradeable' : option.reason ?? 'Not available to trade.'}</small></span>
   </label>)}</fieldset>;
 }
 

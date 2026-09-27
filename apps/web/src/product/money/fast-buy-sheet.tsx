@@ -6,7 +6,7 @@
 import {useEffect, useId, useRef, useState} from 'react';
 import type {ProductMarketClient, StockCard} from '../market-client.js';
 import {CompanyLogo} from '../ui.js';
-import {marketStateReason} from './live-trading.js';
+import {marketLabel} from './live-trading.js';
 import {useMoney} from './money-api.js';
 
 export interface FastBuyChoice {readonly assetId: string; readonly mint: string | null; readonly card?: StockCard}
@@ -48,7 +48,7 @@ export function FastBuySheet({market, knownCards, onOpen, onClose}: {
     else body = <ul className="fast-buy-list">{tradeable.map(({asset, card, issuer}) => <li key={asset.mint}>
       <button onClick={() => onOpen({assetId: asset.assetId, mint: asset.mint, ...(card ? {card} : {})})}>
         <CompanyLogo name={card?.name ?? asset.name} url={card?.imageUrl ?? null} size={42}/>
-        <span><strong>{card?.name ?? asset.name}</strong><small>{asset.symbol} · {issuer}{asset.market && asset.market.status !== 'open' ? ` · ${marketStateReason(asset.market)}` : ''}</small></span>
+        <span><strong>{card?.name ?? asset.name}</strong><small>{asset.symbol} · {issuer}{asset.market && (asset.market.status !== 'open' || asset.market.usSessions) ? ` · ${marketLabel(asset.market)}` : ''}</small></span>
         <span aria-hidden="true">›</span></button></li>)}</ul>;
   } else if (paperFailed) body = <div className="fast-buy-message"><p>The Market is taking a moment.</p><button className="text-button" onClick={() => setRevision(value => value + 1)}>Retry</button></div>;
   else if (cards === null) body = <div className="loading" role="status"><span className="loading-dot" aria-hidden="true"/>Finding companies…</div>;

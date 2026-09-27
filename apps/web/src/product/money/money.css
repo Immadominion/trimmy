@@ -10,6 +10,7 @@
 .money-badge.paper{color:#6245bd;background:#f1ebfd}
 .nav-money-mode{display:inline-block;margin:0 0 12px 14px;font-size:11px;font-weight:600;color:var(--pine-ink);background:var(--pine-soft);border-radius:8px;padding:5px 9px}
 .market-tradeable{display:inline-block;margin-left:8px;font-weight:700;color:var(--pine)}
+.market-tradeable.waiting{font-weight:600;color:#8a6a2f}
 .market-lists{display:flex;gap:8px;margin:0 0 14px}
 .market-lists button{min-height:40px;padding:0 16px;border-radius:13px;background:#f3f2f6;font-size:13px;font-weight:600;color:#5f596c}
 .market-lists button[aria-pressed=true]{background:var(--pine-soft);color:var(--pine-ink)}
@@ -79,6 +80,11 @@
 .issuer-tick input{width:20px;height:20px;margin:1px 0 0;accent-color:#6245bd;flex:0 0 auto}
 .issuer-terms{display:inline-block;padding:8px 12px;font-size:13px;font-weight:600}
 .live-review dd{text-align:right}
+.market-state-note{margin:14px 0 0;padding:14px 16px;border-radius:18px;background:#fff4e5}
+.market-state-note.open{background:#eff7f1}
+.market-state-note strong{display:block;font-size:14px;font-weight:800}
+.market-state-note p{margin-top:4px;font-size:12px;color:#675582}
+.settlement-note{padding:12px 14px;border-radius:16px;background:#eff7f1;color:var(--pine-ink)}
 .live-result{text-align:center}
 .receipt-mark.pending{background:#f1ebfd;color:#6245bd}
 .receipt-mark.muted{background:#f3f2f6;color:#6245bd}

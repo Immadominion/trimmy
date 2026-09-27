@@ -7,7 +7,7 @@
 import {useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode} from 'react';
 import {amountRaw, percentFromBps, rawDecimal, ShareScale, signedLamports, solLabel, usdcLabel, USDC_DECIMALS} from './amounts.js';
 import {explorerUrl, type LiveOrder} from './live-order-client.js';
-import {marketOpensLabel, marketStateReason, type DiscoveryVariantRef, type TradingAsset, type TradingCapabilities, type TradingIssuer} from './live-trading.js';
+import {marketHours, marketLabel, type DiscoveryVariantRef, type MarketState, type TradingAsset, type TradingCapabilities, type TradingIssuer} from './live-trading.js';
 import {useMoney} from './money-api.js';
 import type {LiveOrderSession, OrderSessionState} from './order-session.js';
 import {coherentHoldings} from './wallet-controller.js';
@@ -39,6 +39,13 @@ export function IssuerCard({issuer, transferFeeBps, accepted, onAccepted, disabl
       <span>{issuer.attestation.text}</span></label>}
     <a className="issuer-terms" href={issuer.termsUrl} target="_blank" rel="noreferrer noopener">Issuer terms ↗</a>
   </section>;
+}
+
+/** When a token can trade: shown when its market is not open, and for tokens that follow US sessions even while open. */
+export function MarketStateNote({state}: {state: MarketState}) {
+  const hours = marketHours(state);
+  return <div className={`market-state-note ${state.status === 'open' ? 'open' : 'closed'}`} data-testid="live-order-market-state">
+    <strong>{marketLabel(state)}</strong>{hours && <p>{hours}</p>}</div>;
 }
 
 export interface LiveOrderPanelProps {
@@ -130,6 +137,8 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     if (!accepted) {setNotice('Confirm the issuer terms first.'); termsRef.current?.scrollIntoView?.({block: 'center', behavior: 'smooth'}); return;}
     if (enteredRaw === null) {setNotice(`Enter a valid ${side === 'sell' ? 'share amount' : 'USDC amount'}.`); return;}
     if (BigInt(enteredRaw) > BigInt(limitRaw)) {setNotice(`Up to ${label(limitRaw)} per order.`); return;}
+    if (side === 'buy' && BigInt(enteredRaw) < BigInt(asset.minBuyInputRaw)) {setNotice(`Orders for this token start at ${label(asset.minBuyInputRaw)}.`); return;}
+    if (asset.market && asset.market.status !== 'open') {setNotice(`${marketLabel(asset.market)}.`); return;}
     setNotice(null);
     void session.preview({asset, issuer, side, amountRaw: enteredRaw, legacy: caps.legacy,
       spendable: () => {
@@ -161,10 +170,8 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
   if (!caps) return wrap(<div className="loading" role="status"><span className="loading-dot" aria-hidden="true"/>Checking trading…</div>);
   if (!caps.enabled) return unavailable('Trading is temporarily paused', 'Your wallet and holdings are still here.', {label: 'Try again', run: () => void money.refreshCapabilities(true)});
   if (!asset || !issuer) return unavailable('This token isn’t tradable here yet', mint ? caps.reasonFor(mint) : 'Choose another stock to trade.');
-  if (asset.market && asset.market.status !== 'open') {
-    const opens = marketOpensLabel(asset.market.nextOpenAt);
-    return unavailable(asset.market.status === 'closed' ? 'Market closed' : 'Not trading right now', marketStateReason(asset.market) + (opens && asset.market.status !== 'closed' ? ` ${opens}.` : ''));
-  }
+  // Ordering is disabled whenever the token's market is not open; the entry still shows when it opens.
+  const marketOpen = asset.market === null || asset.market.status === 'open';
   if (order && (phase === 'reviewed' || phase === 'signing' || phase === 'submitting')) {
     return wrap(<OrderReview order={order} asset={asset} issuer={issuer} busy={phase !== 'reviewed'} phase={phase}
       onConfirm={() => void session.confirm()} onEdit={() => session.edit()} onExpire={() => session.expireQuote()}/>);
@@ -187,11 +194,14 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     {unspendable && <p className="trade-caption">Some of your {symbol} is in another token account. Only {scale.label(holding.availableToTradeRaw)} {symbol} can be sold here.</p>}
     <div className="amount-options">{side === 'sell' ? [25, 50, 75].map(value => <button key={value} disabled={busy || maxRaw === null} onClick={() => percent(value)}>{value}%</button>)
       : [5, 10, 25, 50].map(value => <button key={value} disabled={busy} onClick={() => {touched.current = true; setPreset(null); setCapped(null); setAmount(String(value));}}>${value}</button>)}</div>
-    <p className="trade-caption" id="live-limit">{capped === null ? `Order limit: ${label(limitRaw)}` : `${capped} capped at the order limit of ${label(limitRaw)}.`}</p>
+    <p className="trade-caption" id="live-limit">{capped === null ? `Order limit: ${label(limitRaw)}` : `${capped} capped at the order limit of ${label(limitRaw)}.`}
+      {side === 'buy' && asset.minBuyInputRaw !== '1' && ` Orders start at ${label(asset.minBuyInputRaw)}.`}</p>
+    {asset.market && (!marketOpen || asset.market.usSessions) && <MarketStateNote state={asset.market}/>}
     <div ref={termsRef}><IssuerCard issuer={issuer} transferFeeBps={asset.transferFeeBps} accepted={accepted} disabled={busy} highlight={state.termsRequired && !accepted}
       onAccepted={value => {money.terms?.record(issuer.issuerId, issuer.attestation.version, value); setTermsVersion(version => version + 1);}}/></div>
     {walletMissing ? <><p className="trade-caption">Create your wallet to continue.</p><button className="primary full" onClick={money.openFundWallet}>Add money</button></>
-      : <button className="primary full live-action" disabled={busy || !accepted} onClick={review}>{busy ? 'Checking price and fees…' : `Review ${side === 'sell' ? 'sell' : 'buy'}`}</button>}
+      : <button className="primary full live-action" disabled={busy || !accepted || !marketOpen} onClick={review}>{busy ? 'Checking price and fees…'
+        : marketOpen ? `Review ${side === 'sell' ? 'sell' : 'buy'}` : marketLabel(asset.market!)}</button>}
     {!walletMissing && (state.fundingNeeded || side === 'buy' && (balanceRaw === null || balanceRaw === '0')) &&
       <button className="text-button full" disabled={busy} onClick={money.openFundWallet}>Add money</button>}
   </>);
@@ -224,6 +234,8 @@ function OrderReview({order, asset, issuer, busy, phase, onConfirm, onEdit, onEx
     ...(asset.transferFeeBps > 0 ? [['Issuer fee', percentFromBps(asset.transferFeeBps)] as [string, string]] : []),
   ];
   const flags = new Set(order.reviewFlags);
+  const makerDelivers = terms.settlement === 'maker_delivers_at_fill' || flags.has('rfq_maker_delivers_at_fill');
+  if (makerDelivers) lines.splice(3, 0, ['Delivery', 'By the market maker at fill']);
   return <>
     <h2>Review your {buying ? 'buy' : 'sell'}</h2>
     {issuer.warning && <p className="issuer-warning review" role="note"><span aria-hidden="true">!</span>{issuer.warning}</p>}
@@ -231,6 +243,7 @@ function OrderReview({order, asset, issuer, busy, phase, onConfirm, onEdit, onEx
     {(flags.has('closes_existing_wrapped_sol') || returned) && <p className="trade-caption">This order closes your existing wrapped SOL account and returns it to your wallet as SOL.</p>}
     {flags.has('intermediate_token_account') && <p className="trade-caption">The route uses a temporary token account that closes within the same transaction.</p>}
     {(flags.has('rfq_market_maker_fill') || terms.route === 'rfq') && <p className="trade-caption">A market maker fills this order at the fixed price above and pays the network fee.</p>}
+    {makerDelivers && <p className="trade-caption settlement-note" data-testid="live-order-settlement">The market maker creates your tokens just in time, after you sign, and delivers them when the order fills. The fill is all or nothing: you get the full amount or the order doesn’t go through.</p>}
     <p className="quote-clock" role="timer">{remaining > 0 ? `Quote expires in ${remaining}s` : 'Quote expired. Get a new review.'}</p>
     <button className="primary full live-action" disabled={busy || remaining === 0} onClick={onConfirm}>{phase === 'signing' ? 'Waiting for your wallet…' : phase === 'submitting' ? 'Confirming…' : `Confirm ${buying ? 'buy' : 'sell'}`}</button>
     <button className="text-button full" disabled={busy} onClick={onEdit}>Edit amount</button>
