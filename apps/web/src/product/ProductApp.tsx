@@ -33,6 +33,8 @@ import {PAPER_RESET_CONFIRMATION, PendingMutations, ambiguous, careerApi, newMut
 import {useReasonPrivacy} from './use-reason-privacy';
 import {useCareerMilestones} from './career-milestones';
 import {useCareerDayContext} from './use-career-day-context';
+import {useFollowing, useSearchRecents} from './market-social';
+import type {CompanySocial} from './company-social';
 import {PracticeError} from './practice-client';
 import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares} from './ui';
 
@@ -204,7 +206,13 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const pendingMutations = useMemo(() => {try {return apiBase ? new PendingMutations(journeyStorage, apiBase) : null;} catch {return null;}}, [apiBase, journeyStorage]);
   const productIdentity = session?.isAccount ? accountAccess ?? null : session?.guest ?? null;
   const reasonPrivacy = useReasonPrivacy({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
-    enabled: Boolean(session?.hasIdentity) && !storageChanged && !restoring && route.page === 'settings'});
+    enabled: Boolean(session?.hasIdentity) && !storageChanged && !restoring && (route.page === 'settings' || route.page === 'market' && Boolean(route.assetId))});
+  // Market and company social parity: Following (accounts), recents, Holders and Comments.
+  const following = useFollowing(productApi, session?.isAccount ? accountAccess ?? null : null);
+  const recents = useSearchRecents(journeyStorage, apiBase);
+  const marketSocial = {following, recents, onSignIn: () => openSignIn('app')};
+  const companySocial: CompanySocial | undefined = productApi ? {api: productApi, identity: productIdentity, accountSignedIn: Boolean(session?.isAccount),
+    following, privacy: reasonPrivacy.privacy, onOpenSettings: () => navigate({page: 'settings'}), onSignIn: () => openSignIn('app')} : undefined;
   const careerRefresh = useCallback(async () => {await Promise.all([refresh(), progress.refresh()]);}, [refresh, progress.refresh]);
   const milestones = useCareerMilestones({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
     career: snapshot.career, missions: snapshot.missions, portfolio: snapshot.portfolio, refresh: careerRefresh});
@@ -452,7 +460,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
           motion={motion} preservedExpired={preservedExpired} onGuest={chooseGuest} onAccount={() => navigate({page: 'desk'}, true)}
           onRetryEvidence={() => void refresh()} onFinish={finishIntroduction}/>
         : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} expiredGuestRecovery={guestRecovery !== null} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
-        {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)}/> : <MarketScreen client={market} onSelect={select}/>)}
+        {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)} {...(companySocial ? {social: companySocial} : {})}/> : <MarketScreen client={market} onSelect={select} social={marketSocial}/>)}
         {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => openSignIn('app')} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}/> : null)}
         {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title="Your career starts here." onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle} milestones={milestones}/>)}
         {progress.pending && route.page !== 'daily' && <div className="work-recovery" role="status"><span>Your earlier desk story needs confirmation.</span><button className="text-button" onClick={() => navigate({page:'daily'})}>Check clock-out</button></div>}

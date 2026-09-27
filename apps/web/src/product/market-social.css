@@ -1,0 +1,43 @@
+/* Market and company social parity: lists, sort, follow, recents, holders and comments. */
+.market-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:14px}
+.market-lists{display:inline-flex;gap:4px;padding:4px;border-radius:15px;background:#f6f3fb}
+.market-lists button{min-height:38px;padding:7px 14px;border-radius:12px;font-size:13px;font-weight:600;color:#6f6380}
+.market-lists button.active{background:#fff;color:var(--ink);box-shadow:0 1px 0 #e8e0f3}
+.market-sort{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a789a}
+.market-sort select{border:0;border-radius:12px;background:#f6f3fb;min-height:38px;padding:6px 10px;color:var(--ink);font-size:13px;font-weight:600}
+.market-notice{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.stock-row-shell{display:flex;align-items:center;gap:10px}
+.stock-row-shell>.stock-row{flex:1;min-width:0}
+.follow-button{flex:none;min-height:34px;padding:6px 12px;border-radius:12px;background:var(--lilac);color:#684bc7;font-size:12px;font-weight:700;white-space:nowrap}
+.follow-button.following{background:#e7f1e9;color:var(--green)}
+.market-recents{margin:0 0 18px}
+.market-recents .section-line h2{font-size:15px}
+.market-recents-list{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 4px}
+.market-recent{display:flex;align-items:center;gap:9px;min-height:48px;padding:8px 14px 8px 8px;border-radius:16px;background:#fbfaff;border:1px solid #efeaf8;white-space:nowrap}
+.market-recent span{display:grid;text-align:left}
+.market-recent strong{font-size:13px}
+.market-recent small{font-size:11px;color:#8a789a}
+.company-follow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+.company-follow-notice{font-size:12px;color:#6f6380;display:inline-flex;align-items:center;gap:8px}
+.company-social{margin:30px 0 8px}
+.company-tabs{margin-bottom:16px}
+.company-social-state{padding:22px 18px;border-radius:18px;background:#fbfaff;text-align:center;font-size:14px;color:#6f6380}
+.company-social-state strong{display:block;color:var(--ink);margin-bottom:4px}
+.company-social-note{font-size:12px;color:#8a789a;margin:10px 0 0}
+.holders-head{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#8a789a;padding:0 12px 8px}
+.holders-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.holder-row{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:48px;padding:8px 12px;border-radius:14px;text-align:left}
+.holder-row:hover{background:#f8f6fb}
+.holder-name{display:grid}
+.holder-name strong{font-size:14px;font-weight:600}
+.holder-name small{font-size:11px;color:#8a789a}
+.holder-amount{font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
+.comments{display:grid;gap:10px}
+.comment-private{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:16px;background:#eaf6ee;font-size:13px}
+.comment-card{padding:14px 16px;border-radius:18px;border:1px solid #efeaf8;background:#fff}
+.comment-card header{display:flex;align-items:center;gap:8px;font-size:13px}
+.comment-card header span{color:#8a789a;font-size:12px}
+.comment-card header .comment-you{margin-left:auto;padding:2px 8px;border-radius:8px;background:var(--lilac);color:#684bc7;font-size:10px;font-weight:800}
+.comment-card>p{margin:8px 0;font-size:14px;line-height:1.45}
+.comment-card footer{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#8a789a}
+.comment-card footer .text-button{min-height:32px;font-size:12px}

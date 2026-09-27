@@ -10,8 +10,8 @@ import type {LaunchCheckpoint} from '../../src/product/practice-client.js';
 import type {PracticeStorage} from '../../src/product/practice-session.js';
 import {JourneyStore} from '../../src/product/journey-store.js';
 import {ProductApiClient} from '../../src/product/product-api.js';
-import {searchFixture, variantFixture} from '../../src/markets/fixtures.test-support.js';
-import {RESEARCH_AAPLX_MINT as MINT} from '../../src/markets/estimate.js';
+import {searchFixture, variantFixture, variantsFixture} from '../../src/markets/fixtures.test-support.js';
+import {RESEARCH_AAPLX_MINT as MINT, RESEARCH_USDC_MINT as TESLA_MINT} from '../../src/markets/estimate.js';
 
 /** Shared ProductApp harness for the first-day, recovery, settings and social tests. */
 export const GUEST_ID = '11111111-1111-4111-8111-111111111111';
@@ -23,7 +23,7 @@ export class MemoryStorage implements PracticeStorage {
   getItem(key: string) {return this.data.get(key) ?? null;}
   setItem(key: string, value: string) {this.data.set(key, value);}
 }
-export interface Call {path: string; method: string; body: Record<string, unknown> | null}
+export interface Call {path: string; url: string; method: string; body: Record<string, unknown> | null}
 export const json = (value: unknown, status = 200, media = 'application/json') => Response.json(value, {status, headers: {'content-type': media}});
 
 /** A small fake of the practice API with the server's real launch transition table. */
@@ -42,7 +42,22 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
     missions: [] as Record<string, unknown>[],
     dayContext: {revision: 1, timeZone: 'UTC', configured: false, serverDate: at.slice(0, 10), nextDayAt: new Date(now + 6 * 3600000).toISOString(), createdAt: at, updatedAt: at} as Record<string, unknown>,
     reasons: [] as Record<string, unknown>[], promotions: [] as Record<string, unknown>[],
+    following: {revision: 0, assetIds: [] as string[], updatedAt: null as string | null},
+    sharedReasons: [] as Record<string, unknown>[], ownReasons: [] as Record<string, unknown>[], reports: [] as Record<string, unknown>[],
+    holders: [{owner: 'So11111111111111111111111111111111111111112', primaryDomain: 'bigholder.sol', amount: '1250.5', tokenAccounts: 2},
+      {owner: 'Vote111111111111111111111111111111111111111', primaryDomain: null, amount: '12.25', tokenAccounts: 1}] as Record<string, unknown>[],
   };
+  const refreshAfter = new Date(now + 60000).toISOString();
+  const facts = {schemaVersion: 1, provider: 'tokens-xyz-v1', requestedAt: at, observedAt: at, refreshAfter, displayOnly: true, executionEnabled: false, eligibility: 'unverified'};
+  const companies = [
+    {assetId: 'apple', name: 'Apple', symbol: 'AAPL', mint: MINT, token: 'AAPLx', price: 51, change: -1},
+    {assetId: 'tesla', name: 'Tesla', symbol: 'TSLA', mint: TESLA_MINT, token: 'TSLAx', price: 250, change: 3},
+  ];
+  const variantOf = (company: typeof companies[number]) => ({...variantFixture(), variantId: `${company.assetId}-xstock`, mint: company.mint,
+    name: `${company.name} xStock`, label: `${company.name} xStock`, symbol: company.token});
+  const cardOf = (company: typeof companies[number]) => ({assetId: company.assetId, name: company.name, symbol: company.symbol, imageUrl: null,
+    stock: {priceUsd: company.price, changePercent24h: company.change, asOfUnixSeconds: Math.floor(now / 1000)},
+    primaryVariant: {mint: company.mint, symbol: company.token, logoUrl: null, priceUsd: company.price, changePercent24h: company.change}});
   const source = {provider: 'tokens-xyz-v1', providerReference: '/v1/assets/apple', marketSource: null, metricsSource: null,
     providerTimestamps: {asOf: null, lastFetchedAt: null, lastTradeAt: null, unit: 'not_declared'}, observedAt: at, acceptedAt: at};
   const calculation = {action: 'buy', assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', accountRevision: 0, pricePaperMicros: '50000000',
@@ -69,7 +84,7 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
   const calls: Call[] = [];
   const fetcher: typeof fetch = async (url, init = {}) => {
     const parsed = new URL(String(url), 'https://trimmy.example');
-    const call: Call = {path: parsed.pathname.replace(/^\/api/, ''), method: init.method ?? 'GET', body: init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null};
+    const call: Call = {path: parsed.pathname.replace(/^\/api/, ''), url: parsed.href, method: init.method ?? 'GET', body: init.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null};
     calls.push(call);
     const override = options.reply?.(call); if (override !== undefined) return override;
     if (call.path === '/v1/guest/session') return json({schemaVersion: 1, requestId: call.body?.['requestId'], ...guest}, 201);
@@ -163,9 +178,51 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
       page.results = [{...page.results[0]!, variants: [variantFixture()]}];
       return json(page);
     }
-    if (call.path.endsWith('/facts')) return json({schemaVersion: 1, provider: 'tokens-xyz-v1', requestedAt: at, observedAt: at, refreshAfter: new Date(now + 60000).toISOString(),
-      displayOnly: true, executionEnabled: false, eligibility: 'unverified', sourceUrls: ['https://api.tokens.xyz/v1/assets/apple'], assetId: 'apple', name: 'Apple', symbol: 'AAPL',
-      imageUrl: null, description: null, stock: null, sparkline: null, sparklineStatus: 'unavailable'});
+    if (call.path.endsWith('/facts')) {
+      const company = companies.find(item => item.assetId === parsed.searchParams.get('assetId')) ?? companies[0]!;
+      return json({...facts, sourceUrls: [`https://api.tokens.xyz/v1/assets/${company.assetId}`], assetId: company.assetId, name: company.name, symbol: company.symbol,
+        imageUrl: null, description: `${company.name} makes things.`, stock: cardOf(company).stock, sparkline: null, sparklineStatus: 'unavailable'});
+    }
+    if (call.path.endsWith('/catalog')) {
+      const discovery = {...searchFixture('catalog', 20), requestedAt: at, observedAt: at, refreshAfter};
+      discovery.results = companies.map(company => ({...discovery.results[0]!, assetId: company.assetId, name: company.name, symbol: company.symbol,
+        providerPrimaryVariantMint: company.mint, variants: [variantOf(company)]}));
+      return json({discovery, cards: companies.map(cardOf), offset: 0, total: companies.length, nextOffset: null});
+    }
+    if (call.path.endsWith('/cards')) {
+      const query = parsed.searchParams.get('query') ?? '';
+      return json({...facts, sourceUrl: 'https://api.tokens.xyz/v1/assets/search', query, limit: 20, completeCatalog: false,
+        results: companies.filter(company => company.name.toLowerCase().includes(query.toLowerCase())).map(cardOf)});
+    }
+    if (call.path.endsWith('/variants')) {
+      const company = companies.find(item => item.assetId === parsed.searchParams.get('assetId')) ?? companies[0]!;
+      return json({...variantsFixture(company.assetId), requestedAt: at, observedAt: at, refreshAfter, variants: [variantOf(company)]});
+    }
+    if (call.path.endsWith('/insight')) {
+      const company = companies.find(item => item.assetId === parsed.searchParams.get('assetId')) ?? companies[0]!;
+      return json({...facts, assetId: company.assetId, mint: parsed.searchParams.get('mint'), period: parsed.searchParams.get('period'), symbol: company.token,
+        description: null, priceUsd: company.price, changePercent24h: company.change, asOfUnixSeconds: Math.floor(now / 1000), volume24hUsd: 1000, liquidityUsd: 2000,
+        tokenMarketCapUsd: 100000, stockMarketCapUsd: 1000000000, holders: 30, points: [], chartStatus: 'empty'});
+    }
+    if (call.path === '/v1/markets/stocks/holders') return json({schemaVersion: 1, mint: parsed.searchParams.get('mint'), network: 'solana-mainnet',
+      scope: 'largest-20-token-accounts', complete: false, observedAt: at, slot: '123456', sampledAccounts: 20, holders: state.holders});
+    if (call.path === '/v1/following') {
+      if (call.method === 'PUT') {
+        if (call.body?.['baseRevision'] !== state.following.revision) return Response.json({error: {code: 'WATCHLIST_REVISION_CONFLICT', message: 'Changed.', requestId: GUEST_ID},
+          currentSnapshot: {schemaVersion: 1, ...state.following}}, {status: 409, headers: {'content-type': 'application/json'}});
+        state.following = {revision: state.following.revision + 1, assetIds: call.body?.['assetIds'] as string[], updatedAt: at};
+      }
+      return json({schemaVersion: 1, ...state.following});
+    }
+    if (call.path === '/v1/career/trade-reasons' && call.method === 'GET') {
+      const scope = parsed.searchParams.get('scope'), assetId = parsed.searchParams.get('assetId'), variantMint = parsed.searchParams.get('variantMint');
+      const rows = (scope === 'self' ? state.ownReasons : state.sharedReasons).filter(row => (row['stock'] as {assetId: string}).assetId === assetId);
+      return json({schemaVersion: 1, scope, filter: assetId ? {assetId, variantMint} : null, reasons: rows, page: {limit: Number(parsed.searchParams.get('limit') ?? 20), nextCursor: null}});
+    }
+    if (call.path === '/v1/social/reason-reports') {
+      state.reports.push(call.body ?? {});
+      return json({schemaVersion: 1, report: {reportId: '66666666-6666-4666-8666-666666666666', reasonId: call.body?.['reasonId'], category: call.body?.['category'], receivedAt: at}}, 202);
+    }
     return json({error: {code: 'NOT_IN_THIS_TEST', message: 'Not used by this test.', requestId: GUEST_ID}}, 404);
   };
   return {state, calls, fetcher};
@@ -223,4 +280,4 @@ export async function harness(options: {checkpoint?: LaunchCheckpoint | null; tr
   return {dom, api, storage, store, app, reload, text, button, click, pick, back, escape, flush, close, permission};
 }
 export type Harness = Awaited<ReturnType<typeof harness>>;
-export {MINT};
+export {MINT, TESLA_MINT};
