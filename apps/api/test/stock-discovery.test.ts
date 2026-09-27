@@ -372,3 +372,16 @@ it('a schema 2 search leaves out only a malformed result', async () => {
       primaryVariant: null})]};
   assert.deepEqual((await client(payload).search(input, 2)).results.map(row => row.assetId), ['example-company']);
 });
+it('a schema 2 search gives each token to its first asset and reads a larger answer', async () => {
+  const gold = asset({assetId: 'gold', category: 'commodity'});
+  const shares = asset({assetId: 'spdr-gold-shares'});
+  const page = await client({query: input.query, primaryVariantStrategy: 'liquidity', results: [gold, shares]}).search(input, 2);
+  assert.deepEqual(page.results.map(row => row.assetId), ['gold']);
+  await assert.rejects(client(search({results: [gold, shares].map(row => ({...row, category: 'equity'}))})).search(input),
+    codeIs('STOCK_RESPONSE_INVALID'));
+  // Solana's crypto asset lists every liquid staking token: read, then left out.
+  const huge = {category: 'crypto', assetId: 'solana', padding: 'x'.repeat(1_200_000)};
+  const big = {query: input.query, primaryVariantStrategy: 'liquidity', results: [asset(), huge]};
+  assert.deepEqual((await client(big).search(input, 2)).results.map(row => row.assetId), ['example-company']);
+  await assert.rejects(client({...big, category: 'equity'}).search(input), codeIs('STOCK_RESPONSE_INVALID'));
+});
