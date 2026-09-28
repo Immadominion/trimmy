@@ -3,6 +3,7 @@ import {OndoMarketStatusReader} from './ondo-market-status.js';
 import {StockMarketStates, StockMintPauseReader} from './stock-market-state.js';
 import {stockTradingAssets} from './stock-trading-catalog.js';
 import {StockTokenDirectory, withCatalogSnapshot} from './stock-token-directory.js';
+import {jupiterSharePrices} from './stock-share-prices.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -90,7 +91,8 @@ const liveRpc = process.env['SOLANA_MAINNET_RPC_URL'];
 // Every stock token the Market lists from a supported issuer, checked automatically:
 // no token is approved by hand. It sweeps the catalog every 30 minutes and checks a
 // new token the moment an order names it.
-const tokenDirectory = liveRpc ? new StockTokenDirectory({rpcUrl: liveRpc, ...(stockDiscovery ? {discovery: stockDiscovery} : {})}) : undefined;
+const tokenDirectory = liveRpc ? new StockTokenDirectory({rpcUrl: liveRpc, ...(stockDiscovery ? {discovery: stockDiscovery} : {}),
+  sharePrices: jupiterSharePrices(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})}) : undefined;
 tokenDirectory?.start();
 // Whether each stock can trade now: Ondo's live status for its tokens, and each
 // mint's on-chain pause flag. Both are cached and bounded; the session calendar

@@ -7,6 +7,8 @@ import {
   findStockTradingAsset, findStockTradingAssetByMint, recallStockIdentity, registerStockTradingIdentity, stockIdentitySource,
 } from './stock-trading-catalog.js';
 import type { StockTradingAsset, StockTradingIdentity } from './stock-trading-catalog.js';
+import { unpricedMints, withSharePrices } from './stock-share-prices.js';
+import type { SharePriceReader } from './stock-share-prices.js';
 
 /**
  * Every stock token Trimmy can trade, found automatically: nobody approves a
@@ -112,11 +114,14 @@ export interface StockTokenDirectoryOptions {
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => number;
   readonly refreshMs?: number;
+  /** Share prices for Market cards the source leaves unpriced (stock-share-prices.ts). */
+  readonly sharePrices?: SharePriceReader;
 }
 
 export class StockTokenDirectory {
   readonly #rpc: BoundedSolanaRpc<'getMultipleAccounts', DirectoryReadError>;
   readonly #discovery: StockDiscovery | undefined;
+  readonly #sharePrices: SharePriceReader | undefined;
   readonly #now: () => number;
   readonly #refreshMs: number;
   /** The Market catalog as of the last sweep, by page offset. */
@@ -132,6 +137,7 @@ export class StockTokenDirectory {
     this.#rpc = new BoundedSolanaRpc({rpcUrl: options.rpcUrl, methods: ['getMultipleAccounts'], errors: RPC_ERRORS,
       maxBodyBytes: 4_194_304, timeoutMs: 8_000, ...(options.fetch ? {fetch: options.fetch} : {})});
     this.#discovery = options.discovery;
+    this.#sharePrices = options.sharePrices;
     this.#now = options.now ?? Date.now;
     this.#refreshMs = options.refreshMs ?? 10 * 60_000;
   }
@@ -172,6 +178,13 @@ export class StockTokenDirectory {
         for (const variant of asset.variants) if (!listed.has(variant.mint)) listed.set(variant.mint, asset.assetId);
       }
       offset = page.nextOffset;
+    }
+    const unpriced = this.#sharePrices ? [...pages.values()].flatMap(unpricedMints) : [];
+    if (unpriced.length) {
+      try {
+        const prices = await this.#sharePrices!(unpriced);
+        for (const [pageOffset, page] of pages) pages.set(pageOffset, withSharePrices(page, prices));
+      } catch { /* Those cards stay unpriced until the next sweep. */ }
     }
     this.#listed = listed;
     this.#pages = pages;
