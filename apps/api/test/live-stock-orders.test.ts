@@ -302,3 +302,18 @@ test('an RFQ refusal reads as under the minimum while its market is open, and as
   await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side:'buy',amountRaw:'1000000',termsAccepted:terms(asset)}),{code});
  }
 });
+
+test('a busy quote request says when to retry',async()=>{
+ const f=fixture();
+ const adapters={
+  authenticate:async()=>({userId:'user',identity:{subject:'did:privy:test'}}),
+  identities:{resolveFresh:async()=>({subject:'did:privy:test',embeddedSolanaWallet:{status:'candidate',address:f.order.wallet}})},
+  service:{preview:async()=>{throw Object.assign(new Error('LIVE_BUSY'),{code:'LIVE_BUSY'});}},
+ } as unknown as LiveStockAdapters;
+ const app=Fastify();registerLiveStockRoutes(app,adapters);
+ try {
+  const stock=STOCK_TRADING_ASSETS[0]!;
+  const preview=await app.inject({method:'POST',url:'/v1/trading/preview',payload:{assetId:stock.assetId,variantMint:stock.mint,side:'buy',amountRaw:'1000000',termsAccepted:terms(stock)}});
+  assert.equal(preview.statusCode,429);assert.equal(preview.json().code,'LIVE_BUSY');assert.equal(preview.headers['retry-after'],'3');
+ }finally{await app.close();}
+});
