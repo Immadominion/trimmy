@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/product/account/wallet_recovery_link.dart';
 
 void main() {
-  const origin = 'https://web-production-e8138.up.railway.app/wallet-recovery';
-  const wallet = 'GtuuDXDJwaYCzFkushTrS3Sd68cKdNSqGKHcw8MsKXqF';
+  const origin = 'https://app.trimmy.xyz/wallet-recovery';
+  const wallet = 'FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z';
 
   test(
     'recovery link keeps only the expected public address in its fragment',
@@ -23,13 +23,13 @@ void main() {
       for (final target in [
         '',
         origin.replaceFirst('https:', 'http:'),
-        origin.replaceFirst('.app/', '.app.evil.example/'),
+        origin.replaceFirst('.xyz/', '.xyz.evil.example/'),
         origin.replaceFirst('https://', 'https://user:secret@'),
-        origin.replaceFirst('.app/', '.app:8443/'),
+        origin.replaceFirst('.xyz/', '.xyz:8443/'),
         '$origin?token=secret',
         '$origin#address=$wallet',
         '$origin/../other',
-        'https://web-production-e8138.up.railway.app/',
+        'https://app.trimmy.xyz/',
       ]) {
         expect(walletRecoveryLink(target, wallet), isNull, reason: target);
       }

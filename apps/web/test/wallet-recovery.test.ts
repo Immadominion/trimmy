@@ -6,7 +6,7 @@ import {canExportWallet, parseRecoveryTarget, readRecoveryConfig, recoveryIdenti
 import {createRecoverySdk, type RecoverySdk, type RecoverySession} from '../src/recovery/recovery-sdk-loader.js';
 import {WalletRecoveryPage} from '../src/recovery/wallet-recovery.js';
 
-const first = 'GtuuDXDJwaYCzFkushTrS3Sd68cKdNSqGKHcw8MsKXqF';
+const first = 'FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z';
 const second = 'So11111111111111111111111111111111111111112';
 const subject = 'did:privy:accountA';
 function wallet(address: string, extra = {}) {return {type: 'wallet', chainType: 'solana', walletClientType: 'privy', address, ...extra};}

@@ -7,7 +7,7 @@ Uri? walletRecoveryLink(String configuredUrl, String address) {
   final uri = Uri.tryParse(configuredUrl);
   if (uri == null ||
       uri.scheme != 'https' ||
-      uri.host != 'web-production-e8138.up.railway.app' ||
+      uri.host != 'app.trimmy.xyz' ||
       uri.hasPort ||
       uri.userInfo.isNotEmpty ||
       uri.path != '/wallet-recovery' ||
