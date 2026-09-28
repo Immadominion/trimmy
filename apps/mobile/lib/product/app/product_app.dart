@@ -1,4 +1,5 @@
 import '../money/money_mode.dart';
+import '../money/holding_prices.dart';
 import '../money/real_holdings.dart';
 import '../money/live_trade_history.dart';
 import '../onboarding/first_stock_followup.dart';
@@ -258,6 +259,7 @@ class _ProductExperienceState extends State<ProductExperience>
     if (!mounted) return;
     _portfolioViewRevision.value++;
     unawaited(_resolveHoldingCompanies());
+    unawaited(_refreshHoldingPrices());
   }
 
   Future<void> _refreshRealPortfolio() async {
@@ -266,6 +268,11 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   http.Client? _stockFactsTransport;
+  HoldingPrices? _holdingPrices;
+  Map<String, double> _holdingUsd = const {};
+  String _holdingPricesKey = '';
+  DateTime? _holdingPricesReadAt;
+  bool _readingHoldingPrices = false;
   HttpStockFactsRepository? _httpStockFacts;
   MarketFactsController? _marketFacts;
   AccountController? _orderAccount;
@@ -519,6 +526,7 @@ class _ProductExperienceState extends State<ProductExperience>
           _marketFacts = null;
         }
       }
+      if (origin != null) _holdingPrices = HoldingPrices(origin);
       final market = ProductMarketSession(
         controller,
         facts: _marketFacts,
@@ -1276,6 +1284,7 @@ class _ProductExperienceState extends State<ProductExperience>
     _marketFacts?.dispose();
     _httpStockFacts?.close();
     _stockFactsTransport?.close();
+    _holdingPrices?.close();
     _career.removeListener(_careerChanged);
     _career.dispose();
     _missions.removeListener(_careerChanged);
@@ -2594,24 +2603,50 @@ class _ProductExperienceState extends State<ProductExperience>
     return fallback;
   }
 
-  /// A held token's own per-share price, from any known listing of its company.
-  double? _holdingPrice(WalletStockBalance holding) {
-    for (final company in [
-      ?_latestCompany,
-      ..._holdingCompanies.values,
-      ...?_market?.companies,
-      ...?_market?.starterCompanies,
-      ...?_market?.recents.companies,
-    ]) {
-      if (company.assetId != holding.assetId) continue;
-      final price = company.asset.variants
-          .where((variant) => variant.mint == holding.mint)
-          .firstOrNull
-          ?.market
-          ?.priceUsd;
-      if (price != null && price > 0) return price.toDouble();
+  /// A held token's trusted price per displayed share, or null when unknown.
+  double? _holdingPrice(WalletStockBalance holding) =>
+      _holdingUsd[holding.mint];
+
+  /// Trusted per-share prices for held tokens (holding_prices.dart), read at
+  /// most every 30 seconds. After failures, the last read serves up to ten
+  /// minutes; then holdings show no value until a read succeeds.
+  Future<void> _refreshHoldingPrices() async {
+    final reader = _holdingPrices;
+    if (reader == null || _readingHoldingPrices) return;
+    final mints = {
+      ...?realWalletHoldings(widget.account)?.stockTokens.map((h) => h.mint),
+    };
+    final key = (mints.toList()..sort()).join(',');
+    final readAt = _holdingPricesReadAt;
+    final age = readAt == null ? null : DateTime.now().difference(readAt);
+    if (key == _holdingPricesKey &&
+        age != null &&
+        age < const Duration(seconds: 30)) {
+      return;
     }
-    return null;
+    if (mints.isEmpty) {
+      _holdingPricesKey = key;
+      if (_holdingUsd.isNotEmpty) setState(() => _holdingUsd = const {});
+      return;
+    }
+    _readingHoldingPrices = true;
+    try {
+      final prices = await reader.read(mints);
+      if (!mounted) return;
+      setState(() {
+        _holdingUsd = Map.unmodifiable(prices);
+        _holdingPricesKey = key;
+        _holdingPricesReadAt = DateTime.now();
+      });
+    } catch (_) {
+      if (mounted &&
+          _holdingUsd.isNotEmpty &&
+          (age == null || age > const Duration(minutes: 10))) {
+        setState(() => _holdingUsd = const {});
+      }
+    } finally {
+      _readingHoldingPrices = false;
+    }
   }
 
   Future<void> _resolveHoldingCompanies() async {

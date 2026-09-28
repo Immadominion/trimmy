@@ -12,26 +12,31 @@ export interface OrderPriceInput {
   readonly decimals: number;
   readonly transferFeeBps: number;
   readonly swapFeeBps: number;
-  /** Jupiter's market price per whole token before any display multiplier, or null. */
-  readonly referenceUsd: number | null;
+  /**
+   * Trusted prices per whole token in raw units (stock-token-prices.ts): the
+   * issuer's, and a liquid market's. Empty when none can be trusted.
+   */
+  readonly referencesUsd: readonly number[];
   /** Jupiter's own price impact for the quote (a fraction), when it reports one. */
   readonly priceImpactPct: unknown;
 }
 
 /**
- * Whether an order's price is fair: no more than 3% worse than Jupiter's market
- * price, plus the token's own transfer fee and the swap fee. A better price is
- * always fine. With no market price to compare, Jupiter's price impact must stay
- * under 5%.
+ * Whether an order's price is fair: no more than 3% worse than a trusted price,
+ * plus the token's own transfer fee and the swap fee. A better price is always
+ * fine. With no trusted price to compare, Jupiter's price impact must stay under
+ * 5%.
  */
 export function orderPriceAcceptable(input: OrderPriceInput): boolean {
   const tokens = Number(input.buying ? input.outputRaw : input.inputRaw) / 10 ** input.decimals;
   const usdc = Number(input.buying ? input.inputRaw : input.outputRaw) / 1e6;
   if (!(tokens > 0) || !(usdc > 0)) return false;
-  if (input.referenceUsd !== null && Number.isFinite(input.referenceUsd) && input.referenceUsd > 0) {
+  const references = input.referencesUsd.filter(value => Number.isFinite(value) && value > 0);
+  if (references.length) {
     const price = usdc / tokens;
-    const worseBps = (input.buying ? price / input.referenceUsd - 1 : 1 - price / input.referenceUsd) * 10_000;
-    return worseBps <= MARKET_PRICE_ALLOWANCE_BPS + input.transferFeeBps + input.swapFeeBps;
+    const allowedBps = MARKET_PRICE_ALLOWANCE_BPS + input.transferFeeBps + input.swapFeeBps;
+    return references.some(reference =>
+      (input.buying ? price / reference - 1 : 1 - price / reference) * 10_000 <= allowedBps);
   }
   const impact = Number(input.priceImpactPct);
   return Number.isFinite(impact) && impact <= MAX_PRICE_IMPACT;

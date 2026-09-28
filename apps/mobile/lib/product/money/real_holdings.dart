@@ -60,9 +60,9 @@ String _dollars(BigInt cents) {
 }
 
 /// What a held token is worth: its shares (the wallet's display amount, which
-/// already applies any share multiplier) times that exact token's market
-/// price, which the Market quotes per share. Never raw token units, and never
-/// another token's price. Display only: a sale is still quoted before signing.
+/// already applies any share multiplier) times that token's trusted price per
+/// share (holding_prices.dart). Never raw token units. Display only: a sale is
+/// still quoted before signing.
 double? realHoldingValue(WalletStockBalance holding, double? price) {
   final shares = holding.displayAmount == null
       ? null
@@ -122,7 +122,7 @@ class RealHoldings extends StatelessWidget {
   /// of one company apart. The wallet's own name is the fallback.
   final String? Function(WalletStockBalance holding)? nameForAsset;
 
-  /// That exact token's market price per share, or null when none is known.
+  /// That token's trusted price per share, or null when none is known.
   final double? Function(WalletStockBalance holding)? priceForHolding;
   final VoidCallback? onExplore;
   @override

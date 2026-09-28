@@ -4,6 +4,7 @@ import {StockMarketStates, StockMintPauseReader} from './stock-market-state.js';
 import {stockTradingAssets} from './stock-trading-catalog.js';
 import {StockTokenDirectory, withCatalogSnapshot} from './stock-token-directory.js';
 import {jupiterSharePrices} from './stock-share-prices.js';
+import {JupiterTokenPrices} from './stock-token-prices.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -99,13 +100,15 @@ tokenDirectory?.start();
 // decides alone when they are unavailable.
 const marketStates = liveRpc ? new StockMarketStates({ondo: new OndoMarketStatusReader(),
   pauses: new StockMintPauseReader({rpcUrl: liveRpc}), mints: () => stockTradingAssets().map(asset => asset.mint)}) : undefined;
+// Trusted per-share prices: the order price check and holdings values share them.
+const tokenPrices = new JupiterTokenPrices(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {});
 const liveStocks = liveRpc &&
     practice.liveOrderStore && practice.authenticateContext && linkedIdentities
   ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
       executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet',
       ...(marketStates ? {marketStates} : {}),
       ...(tokenDirectory ? {directory: tokenDirectory} : {}),
-      service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore,
+      service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore, prices: tokenPrices,
         ...(marketStates ? {marketStates} : {}),
         ...(tokenDirectory ? {directory: tokenDirectory} : {}),
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
@@ -142,7 +145,7 @@ const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions,
   ...(marketEstimates ? {marketEstimates} : {}), ...(stockEstimates ? {stockEstimates} : {}),
   // Market pages come from the token directory's sweep when recent (every 10 minutes).
   ...(stockDiscovery ? {stockDiscovery: tokenDirectory ? withCatalogSnapshot(stockDiscovery, tokenDirectory) : stockDiscovery} : {}), ...(stockFacts ? {stockFacts} : {}), ...(socialX ? {socialX} : {}),
-  ...(accountContext ? {accountContext} : {}), ...(accountHoldings ? {accountHoldings} : {}),
+  ...(accountContext ? {accountContext} : {}), ...(accountHoldings ? {accountHoldings} : {}), stockPrices: tokenPrices,
   ...(walletPossession ? {walletPossession} : {}),
   ...(stockHistory ? {stockHistory} : {}), ...(raydiumStockQuotes ? {raydiumStockQuotes} : {}),
   ...(preStocks ? {preStocks} : {}), ...(paperTrading ? {paperTrading} : {})});

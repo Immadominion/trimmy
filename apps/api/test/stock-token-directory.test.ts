@@ -36,20 +36,23 @@ describe('order market price', () => {
     priceImpactPct: '0'} as const;
   it('accepts a price near the market and refuses one far worse, allowing the token fees', () => {
     // $10 for 1 token.
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: 10}), true);
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: 9.75}), true); // 2.6% worse
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: 9.5}), false); // 5.3% worse
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: 9.5, transferFeeBps: 300}), true);
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [10]}), true);
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [9.75]}), true); // 2.6% worse
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [9.5]}), false); // 5.3% worse
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [9.5], transferFeeBps: 300}), true);
     // A better price is always fine; for a sell, receiving less is worse.
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: 20}), true);
-    assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9000000', referenceUsd: 10}), false);
-    assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9800000', referenceUsd: 10}), true);
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [20]}), true);
+    assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9000000', referencesUsd: [10]}), false);
+    assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9800000', referencesUsd: [10]}), true);
+    // Close to any trusted price is enough: the issuer's, or a liquid market's.
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [9.5, 10]}), true);
   });
-  it('falls back to Jupiter price impact without a market price', () => {
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: null, priceImpactPct: '0.01'}), true);
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: null, priceImpactPct: '0.2'}), false);
-    assert.equal(orderPriceAcceptable({...base, referenceUsd: null, priceImpactPct: undefined}), false);
-    assert.equal(orderPriceAcceptable({...base, outputRaw: '0', referenceUsd: 10}), false);
+  it('falls back to Jupiter price impact without a trusted price', () => {
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: '0.01'}), true);
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: '0.2'}), false);
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: undefined}), false);
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [NaN, 0], priceImpactPct: '0.2'}), false);
+    assert.equal(orderPriceAcceptable({...base, outputRaw: '0', referencesUsd: [10]}), false);
   });
 });
 

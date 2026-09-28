@@ -78,6 +78,7 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/markets/stocks/catalog': Object.freeze(['GET']),
   '/v1/markets/stocks/cards': Object.freeze(['GET']),
   '/v1/markets/stocks/facts': Object.freeze(['GET']),
+  '/v1/markets/stocks/prices': Object.freeze(['GET']),
   '/v1/markets/stocks/insight': Object.freeze(['GET']),
   '/v1/markets/stocks/holders': Object.freeze(['GET']),
   '/v1/markets/prestocks': Object.freeze(['GET']),

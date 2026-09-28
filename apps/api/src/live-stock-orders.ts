@@ -11,6 +11,7 @@ import {LEGACY_STOCK_ISSUER,STOCK_ISSUER_IDS,acceptsIssuerTerms} from './stock-i
 import {stockIssuerCapabilities,unavailableVariantsNow} from './stock-market-availability.js';
 import type {StockTokenDirectory} from './stock-token-directory.js';
 import {orderPriceAcceptable} from './stock-order-price.js';
+import {JupiterTokenPrices, orderReferencePrices} from './stock-token-prices.js';
 import {calendarMarketStates} from './stock-market-state.js';
 import type {StockMarketStates,StockMarketStateOf} from './stock-market-state.js';
 import {usMarketMoment} from './us-equity-calendar.js';
@@ -122,7 +123,9 @@ interface Options {rpcUrl:string;store:LiveOrderStore;apiKey?:string;fetch?:type
  /** Live market states; without them the published session calendar alone decides. */
  marketStates?:StockMarketStates;
  /** Finds tokens the Market lists that no order has named yet; without it only known tokens trade. */
- directory?:StockTokenDirectory}
+ directory?:StockTokenDirectory;
+ /** Trusted token prices for the order price check; read from Jupiter by default. */
+ prices?:JupiterTokenPrices}
 
 /** Market states now, live when configured. */
 export async function marketStatesNow(states:StockMarketStates|undefined,now:number):Promise<StockMarketStateOf>{
@@ -136,6 +139,7 @@ export class LiveStockOrders {
  constructor(private readonly options:Options) {
   const url=new URL(options.rpcUrl);if(url.protocol!=='https:'||url.username||url.password)fail('LIVE_UNAVAILABLE');
   this.#fetch=options.fetch??fetch;this.#now=options.now??Date.now;
+  this.#prices=options.prices??new JupiterTokenPrices({...(options.fetch?{fetch:options.fetch}:{}),...(options.apiKey?{apiKey:options.apiKey}:{}),now:this.#now});
   const rpc={rpcUrl:options.rpcUrl,...(options.fetch?{fetch:options.fetch}:{}),now:this.#now};
   this.#stages=options.stages??{lookupResolver:new SolanaMainnetLookupTableResolver(rpc),lifetimeVerifier:new SolanaMainnetStockOrderLifetimeVerifier(rpc),semanticsReader:new SolanaMainnetStockOrderSemanticsReader(rpc),simulator:new SolanaMainnetStockOrderSimulator(rpc),now:this.#now};
  }
@@ -156,26 +160,13 @@ export class LiveStockOrders {
   return result.result;
  }
  private headers(){return {'accept':'application/json',...(this.options.apiKey?{'x-api-key':this.options.apiKey}:{})};}
- readonly #prices=new Map<string,{readonly at:number;readonly usd:number|null}>();
- /** Jupiter's market price per whole token (before any display multiplier), cached briefly; null when it has none. */
- async #marketPrice(mint:string):Promise<number|null> {
-  const cached=this.#prices.get(mint);
-  if(cached && this.#now()-cached.at<30_000)return cached.usd;
-  let usd:number|null=null;
-  try {
-   const page=await this.json(`https://api.jup.ag/price/v3?ids=${mint}`,{method:'GET',headers:this.headers()});
-   const row=page?.[mint];
-   const value=row?.scaledUiConfig?.usdPricePrescaled ?? row?.usdPrice;
-   usd=typeof value==='number' && Number.isFinite(value) && value>0?value:null;
-  }catch{usd=null;}
-  if(this.#prices.size>2000)this.#prices.clear();
-  this.#prices.set(mint,{at:this.#now(),usd});
-  return usd;
- }
- /** Refuses an order priced far worse than the token's market (stock-order-price.ts). */
+ /** Trusted prices per token (stock-token-prices.ts), cached briefly. */
+ readonly #prices:JupiterTokenPrices;
+ /** Refuses an order priced far worse than the issuer's price or a liquid market (stock-order-price.ts). */
  async #checkMarketPrice(stock:StockTradingAsset,buying:boolean,inputRaw:string,outputRaw:string,feeBps:number,payload:any):Promise<void> {
+  const price=(await this.#prices.read([stock.mint])).get(stock.mint);
   if(!orderPriceAcceptable({buying,inputRaw,outputRaw,decimals:stock.decimals,transferFeeBps:stock.transferFeeBps,swapFeeBps:feeBps,
-   referenceUsd:await this.#marketPrice(stock.mint),priceImpactPct:payload?.priceImpactPct}))fail('PRICE_OFF_MARKET');
+   referencesUsd:orderReferencePrices(price),priceImpactPct:payload?.priceImpactPct}))fail('PRICE_OFF_MARKET');
  }
  private async chain() {
   if(await this.rpc('getGenesisHash')!==STOCK_DRAFT_MAINNET_GENESIS)fail('WRONG_NETWORK');

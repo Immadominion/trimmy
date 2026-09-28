@@ -29,6 +29,8 @@ import { registerMarketEstimateRoute } from './market-estimate-route.js';
 import type { MarketEstimates } from './market-estimates.js';
 import { registerStockDiscoveryRoutes } from './stock-discovery-routes.js';
 import { registerStockFactsRoutes } from './stock-facts-routes.js';
+import { registerStockPriceRoutes } from './stock-price-routes.js';
+import type { StockPriceReader } from './stock-price-routes.js';
 import type { StockFactsReader } from './stock-facts.js';
 import { ReadinessReporter } from './readiness.js';
 import type { ReadinessProbe } from './readiness.js';
@@ -95,6 +97,8 @@ export interface ApiOptions {
   readonly marketEstimates?: MarketEstimates;
   readonly stockDiscovery?: StockDiscovery;
   readonly stockFacts?: StockFactsReader;
+  /** Per-share prices for valuing holdings. */
+  readonly stockPrices?: StockPriceReader;
   readonly publicHolders?: PublicTokenHolders;
   readonly stockEstimates?: StockEstimates;
   readonly socialX?: SocialXAdapters;
@@ -333,6 +337,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   registerMarketEstimateRoute(app, options.marketEstimates);
   registerStockDiscoveryRoutes(app, options.stockDiscovery);
   registerStockFactsRoutes(app, options.stockFacts);
+  registerStockPriceRoutes(app, options.stockPrices);
   registerPublicHolders(app, options.publicHolders);
   registerStockEstimateRoute(app, options.stockEstimates ? {stockEstimates: options.stockEstimates} : {});
   registerSocialXRoutes(app, options.socialX);
