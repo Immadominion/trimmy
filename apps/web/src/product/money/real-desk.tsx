@@ -26,7 +26,8 @@ export function holdingShares(holding: WalletStockBalance, raw = holding.amountR
   return ShareScale.fromDisplay(holding.decimals, holding.amountRaw, holding.displayAmount).label(raw);
 }
 
-export function RealBalanceCard({onSwitch, onFastBuy, onAddMoney, prices = noPrices}: {onSwitch(): void; onFastBuy(): void; onAddMoney(): void; prices?: HoldingPrices}) {
+export function RealBalanceCard({onSwitch, onFastBuy, onAddMoney, onSend, prices = noPrices}: {onSwitch(): void; onFastBuy(): void; onAddMoney(): void;
+  onSend?: (() => void) | undefined; prices?: HoldingPrices}) {
   const money = useMoney();
   const holdings = coherentHoldings(money.wallet);
   const missing = money.wallet.context?.embeddedSolanaWallet.status === 'missing';
@@ -47,7 +48,8 @@ export function RealBalanceCard({onSwitch, onFastBuy, onAddMoney, prices = noPri
     </div>
     {spendableDiffers && <p className="checked">{usdcLabel(holdings.usdc.availableToTradeRaw)} is ready to trade. The rest is in another token account.</p>}
     <div className="balance-actions"><button aria-label="Fast buy" onClick={onFastBuy}><span aria-hidden="true">+</span>Fast buy</button>
-      <button onClick={onAddMoney}><span aria-hidden="true">↙</span>Add money</button></div>
+      <button onClick={onAddMoney}><span aria-hidden="true">↙</span>Add money</button>
+      {onSend && <button data-testid="real-send" onClick={onSend}><span aria-hidden="true">↗</span>Send</button>}</div>
   </section>;
 }
 

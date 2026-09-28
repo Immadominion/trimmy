@@ -15,6 +15,8 @@ const routes: Readonly<Record<string, readonly string[]>> = {
   '/v1/markets/stocks/cards': ['GET'], '/v1/markets/stocks/variants': ['GET'],
   '/v1/markets/stocks/facts': ['GET'], '/v1/markets/stocks/insight': ['GET'],
   '/v1/markets/stocks/prices': ['GET'],
+  '/v1/wallet/transfers/preview': ['POST'], '/v1/wallet/transfers/execute': ['POST'],
+  '/v1/wallet/transfers/status': ['GET'],
   // Own money: account wallet reads and the live order lifecycle (never funding).
   '/v1/account/context': ['GET'], '/v1/account/holdings': ['GET'],
   '/v1/trading/capabilities': ['GET'], '/v1/trading/preview': ['POST'], '/v1/trading/execute': ['POST'],

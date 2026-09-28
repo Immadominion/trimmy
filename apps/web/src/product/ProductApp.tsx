@@ -580,7 +580,8 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
   return <section className="desk-screen" aria-label="Your desk">
     <div className="page-intro"><h1>Your desk.</h1>{onSignIn && <button className="secondary save-desk" onClick={onSignIn}>Save your desk</button>}</div>
     <div className="desk-overview">
-      {money.real ? <RealBalanceCard onSwitch={onSwitchMode} onFastBuy={onFastBuy} onAddMoney={money.openFundWallet} prices={holdingPrices}/> :
+      {money.real ? <RealBalanceCard onSwitch={onSwitchMode} onFastBuy={onFastBuy} onAddMoney={money.openFundWallet}
+        onSend={money.transfers ? money.openSend : undefined} prices={holdingPrices}/> :
       <section className="balance-card" aria-label="Paper balance">
         <div className="balance-heading"><div className="balance-label">{total !== null ? 'Your paper balance' : 'Your paper cash'}</div><MoneyModeSwitch real={false} onSwitch={onSwitchMode}/><div className="balance-coins" aria-hidden="true">{open.slice(0,3).map(position => <CompanyLogo key={position.assetId + position.variantMint} name={identities.get(position.assetId)?.name ?? position.symbol} url={identities.get(position.assetId)?.imageUrl ?? null} size={34}/>)}</div></div>
         <div className="balance-amount">{micros(total ?? portfolio.cashPaperMicros)}<small>paper</small></div>

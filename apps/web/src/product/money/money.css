@@ -137,3 +137,10 @@
 @media(prefers-reduced-motion:reduce){.money-sheet{scroll-behavior:auto}}
 /* Total balance: cash and stocks named under the headline. */
 .desk-screen .real-balance .balance-split{margin:6px 0 0;font-size:13px;color:#e3d9ff;font-variant-numeric:tabular-nums}
+.send-form{display:grid;gap:14px}.send-form label{display:grid;gap:6px;font-size:13px;color:#675582}
+.send-form select,.send-form input{font:inherit;font-size:15px;color:var(--ink);padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;min-width:0}
+.send-form small{font-size:12px;color:#81768f}.send-amount{display:flex;gap:8px;align-items:center}.send-amount input{flex:1}
+.send-form .primary,.send-review .primary,.send-money .fund-state .primary{background:var(--pine);box-shadow:0 3px 0 var(--pine-ink)}
+.send-review{display:grid;gap:12px}.send-summary{display:grid;gap:10px;margin:0;padding:16px 18px;border-radius:20px;background:#f6f3fb}
+.send-summary>div{display:flex;justify-content:space-between;gap:14px;font-size:14px}.send-summary dt{color:#81768f}.send-summary dd{margin:0;text-align:right;font-weight:500}
+.send-destination{display:block;word-break:break-all;font-size:14px;padding:12px 14px;border-radius:14px;background:#faf9fc;letter-spacing:.3px}

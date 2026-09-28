@@ -17,6 +17,8 @@ import {AccountWalletClient} from './wallet-client.js';
 import {MoneyWallet} from './wallet-controller.js';
 import {loadProductWalletSdk, type EmbeddedSolanaSnapshot, type ProductWalletSdkPort} from './wallet-sdk-loader.js';
 import {FundWalletSheet} from './fund-wallet-sheet.js';
+import {SendMoneySheet} from './send-money-sheet.js';
+import {TransferError, WalletTransferClient} from './wallet-transfer-client.js';
 
 class BridgeBoundary extends Component<{onFailure(): void; children: ReactNode}, {failed: boolean}> {
   override state = {failed: false};
@@ -68,6 +70,7 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     const wallet = new MoneyWallet({access: account, embedded: () => holder.current,
       client: new AccountWalletClient({baseUrl: apiBase, accountId: account.accountId, bearer, fetch: request})});
     return {wallet, orders: new LiveOrderClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal}),
+      transfers: new WalletTransferClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal}),
       mode: new MoneyModeStore(storage, apiBase, account.accountId), terms: new IssuerTermsStore(storage, account.accountId),
       pending: new PendingOrderStore(storage, apiBase, account.accountId)};
   }, [apiBase, account, fetch, storage]);
@@ -87,6 +90,7 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
   const [capabilities, setCapabilities] = useState<TradingCapabilities | null>(null);
   const [capabilitiesFailed, setCapabilitiesFailed] = useState(false);
   const [fundWalletOpen, setFundWalletOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const capabilitiesRequest = useRef<{promise: Promise<void>; at: number; settled: boolean} | null>(null);
   const [clock, setClock] = useState(Date.now);
 
@@ -137,10 +141,25 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     createOrderSession: () => setup ? new LiveOrderSession({client: setup.orders, wallet: setup.wallet, pending: setup.pending,
       visible: () => document.visibilityState !== 'hidden', ...(orderPollMs ? {pollMs: orderPollMs} : {})}) : null,
     fundWalletOpen, openFundWallet, closeFundWallet: () => setFundWalletOpen(false),
+    transfers: setup ? {
+      preview: input => setup.transfers.preview(input),
+      send: async review => {
+        let signed: string;
+        // The same checks as an order: this account's wallet fills only its own slot of the reviewed message.
+        try {signed = await setup.wallet.signReviewedTransaction({wallet: review.from, transaction: review.unsignedTransaction,
+          expiresAt: review.expiresAt, route: 'aggregator'});}
+        catch (error) {throw new TransferError(error instanceof Error && 'code' in error ? String(error.code) : 'SIGNING_CANCELLED');}
+        return setup.transfers.execute(review, signed);
+      },
+      status: signature => setup.transfers.status(signature),
+    } : null,
+    sendOpen, openSend: () => {if (setup) setSendOpen(true);}, closeSend: () => setSendOpen(false),
   };
   return <MoneyContext.Provider value={api}>
     {sdk && account && <BridgeBoundary onFailure={() => setSdkFailed(true)}><WalletBridge sdk={sdk} holder={holder} onChange={setBridgeKey}/></BridgeBoundary>}
     {children}
     {fundWalletOpen && <FundWalletSheet onClose={() => setFundWalletOpen(false)}/>}
+    {sendOpen && setup && <SendMoneySheet onClose={() => {setSendOpen(false); void setup.wallet.refresh();}}
+      nameFor={mint => capabilities?.forMint(mint)?.name}/>}
   </MoneyContext.Provider>;
 }

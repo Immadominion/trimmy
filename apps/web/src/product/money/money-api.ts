@@ -9,6 +9,15 @@ import type {TradingCapabilities} from './live-trading.js';
 import type {LiveOrderSession} from './order-session.js';
 import type {IssuerTermsStore} from './stores.js';
 import type {WalletSetupOutcome, WalletState} from './wallet-controller.js';
+import type {TransferReview} from './wallet-transfer-client.js';
+
+/** Sending money out of the account's wallet (wallet-transfer-client.ts). */
+export interface TransferPort {
+  preview(input: {readonly asset: string; readonly destination: string; readonly amountRaw: string}): Promise<TransferReview>;
+  /** Signs exactly the reviewed transfer with the embedded wallet, then sends it. Returns the transaction signature. */
+  send(review: TransferReview): Promise<string>;
+  status(signature: string): Promise<'pending' | 'confirmed' | 'failed'>;
+}
 
 export interface MoneyApi {
   /** A product API is configured and an account is signed in. */
@@ -35,6 +44,11 @@ export interface MoneyApi {
   /** Opens Add money (crypto deposit). Switches this account to Real, as mobile does. */
   openFundWallet(): void;
   closeFundWallet(): void;
+  /** Send, or null for guests. */
+  readonly transfers: TransferPort | null;
+  readonly sendOpen: boolean;
+  openSend(): void;
+  closeSend(): void;
 }
 
 export const closedWallet: WalletState = Object.freeze({phase: 'closed', issue: null, context: null, holdings: null, freshUntil: null,
@@ -42,7 +56,8 @@ export const closedWallet: WalletState = Object.freeze({phase: 'closed', issue: 
 const guest: MoneyApi = Object.freeze({available: false, accountId: null, real: false, setReal() {}, wallet: closedWallet,
   walletFresh: false, walletSdk: 'unavailable', canSetUpWallet: false, setUpWallet: async () => 'unavailable' as const,
   refreshWallet: async () => {}, capabilities: null, capabilitiesFailed: false, refreshCapabilities: async () => {},
-  terms: null, orders: null, createOrderSession: () => null, fundWalletOpen: false, openFundWallet() {}, closeFundWallet() {}});
+  terms: null, orders: null, createOrderSession: () => null, fundWalletOpen: false, openFundWallet() {}, closeFundWallet() {},
+  transfers: null, sendOpen: false, openSend() {}, closeSend() {}});
 export const MoneyContext = createContext<MoneyApi>(guest);
 export function useMoney(): MoneyApi {return useContext(MoneyContext);}
 
