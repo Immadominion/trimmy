@@ -179,4 +179,60 @@ void main() {
     semantics.dispose();
     repository.dispose();
   });
+
+  testWidgets('a priced holding shows shares times its own per-share price', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: fixtures.holdingsEnvelopeV2()),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    await repository.refresh();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: Scaffold(
+          body: RealHoldings(
+            account: account,
+            onAddMoney: () {},
+            priceForHolding: (holding) =>
+                holding.mint == fixtures.nvidiaMint ? 200 : null,
+          ),
+        ),
+      ),
+    );
+    // 2.46913578 shares at $200 each; the display amount already carries the
+    // token's 2x share multiplier, so raw units are never multiplied.
+    expect(find.text(r'$493.83'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Value unavailable')), findsOneWidget);
+    semantics.dispose();
+    repository.dispose();
+  });
+
+  test('the total waits until every stock has a price', () async {
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: fixtures.holdingsEnvelopeV2()),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    addTearDown(repository.dispose);
+    await repository.refresh();
+    expect(
+      realTotalBalance(
+        account,
+        (holding) => holding.mint == fixtures.nvidiaMint ? 200 : null,
+      ),
+      isNull,
+    );
+    final total = realTotalBalance(account, (holding) => 1)!;
+    final cash = realCashBalance(account)!;
+    expect(total.cash, cash);
+    // 90,071,992.54741 + 2.46913578 shares at $1.
+    expect(total.stocks, r'$90,071,995.02');
+    expect(total.total, isNot(cash));
+  });
 }

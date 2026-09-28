@@ -13,6 +13,7 @@ class WalletStack extends StatefulWidget {
     required this.onSwitch,
     required this.onBuy,
     this.balance,
+    this.balanceLabel,
     this.balanceNote,
     this.solBalance,
     this.onAddMoney,
@@ -20,7 +21,7 @@ class WalletStack extends StatefulWidget {
   });
   final bool real;
   final DeskSnapshot paper;
-  final String? balance, balanceNote, solBalance;
+  final String? balance, balanceLabel, balanceNote, solBalance;
   final VoidCallback onSwitch, onBuy;
   final VoidCallback? onAddMoney, onHistory;
   @override
@@ -205,7 +206,7 @@ class _WalletStackState extends State<WalletStack>
                       : FlexFit.tight,
                   child: Text(
                     real
-                        ? 'Cash balance'
+                        ? widget.balanceLabel ?? 'Cash balance'
                         : switch (widget.paper.paperValueState) {
                             DeskPaperValueState.complete => 'Account balance',
                             DeskPaperValueState.partial => 'Known value',

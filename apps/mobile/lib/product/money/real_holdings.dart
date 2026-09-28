@@ -48,12 +48,54 @@ String? realCashBalance(AccountController? account) {
   if (h == null) return null;
   final raw = BigInt.tryParse(h.usdc.amountRaw);
   if (raw == null) return null;
-  final cents = raw ~/ BigInt.from(10000);
+  return _dollars(raw ~/ BigInt.from(10000));
+}
+
+String _dollars(BigInt cents) {
   final whole = (cents ~/ BigInt.from(100)).toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
     (m) => '${m[1]},',
   );
   return '\$$whole.${(cents % BigInt.from(100)).toString().padLeft(2, '0')}';
+}
+
+/// What a held token is worth: its shares (the wallet's display amount, which
+/// already applies any share multiplier) times that exact token's market
+/// price, which the Market quotes per share. Never raw token units, and never
+/// another token's price. Display only: a sale is still quoted before signing.
+double? realHoldingValue(WalletStockBalance holding, double? price) {
+  final shares = holding.displayAmount == null
+      ? null
+      : double.tryParse(holding.displayAmount!);
+  if (price == null || !price.isFinite || price <= 0) return null;
+  if (shares == null || !shares.isFinite || shares < 0) return null;
+  return shares * price;
+}
+
+String realUsd(double value) => _dollars(BigInt.from((value * 100).round()));
+
+/// Cash plus every stock's value, once each stock has a price. Until then the
+/// card shows cash alone rather than a partial total.
+({String total, String cash, String stocks})? realTotalBalance(
+  AccountController? account,
+  double? Function(WalletStockBalance holding) priceFor,
+) {
+  final h = realWalletHoldings(account);
+  final cashRaw = h == null ? null : BigInt.tryParse(h.usdc.amountRaw);
+  if (h == null || cashRaw == null || h.stockTokens.isEmpty) return null;
+  var stocks = 0.0;
+  for (final holding in h.stockTokens) {
+    final value = realHoldingValue(holding, priceFor(holding));
+    if (value == null) return null;
+    stocks += value;
+  }
+  final cash = cashRaw ~/ BigInt.from(10000);
+  final stockCents = BigInt.from((stocks * 100).round());
+  return (
+    total: _dollars(cash + stockCents),
+    cash: _dollars(cash),
+    stocks: _dollars(stockCents),
+  );
 }
 
 class RealHoldings extends StatelessWidget {
@@ -66,6 +108,7 @@ class RealHoldings extends StatelessWidget {
     this.onAsset,
     this.logoForAsset,
     this.nameForAsset,
+    this.priceForHolding,
     this.onExplore,
   });
   final AccountController? account;
@@ -78,6 +121,9 @@ class RealHoldings extends StatelessWidget {
   /// The trading capabilities' token name, which tells two issuers' tokens
   /// of one company apart. The wallet's own name is the fallback.
   final String? Function(WalletStockBalance holding)? nameForAsset;
+
+  /// That exact token's market price per share, or null when none is known.
+  final double? Function(WalletStockBalance holding)? priceForHolding;
   final VoidCallback? onExplore;
   @override
   Widget build(BuildContext context) {
@@ -143,9 +189,14 @@ class RealHoldings extends StatelessWidget {
             // shares are plain token units.
             quantity:
                 '${holding.displayAmount == null ? formatRawUnits(holding.amountRaw, holding.decimals) : liveGroupedDecimal(holding.displayAmount!)} ${holding.symbol}',
-            // A market share price must not be multiplied by raw token units:
-            // token-to-share resolution and valuation are separate facts.
-            value: '—',
+            // Shares times this token's own per-share price; never raw units.
+            value: switch (realHoldingValue(
+              holding,
+              priceForHolding?.call(holding),
+            )) {
+              final double worth => realUsd(worth),
+              null => '—',
+            },
             onTap: onAsset != null
                 ? () => onAsset!(holding)
                 : holding.assetId == 'apple'

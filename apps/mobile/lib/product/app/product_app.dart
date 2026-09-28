@@ -23,6 +23,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../account/account_controller.dart';
+import '../../account/account_data_models.dart' show WalletStockBalance;
 import '../../account/config.dart';
 import '../../account/guest_session.dart';
 import '../../markets/discovery.dart';
@@ -1522,6 +1523,7 @@ class _ProductExperienceState extends State<ProductExperience>
 
   Widget _shell(OnboardingProfile profile) {
     _ensureDailyDesk();
+    final realTotal = realTotalBalance(widget.account, _holdingPrice);
     if (_reminderCareerPending) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted ||
@@ -1553,18 +1555,22 @@ class _ProductExperienceState extends State<ProductExperience>
               snapshot: _deskSnapshot(profile),
               real: _realMoney,
               onSwitchMode: _switchMoneyMode,
-              realBalance: realCashBalance(widget.account),
+              realBalance: realTotal?.total ?? realCashBalance(widget.account),
+              realBalanceLabel: realTotal == null ? null : 'Total balance',
               realSolBalance: realSolBalance(widget.account),
               realBalanceNote:
-                  widget.account?.portfolioState?.portfolioIsFresh == true
+                  widget.account?.portfolioState?.portfolioIsFresh != true
+                  ? 'Updating balance…'
+                  : realTotal == null
                   ? 'USDC available'
-                  : 'Updating balance…',
+                  : '${realTotal.cash} cash · ${realTotal.stocks} in stocks',
               realHoldings: RealHoldings(
                 account: widget.account,
                 logoForAsset: (holding) =>
                     _knownCompany(holding.assetId)?.logoUrl,
                 nameForAsset: (holding) =>
                     _liveCapabilities?.forMint(holding.mint)?.name,
+                priceForHolding: _holdingPrice,
                 onAddMoney: _openFunding,
                 onAsset: (holding) => unawaited(
                   _openAssetId(holding.assetId, variantMint: holding.mint),
@@ -2586,6 +2592,26 @@ class _ProductExperienceState extends State<ProductExperience>
       if (company.logoUrl?.isNotEmpty == true) return company;
     }
     return fallback;
+  }
+
+  /// A held token's own per-share price, from any known listing of its company.
+  double? _holdingPrice(WalletStockBalance holding) {
+    for (final company in [
+      ?_latestCompany,
+      ..._holdingCompanies.values,
+      ...?_market?.companies,
+      ...?_market?.starterCompanies,
+      ...?_market?.recents.companies,
+    ]) {
+      if (company.assetId != holding.assetId) continue;
+      final price = company.asset.variants
+          .where((variant) => variant.mint == holding.mint)
+          .firstOrNull
+          ?.market
+          ?.priceUsd;
+      if (price != null && price > 0) return price.toDouble();
+    }
+    return null;
   }
 
   Future<void> _resolveHoldingCompanies() async {

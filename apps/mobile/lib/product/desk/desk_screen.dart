@@ -29,13 +29,14 @@ class DeskScreen extends StatelessWidget {
     this.onRefresh,
     this.real = false,
     this.realBalance,
+    this.realBalanceLabel,
     this.realBalanceNote,
     this.realSolBalance,
     this.realHoldings,
     this.onSwitchMode,
   });
   final bool real;
-  final String? realBalance, realBalanceNote, realSolBalance;
+  final String? realBalance, realBalanceLabel, realBalanceNote, realSolBalance;
   final Widget? realHoldings;
   final VoidCallback? onSwitchMode;
   final DeskSnapshot snapshot;
@@ -258,6 +259,7 @@ class DeskScreen extends StatelessWidget {
     real: real,
     paper: snapshot,
     balance: realBalance,
+    balanceLabel: realBalanceLabel,
     balanceNote: realBalanceNote,
     solBalance: realSolBalance,
     onSwitch: onSwitchMode ?? () {},
