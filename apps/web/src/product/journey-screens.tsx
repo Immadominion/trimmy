@@ -4,6 +4,7 @@ import {useCompanyIdentities} from './company-identity';
 import type {FirstDayJourney} from './use-first-day-journey';
 import {FirstOrderCelebration, GuestDeskPreserved, MoneyChoicePage, ReminderPreferencePage} from './first-day-followup';
 import {SignInScreen} from './sign-in-screen';
+import {tokenArt} from './onboarding';
 
 export interface JourneyScreensProps {
   readonly journey: FirstDayJourney; readonly market: ProductMarketClient;
@@ -11,6 +12,8 @@ export interface JourneyScreensProps {
   readonly careerLoading: boolean; readonly motion: boolean; readonly preservedExpired: boolean;
   readonly onGuest: () => Promise<void>; readonly onAccount: () => void;
   readonly onRetryEvidence: () => void; readonly onFinish: (addMoney: boolean) => Promise<void>;
+  /** The company picked in the first day, for its own order only. */
+  readonly hint?: {readonly orderId: string; readonly name: string; readonly logoUrl: string | null} | null;
 }
 /** One screen at a time, in mobile's order. Only the gate's named action grants guest access. */
 export function JourneyScreens(props: JourneyScreensProps) {
@@ -21,7 +24,9 @@ export function JourneyScreens(props: JourneyScreensProps) {
   if (view.kind === 'gate') return <SignInScreen motion={props.motion} hasDesk entryGate onGuest={props.onGuest} onBack={() => {}} onAccount={props.onAccount}/>;
   if (view.kind === 'celebration') {
     const identity = evidence ? identities.get(evidence.assetId) : undefined;
-    return <FirstOrderCelebration key={evidence?.orderId ?? 'pending'} evidence={evidence} name={identity?.name ?? null} logoUrl={identity?.imageUrl ?? null}
+    const hint = evidence && props.hint?.orderId === evidence.orderId ? props.hint : null;
+    return <FirstOrderCelebration key={evidence?.orderId ?? 'pending'} evidence={evidence} name={identity?.name ?? hint?.name ?? null}
+      logoUrl={identity?.imageUrl ?? hint?.logoUrl ?? (evidence ? tokenArt(evidence.symbol) : null)}
       career={props.career} loading={props.careerLoading} onRetry={props.onRetryEvidence}
       onContinue={() => evidence ? journey.continueAfterCelebration(evidence.orderId) : Promise.resolve()}/>;
   }

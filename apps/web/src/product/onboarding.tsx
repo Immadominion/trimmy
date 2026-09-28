@@ -13,7 +13,8 @@ export interface FirstDayProps {
   readonly portfolio: PaperPortfolio | null; readonly career: CareerSummary | null;
   readonly ensureDesk: () => Promise<void>; readonly onExplore: () => void;
   readonly onExit: (completed: boolean) => Promise<void>;
-  readonly onCommitted: (receipt: PaperReceipt) => Promise<void>; readonly onPending: () => void;
+  /** The picked company rides along so the celebration can name it before public facts load. */
+  readonly onCommitted: (receipt: PaperReceipt, company?: {readonly name: string; readonly logoUrl: string | null}) => Promise<void>; readonly onPending: () => void;
   /** Mobile's receipt Continue: records the confirmed order and opens the follow-up. */
   readonly onReceiptContinue: (orderId: string) => Promise<void>;
   readonly onStep?: (step: string) => void;
@@ -29,6 +30,8 @@ function companies(assets: readonly StockDiscoveryAsset[]): Company[] {
       symbol: variant.symbol ?? asset.symbol ?? 'Stock token', mint: variant.mint}] : [];
   }).slice(0, 3);
 }
+/** The web ships art for the three starter tokens; other logos come from public facts. */
+export function tokenArt(symbol: string): string | null {return ['AAPLx', 'TSLAx', 'METAx'].includes(symbol) ? art(`token-${symbol}.webp`) : null;}
 function markHistory(phase: Phase, push: boolean): void {
   const previous: unknown = window.history.state;
   const state = {...(previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {}), trimmyFirstDay: phase};
@@ -148,7 +151,7 @@ export function FirstDay(props: FirstDayProps) {
       const order = await session.commitOrder(preview);
       if (!mounted.current) return;
       setReceipt(order); setPreview(null); go('receipt');
-      try {await callbacks.current.onCommitted(order);}
+      try {await callbacks.current.onCommitted(order, selected ? {name: selected.name, logoUrl: tokenArt(selected.symbol)} : undefined);}
       catch {if (mounted.current) setNotice('Your order is confirmed. Your desk is still refreshing.');}
     } catch (reason) {if (mounted.current) {setError(reason); callbacks.current.onPending();}}
     finally {locked.current = false; if (mounted.current) setBusy(false);}
@@ -156,7 +159,7 @@ export function FirstDay(props: FirstDayProps) {
   const companyName = selected?.name ?? receipt?.symbol ?? 'your company';
   if (phase === 'receipt' && receipt) return <FirstOrderCelebration evidence={{orderId: receipt.id, assetId: receipt.assetId,
     variantMint: receipt.variantMint, symbol: receipt.symbol, quantityMicros: receipt.quantityMicros, cashDebitPaperMicros: receipt.cashDebitPaperMicros}}
-    name={selected?.name ?? null} logoUrl={['AAPLx', 'TSLAx', 'METAx'].includes(receipt.symbol) ? art(`token-${receipt.symbol}.webp`) : null}
+    name={selected?.name ?? null} logoUrl={tokenArt(receipt.symbol)}
     career={career} loading={false} onRetry={() => {}} onContinue={() => callbacks.current.onReceiptContinue(receipt.id)}/>;
   return <section className={`first-day first-day-${phase}`} data-motion={props.motion} aria-label="Your first day">
     {phase !== 'welcome' && <button className="intro-close" aria-label="Skip first day" disabled={busy}

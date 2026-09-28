@@ -97,14 +97,15 @@ export function MarketScreen({client, onSelect, social}: {client: ProductMarketC
     finally {if (moreController.current === controller) moreController.current = null; if (!controller.signal.aborted && turn === generation.current) setBusy(false);}
   }
   const stale = freshness !== null && clock >= Date.parse(freshness.refreshAfter);
-  return <section className="market-screen" aria-label="Market">
+  return <section className={`market-screen${social ? ' has-follow' : ''}`} aria-label="Market">
     <header className="market-heading">
       <div className="page-intro"><h1>Market</h1>{(!online || stale) && <span className="market-status" role="status">{!online ? 'Offline' : 'Updating prices…'}</span>}</div>
       <div className="market-tools"><div className="market-search">
         <svg className="market-search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
         <label className="sr-only" htmlFor="company-search">Search companies</label><input id="company-search" type="search" autoComplete="off" placeholder="Search companies or symbols" maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>{query && <button aria-label="Clear search" onClick={() => setQuery('')}>×</button>}
-      </div>{social && <MarketControls list={list} onList={next => {setList(next); setNotice(null);}} sort={sort} sorts={availableSorts(cards)} onSort={setSort}/>}</div>
+      </div></div>
     </header>
+    {social && <MarketControls list={list} onList={next => {setList(next); setNotice(null);}} sort={sort} sorts={availableSorts(cards)} onSort={setSort}/>}
     {notice && <div className="notice market-notice" role="status">{notice.message}{notice.signIn && social && <button className="text-button" onClick={social.onSignIn}>Sign in</button>}<button className="text-button" onClick={() => setNotice(null)}>Dismiss</button></div>}
     {social && !query && list === 'all' && <RecentsStrip recents={social.recents} onOpen={company => onSelect({assetId: company.assetId, name: company.name, symbol: company.symbol,
       imageUrl: company.imageUrl, stock: null, primaryVariant: null})}/>}

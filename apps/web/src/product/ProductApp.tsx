@@ -390,8 +390,10 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     await journey.chooseGuest();
     if (routeRef.current.page === 'sign-in') navigate({page: 'desk'}, true);
   }
-  async function introCommitted(_receipt: PaperReceipt) {
+  const [celebrationHint, setCelebrationHint] = useState<{orderId: string; name: string; logoUrl: string | null} | null>(null);
+  async function introCommitted(receipt: PaperReceipt, company?: {readonly name: string; readonly logoUrl: string | null}) {
     if (!workspaceActive.current) return;
+    if (company) setCelebrationHint({orderId: receipt.id, ...company});
     ++loadEpoch.current;
     setSnapshot(prior => ({...prior, portfolio: null, career: null, missions: null}));
     setRevision(value => value + 1);
@@ -468,7 +470,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
         {recoveryScreen && guestRecovery ? <GuestDeskRecovery failure={guestRecovery} canSignIn={auth.enabled} onSignIn={() => openSignIn('app')} onStartNew={startNewGuestDesk}/>
         : journeyScreen && market ? <JourneyScreens journey={journey} market={market} career={snapshot.career} portfolio={snapshot.portfolio} careerLoading={busy && !snapshot.career}
           motion={motion} preservedExpired={preservedExpired} onGuest={chooseGuest} onAccount={() => navigate({page: 'desk'}, true)}
-          onRetryEvidence={() => void refresh()} onFinish={finishIntroduction}/>
+          onRetryEvidence={() => void refresh()} onFinish={finishIntroduction} hint={celebrationHint}/>
         : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} expiredGuestRecovery={guestRecovery !== null} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
         {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)} {...(companySocial ? {social: companySocial} : {})}/> : <MarketScreen client={market} onSelect={select} social={marketSocial}/>)}
         {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => openSignIn('app')} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})} home={home}/> : null)}

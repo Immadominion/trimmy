@@ -210,3 +210,12 @@ test('Add to calendar downloads the matching recurring event locally and sends n
     assert.equal(h.api.calls.length, before); assert.deepEqual(h.permission, []);
   } finally {URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; await h.close();}
 });
+
+test('the celebration names the company picked in the first day even before public facts load', async () => {
+  const h = await harness({reply: call => call.path.endsWith('/facts') ? json({error: {code: 'STOCK_FACTS_UNAVAILABLE', message: 'Down.', requestId: 'x'}}, 503) : undefined});
+  try {
+    await buyFirstStock(h);
+    assert.equal(h.dom.window.document.querySelector('.first-order-company strong')?.textContent, 'Apple');
+    assert.equal(h.dom.window.document.querySelector('.first-order-company img')?.getAttribute('src'), '/trimmy/token-AAPLx.webp');
+  } finally {await h.close();}
+});

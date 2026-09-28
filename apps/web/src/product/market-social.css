@@ -1,5 +1,9 @@
 /* Market and company social parity: lists, sort, follow, recents, holders and comments. */
-.market-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:14px}
+.market-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:-8px 0 18px}
+.market-lists button{white-space:nowrap}
+.market-screen.has-follow{--follow-slot:96px}
+.market-screen.has-follow .stock-list-head{margin-right:calc(19px + var(--follow-slot))}
+.stock-row-shell:nth-child(even) .stock-row{background:#fbfafe}
 .market-lists{display:inline-flex;gap:4px;padding:4px;border-radius:15px;background:#f6f3fb}
 .market-lists button{min-height:38px;padding:7px 14px;border-radius:12px;font-size:13px;font-weight:600;color:#6f6380}
 .market-lists button.active{background:#fff;color:var(--ink);box-shadow:0 1px 0 #e8e0f3}
@@ -9,6 +13,7 @@
 .stock-row-shell{display:flex;align-items:center;gap:10px}
 .stock-row-shell>.stock-row{flex:1;min-width:0}
 .follow-button{flex:none;min-height:34px;padding:6px 12px;border-radius:12px;background:var(--lilac);color:#684bc7;font-size:12px;font-weight:700;white-space:nowrap}
+.stock-row-shell .follow-button{width:86px}
 .follow-button.following{background:#e7f1e9;color:var(--green)}
 .market-recents{margin:0 0 18px}
 .market-recents .section-line h2{font-size:15px}
@@ -74,3 +79,9 @@
 .community-menu button{text-align:left;padding:9px 12px;border-radius:10px;font-size:13px}
 .community-menu button:hover{background:#efeaf8}
 .community-symbol{min-height:30px;padding:0;margin-top:6px}
+@media(max-width:700px){
+  .market-controls{margin:0 0 14px}
+  .market-screen.has-follow{--follow-slot:84px}
+  .market-screen.has-follow .stock-list-head{margin-right:var(--follow-slot)}
+  .stock-row-shell .follow-button{width:76px;padding:6px 8px}
+}
