@@ -264,8 +264,8 @@ export class ProductMarketClient {
     return result;
   }
   /**
-   * Trusted prices per displayed share for held tokens: the issuer's price, else
-   * a liquid market's. A token the server cannot price is left out.
+   * Trusted prices per displayed share for held tokens: a deep market's price,
+   * else the issuer's, else a liquid market's. A token the server cannot price is left out.
    */
   async prices(mints: readonly string[], options: MarketReadOptions = {}): Promise<ReadonlyMap<string, number>> {
     const ids = input(() => {

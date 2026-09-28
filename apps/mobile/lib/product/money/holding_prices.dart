@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 /// What one displayed share of each held stock token is worth, from the
-/// server's trusted prices: the issuer's price, else a liquid market's. A
-/// token's last trade is not used on its own, because a token that barely
-/// trades can show many times its share price. A token the server cannot price
+/// server's trusted prices: a deep market's price, else the issuer's, else a
+/// liquid market's. A thin token's last trade is never used, because a token
+/// that barely trades can show many times its share price. A token the server cannot price
 /// stays unpriced, and the app then shows no value rather than a wrong one.
 class HoldingPrices {
   HoldingPrices(this.origin, {http.Client? client})

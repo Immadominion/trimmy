@@ -13,7 +13,8 @@ const MINT = '[1-9A-HJ-NP-Za-km-z]{32,44}';
 
 /**
  * What one displayed share of each stock token is worth, for valuing holdings:
- * the issuer's price, else a liquid market's (stock-token-prices.ts). A token
+ * a deep market's price, else the issuer's, else a liquid market's
+ * (stock-token-prices.ts). A token
  * with neither is left out, so the app shows no value rather than a wrong one.
  * Only Trimmy's stock tokens are priced. Display only: orders are priced when
  * quoted.

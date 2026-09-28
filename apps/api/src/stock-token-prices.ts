@@ -25,6 +25,12 @@ export interface TokenPrice {
 
 /** Below this much liquidity a token's traded price is not used. */
 export const LIQUID_MARKET_USD = 10_000;
+/**
+ * With this much liquidity the traded price is what a holder could sell for,
+ * and it values holdings ahead of the issuer's price. Pre-IPO issuers' prices are
+ * marks: on 28 Sept 2026 Tessera's tOpenAI mark was 18% below its $820k market.
+ */
+export const DEEP_MARKET_USD = 100_000;
 /** Markets close at weekends and on holidays; older issuer prices are not used. */
 const MAX_REFERENCE_AGE_MS = 4 * 86_400_000;
 const MAX_IDS = 50;
@@ -67,9 +73,15 @@ export interface HoldingPrice {
   readonly asOf: number | null;
 }
 
-/** What one displayed share is worth: the issuer's price, else a liquid market's; otherwise unknown. */
+/**
+ * What one displayed share is worth: a deep market's price, else the issuer's,
+ * else a liquid market's; otherwise unknown.
+ */
 export function holdingPrice(price: TokenPrice | null | undefined): HoldingPrice | null {
   if (!price) return null;
+  if (price.marketUsd !== null && price.liquidityUsd >= DEEP_MARKET_USD) {
+    return Object.freeze({usdPerShare: price.marketUsd, source: 'market', asOf: null});
+  }
   if (price.referenceUsd !== null) return Object.freeze({usdPerShare: price.referenceUsd, source: 'issuer', asOf: price.referenceAt});
   if (price.marketUsd !== null && price.liquidityUsd >= LIQUID_MARKET_USD) {
     return Object.freeze({usdPerShare: price.marketUsd, source: 'market', asOf: null});

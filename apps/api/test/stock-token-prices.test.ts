@@ -17,6 +17,8 @@ const NFLXX = {liquidity: 2437.77, usdPrice: 70.5126, decimals: 8,
 const SKHY = {liquidity: 2115818.39, usdPrice: 182.7417, decimals: 6,
   stockData: {id: 'backpack', price: 182.85, updatedAt: '2026-09-28T17:35:42.923Z'}};
 
+const parse = (row: unknown) => parseTokenPrice(row, now);
+
 describe('trusted token prices', () => {
   it('values a share at the issuer price, never an illiquid trade', () => {
     const pypl = parseTokenPrice(PYPLX, now);
@@ -24,6 +26,9 @@ describe('trusted token prices', () => {
     // Without the issuer price, a trade on $0.05 of liquidity is not a price.
     assert.equal(holdingPrice(parseTokenPrice({...PYPLX, stockData: undefined}, now)), null);
     assert.equal(holdingPrice(parseTokenPrice({...SKHY, stockData: undefined}, now))?.source, 'market');
+    // A deep market is what a holder could sell for, ahead of the issuer's mark.
+    assert.deepEqual(holdingPrice(parse(SKHY)), {usdPerShare: 182.7417, source: 'market', asOf: null});
+    assert.equal(holdingPrice(parse({...SKHY, liquidity: 50_000}))?.source, 'issuer');
     // An issuer price older than four days is not used.
     assert.equal(holdingPrice(parseTokenPrice({...NFLXX, stockData: {...NFLXX.stockData, updatedAt: '2026-09-23T00:00:00Z'}}, now)), null);
   });
@@ -80,7 +85,7 @@ describe('holding prices route', () => {
     assert.equal(response.statusCode, 200);
     assert.equal(response.headers['cache-control'], 'public, max-age=30');
     assert.deepEqual(response.json(), {schema: 1, observedAt: '2026-09-28T17:40:00.000Z', prices: [
-      {mint: first!.mint, usdPerShare: 182.85, source: 'issuer', asOf: '2026-09-28T17:35:42.923Z'},
+      {mint: first!.mint, usdPerShare: 182.7417, source: 'market', asOf: null},
       {mint: second!.mint, usdPerShare: 54.235, source: 'issuer', asOf: '2026-09-28T17:35:20.786Z'},
     ]});
     assert.equal((await app.inject({method: 'GET', url: '/v1/markets/stocks/prices?mints=bad'})).statusCode, 400);

@@ -4,9 +4,9 @@ import type {HoldingsSnapshot, WalletStockBalance} from './wallet-models.js';
 
 /**
  * What a held token is worth: its shares (the display amount) times that token's
- * trusted price per share from the API: the issuer's price, else a liquid
- * market's. A token's last trade is not used on its own, because a token that
- * barely trades can show many times its share price. Display only; a sale is
+ * trusted price per share from the API: a deep market's price, else the
+ * issuer's, else a liquid market's. A thin token's last trade is never used,
+ * because a token that barely trades can show many times its share price. Display only; a sale is
  * still quoted before it is signed.
  */
 export type HoldingPrices = ReadonlyMap<string, number>;
