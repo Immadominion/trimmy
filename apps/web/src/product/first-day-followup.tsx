@@ -1,5 +1,4 @@
 import {useEffect, useRef, useState} from 'react';
-import type {ReactNode} from 'react';
 import type {CareerSummary} from './practice-client';
 import type {FirstTradeEvidence} from './journey';
 import type {ReminderChoice, ReminderRecord} from './journey-store';
@@ -169,4 +168,3 @@ export function GuestDeskPreserved({expired, onContinue}: {expired: boolean; onC
   </section>;
 }
 
-export function JourneyFrame({children}: {children: ReactNode}) {return <div className="journey-frame">{children}</div>;}
