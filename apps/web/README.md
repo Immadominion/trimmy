@@ -63,8 +63,9 @@ in and lands them in Real afterwards. The code lives in `src/product/money/`.
 - **Add money.** Crypto deposit (Recommended): the linked wallet's Solana
   address as a QR code, with mobile's copy. Card funding is "Coming soon" and
   makes no request.
-- **Live orders.** Every token the API's trading capabilities (v2) list,
-  never a fixed set. The issuer's warning comes before the eligibility tick;
+- **Live orders.** Every token the API's trading capabilities (schema 3) list,
+  never a fixed set: the API admits tokens automatically, and a company page
+  rereads the list when it opens. Sells have no per-token cap. The issuer's warning comes before the eligibility tick;
   the review shows the warning, terms, fees and expiry before Confirm; the
   wallet signs the exact reviewed transaction (one signer, or the taker's slot
   of a JupiterZ RFQ order); the order id is stored and read back before
