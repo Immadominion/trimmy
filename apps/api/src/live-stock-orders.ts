@@ -425,7 +425,8 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    // issuer's disclosure and sign single-signer transactions only. Keep their
    // contract exactly: active xStocks on the aggregator route.
    const legacy=STOCK_TRADING_ASSETS.filter(asset=>asset.issuerId===LEGACY_STOCK_ISSUER && asset.route==='aggregator').slice(0,120);
-   return {...common,assets:legacy.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw})=>({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw}))};
+   return {...common,assets:legacy.map(({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw,installedAppSellCapRaw})=>
+    ({assetId,mint,symbol,name,decimals,maxBuyInputRaw,maxSellInputRaw:installedAppSellCapRaw??maxSellInputRaw}))};
   }
   const now=Date.now();
   const stateOf=await marketStatesNow(adapters?.marketStates,now);
@@ -433,8 +434,10 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
   return {schemaVersion:2,...common,issuers:stockIssuerCapabilities(),
    // The US session in force, for context: most tokens trade around the clock regardless.
    usMarket:{session:moment.session,between:moment.gap,changesAt:new Date(moment.changesAt).toISOString()},
-   assets:(request.query.schema==='3'?stockTradingAssets():stockTradingAssets().slice(0,600)).map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})=>
-    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route,
+   assets:(request.query.schema==='3'?stockTradingAssets():stockTradingAssets().slice(0,600)).map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,installedAppSellCapRaw,transferFeeBps,route})=>
+    ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,
+     // Schema 3 apps show no sell cap; older apps keep the limit line they display.
+     maxSellInputRaw:request.query.schema==='3'?maxSellInputRaw:installedAppSellCapRaw??maxSellInputRaw,transferFeeBps,route,
      // Market makers need at least $1 after fees; $2 leaves room for the fee and price moves.
      minBuyInputRaw:route==='rfq'?'2000000':'1',
      market:stateOf(issuerId,symbol,mint)})),

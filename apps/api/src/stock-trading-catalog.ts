@@ -32,6 +32,8 @@ export interface StockTradingIdentity {
   readonly tokenProgramAddress: typeof STOCK_TOKEN_PROGRAM;
   readonly maxBuyInputRaw: typeof STOCK_MAX_BUY_INPUT_RAW;
   readonly maxSellInputRaw: string;
+  /** The per-token sell cap older apps display (they show a limit line); the server no longer enforces it. */
+  readonly installedAppSellCapRaw?: string;
   /** Token-2022 transfer fee charged by the issuer on every transfer, in basis points. */
   readonly transferFeeBps: number;
   readonly status: StockTradingStatus;
@@ -83,7 +85,7 @@ function load(): readonly StockTradingIdentity[] {
     return Object.freeze({
       assetId: entry.assetId, symbol: entry.symbol, name: entry.name, mint: entry.mint, issuerId: entry.issuerId,
       decimals: entry.decimals, tokenProgram: 'token_2022' as const, tokenProgramAddress: STOCK_TOKEN_PROGRAM,
-      maxBuyInputRaw: STOCK_MAX_BUY_INPUT_RAW, maxSellInputRaw: STOCK_MAX_SELL_INPUT_RAW,
+      maxBuyInputRaw: STOCK_MAX_BUY_INPUT_RAW, maxSellInputRaw: STOCK_MAX_SELL_INPUT_RAW, installedAppSellCapRaw: entry.maxSellInputRaw,
       transferFeeBps: entry.transferFeeBps, status: entry.status, admittedAt: entry.admittedAt,
       admissionSlot: entry.admissionSlot, issuerUrl: identitySource(entry), route,
     });

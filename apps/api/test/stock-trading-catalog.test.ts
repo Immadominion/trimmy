@@ -105,7 +105,7 @@ test('legacy capabilities keep the installed-app contract: active xStocks only, 
     for (const asset of legacy) {
       const actual = body.assets.find((item: {mint: string}) => item.mint === asset.mint);
       assert.deepEqual(actual, {assetId: asset.assetId, mint: asset.mint, symbol: asset.symbol, name: asset.name,
-        decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.maxSellInputRaw});
+        decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.installedAppSellCapRaw ?? asset.maxSellInputRaw});
     }
     assert.equal((await app.inject('/v1/trading/capabilities?schema=4')).statusCode, 400);
     assert.equal((await app.inject('/v1/trading/capabilities?other=1')).statusCode, 400);
@@ -146,7 +146,8 @@ test('schema 2 capabilities publish every active identity with its issuer disclo
     for (const asset of STOCK_TRADING_ASSETS) {
       const {market, ...actual} = body.assets.find((item: {mint: string}) => item.mint === asset.mint);
       assert.deepEqual(actual, {assetId: asset.assetId, mint: asset.mint, symbol: asset.symbol, name: asset.name, issuerId: asset.issuerId,
-        decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.maxSellInputRaw, transferFeeBps: asset.transferFeeBps,
+        decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.installedAppSellCapRaw ?? asset.maxSellInputRaw,
+        transferFeeBps: asset.transferFeeBps,
         route: asset.route, minBuyInputRaw: asset.route === 'rfq' ? '2000000' : '1'});
       // Without live inputs the calendar decides: around the clock, or Ondo's US sessions.
       assert.equal(market.hours, asset.issuerId === 'ondo' ? 'us_sessions' : 'always');
