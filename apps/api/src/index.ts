@@ -5,6 +5,7 @@ import {stockTradingAssets} from './stock-trading-catalog.js';
 import {StockTokenDirectory, withCatalogSnapshot} from './stock-token-directory.js';
 import {jupiterSharePrices} from './stock-share-prices.js';
 import {JupiterTokenPrices} from './stock-token-prices.js';
+import {readOpsAlerts} from './ops-alerts.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -92,7 +93,13 @@ const liveRpc = process.env['SOLANA_MAINNET_RPC_URL'];
 // Every stock token the Market lists from a supported issuer, checked automatically:
 // no token is approved by hand. It sweeps the catalog every 30 minutes and checks a
 // new token the moment an order names it.
+// Operator alerts to a chat webhook, when TRIMMY_ALERT_WEBHOOK_URL is set.
+const alerts = readOpsAlerts(process.env);
+process.on('unhandledRejection', reason => {
+  alerts?.notify('process_error', reason instanceof Error ? reason.name : 'unhandled rejection');
+});
 const tokenDirectory = liveRpc ? new StockTokenDirectory({rpcUrl: liveRpc, ...(stockDiscovery ? {discovery: stockDiscovery} : {}),
+  ...(alerts ? {onSweepFailing: (failures: number) => alerts.notify('token_sweep_failed', `${failures} sweeps in a row`)} : {}),
   sharePrices: jupiterSharePrices(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})}) : undefined;
 tokenDirectory?.start();
 // Whether each stock can trade now: Ondo's live status for its tokens, and each
@@ -108,7 +115,7 @@ const liveStocks = liveRpc &&
       executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet',
       ...(marketStates ? {marketStates} : {}),
       ...(tokenDirectory ? {directory: tokenDirectory} : {}),
-      service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore, prices: tokenPrices,
+      service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore, prices: tokenPrices, ...(alerts ? {alerts} : {}),
         ...(marketStates ? {marketStates} : {}),
         ...(tokenDirectory ? {directory: tokenDirectory} : {}),
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
@@ -130,7 +137,7 @@ void legacyInvitations;
 void legacyAccountClosure;
 // Optional native HTTPS; both certificate and key files are required together.
 const tls = readTlsListenerConfig(process.env);
-const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions,
+const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions, ...(alerts ? {alerts} : {}),
   ...(onramp ? {onramp} : {}),
   relationshipSafetyEnabled,
   ...(publicHolders ? {publicHolders} : {}),

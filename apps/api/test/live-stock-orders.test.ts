@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
-import test from 'node:test';import assert from 'node:assert/strict';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import type {OpsAlerts} from '../src/ops-alerts.js';
 import {generateKeyPairSync,sign} from 'node:crypto';
 import {getAddressDecoder,getCompiledTransactionMessageEncoder,getTransactionEncoder} from '@solana/kit';
 import type {CompiledTransactionMessage,TransactionMessageBytes} from '@solana/kit';
@@ -66,12 +68,15 @@ test('explicit valid RPC success and transaction errors settle once with the obs
   const f=fixture();let settlements=0;
   let current:LiveOrder={...f.order,status:'pending',signature:'2'.repeat(88)};
   const store={read:async()=>current,resolve:async(_user:string,_id:string,status:LiveOrder['status'])=>{settlements++;return current={...current,status};}} as unknown as LiveOrderStore;
-  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async()=>Response.json({jsonrpc:'2.0',id:1,
-   result:{value:[{confirmationStatus:'confirmed',slot:501,err}]}})});
+  const alerts:string[]=[];
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,alerts:{notify:(kind:string)=>alerts.push(kind)} as unknown as OpsAlerts,
+   fetch:async()=>Response.json({jsonrpc:'2.0',id:1,result:{value:[{confirmationStatus:'confirmed',slot:501,err}]}})});
   const settled=await service.status('user','test');
   assert.equal(settled?.status,err===null?'confirmed':'failed');
   assert.equal(settled?.confirmedSlot,501);
   await service.status('user','test');assert.equal(settlements,1);
+  // The operator hears about each failed order once, and never about a confirmed one.
+  assert.deepEqual(alerts,err===null?[]:['order_failed']);
  }
 });
 

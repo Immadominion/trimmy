@@ -5,13 +5,14 @@ import type {FastifyInstance, FastifyRequest, FastifyReply} from 'fastify';
 import type {ExistingPracticeAccountAuthentication} from './practice-session-routes.js';
 import type {PrivyLinkedIdentityResolution} from './privy-linked-identities.js';
 import type {PracticeIdentity} from './practice-identity.js';
-import {STOCK_ASSET_ID_PATTERN,STOCK_MINT_PATTERN,STOCK_TRADING_ASSETS,findStockTradingAsset,stockTradingAssets} from './stock-trading-catalog.js';
+import {STOCK_ASSET_ID_PATTERN,STOCK_MINT_PATTERN,STOCK_TRADING_ASSETS,findStockTradingAsset,findStockTradingAssetByMint,stockTradingAssets} from './stock-trading-catalog.js';
 import type {StockTradingAsset} from './stock-trading-catalog.js';
 import {LEGACY_STOCK_ISSUER,STOCK_ISSUER_IDS,acceptsIssuerTerms} from './stock-issuers.js';
 import {stockIssuerCapabilities,unavailableVariantsNow} from './stock-market-availability.js';
 import type {StockTokenDirectory} from './stock-token-directory.js';
 import {orderPriceAcceptable} from './stock-order-price.js';
 import {JupiterTokenPrices, orderReferencePrices} from './stock-token-prices.js';
+import type {OpsAlerts} from './ops-alerts.js';
 import {calendarMarketStates} from './stock-market-state.js';
 import type {StockMarketStates,StockMarketStateOf} from './stock-market-state.js';
 import {usMarketMoment} from './us-equity-calendar.js';
@@ -125,7 +126,9 @@ interface Options {rpcUrl:string;store:LiveOrderStore;apiKey?:string;fetch?:type
  /** Finds tokens the Market lists that no order has named yet; without it only known tokens trade. */
  directory?:StockTokenDirectory;
  /** Trusted token prices for the order price check; read from Jupiter by default. */
- prices?:JupiterTokenPrices}
+ prices?:JupiterTokenPrices;
+ /** Operator alerts when a signed order fails or never executes. */
+ alerts?:OpsAlerts}
 
 /** Market states now, live when configured. */
 export async function marketStatesNow(states:StockMarketStates|undefined,now:number):Promise<StockMarketStateOf>{
@@ -300,7 +303,7 @@ export class LiveStockOrders {
   if(status && ['confirmed','finalized'].includes(status.confirmationStatus)) {
    if(!Number.isSafeInteger(status.slot)||status.slot<1 || !Object.hasOwn(status,'err') ||
     (status.err!==null && !reportedTransactionError(status.err)))fail('LIVE_UNAVAILABLE');
-   const settled=await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed');
+   const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed'));
    return {...settled,confirmedSlot:status.slot};
   }
   if(status===null) {
@@ -310,7 +313,7 @@ export class LiveStockOrders {
    const finalized=await this.rpc('getBlockHeight',[{commitment:'finalized'}]);
    if(Number.isSafeInteger(finalized) && BigInt(finalized)>BigInt(order.review.evidence.lastValidBlockHeight) && BigInt(chain.blockHeight)>BigInt(order.review.evidence.lastValidBlockHeight)) {
     const again=await this.rpc('getSignatureStatuses',[[order.signature],{searchTransactionHistory:true}]);
-    if(again?.value?.length===1 && again.value[0]===null)return this.options.store.resolve(user,order.id,'expired');
+    if(again?.value?.length===1 && again.value[0]===null)return this.#alertSettled(order,await this.options.store.resolve(user,order.id,'expired'));
    }
   }
   return order;
@@ -344,7 +347,7 @@ export class LiveStockOrders {
   const found=await this.rfqTransaction(order);
   if(found) {
    if(found.err!==null && !reportedTransactionError(found.err))fail('LIVE_UNAVAILABLE');
-   const settled=await this.options.store.resolve(user,order.id,found.err===null?'confirmed':'failed');
+   const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,found.err===null?'confirmed':'failed'));
    return {...settled,confirmedSlot:found.slot};
   }
   // Same rule as aggregator orders: finalized and confirmed heights past the
@@ -353,9 +356,18 @@ export class LiveStockOrders {
   const finalized=await this.rpc('getBlockHeight',[{commitment:'finalized'}]);
   const bound=BigInt(order.review.evidence.lastValidBlockHeight);
   if(Number.isSafeInteger(finalized) && BigInt(finalized)>bound && BigInt(chain.blockHeight)>bound && await this.rfqTransaction(order)===null) {
-   return this.options.store.resolve(user,order.id,'expired');
+   return this.#alertSettled(order,await this.options.store.resolve(user,order.id,'expired'));
   }
   return order;
+ }
+ /** Tells the operator when a signed order failed on chain or was never executed. */
+ #alertSettled(order:LiveOrder,settled:LiveOrder):LiveOrder {
+  if(settled.status==='failed'||settled.status==='expired') {
+   const token=findStockTradingAssetByMint(order.review.terms?.side==='sell'?order.review.terms?.inputMint:order.review.terms?.outputMint);
+   this.options.alerts?.notify(settled.status==='failed'?'order_failed':'order_not_executed',
+    `order ${order.id}, ${token?.symbol??'unknown token'} (${token?.issuerId??'unknown issuer'}), ${order.review.terms?.route??'aggregator'} route`);
+  }
+  return settled;
  }
 }
 const TRANSACTION_SIGNATURE=/^[1-9A-HJ-NP-Za-km-z]{64,88}$/;

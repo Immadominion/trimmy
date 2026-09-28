@@ -116,11 +116,15 @@ export interface StockTokenDirectoryOptions {
   readonly refreshMs?: number;
   /** Share prices for Market cards the source leaves unpriced (stock-share-prices.ts). */
   readonly sharePrices?: SharePriceReader;
+  /** Called when sweeps keep failing: the second failure in a row, and each after. */
+  readonly onSweepFailing?: (failures: number) => void;
 }
 
 export class StockTokenDirectory {
   readonly #rpc: BoundedSolanaRpc<'getMultipleAccounts', DirectoryReadError>;
   readonly #discovery: StockDiscovery | undefined;
+  readonly #onSweepFailing: ((failures: number) => void) | undefined;
+  #failures = 0;
   readonly #sharePrices: SharePriceReader | undefined;
   readonly #now: () => number;
   readonly #refreshMs: number;
@@ -138,6 +142,7 @@ export class StockTokenDirectory {
       maxBodyBytes: 4_194_304, timeoutMs: 8_000, ...(options.fetch ? {fetch: options.fetch} : {})});
     this.#discovery = options.discovery;
     this.#sharePrices = options.sharePrices;
+    this.#onSweepFailing = options.onSweepFailing;
     this.#now = options.now ?? Date.now;
     this.#refreshMs = options.refreshMs ?? 10 * 60_000;
   }
@@ -145,8 +150,12 @@ export class StockTokenDirectory {
   /** Sweeps now and then on a timer. Failures are retried at the next sweep. */
   start(): void {
     if (this.#timer !== null) return;
-    void this.refresh().catch(() => undefined);
-    this.#timer = setInterval(() => { void this.refresh().catch(() => undefined); }, this.#refreshMs);
+    const sweep = () => this.refresh().then(() => { this.#failures = 0; }, () => {
+      this.#failures += 1;
+      if (this.#failures >= 2) this.#onSweepFailing?.(this.#failures);
+    });
+    void sweep();
+    this.#timer = setInterval(() => { void sweep(); }, this.#refreshMs);
     this.#timer.unref?.();
   }
 

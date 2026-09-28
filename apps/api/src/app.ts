@@ -30,6 +30,7 @@ import type { MarketEstimates } from './market-estimates.js';
 import { registerStockDiscoveryRoutes } from './stock-discovery-routes.js';
 import { registerStockFactsRoutes } from './stock-facts-routes.js';
 import { registerStockPriceRoutes } from './stock-price-routes.js';
+import type { OpsAlerts } from './ops-alerts.js';
 import type { StockPriceReader } from './stock-price-routes.js';
 import type { StockFactsReader } from './stock-facts.js';
 import { ReadinessReporter } from './readiness.js';
@@ -94,6 +95,8 @@ export interface ApiOptions {
   readonly invitations?: InvitationAdapters;
   readonly accountClosure?: AccountClosureAdapters;
   readonly browserOrigins?: readonly string[];
+  /** Operator alerts (ops-alerts.ts); nothing is sent without them. */
+  readonly alerts?: OpsAlerts;
   readonly marketEstimates?: MarketEstimates;
   readonly stockDiscovery?: StockDiscovery;
   readonly stockFacts?: StockFactsReader;
@@ -238,6 +241,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
 
   app.addHook('onResponse', async (request, reply) => {
     request.log.info({ method: request.method, route: request.routeOptions.url, statusCode: reply.statusCode }, 'request completed');
+    if (reply.statusCode === 500) options.alerts?.notify('server_error', `${request.method} ${request.routeOptions.url ?? 'unknown route'}`);
   });
 
   app.setErrorHandler<FastifyError>((error, request, reply) => {
