@@ -127,3 +127,20 @@ test('a signed-in account can report a comment, which then leaves the page', asy
     assert.match(h.text(), /Report received\./); assert.doesNotMatch(h.text(), /Buy now!!!/);
   } finally {await h.close();}
 });
+
+test('sort and labels work for ETFs and commodities that have no listed-stock session', async () => {
+  const {sortCards, availableSorts, categoryOf, categoryLabel, marketFigures} = await import('../src/product/market-social.js');
+  const token = (priceUsd: number, changePercent24h: number | null) => ({mint: TESLA_MINT, symbol: 'X', logoUrl: null, priceUsd, changePercent24h});
+  const apple = {assetId: 'apple', name: 'Apple', symbol: 'AAPL', imageUrl: null, stock: {priceUsd: 250, changePercent24h: 2, asOfUnixSeconds: null}, primaryVariant: token(251, 1.9), category: 'equity'};
+  const sp500 = {assetId: 'sp500', name: 'S&P 500', symbol: 'SPY', imageUrl: null, stock: null, primaryVariant: token(600, 0.5), category: 'etf'};
+  const gold = {assetId: 'gold', name: 'Gold', symbol: null, imageUrl: null, stock: null, primaryVariant: token(3300, -1.2), category: 'commodity'};
+  const rows = [apple, sp500, gold] as never[];
+  assert.deepEqual(sortCards(rows, 'price').map((row: {assetId: string}) => row.assetId), ['gold', 'sp500', 'apple']);
+  assert.deepEqual(sortCards(rows, 'gains').map((row: {assetId: string}) => row.assetId), ['apple', 'sp500', 'gold']);
+  assert.deepEqual(sortCards(rows, 'drops').map((row: {assetId: string}) => row.assetId), ['gold', 'sp500', 'apple']);
+  assert.deepEqual(sortCards(rows, 'name').map((row: {assetId: string}) => row.assetId), ['apple', 'gold', 'sp500']);
+  assert.deepEqual(availableSorts([sp500, gold] as never[]), ['featured', 'name', 'price', 'gains', 'drops'], 'token-only changes still offer gains and drops');
+  assert.deepEqual(marketFigures(apple as never), {price: 250, change: 2}, 'a session price is never paired with a token change');
+  assert.equal(categoryOf(sp500), 'etf'); assert.equal(categoryOf(gold), 'commodity'); assert.equal(categoryOf({}), null);
+  assert.equal(categoryLabel('commodity'), 'Commodity'); assert.equal(categoryLabel('etf'), 'ETF'); assert.equal(categoryLabel(null), 'Stock');
+});

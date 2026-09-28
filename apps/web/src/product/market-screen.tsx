@@ -106,7 +106,8 @@ export function MarketScreen({client, onSelect, social}: {client: ProductMarketC
       </div>{social && <MarketControls list={list} onList={next => {setList(next); setNotice(null);}} sort={sort} sorts={availableSorts(cards)} onSort={setSort}/>}</div>
     </header>
     {notice && <div className="notice market-notice" role="status">{notice.message}{notice.signIn && social && <button className="text-button" onClick={social.onSignIn}>Sign in</button>}<button className="text-button" onClick={() => setNotice(null)}>Dismiss</button></div>}
-    {social && !query && list === 'all' && <RecentsStrip recents={social.recents} onOpen={company => onSelect({...company, stock: null, primaryVariant: null})}/>}
+    {social && !query && list === 'all' && <RecentsStrip recents={social.recents} onOpen={company => onSelect({assetId: company.assetId, name: company.name, symbol: company.symbol,
+      imageUrl: company.imageUrl, stock: null, primaryVariant: null})}/>}
     <div className="stock-list-head" aria-hidden="true"><span>Company</span><span>Stock price</span><span>24h change</span><span/></div>
     <div className="market-results" role="region" aria-label="Companies" tabIndex={0}>
       {error !== null && <Failure title="Market is taking a moment." message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}

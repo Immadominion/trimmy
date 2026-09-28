@@ -5,6 +5,7 @@ import type {PaperPortfolio, PaperPreview, PaperReceipt} from './practice-client
 import {PracticeError} from './practice-client';
 import type {TradeReasonReceipt} from './career-actions';
 import {CompanyLogo, Loading, errorCopy, micros, shares, toPaperMicros, usd} from './ui';
+import {categoryLabel, categoryOf, marketFigures} from './market-social';
 
 /**
  * Mobile's compact Fast buy (practice): find a company, choose an amount,
@@ -96,11 +97,11 @@ export function FastBuySheet(props: FastBuyProps) {
           : !results.length ? <p className="company-social-note">No matches yet.</p>
           : results.map(card => <button key={card.assetId} className="holder-row fast-buy-company" aria-label={`Buy ${card.name ?? card.assetId}`} disabled={pending}
             onClick={() => {if (!card.primaryVariant) {setError(new PracticeError('FAST_BUY_NO_VERSION', 'This company has no available version.')); return;} setCompany(card); setError(null); setStep('amount');}}>
-            <span className="holder-name fast-buy-name"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl} size={32}/><span><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? 'Stock'}</small></span></span>
-            <span className="holder-amount">{usd(card.stock?.priceUsd)}</span></button>)}</div>
+            <span className="holder-name fast-buy-name"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl} size={32}/><span><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? categoryLabel(categoryOf(card))}</small></span></span>
+            <span className="holder-amount">{usd(marketFigures(card).price)}</span></button>)}</div>
       </>}
       {step === 'amount' && company && <>
-        <p className="settings-modal-note">{company.primaryVariant?.symbol ?? company.symbol ?? 'Stock token'} · practice buy</p>
+        <p className="settings-modal-note">{company.primaryVariant?.symbol ?? company.symbol ?? 'Token'} · practice buy</p>
         <label className="settings-phrase" htmlFor="fast-buy-amount"><span>Amount to spend</span></label>
         <div className="amount-field"><input id="fast-buy-amount" inputMode="decimal" autoComplete="off" maxLength={12} value={amount} disabled={busy} onChange={event => {setAmount(event.target.value); setError(null);}}/><span>paper</span></div>
         <div className="amount-options">{['50', '100', '500'].map(value => <button key={value} aria-pressed={amount === value} disabled={busy} onClick={() => setAmount(value)}>{value}</button>)}</div>

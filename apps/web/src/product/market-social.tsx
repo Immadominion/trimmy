@@ -74,22 +74,42 @@ export function useFollowing(api: ProductApiClient | null, account: PracticeAcco
   return {assetIds: snapshot?.assetIds ?? null, busy, signedIn, isFollowing: id => snapshot?.assetIds.includes(id) ?? false, toggle};
 }
 
+/**
+ * Schema 2 catalogs mix equities, ETFs and commodities. The shared market parser
+ * owns `category`; this only reads it when present, so nothing here assumes an equity.
+ */
+export type MarketCategory = 'equity' | 'etf' | 'commodity';
+export function categoryOf(item: object): MarketCategory | null {
+  const value = (item as {category?: unknown}).category;
+  return value === 'equity' || value === 'etf' || value === 'commodity' ? value : null;
+}
+export function categoryLabel(category: MarketCategory | null): string {return category === 'etf' ? 'ETF' : category === 'commodity' ? 'Commodity' : 'Stock';}
+/**
+ * One row's price and day change from a single source: the listed session when the
+ * item has one, otherwise its primary token (ETFs and commodities may have no session).
+ * Mobile never mixes one source's price with another's change.
+ */
+export function marketFigures(card: StockCard): {readonly price: number | null; readonly change: number | null} {
+  return card.stock ? {price: card.stock.priceUsd, change: card.stock.changePercent24h}
+    : {price: card.primaryVariant?.priceUsd ?? null, change: card.primaryVariant?.changePercent24h ?? null};
+}
 export type MarketSort = 'featured' | 'name' | 'price' | 'gains' | 'drops';
 export const sortLabels: Record<MarketSort, string> = {featured: 'Featured', name: 'Name', price: 'Highest price', gains: 'Biggest gains', drops: 'Biggest drops'};
 export function availableSorts(cards: readonly StockCard[]): MarketSort[] {
-  return ['featured', 'name', 'price', ...(cards.some(card => card.stock?.changePercent24h != null) ? ['gains', 'drops'] as const : [])];
+  return ['featured', 'name', 'price', ...(cards.some(card => marketFigures(card).change !== null) ? ['gains', 'drops'] as const : [])];
 }
 /** Mobile's MarketSort over the loaded rows. Missing values sort last; ties keep the featured order. */
 export function sortCards(cards: readonly StockCard[], sort: MarketSort): StockCard[] {
   const rows = [...cards], name = (card: StockCard) => card.name ?? card.assetId;
   if (sort === 'name') rows.sort((a, b) => name(a).localeCompare(name(b)));
-  if (sort === 'price') rows.sort((a, b) => (b.stock?.priceUsd ?? -1) - (a.stock?.priceUsd ?? -1));
-  if (sort === 'gains') rows.sort((a, b) => (b.stock?.changePercent24h ?? -Infinity) - (a.stock?.changePercent24h ?? -Infinity));
-  if (sort === 'drops') rows.sort((a, b) => (a.stock?.changePercent24h ?? Infinity) - (b.stock?.changePercent24h ?? Infinity));
+  const price = (card: StockCard) => marketFigures(card).price, change = (card: StockCard) => marketFigures(card).change;
+  if (sort === 'price') rows.sort((a, b) => (price(b) ?? -1) - (price(a) ?? -1));
+  if (sort === 'gains') rows.sort((a, b) => (change(b) ?? -Infinity) - (change(a) ?? -Infinity));
+  if (sort === 'drops') rows.sort((a, b) => (change(a) ?? Infinity) - (change(b) ?? Infinity));
   return rows;
 }
 
-export interface RecentCompany {readonly assetId: string; readonly name: string | null; readonly symbol: string | null; readonly imageUrl: string | null}
+export interface RecentCompany {readonly assetId: string; readonly name: string | null; readonly symbol: string | null; readonly imageUrl: string | null; readonly category: MarketCategory | null}
 /** Mobile's MarketRecentsController (eight, newest first), kept on this browser. Public names only. */
 export function useSearchRecents(storage: PracticeStorage | null, apiBase: string | null) {
   const key = useMemo(() => {try {return apiBase ? `trimmy.market.recents.v1:${encodeURIComponent(normalizePracticeApiBase(apiBase))}` : null;} catch {return null;}}, [apiBase]);
@@ -103,14 +123,16 @@ export function useSearchRecents(storage: PracticeStorage | null, apiBase: strin
         const text = (field: unknown, max: number) => typeof field === 'string' && field.length > 0 && field.length <= max && !/[\u0000-\u001f]/u.test(field) ? field : null;
         const assetId = text(row?.['assetId'], 100);
         const image = text(row?.['imageUrl'], 2048);
-        return assetId && ASSET.test(assetId) ? [{assetId, name: text(row['name'], 200), symbol: text(row['symbol'], 40), imageUrl: image?.startsWith('https://') ? image : null}] : [];
+        return assetId && ASSET.test(assetId) ? [{assetId, name: text(row['name'], 200), symbol: text(row['symbol'], 40), imageUrl: image?.startsWith('https://') ? image : null,
+          category: categoryOf(row)}] : [];
       });
     } catch {return [];}
   }, [storage, key]);
   const [recents, setRecents] = useState<RecentCompany[]>(load);
   useEffect(() => setRecents(load()), [load]);
   const save = (rows: RecentCompany[]) => {setRecents(rows); try {if (storage && key) storage.setItem(key, JSON.stringify(rows));} catch { /* Recents are a convenience. */ }};
-  const record = (card: StockCard) => save([{assetId: card.assetId, name: card.name, symbol: card.symbol, imageUrl: card.imageUrl}, ...recents.filter(row => row.assetId !== card.assetId)].slice(0, 8));
+  const record = (card: StockCard) => save([{assetId: card.assetId, name: card.name, symbol: card.symbol, imageUrl: card.imageUrl, category: categoryOf(card)},
+    ...recents.filter(row => row.assetId !== card.assetId)].slice(0, 8));
   return {recents, record, clear: () => save([])};
 }
 export type SearchRecents = ReturnType<typeof useSearchRecents>;
@@ -125,7 +147,7 @@ export function RecentsStrip({recents, onOpen}: {recents: SearchRecents; onOpen:
   if (!recents.recents.length) return null;
   return <section className="market-recents" aria-label="Recently viewed"><div className="section-line"><h2>Recently viewed</h2><button className="text-button" onClick={recents.clear}>Clear</button></div>
     <div className="market-recents-list">{recents.recents.map(company => <button key={company.assetId} className="market-recent" onClick={() => onOpen(company)}>
-      <CompanyLogo name={company.name ?? company.assetId} url={company.imageUrl} size={30}/><span><strong>{company.name ?? company.assetId}</strong><small>{company.symbol ?? 'Stock'}</small></span></button>)}</div></section>;
+      <CompanyLogo name={company.name ?? company.assetId} url={company.imageUrl} size={30}/><span><strong>{company.name ?? company.assetId}</strong><small>{company.symbol ?? categoryLabel(company.category)}</small></span></button>)}</div></section>;
 }
 
 export type MarketList = 'all' | 'following';
