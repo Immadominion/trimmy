@@ -16,7 +16,7 @@ async function harness(props: {entryGate?: boolean; expiredGuestRecovery?: boole
   const root = createRoot(dom.window.document.getElementById('root')!);
   const calls = {back: 0, cancel: 0, logout: 0};
   const auth: ProductAuth = {enabled: true, ready: true, busy: false, authenticated: false, phase: 'ready', subject: null, accountId: null, accountAccess: null,
-    apiBase: '/api', email: null, errorCode: null, guestDisposition: null, lastSuccessfulMethod: null, async sendEmailCode() {}, async verifyEmailCode() {},
+    apiBase: '/api', email: null, errorCode: null, guestDisposition: null, lastSuccessfulMethod: null, logins: [], async sendEmailCode() {}, async verifyEmailCode() {},
     async loginWithProvider() {}, async freshAccessToken() {return null;}, async openExistingAccount() {}, async retry() {},
     async logout() {calls.logout++; return true;}, cancel() {calls.cancel++;}, ...initial};
   await act(async () => {root.render(createElement(ProductAuthContext.Provider, {value: auth}, createElement(SignInScreen, {motion: false, hasDesk: true,

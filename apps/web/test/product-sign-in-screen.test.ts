@@ -17,7 +17,7 @@ async function harness(initial: Partial<ProductAuth> = {}) {
   const root = createRoot(dom.window.document.getElementById('root')!);
   const calls = {send: [] as string[], verify: [] as string[], providers: [] as string[], back: 0, account: 0, cancel: 0, retry: 0, existing: 0, logout: 0};
   let auth: ProductAuth = {enabled: true, ready: true, busy: false, authenticated: false, phase: 'ready', subject: null,
-    accountId: null, accountAccess: null, apiBase: '/api', email: null, errorCode: null, guestDisposition: null, lastSuccessfulMethod: null,
+    accountId: null, accountAccess: null, apiBase: '/api', email: null, errorCode: null, guestDisposition: null, lastSuccessfulMethod: null,  logins: [],
     async sendEmailCode(value) {calls.send.push(value);}, async verifyEmailCode(value) {calls.verify.push(value);},
     async loginWithProvider(value) {calls.providers.push(value);}, async freshAccessToken() {return null;},
     async openExistingAccount() {calls.existing++;}, async retry() {calls.retry++;}, async logout() {calls.logout++; return true;},

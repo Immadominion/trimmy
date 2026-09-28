@@ -5,6 +5,8 @@ import {productApiBase} from './config.js';
 import {loadProductAuthSdk, type ProductAuthSdkCallbacks, type ProductAuthSdkPort} from './product-auth-sdk-loader.js';
 
 export type ProductLoginMethod = 'email' | 'google' | 'x';
+/** How this account signs in, for display only (e.g. an email or @handle). */
+export interface ProductLogin {readonly method: ProductLoginMethod; readonly label: string}
 export type ProductAuthPhase = 'unconfigured' | 'restoring' | 'ready' | 'sending-code' | 'code-sent' |
   'authenticating' | 'connecting' | 'account-choice' | 'authenticated' | 'signing-out' | 'error';
 export interface ProductAccountAccess {
@@ -35,6 +37,8 @@ export interface ProductAuth {
   readonly email: string | null; readonly errorCode: string | null;
   readonly guestDisposition: 'claimed' | 'none' | 'preserved' | null;
   readonly lastSuccessfulMethod: ProductLoginMethod | null;
+  /** Sign-in methods linked to the connected account; empty until connected. */
+  readonly logins: readonly ProductLogin[];
   sendEmailCode(email: string): Promise<void>;
   verifyEmailCode(code: string): Promise<void>;
   loginWithProvider(provider: 'google' | 'x'): Promise<void>;
@@ -47,7 +51,7 @@ export interface ProductAuth {
 }
 const unavailable: ProductAuth = Object.freeze({enabled: false, ready: true, busy: false, authenticated: false,
   phase: 'unconfigured', subject: null, accountId: null, accountAccess: null, apiBase: null, email: null,
-  errorCode: null, guestDisposition: null, lastSuccessfulMethod: null,
+  errorCode: null, guestDisposition: null, lastSuccessfulMethod: null, logins: [],
   sendEmailCode: async () => {}, verifyEmailCode: async () => {}, loginWithProvider: async () => {},
   freshAccessToken: async () => null, openExistingAccount: async () => {}, retry: async () => {}, logout: async () => true, cancel() {},
 });
@@ -76,6 +80,18 @@ function safeError(error: unknown, fallback: string): string {
   return typeof code === 'string' && /^(?:GUEST|PRACTICE|PRODUCT)_[A-Z0-9_]{1,80}$/.test(code) ? code : fallback;
 }
 const choiceErrors = new Set(['GUEST_CLAIM_ACCOUNT_EXISTS', 'GUEST_SESSION_EXPIRED']);
+/** A reload used to fix these, so the connection tries again by itself first. */
+function retryable(code: string): boolean {
+  return !choiceErrors.has(code) && !code.endsWith('_PENDING') && !code.includes('STORAGE') &&
+    code !== 'PRACTICE_COORDINATION_UNAVAILABLE' && code !== 'PRACTICE_ABORTED';
+}
+const retryDelays = [600, 1600];
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise(resolve => {
+    const timer = setTimeout(done, ms); signal.addEventListener('abort', done, {once: true});
+    function done() {clearTimeout(timer); signal.removeEventListener('abort', done); resolve();}
+  });
+}
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 type Operation = {generation: number; kind: 'send' | 'login' | 'oauth' | 'logout'; method: ProductLoginMethod};
 type Connection = ProductAccountAccess & {guestDisposition: 'claimed' | 'none' | 'preserved'};
@@ -188,19 +204,31 @@ function Bridge({sdk, config, connectAccount, children}: {sdk: ProductAuthSdkPor
     setPhase('connecting'); setError(null);
     void (async () => {
       try {
-        const result = await connectRef.current({subject, freshAccessToken: access, signal: abort.signal,
-          ...(existingChoice.current ? {openExistingAccount: true} : {})});
-        if (!current()) return;
-        if (!uuid.test(result.accountId) || result.guestDisposition !== undefined &&
-            !['claimed', 'none', 'preserved'].includes(result.guestDisposition)) throw new Error('Invalid account binding');
-        setConnection({subject, accountId: result.accountId, freshAccessToken: access, signal: abort.signal,
-          guestDisposition: result.guestDisposition ?? 'none'});
-        operation.current = null; setPhase('authenticated'); setEmail(null); emailRef.current = null;
-        remember(subject);
-      } catch (error) {
-        if (!current()) return;
-        const code = safeError(error, 'PRODUCT_ACCOUNT_CONNECTION_FAILED');
-        setError(code); setPhase(choiceErrors.has(code) ? 'account-choice' : 'error');
+        for (let tries = 0; ; tries++) {
+          try {
+            const result = await connectRef.current({subject, freshAccessToken: access, signal: abort.signal,
+              ...(existingChoice.current ? {openExistingAccount: true} : {})});
+            if (!current()) return;
+            if (!uuid.test(result.accountId) || result.guestDisposition !== undefined &&
+                !['claimed', 'none', 'preserved'].includes(result.guestDisposition)) throw new Error('Invalid account binding');
+            setConnection({subject, accountId: result.accountId, freshAccessToken: access, signal: abort.signal,
+              guestDisposition: result.guestDisposition ?? 'none'});
+            operation.current = null; setPhase('authenticated'); setEmail(null); emailRef.current = null;
+            remember(subject);
+            return;
+          } catch (error) {
+            if (!current()) return;
+            const code = safeError(error, 'PRODUCT_ACCOUNT_CONNECTION_FAILED');
+            // As on mobile: an account that already has a desk (or an expired guest) opens
+            // straight away and the guest desk stays separate. "Welcome back" then says so once.
+            if (choiceErrors.has(code) && !existingChoice.current) {existingChoice.current = true; tries--; continue;}
+            // A code only, never a token, subject or message. It names what failed for support.
+            console.warn(`Trimmy sign-in: ${code}${tries < retryDelays.length && retryable(code) ? ', trying again' : ''}`);
+            if (tries < retryDelays.length && retryable(code)) {await pause(retryDelays[tries]!, abort.signal); if (!current()) return; continue;}
+            setError(code); setPhase(choiceErrors.has(code) ? 'account-choice' : 'error');
+            return;
+          }
+        }
       } finally {if (controller.current === abort) opening.current = false;}
     })();
     return () => {abort.abort(); if (controller.current === abort) {controller.current = null; opening.current = false;}};
@@ -289,6 +317,7 @@ function Bridge({sdk, config, connectAccount, children}: {sdk: ProductAuthSdkPor
     accountAccess: hasConnection ? connection : null, apiBase: config.apiBase, email,
     errorCode: native.error ? 'PRODUCT_AUTH_UNAVAILABLE' : errorCode,
     guestDisposition: hasConnection ? connection.guestDisposition : null, lastSuccessfulMethod: lastMethod,
+    logins: hasConnection ? native.user?.logins ?? [] : [],
     sendEmailCode, verifyEmailCode, loginWithProvider, freshAccessToken, openExistingAccount, retry, logout, cancel};
   return <ProductAuthContext.Provider value={value}>{children}</ProductAuthContext.Provider>;
 }

@@ -17,7 +17,7 @@
 .nav-identity:hover { background:#ede7f5; }
 .nav-identity>img { width:42px;height:42px;border-radius:50%;object-fit:cover; }
 .nav-identity>span { display:grid;gap:5px;min-width:0; }
-.nav-identity strong { font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis; }
+.nav-identity strong { font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .nav-identity small { font-size:11px;color:#80718f; }
 .product-main { padding:34px 38px; }
 .desk-screen,.product-main .market-screen,.web-profile,.career-screen { max-width:1000px; }

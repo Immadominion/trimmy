@@ -16,6 +16,8 @@ export interface WebProfileProps {
   readonly missions: CareerMissionBoard | null;
   readonly hasIdentity: boolean;
   readonly signedIn: boolean;
+  /** How the account signs in (an email or X @handle), shown when there is no Trimmy handle. */
+  readonly accountLabel?: string | null;
   readonly authBusy?: boolean;
   readonly busy?: boolean;
   readonly progressError?: boolean;
@@ -89,8 +91,8 @@ export function WebProfile(props: WebProfileProps) {
               alt={trader ? `${trader.label}, your chosen trader` : ''} width="108" height="108"/>
           </div>
           <div className="web-profile-name">
-            <h2>{handle ? `@${handle}` : trader ? trader.label : 'Make it yours'}</h2>
-            {handle && trader && <p>{trader.label}</p>}
+            <h2>{handle ? `@${handle}` : props.accountLabel ?? (trader ? trader.label : 'Make it yours')}</h2>
+            {(handle || props.accountLabel) && trader && <p>{trader.label}</p>}
             {!trader && <p>Choose who you play as.</p>}
             {career && <span className="web-profile-rank">{career.rank.label}</span>}
           </div>

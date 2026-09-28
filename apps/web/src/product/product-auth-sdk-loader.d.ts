@@ -14,7 +14,9 @@ export interface ProductAuthSdkPort {
     };
   }>;
   usePrivy(): {
-    ready: boolean; authenticated: boolean; user: {id: string} | null; error: boolean;
+    ready: boolean; authenticated: boolean; error: boolean;
+    /** Display-only: the sign-in methods linked to this user, never stored. */
+    user: {id: string; logins?: readonly {method: 'email' | 'google' | 'x'; label: string}[]} | null;
     getAccessToken(): Promise<string | null>; logout(): Promise<void>;
   };
   useLoginWithEmail(callbacks: ProductAuthSdkCallbacks): {

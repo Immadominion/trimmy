@@ -48,8 +48,6 @@
 .comment-card footer .text-button{min-height:32px;font-size:12px}
 /* Home: Fast buy, Updates, trader invitation and Community. */
 .home-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 6px}
-.home-fast-buy{min-height:46px;padding:10px 20px;border-radius:16px}
-.home-fast-buy span{font-size:18px;line-height:1}
 .home-updates{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:8px 16px;border-radius:16px;background:#f6f3fb;font-size:13px;font-weight:600;color:#5d4f6f}
 .home-updates img{width:24px;height:24px;object-fit:contain}
 .home-invitations{display:grid;gap:18px;margin-top:26px}

@@ -14,10 +14,11 @@ export interface HomeParity {
   readonly onChooseTrader?: (() => void) | undefined;
   readonly community: ReactNode;
 }
+/** Fast buy lives on the balance card; this row keeps only Updates. */
 export function HomeActions({home}: {home: HomeParity}) {
+  if (!home.onUpdates) return null;
   return <div className="home-actions">
-    <button className="primary home-fast-buy" aria-label="Fast buy" onClick={home.onFastBuy}><span aria-hidden="true">＋</span>Fast buy</button>
-    {home.onUpdates && <button className="home-updates" aria-label="Updates" onClick={home.onUpdates}><img src={art('icons/asset-bell.png')} alt="" width="24" height="24"/><span>Updates</span></button>}
+    <button className="home-updates" aria-label="Updates" onClick={home.onUpdates}><img src={art('icons/asset-bell.png')} alt="" width="24" height="24"/><span>Updates</span></button>
   </div>;
 }
 export function HomeInvitations({home}: {home: HomeParity}) {

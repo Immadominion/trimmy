@@ -6,11 +6,17 @@ import {PAPER_RESET_CONFIRMATION} from './career-actions';
 import type {ReasonPrivacyState} from './use-reason-privacy';
 import type {ReminderChoice, ReminderRecord} from './journey-store';
 import {ReminderPreferencePage} from './first-day-followup';
+import type {ProductLogin, ProductLoginMethod} from './product-auth';
 import {art, micros} from './ui';
+
+const loginNames: Record<ProductLoginMethod, string> = {email: 'email', google: 'Google', x: 'X'};
+const loginIcons: Record<ProductLoginMethod, string> = {email: 'account-email-rounded.png', google: 'account-google-rounded.png', x: 'account-x-standalone-rounded.png'};
 
 export interface PaperResetOutcome {readonly cashPaperMicros: string; readonly newerActivity: boolean}
 export interface SettingsScreenProps {
   readonly signedIn: boolean; readonly authBusy: boolean; readonly handle: string | null; readonly persona: string | null;
+  /** How this account signs in, e.g. an email or an X @handle. */
+  readonly logins?: readonly ProductLogin[];
   readonly paperLimit: string | null;
   readonly reminder: ReminderRecord | null; readonly remindersAvailable: boolean;
   readonly onSaveReminder: (choice: ReminderChoice) => Promise<void>;
@@ -113,6 +119,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     <div className="settings-grid">
       <Section title="Account">
         {!props.signedIn && <Row icon="settings-lock.png" title="Sign in" subtitle="Sign in to keep your progress."><button className="secondary" disabled={props.authBusy} onClick={props.onSignIn}>Sign in</button></Row>}
+        {props.signedIn && props.logins?.map(login => <Row key={login.method} icon={loginIcons[login.method]} title={`Signed in with ${loginNames[login.method]}`} subtitle={login.label}/>)}
         {props.signedIn && props.handle && <Row icon="profile-edit.png" title="Handle" subtitle={`@${props.handle}`}/>}
         <Row icon="nav-plumpy-profile.png" title="Your trader" subtitle={props.persona ?? 'Choose a character'}><button className="text-button" aria-label={props.persona ? 'Change your trader' : 'Choose your trader'} onClick={props.onTrader}>{props.persona ? 'Change' : 'Choose'}</button></Row>
         {props.signedIn && <Row icon="settings-gear.png" title="Sign out"><button className="text-button" disabled={props.authBusy} onClick={props.onSignOut}>Sign out</button></Row>}
