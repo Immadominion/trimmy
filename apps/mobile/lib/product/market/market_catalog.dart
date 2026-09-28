@@ -49,7 +49,7 @@ class MarketCatalogPage {
               ? card.primaryVariant?.changePercent24h
               : null,
           asOf: DateTime.tryParse(page.provenance.observedAt),
-          lists: const {MarketList.all},
+          lists: marketListsFor(asset, card),
           brandColor: marketCardColor(asset.assetId),
         ),
       );
@@ -57,6 +57,31 @@ class MarketCatalogPage {
     return MarketCatalogPage(List.unmodifiable(companies), total, next as int?);
   }
 }
+
+/// The Market tags a company carries. Funds: the provider's fund and
+/// commodity categories, plus funds it files as equities (named ETF or Fund).
+/// Pre-IPO: a private company, traded only as PreStocks or Tessera tokens
+/// and with no listed share price yet.
+Set<MarketList> marketListsFor(
+  StockDiscoveryAsset asset,
+  StockCardFacts card,
+) => {
+  MarketList.all,
+  if (asset.category == 'etf' ||
+      asset.category == 'commodity' ||
+      _fundName.hasMatch(asset.name ?? ''))
+    MarketList.etfs,
+  if (card.stock == null &&
+      asset.variants.any(
+        (variant) =>
+            _privateIssuers.contains(variant.issuer) ||
+            _privateIssuers.contains(variant.label),
+      ))
+    MarketList.preIpo,
+};
+
+final _fundName = RegExp(r'\b(ETF|ETN|Fund)\b');
+const _privateIssuers = {'PreStocks', 'Tessera'};
 
 abstract interface class MarketCatalogGateway {
   Future<MarketCatalogPage> load({int offset = 0});

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../markets/discovery.dart';
 
 enum MarketList {
-  all('All stocks'),
+  all('All'),
   starterPicks('Starter picks'),
   trending('Trending'),
   movers('Movers'),
@@ -15,7 +15,11 @@ enum MarketList {
   energy('Energy'),
   health('Health'),
   consumer('Consumer'),
-  etfs('ETFs'),
+
+  /// Exchange-traded funds and commodity funds such as S&P 500, gold and oil.
+  etfs('Funds'),
+
+  /// Private companies, tokenized before listing: no share price yet.
   preIpo('Pre-IPO'),
 
   /// Real mode only: companies with at least one token Trimmy can trade.

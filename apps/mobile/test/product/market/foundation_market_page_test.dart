@@ -112,6 +112,44 @@ void main() {
     },
   );
 
+  testWidgets(
+    'choosing a type filter shows only that type and loads the rest of the Market',
+    (tester) async {
+      final stock = testCompany(lists: const {MarketList.all});
+      final fund = testCompany(
+        assetId: 'sp500',
+        name: 'SP500',
+        symbol: 'SPY',
+        lists: const {MarketList.all, MarketList.etfs},
+      );
+      final gateway = FakeMarketSearchGateway();
+      addTearDown(gateway.dispose);
+      var loads = 0;
+      await tester.pumpWidget(
+        app(
+          home: FoundationMarketPage(
+            companies: [stock, fund],
+            searchGateway: gateway,
+            recents: MarketRecentsController(),
+            onOpenCompany: (_) {},
+            hasMore: true,
+            onLoadMore: () async => loads++,
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(loads, 0, reason: 'All pages in as the person scrolls');
+      expect(find.byKey(const ValueKey('market-list-preIpo')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('market-list-etfs')));
+      await tester.pump();
+      await tester.pump();
+      expect(loads, greaterThan(0));
+      expect(find.text('SP500'), findsOneWidget);
+      expect(find.text('Apple'), findsNothing);
+      expect(find.text('Checking every stock…'), findsOneWidget);
+    },
+  );
+
   testWidgets('guest sees only lists and sorts backed by current data', (
     tester,
   ) async {

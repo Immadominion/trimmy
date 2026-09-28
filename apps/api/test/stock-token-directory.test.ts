@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { STOCK_ISSUERS } from '../src/stock-issuers.js';
 import { orderPriceAcceptable } from '../src/stock-order-price.js';
-import { StockTokenDirectory, checkStockMint } from '../src/stock-token-directory.js';
+import { StockTokenDirectory, checkStockMint, withCatalogSnapshot } from '../src/stock-token-directory.js';
 import { findStockTradingAsset, findStockTradingAssetByMint, stockTradingAssets } from '../src/stock-trading-catalog.js';
 import type { StockDiscovery } from '../src/stock-discovery.js';
 
@@ -132,5 +132,27 @@ describe('token directory', () => {
     await directory.recall([unlisted]);
     assert.equal(findStockTradingAssetByMint(unlisted)?.status, 'suspended');
     assert.equal(findStockTradingAsset('unlisted', unlisted), undefined);
+  });
+
+  it('serves the Market from its last sweep while recent, and the provider otherwise', async () => {
+    const mint = 'Dir5111111111111111111111111111111111111111';
+    let clock = now;
+    let catalogReads = 0;
+    const discovery = {search: async () => { throw new Error('unused'); }, variants: async () => { throw new Error('unused'); },
+      catalog: async () => { catalogReads += 1; return page([{mint, assetId: 'directory-five'}]); }} as unknown as StockDiscovery;
+    const transport = rpc({[mint]: mintAccount({symbol: 'DIRSx'})});
+    const directory = new StockTokenDirectory({rpcUrl: 'https://rpc.example', discovery, fetch: transport.fetch, now: () => clock});
+    const market = withCatalogSnapshot(discovery, directory);
+    await market.catalog!(0, 2);
+    assert.equal(catalogReads, 1, 'no sweep yet: the provider answers');
+    await directory.refresh();
+    const reads = catalogReads;
+    assert.equal((await market.catalog!(0, 2)).discovery.results[0]?.assetId, 'directory-five');
+    assert.equal(catalogReads, reads, 'served from the sweep');
+    await market.catalog!(0, 1);
+    assert.equal(catalogReads, reads + 1, 'schema 1 always asks the provider');
+    clock += 16 * 60_000;
+    await market.catalog!(0, 2);
+    assert.equal(catalogReads, reads + 2, 'a stale sweep is not shown');
   });
 });

@@ -2,7 +2,7 @@ import {LiveStockOrders} from './live-stock-orders.js';
 import {OndoMarketStatusReader} from './ondo-market-status.js';
 import {StockMarketStates, StockMintPauseReader} from './stock-market-state.js';
 import {stockTradingAssets} from './stock-trading-catalog.js';
-import {StockTokenDirectory} from './stock-token-directory.js';
+import {StockTokenDirectory, withCatalogSnapshot} from './stock-token-directory.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -138,7 +138,8 @@ const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions,
   ...(accountClosure ? {accountClosure} : {}),
   ...(tls ? {serverFactory: createTlsServerFactory(tls)} : {}),
   ...(marketEstimates ? {marketEstimates} : {}), ...(stockEstimates ? {stockEstimates} : {}),
-  ...(stockDiscovery ? {stockDiscovery} : {}), ...(stockFacts ? {stockFacts} : {}), ...(socialX ? {socialX} : {}),
+  // Market pages come from the token directory's sweep when recent (every 10 minutes).
+  ...(stockDiscovery ? {stockDiscovery: tokenDirectory ? withCatalogSnapshot(stockDiscovery, tokenDirectory) : stockDiscovery} : {}), ...(stockFacts ? {stockFacts} : {}), ...(socialX ? {socialX} : {}),
   ...(accountContext ? {accountContext} : {}), ...(accountHoldings ? {accountHoldings} : {}),
   ...(walletPossession ? {walletPossession} : {}),
   ...(stockHistory ? {stockHistory} : {}), ...(raydiumStockQuotes ? {raydiumStockQuotes} : {}),

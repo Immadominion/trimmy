@@ -2,7 +2,10 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:trimmy/markets/discovery.dart';
 import 'package:trimmy/product/market/market_catalog.dart';
+import 'package:trimmy/product/market/market_models.dart';
+import 'package:trimmy/product/market/stock_facts.dart';
 import '../../stock_facts_models_test.dart' as facts;
 import '../../support/stock_research_fixtures.dart';
 
@@ -104,5 +107,52 @@ void main() {
       {'offset': '0'},
       {'offset': '0'},
     ]);
+  });
+  test('funds, commodities and private companies carry their Market tags', () {
+    final row =
+        (stockSearchFixture()['results'] as List).single
+            as Map<String, Object?>;
+    final variant = (row['variants'] as List).first as Map<String, Object?>;
+    StockDiscoveryAsset asset({
+      String category = 'equity',
+      String? name,
+      String? issuer,
+      String? label,
+    }) => StockDiscoveryAsset.fromJson({
+      ...row,
+      'category': category,
+      'name': ?name,
+      'variants': [
+        {...variant, 'issuer': issuer, 'label': label},
+      ],
+    });
+    StockCardFacts card(Object? stock) =>
+        StockCardFacts.fromJson({...facts.card(), 'stock': stock});
+    final listed = card(facts.card()['stock']);
+    final unlisted = card(null);
+    expect(marketListsFor(asset(), listed), {MarketList.all});
+    // Missing share facts alone do not make a company private.
+    expect(marketListsFor(asset(), unlisted), {MarketList.all});
+    expect(marketListsFor(asset(issuer: 'Tessera'), unlisted), {
+      MarketList.all,
+      MarketList.preIpo,
+    });
+    expect(marketListsFor(asset(label: 'PreStocks'), unlisted), {
+      MarketList.all,
+      MarketList.preIpo,
+    });
+    // A company that has since listed is no longer pre-IPO.
+    expect(marketListsFor(asset(label: 'PreStocks'), listed), {MarketList.all});
+    for (final fund in [
+      asset(category: 'etf'),
+      asset(category: 'commodity'),
+      asset(name: 'Vanguard Value ETF'),
+      asset(name: 'US Copper Index Fund'),
+    ]) {
+      expect(marketListsFor(fund, listed), {MarketList.all, MarketList.etfs});
+    }
+    expect(marketListsFor(asset(name: 'Fundrise Holdings'), listed), {
+      MarketList.all,
+    });
   });
 }

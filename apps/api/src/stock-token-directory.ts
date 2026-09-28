@@ -1,7 +1,7 @@
 import { BoundedSolanaRpc } from './solana-rpc-client.js';
 import { STOCK_ISSUER_IDS, STOCK_ISSUERS, stockIssuerOffered } from './stock-issuers.js';
 import type { StockIssuerId } from './stock-issuers.js';
-import type { StockDiscovery } from './stock-discovery.js';
+import type { StockCatalogPage, StockDiscovery } from './stock-discovery.js';
 import {
   STOCK_ASSET_ID_PATTERN, STOCK_MAX_BUY_INPUT_RAW, STOCK_MAX_SELL_INPUT_RAW, STOCK_MINT_PATTERN, STOCK_TOKEN_PROGRAM,
   findStockTradingAsset, findStockTradingAssetByMint, recallStockIdentity, registerStockTradingIdentity, stockIdentitySource,
@@ -119,6 +119,8 @@ export class StockTokenDirectory {
   readonly #discovery: StockDiscovery | undefined;
   readonly #now: () => number;
   readonly #refreshMs: number;
+  /** The Market catalog as of the last sweep, by page offset. */
+  #pages = new Map<number, StockCatalogPage>();
   /** Mint to the company the catalog lists it under, from the last sweep. */
   #listed = new Map<string, string>();
   readonly #refused = new Map<string, {readonly refused: StockTokenRefused; readonly at: number}>();
@@ -131,7 +133,7 @@ export class StockTokenDirectory {
       maxBodyBytes: 4_194_304, timeoutMs: 8_000, ...(options.fetch ? {fetch: options.fetch} : {})});
     this.#discovery = options.discovery;
     this.#now = options.now ?? Date.now;
-    this.#refreshMs = options.refreshMs ?? 30 * 60_000;
+    this.#refreshMs = options.refreshMs ?? 10 * 60_000;
   }
 
   /** Sweeps now and then on a timer. Failures are retried at the next sweep. */
@@ -161,8 +163,10 @@ export class StockTokenDirectory {
   async #refresh(): Promise<void> {
     if (!this.#discovery?.catalog) return;
     const listed = new Map<string, string>();
-    for (let offset: number | null = 0, pages = 0; offset !== null && pages < 500; pages++) {
+    const pages = new Map<number, StockCatalogPage>();
+    for (let offset: number | null = 0; offset !== null && pages.size < 500;) {
       const page = await this.#discovery.catalog(offset, 2);
+      pages.set(offset, page);
       for (const asset of page.discovery.results) {
         if (!LISTED_CATEGORIES.has(asset.category)) continue;
         for (const variant of asset.variants) if (!listed.has(variant.mint)) listed.set(variant.mint, asset.assetId);
@@ -170,6 +174,7 @@ export class StockTokenDirectory {
       offset = page.nextOffset;
     }
     this.#listed = listed;
+    this.#pages = pages;
     this.#lastSweep = this.#now();
     await this.#check([...listed].filter(([mint]) => !this.#known(mint)).map(([mint, assetId]) => ({mint, assetId})));
   }
@@ -241,6 +246,27 @@ export class StockTokenDirectory {
     }
   }
 
+  /**
+   * A Market catalog page from the last full sweep, while it is recent enough to
+   * show, so the app can load every page at once without waiting on the provider.
+   */
+  catalogPage(offset: number, maxAgeMs = 15 * 60_000): StockCatalogPage | undefined {
+    return this.#now() - this.#lastSweep <= maxAgeMs ? this.#pages.get(offset) : undefined;
+  }
+
   /** When the last full sweep finished, for status reporting. */
   get lastSweepAt(): number | null { return Number.isFinite(this.#lastSweep) ? this.#lastSweep : null; }
+}
+
+/**
+ * The Market's discovery with schema 2 catalog pages served from the directory's
+ * last sweep (refreshed every 10 minutes), falling back to the provider.
+ */
+export function withCatalogSnapshot(discovery: StockDiscovery, directory: StockTokenDirectory): StockDiscovery {
+  return {
+    search: (input, schema) => discovery.search(input, schema),
+    variants: input => discovery.variants(input),
+    catalog: async (offset = 0, schema = 1) =>
+      (schema === 2 ? directory.catalogPage(offset) : undefined) ?? discovery.catalog!(offset, schema),
+  };
 }

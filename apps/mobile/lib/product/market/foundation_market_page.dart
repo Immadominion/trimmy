@@ -152,7 +152,26 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
     MarketList.all,
     if (widget.following != null) MarketList.following,
     if (_marksTradeable) MarketList.tradeable,
+    // Type tags show once the Market has companies of that type.
+    for (final type in const [MarketList.etfs, MarketList.preIpo])
+      if (widget.companies.any((company) => company.lists.contains(type))) type,
   ];
+
+  /// A filter covers the whole Market, so choosing one loads the rest of it.
+  bool get _loadingAll =>
+      _activeList != MarketList.all &&
+      _activeList != MarketList.following &&
+      widget.hasMore &&
+      widget.loadMoreMessage == null;
+
+  void _continueLoadingAll() {
+    if (!_loadingAll || widget.loadingMore) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _loadingAll && !widget.loadingMore) {
+        unawaited(widget.onLoadMore?.call());
+      }
+    });
+  }
 
   MarketList get _activeList {
     final lists = _availableLists;
@@ -282,6 +301,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
 
   @override
   Widget build(BuildContext context) {
+    _continueLoadingAll();
     final content = _buildBody(context);
     return Scaffold(
       backgroundColor: MarketPalette.paper,
@@ -428,6 +448,17 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverToBoxAdapter(child: _statusCard()),
           )
+        else if (companies.isEmpty && _loadingAll)
+          const SliverPadding(
+            padding: EdgeInsets.all(24),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'Checking every stock…',
+                key: ValueKey('market-list-loading-all'),
+                style: TextStyle(color: MarketPalette.muted),
+              ),
+            ),
+          )
         else if (companies.isEmpty &&
             !_resolving &&
             widget.following?.busy != true)
@@ -443,6 +474,10 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                         ? 'Your watchlist starts here.'
                         : _activeList == MarketList.tradeable
                         ? 'No tradeable stocks here yet.'
+                        : _activeList == MarketList.etfs
+                        ? 'No funds to show yet.'
+                        : _activeList == MarketList.preIpo
+                        ? 'No pre-IPO companies to show yet.'
                         : 'No stocks to show yet.',
                     style: const TextStyle(
                       fontSize: 20,
@@ -529,9 +564,15 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                     ),
                   TextButton(
                     key: const ValueKey('market-load-more'),
-                    onPressed: widget.loadingMore ? null : widget.onLoadMore,
+                    onPressed: widget.loadingMore || _loadingAll
+                        ? null
+                        : widget.onLoadMore,
                     child: Text(
-                      widget.loadingMore ? 'Loading…' : 'Load more stocks',
+                      _loadingAll
+                          ? 'Checking every stock…'
+                          : widget.loadingMore
+                          ? 'Loading…'
+                          : 'Load more stocks',
                     ),
                   ),
                 ],
