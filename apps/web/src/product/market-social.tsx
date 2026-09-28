@@ -85,13 +85,13 @@ export function categoryOf(item: object): MarketCategory | null {
 }
 export function categoryLabel(category: MarketCategory | null): string {return category === 'etf' ? 'ETF' : category === 'commodity' ? 'Commodity' : 'Stock';}
 /**
- * One row's price and day change from a single source: the listed session when the
- * item has one, otherwise its primary token (ETFs and commodities may have no session).
- * Mobile never mixes one source's price with another's change.
+ * One row's price and day change from a single source: the listed session when it
+ * has a price, otherwise its primary token (funds, pre-IPO and newly listed tokens
+ * often have no session price). One source's price is never paired with another's change.
  */
 export function marketFigures(card: StockCard): {readonly price: number | null; readonly change: number | null} {
-  return card.stock ? {price: card.stock.priceUsd, change: card.stock.changePercent24h}
-    : {price: card.primaryVariant?.priceUsd ?? null, change: card.primaryVariant?.changePercent24h ?? null};
+  return card.stock && card.stock.priceUsd !== null ? {price: card.stock.priceUsd, change: card.stock.changePercent24h}
+    : {price: card.primaryVariant?.priceUsd ?? null, change: card.primaryVariant?.priceUsd != null ? card.primaryVariant.changePercent24h ?? null : null};
 }
 export type MarketSort = 'featured' | 'name' | 'price' | 'gains' | 'drops';
 export const sortLabels: Record<MarketSort, string> = {featured: 'Featured', name: 'Name', price: 'Highest price', gains: 'Biggest gains', drops: 'Biggest drops'};

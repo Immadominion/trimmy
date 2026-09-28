@@ -135,3 +135,5 @@
   .history-detail{padding-left:16px}
 }
 @media(prefers-reduced-motion:reduce){.money-sheet{scroll-behavior:auto}}
+/* Total balance: cash and stocks named under the headline. */
+.desk-screen .real-balance .balance-split{margin:6px 0 0;font-size:13px;color:#e3d9ff;font-variant-numeric:tabular-nums}

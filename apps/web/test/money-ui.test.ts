@@ -199,7 +199,7 @@ test('without a wallet the order panel asks to create one through Add money', as
   } finally {await page.close();}
 });
 
-test('the Real Market marks tradeable companies and builds the Tradeable list from the capabilities', async () => {
+test('the Real Market marks tradeable companies without a separate Tradeable list', async () => {
   const market = await moneyPage();
   market.storage.data.set(REAL_KEY, 'real');
   const discovery = searchFixture('catalog', 20);
@@ -213,13 +213,8 @@ test('the Real Market marks tradeable companies and builds the Tradeable list fr
     const client = new ProductMarketClient({baseUrl: '/api', fetch: market.fetch, timeoutMs: 1000});
     function RealMarket() {const money = useMoney(); return createElement(MarketScreen, {client, onSelect() {}, real: money.real, capabilities: money.capabilities});}
     await market.render(createElement(RealMarket));
-    await market.waitFor(() => market.dom.window.document.querySelector('.market-lists') !== null, 'tradeable list');
     await market.waitFor(() => market.all('[data-testid="market-tradeable-apple"]').length === 1, 'Apple marker');
-    await market.click('Tradeable');
-    // Companies with a token that trades now; closed market-maker sessions wait, from each asset's own market state.
-    const companies = new Set((liveCapabilitiesJson() as {assets: {assetId: string; market: {status: string}}[]}).assets
-      .filter(asset => asset.market.status === 'open').map(asset => asset.assetId));
-    assert.equal(market.all('.stock-row').length, companies.size, 'the Tradeable list comes from the capabilities, not a fixed set');
+    assert.equal(market.dom.window.document.querySelector('.market-lists'), null, 'no Tradeable tab: every listed company can be bought');
     const paper = await moneyPage();
     try {
       const paperClient = new ProductMarketClient({baseUrl: '/api', fetch: market.fetch, timeoutMs: 1000});

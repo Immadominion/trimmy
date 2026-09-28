@@ -1,15 +1,19 @@
 /**
- * Home in Real mode: USDC is the cash headline, SOL is shown separately for
- * fees, and stock tokens are listed in shares without an invented valuation.
+ * Home in Real mode: the headline is cash plus stocks once every holding has a
+ * market price (cash alone until then), SOL is shown separately for fees, and
+ * each stock token shows its shares and market value.
  * Total holdings and what an order can spend are shown apart. The Paper/Real
  * switch sits on both balance cards, as on mobile's wallet stack.
  */
 import type {CompanyIdentity} from '../company-identity.js';
-import {CompanyLogo, art} from '../ui.js';
+import {CompanyLogo, art, usd} from '../ui.js';
 import {formatRawUnits, groupedDecimal, usdcDollars, usdcLabel, ShareScale} from './amounts.js';
 import {useMoney} from './money-api.js';
 import {coherentHoldings} from './wallet-controller.js';
 import type {WalletStockBalance} from './wallet-models.js';
+import {holdingValue, stocksValue, type HoldingPrices} from './holding-values.js';
+
+const noPrices: HoldingPrices = new Map();
 
 export function MoneyModeSwitch({real, onSwitch}: {real: boolean; onSwitch(): void}) {
   return <button className={`money-mode-switch ${real ? 'real' : 'paper'}`} onClick={onSwitch}
@@ -22,29 +26,34 @@ export function holdingShares(holding: WalletStockBalance, raw = holding.amountR
   return ShareScale.fromDisplay(holding.decimals, holding.amountRaw, holding.displayAmount).label(raw);
 }
 
-export function RealBalanceCard({onSwitch, onFastBuy, onAddMoney}: {onSwitch(): void; onFastBuy(): void; onAddMoney(): void}) {
+export function RealBalanceCard({onSwitch, onFastBuy, onAddMoney, prices = noPrices}: {onSwitch(): void; onFastBuy(): void; onAddMoney(): void; prices?: HoldingPrices}) {
   const money = useMoney();
   const holdings = coherentHoldings(money.wallet);
   const missing = money.wallet.context?.embeddedSolanaWallet.status === 'missing';
   const cash = holdings ? usdcDollars(holdings.usdc.amountRaw) : null;
   const spendableDiffers = holdings !== null && holdings.usdc.availableToTradeRaw !== holdings.usdc.amountRaw;
+  const stocks = holdings && holdings.stockTokens.length > 0 ? stocksValue(holdings, prices) : null;
+  const total = stocks !== null && cash !== null ? Number(holdings!.usdc.amountRaw) / 1_000_000 + stocks : null;
   return <section className="balance-card real-balance" aria-label="Real money balance">
-    <div className="balance-heading"><div className="balance-label">Cash balance</div><MoneyModeSwitch real onSwitch={onSwitch}/></div>
-    <div className="balance-amount" data-testid="real-cash-balance">{cash ?? '—'}<small>USDC</small></div>
+    <div className="balance-heading"><div className="balance-label">{total !== null ? 'Total balance' : 'Cash balance'}</div><MoneyModeSwitch real onSwitch={onSwitch}/></div>
+    {total !== null ? <>
+      <div className="balance-amount" data-testid="real-total-balance">{usd(total)}</div>
+      <p className="balance-split"><span data-testid="real-cash-balance">{cash}</span> cash · {usd(stocks)} in stocks</p>
+    </> : <div className="balance-amount" data-testid="real-cash-balance">{cash ?? '—'}<small>USDC</small></div>}
     <div className="balance-details real-details">
       <div><span>{missing ? 'Create your wallet to add money.' : money.walletFresh ? 'USDC available' : 'Updating balance…'}</span>
         <strong data-testid="real-sol-balance">{holdings ? `${formatRawUnits(holdings.nativeSolLamports, 9) ?? '0'} SOL for fees` : missing ? '' : 'Checking SOL…'}</strong></div>
       <div className="cash-marks" aria-label="USDC and SOL" role="img"><img src={art('money/cash-usdc.png')} alt=""/><img src={art('money/cash-sol.png')} alt=""/></div>
     </div>
     {spendableDiffers && <p className="checked">{usdcLabel(holdings.usdc.availableToTradeRaw)} is ready to trade. The rest is in another token account.</p>}
-    <div className="balance-actions"><button onClick={onFastBuy}><span aria-hidden="true">+</span>Fast buy</button>
+    <div className="balance-actions"><button aria-label="Fast buy" onClick={onFastBuy}><span aria-hidden="true">+</span>Fast buy</button>
       <button onClick={onAddMoney}><span aria-hidden="true">↙</span>Add money</button></div>
   </section>;
 }
 
-export function RealHoldings({identities, onOpen, onExplore, onAddMoney, onHistory}: {
+export function RealHoldings({identities, onOpen, onExplore, onAddMoney, onHistory, prices = noPrices}: {
   identities: ReadonlyMap<string, CompanyIdentity>; onOpen(holding: WalletStockBalance): void;
-  onExplore(): void; onAddMoney(): void; onHistory(): void;
+  onExplore(): void; onAddMoney(): void; onHistory(): void; prices?: HoldingPrices;
 }) {
   const money = useMoney();
   const holdings = coherentHoldings(money.wallet);
@@ -66,11 +75,12 @@ export function RealHoldings({identities, onOpen, onExplore, onAddMoney, onHisto
       const name = caps?.forMint(holding.mint)?.name ?? holding.name;
       const identity = identities.get(holding.assetId);
       const partial = holding.availableToTradeRaw !== holding.amountRaw;
+      const value = holdingValue(holding, prices);
       return <button className="position-row" key={holding.mint} onClick={() => onOpen(holding)}>
         <CompanyLogo name={identity?.name ?? name} url={identity?.imageUrl ?? null}/>
         <span className="position-main"><strong>{name}</strong><small>{holdingShares(holding)} {holding.symbol}{partial ? ` · ${holdingShares(holding, holding.availableToTradeRaw)} ready to sell` : ''}</small></span>
-        {/* A share price must never be multiplied by raw token units; valuation needs a verified price feed. */}
-        <span className="position-value">—<small>Value unavailable</small></span><span className="position-open" aria-hidden="true">↗</span>
+        {/* The token's own price times the tokens held (display amount), never a share price times raw units. */}
+        <span className="position-value">{value !== null ? <>{usd(value)}<small>Market value</small></> : <>—<small>Value unavailable</small></>}</span><span className="position-open" aria-hidden="true">↗</span>
       </button>;
     })}
   </section>;
