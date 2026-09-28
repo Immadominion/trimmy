@@ -13,6 +13,7 @@ class DeskScreen extends StatelessWidget {
     required this.snapshot,
     required this.onOpenMarket,
     this.onAddMoney,
+    this.onSendMoney,
     this.onFastBuy,
     this.onInbox,
     this.onOpenPortfolio,
@@ -43,6 +44,7 @@ class DeskScreen extends StatelessWidget {
   final VoidCallback onOpenMarket;
   final VoidCallback? onFastBuy,
       onAddMoney,
+      onSendMoney,
       onInbox,
       onOpenPortfolio,
       onOpenCareer,
@@ -265,6 +267,7 @@ class DeskScreen extends StatelessWidget {
     onSwitch: onSwitchMode ?? () {},
     onBuy: onFastBuy ?? onOpenMarket,
     onAddMoney: onAddMoney,
+    onSend: onSendMoney,
     onHistory: onOpenPortfolio,
   );
 

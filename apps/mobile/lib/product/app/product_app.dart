@@ -1,5 +1,6 @@
 import '../money/money_mode.dart';
 import '../money/holding_prices.dart';
+import '../money/send_money_flow.dart';
 import '../money/real_holdings.dart';
 import '../money/live_trade_history.dart';
 import '../onboarding/first_stock_followup.dart';
@@ -1618,6 +1619,7 @@ class _ProductExperienceState extends State<ProductExperience>
                   _shellKey.currentState?.select(ProductTab.profile),
               onSignIn: _signedIn ? null : _openSignIn,
               onAddMoney: _openFunding,
+              onSendMoney: _realMoney && _signedIn ? _openSend : null,
               onOpenHolding: (holding) =>
                   unawaited(_openAssetId(holding.assetId)),
               onOpenPortfolio: _openHistory,
@@ -1782,6 +1784,39 @@ class _ProductExperienceState extends State<ProductExperience>
     if (mode.real) {
       unawaited(_refreshLiveCapabilities());
       unawaited(_refreshRealPortfolio());
+    }
+  }
+
+  /// Sending USDC, SOL or a stock token to another Solana wallet.
+  Future<void> _openSend() async {
+    if (!_realMoney || !_signedIn || widget.account == null) return;
+    final account = widget.account;
+    final generation = _portfolioGeneration;
+    final origin = PracticeAccountConfig.fromEnvironment().apiUri;
+    if (origin == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: productSquircle(30),
+      clipBehavior: Clip.antiAlias,
+      builder: (sheet) => FractionallySizedBox(
+        heightFactor: .91,
+        child: SendMoneyFlow(
+          account: widget.account!,
+          origin: origin,
+          nameFor: (mint) => _liveCapabilities?.forMint(mint)?.name,
+          onBack: () => Navigator.pop(sheet),
+        ),
+      ),
+    );
+    if (mounted &&
+        identical(account, widget.account) &&
+        generation == _portfolioGeneration &&
+        _signedIn &&
+        _realMoney) {
+      await _refreshRealPortfolio();
     }
   }
 

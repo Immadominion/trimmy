@@ -17,13 +17,14 @@ class WalletStack extends StatefulWidget {
     this.balanceNote,
     this.solBalance,
     this.onAddMoney,
+    this.onSend,
     this.onHistory,
   });
   final bool real;
   final DeskSnapshot paper;
   final String? balance, balanceLabel, balanceNote, solBalance;
   final VoidCallback onSwitch, onBuy;
-  final VoidCallback? onAddMoney, onHistory;
+  final VoidCallback? onAddMoney, onSend, onHistory;
   @override
   State<WalletStack> createState() => _WalletStackState();
 }
@@ -133,7 +134,7 @@ class _WalletStackState extends State<WalletStack>
                     label: const Text('Fast buy'),
                   ),
                 ),
-                if (widget.real)
+                if (widget.real) ...[
                   Expanded(
                     child: TextButton.icon(
                       style: _actionStyle(),
@@ -141,8 +142,18 @@ class _WalletStackState extends State<WalletStack>
                       icon: const Icon(Icons.south_west_rounded, size: 20),
                       label: const Text('Add money'),
                     ),
-                  )
-                else
+                  ),
+                  if (widget.onSend != null)
+                    Expanded(
+                      child: TextButton.icon(
+                        key: const ValueKey('desk-wallet-send'),
+                        style: _actionStyle(),
+                        onPressed: widget.onSend,
+                        icon: const Icon(Icons.north_east_rounded, size: 20),
+                        label: const Text('Send'),
+                      ),
+                    ),
+                ] else
                   Expanded(
                     child: TextButton.icon(
                       style: _actionStyle(),
