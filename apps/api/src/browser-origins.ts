@@ -58,6 +58,12 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/career/daily-desk/complete': Object.freeze(['POST']),
   '/v1/community': Object.freeze(['GET']),
   '/v1/community/following/:socialId': Object.freeze(['PUT']),
+  // Web parity with mobile: followed stocks, blocking a trader, reporting a
+  // reason and closing one's own account. Authentication still decides.
+  '/v1/following': Object.freeze(['GET', 'PUT']),
+  '/v1/social/blocks/:socialId': Object.freeze(['GET', 'PUT']),
+  '/v1/social/reason-reports': Object.freeze(['POST']),
+  '/v1/account/closure': Object.freeze(['POST']),
   '/v1/practice/progress': Object.freeze(['GET', 'PUT']),
   '/v1/config': Object.freeze(['GET']),
   '/v1/practice/catalog': Object.freeze(['GET']),
@@ -158,10 +164,12 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       request.raw.url?.split('?')[0] === route;
     const communityFollowRoute = route === '/v1/community/following/:socialId' &&
       /^\/v1\/community\/following\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
+    const blockRoute = route === '/v1/social/blocks/:socialId' &&
+      /^\/v1\/social\/blocks\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
     const tradeStatusRoute = route === '/v1/trading/order/:id' &&
       /^\/v1\/trading\/order\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
-    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute && !tradeStatusRoute) ||
-        (route === '/v1/trading/order/:id' && !tradeStatusRoute) ||
+    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute && !tradeStatusRoute && !blockRoute) ||
+        (route === '/v1/trading/order/:id' && !tradeStatusRoute) || (route === '/v1/social/blocks/:socialId' && !blockRoute) ||
         typeof method !== 'string' || !methods.includes(method) ||
         headers === undefined || (headers.includes('x-trimmy-guest') && route !== '/v1/guest/claim') ||
         request.headers['access-control-request-private-network'] !== undefined) {

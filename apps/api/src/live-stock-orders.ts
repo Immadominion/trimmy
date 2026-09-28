@@ -369,6 +369,8 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
    request.log.warn({tradeFailure:reviewCode??(known.includes(code)?code:'LIVE_UNAVAILABLE')},'Live stock request failed');
+   // Each user may request one quote every 3 seconds.
+   if(code==='LIVE_BUSY')reply.header('retry-after','3');
    return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='MARKET_INPUT_INVALID'?400:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
   }
  }

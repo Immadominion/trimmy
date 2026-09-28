@@ -131,6 +131,25 @@ describe('explicit browser origin configuration and preflight', () => {
     } finally { await app.close(); }
   });
 
+  it('allows the web app following, blocking, reporting and account closure on exact paths', async () => {
+    const app = buildApp({logger: false, browserOrigins: [origin]});
+    const block = '/v1/social/blocks/10000000-0000-4000-a000-000000000001';
+    try {
+      for (const [url, method] of [['/v1/following', 'GET'], ['/v1/following', 'PUT'], [block, 'GET'], [block, 'PUT'],
+        ['/v1/social/reason-reports', 'POST'], ['/v1/account/closure', 'POST']]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!, headers: {
+          origin, 'access-control-request-method': method!, 'access-control-request-headers': 'Authorization, Content-Type'}});
+        assert.equal(response.statusCode, 204, `${url} ${method}`);
+      }
+      for (const [url, method] of [['/v1/following?x=1', 'GET'], ['/v1/following', 'DELETE'], ['/v1/social/blocks/NOT-A-UUID', 'PUT'],
+        ['/v1/social/blocks/10000000-0000-4000-A000-000000000001', 'PUT'], [block + '?x=1', 'GET'], ['/v1/account/closure', 'GET'],
+        ['/v1/account/closure?confirm=1', 'POST'], ['/v1/social/reason-reports', 'PUT']]) {
+        const response = await app.inject({method: 'OPTIONS', url: url!, headers: {origin, 'access-control-request-method': method!}});
+        assert.equal(response.statusCode, 403, `${url} ${method}`);
+      }
+    } finally { await app.close(); }
+  });
+
   it('allows absent requested headers and still requires a genuine preflight origin/method', async () => {
     const app = buildApp({logger: false, browserOrigins: [origin]});
     try {
