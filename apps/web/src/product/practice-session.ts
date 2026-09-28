@@ -147,6 +147,42 @@ export class PracticeSession {
   get lastReceipt(): PaperReceipt | null {return this.#saved?.lastReceipt ?? null;}
   get pendingDailyDesk(): DailyDeskCompletion | null {return this.#saved?.pendingDailyDesk ?? null;}
   get pendingWorkdayMutation(): WorkdayMutation | null {return this.#saved?.pendingWorkdayMutation ?? null;}
+  /** Why an account claim kept this guest desk separate, if it did. Read-only. */
+  get claimFailureCode(): string | null {return this.#saved?.claim?.failureCode ?? null;}
+  /**
+   * A saved guest credential that can no longer open its desk: expired locally,
+   * or answered by the API as expired, revoked or unauthenticated. Read-only;
+   * only `startNewGuestDesk` (an explicit, confirmed choice) acts on it.
+   */
+  get guestRecovery(): 'expired' | 'ended' | null {
+    if (this.isAccount || !this.#saved || this.#saved.claim?.status === 'claimed') return null;
+    const code = this.#saved.terminalGuestCode;
+    if (code) return code === 'GUEST_SESSION_EXPIRED' ? 'expired' : 'ended';
+    const guest = this.#saved.guest;
+    return guest && (this.#now() >= Date.parse(guest.expiresAt) || this.#now() >= Date.parse(guest.hardExpiresAt)) ? 'expired' : null;
+  }
+  /**
+   * Mobile's confirmed "Start a new desk". The expired record is archived whole
+   * (never deleted) before a fresh guest is issued; it keeps its balance,
+   * positions and history, which do not move to the new desk.
+   */
+  startNewGuestDesk(signal?: AbortSignal): Promise<GuestCredential> {
+    return this.#exclusive(async () => {
+      if (this.isAccount) return sessionError('PRACTICE_ACCOUNT_ACTIVE', 'This desk belongs to your signed-in account.');
+      const guest = this.#saved?.guest;
+      if (!guest || this.guestRecovery === null) return sessionError('PRACTICE_GUEST_ACTIVE', 'This guest desk is still active.');
+      if (this.#saved?.pendingCommit || this.#saved?.claim?.status === 'pending') {
+        return sessionError('PRACTICE_COMMIT_PENDING', 'An earlier request still needs checking before starting again.');
+      }
+      const archiveKey = `${this.storageKey}:expired:${guest.guestId}`;
+      try {this.#storage.setItem(archiveKey, this.#raw!); if (this.#storage.getItem(archiveKey) !== this.#raw) throw new Error();}
+      catch {return sessionError('PRACTICE_STORAGE_UNAVAILABLE', 'Your saved desk could not be preserved safely.');}
+      this.#save({version: 1, apiBase: this.apiBase, issuance: this.#creation(), guest: null,
+        pendingCommit: null, lastReceipt: null, pendingProfile: null, terminalGuestCode: null});
+      const created = await this.#client.createGuest(this.#saved!.issuance!, signal);
+      this.#assertBound(); this.#save({...this.#saved!, issuance: null, guest: created}); return created;
+    }, signal);
+  }
   close(): void {this.#closed = true; this.#offeredPreview = null;}
   #readRaw(): string | null {
     try {return this.#storage.getItem(this.storageKey);}
@@ -269,6 +305,13 @@ export class PracticeSession {
       let claim = this.#saved.claim;
       if (claim?.status === 'claimed') return claim.subject === subject ? 'claimed' : 'none';
       if (claim?.status === 'pending' && claim.subject !== subject) return sessionError('PRACTICE_CLAIM_PENDING', 'Sign in to the same account to finish linking this desk.');
+      if (claim?.status !== 'pending' && this.guestRecovery !== null) {
+        // An expired or ended guest desk cannot be linked. It stays preserved and separate, as on mobile.
+        assertLive();
+        this.#save({...this.#saved, claim: {subject, guestId: guest.guestId, body: claim?.subject === subject ? claim.body : {schemaVersion: 1, idempotencyKey: this.#uuid()},
+          status: 'preserved', failureCode: 'GUEST_SESSION_EXPIRED'}});
+        return 'preserved';
+      }
       if (claim?.subject === subject && (claim.status === 'conflict' || claim.status === 'preserved')) {
         if (openExistingAccount || claim.status === 'preserved') {
           assertLive(); this.#save({...this.#saved, claim: {...claim, status: 'preserved'}}); return 'preserved';

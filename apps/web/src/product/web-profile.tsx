@@ -28,6 +28,8 @@ export interface WebProfileProps {
   readonly onRetry?: () => void;
   /** Resolve only after the server has saved the choice and the current profile has refreshed. */
   readonly onPersona?: (persona: TraderPersona) => Promise<void>;
+  /** Opens Settings: reminders, sound, paper reset, comment privacy and account closure. */
+  readonly onSettings?: () => void;
 }
 
 function ProfileIcon({file}: {file: string}) {
@@ -78,7 +80,7 @@ export function WebProfile(props: WebProfileProps) {
   }
 
   return <section className="web-profile" aria-labelledby="web-profile-heading">
-    <div className="page-intro"><h1 id="web-profile-heading">Profile</h1></div>
+    <div className="page-intro"><h1 id="web-profile-heading">Profile</h1>{props.onSettings && <button className="text-button web-profile-settings-link" onClick={props.onSettings}><ProfileIcon file="settings-gear.png"/>Settings</button>}</div>
     <div className="web-profile-overview">
       <section className="web-profile-identity" aria-label="Your trader">
         <div className="web-profile-person">

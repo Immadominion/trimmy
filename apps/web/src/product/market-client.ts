@@ -209,7 +209,9 @@ export class ProductMarketClient {
   /** Funds and commodities need `schema=2`; a server from before them answers 400, once. */
   #schema2 = true;
   constructor(options: ProductMarketOptions) {
-    this.#base = baseUrl(options.baseUrl); this.#fetch = options.fetch ?? globalThis.fetch; this.#timeout = options.timeoutMs ?? 12000;
+    this.#base = baseUrl(options.baseUrl);
+    // Bound: browsers reject fetch called with any receiver other than the global ("Illegal invocation").
+    this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis); this.#timeout = options.timeoutMs ?? 12000;
     if (typeof this.#fetch !== 'function' || !Number.isInteger(this.#timeout) || this.#timeout < 1 || this.#timeout > 30000)
       throw new StockResearchError('STOCK_INVALID_CONFIGURATION');
   }

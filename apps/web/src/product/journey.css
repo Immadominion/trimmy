@@ -1,0 +1,56 @@
+/* First-day follow-up: celebration, account choice, reminders, money choice. Mobile's SetupChoiceCard and trade ticket in the web frame. */
+.journey-screen{max-width:470px;padding-top:12px}
+.journey-screen h1{outline:none;font-size:36px;line-height:1.1}
+.journey-lede{color:#7e728d;font-size:16px;margin:12px 0 26px}
+.journey-footnote{font-size:12px;color:#8b8098;margin:16px 0 0;line-height:1.5}
+.journey-icon{width:52px;height:52px;object-fit:contain;margin:0 0 24px}
+.journey-state{text-align:center;max-width:430px}
+.journey-state .journey-lede{margin-bottom:22px}
+.journey-state-art{width:150px;height:150px;object-fit:contain;margin:0 auto 22px}
+.money-choice .journey-state-art{margin:0 0 20px}
+.journey-state .loading{justify-content:center}
+
+.first-order-ticket{border:1px solid #eee8f6;border-radius:26px;overflow:hidden;background:#fff;box-shadow:inset 0 -6px 0 #f1edff;margin:0 0 24px}
+.first-order-ticket-upper{display:grid;gap:10px;padding:22px 22px 24px}
+.first-order-company{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.first-order-company strong{flex:1;font-size:19px;letter-spacing:-.3px}
+.first-order-check{display:grid;place-items:center;width:32px;height:32px;border-radius:11px;background:#e7f1e9;color:var(--green);font-size:16px}
+.first-order-label{font-size:13px;color:#8a789a}
+.first-order-amount{font-family:Bricolage,Dejanire,sans-serif;font-size:40px;font-weight:700;letter-spacing:-1.2px;line-height:1.05}
+.first-order-amount small{font-family:Dejanire,sans-serif;font-size:14px;font-weight:500;letter-spacing:0;color:#8a789a;margin-left:6px}
+.first-order-shares{font-size:14px;color:#6f6380;margin-top:8px}
+.first-order-shares strong{color:var(--ink);font-weight:600;margin-left:6px}
+.first-order-ticket-lower{display:grid;gap:6px;padding:16px 22px 22px;border-top:2px dashed #e8e0f3;background:#fbfaff}
+.first-order-confirmed{color:var(--green);font-weight:600;font-size:15px}
+.first-order-reward{font-size:13px;color:#73529b}
+
+.setup-choices{display:grid;gap:14px;margin:0 0 18px}
+.setup-choice{display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:18px 20px;border-radius:25px;background:#fbfaff;border:2px solid #e8e4f0;box-shadow:inset 0 -3px 0 #efeaf8;transition:border-color .15s,background .15s}
+.setup-choice:hover:not(:disabled){border-color:#cdbde9}
+.setup-choice[aria-checked=true]{border-color:var(--violet);background:#faf8ff}
+.setup-choice span{display:grid;gap:4px}
+.setup-choice strong{font-size:16px;font-weight:600}
+.setup-choice small{font-size:14px;color:#7e728d;line-height:1.4}
+.setup-choice img{width:34px;height:34px;object-fit:contain;flex:none}
+.setup-choice-plus{display:grid!important;place-items:center;width:34px;height:34px;flex:none;color:var(--violet);font-size:30px;line-height:1}
+.journey-message{padding:16px 18px;border-radius:18px;background:#f6f2fe;color:#675582;font-size:14px;line-height:1.5;margin:0 0 16px}
+.journey-message .secondary{margin-top:12px;min-height:44px;padding:10px 18px}
+
+.journey-preserved-art{position:relative;width:170px;height:170px;margin:0 auto 20px}
+.journey-preserved-art img{width:100%;height:100%;object-fit:contain}
+.journey-preserved-art span{position:absolute;right:4px;bottom:6px;display:grid;place-items:center;width:40px;height:40px;border-radius:14px;background:#e7f1e9;color:var(--green);font-size:18px}
+.journey-card{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:16px 18px;border-radius:20px;background:#f8f6fb;margin:0 0 24px}
+.journey-card img{width:26px;height:26px;object-fit:contain;flex:none}
+.journey-card p{font-size:14px;color:var(--muted)}
+
+.sign-in-guest{margin-top:6px}
+.sign-in-notice{font-size:12px!important;color:#8a7d94;background:#f8f6fb;border-radius:14px;padding:12px 14px;margin:-8px 0 18px!important}
+
+@media(max-width:700px){
+  .journey-screen h1{font-size:31px}
+  .journey-lede{font-size:15px;margin-bottom:22px}
+  .first-order-amount{font-size:34px}
+  .setup-choice{padding:16px 17px}
+}
+.journey-card.warning{background:#fff4f5}
+.guest-recovery .text-button.full{margin-top:8px}

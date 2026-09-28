@@ -69,7 +69,7 @@ export class StockResearchClient {
   constructor(options: StockResearchClientOptions) {
     const config = parseStockResearchConfig(options.apiOrigin, {allowLoopbackForTests: options.allowLoopbackForTests ?? false});
     const timeout = options.timeoutMs ?? 10000;
-    const fetch = options.fetch ?? globalThis.fetch, now = options.now ?? Date.now;
+    const fetch = options.fetch ?? globalThis.fetch.bind(globalThis), now = options.now ?? Date.now;
     if (config.kind !== 'enabled' || typeof fetch !== 'function' || typeof now !== 'function' ||
         !Number.isInteger(timeout) || timeout < 1 || timeout > 30000) throw new StockResearchError('STOCK_INVALID_CONFIGURATION');
     this.#origin = config.apiOrigin; this.#fetch = fetch; this.#timeout = timeout; this.#now = now;

@@ -226,3 +226,22 @@ test('catalog, search and cards ask for funds and commodities (schema 2) and fal
     '/api/v1/markets/stocks/search?query=Apple&limit=20'], 'the fallback is remembered');
   assert.throws(() => parseStockSearchPage({...searchFixture(), results: [{...searchFixture().results[0]!, category: 'crypto'}]}));
 });
+
+test('the default fetch is bound to the global, as browsers require', async () => {
+  const original = globalThis.fetch;
+  // Emulates Chrome's receiver check: fetch invoked as a method of another object throws.
+  globalThis.fetch = function (this: unknown, ...args: Parameters<typeof fetch>) {
+    if (this !== undefined && this !== globalThis) throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+    return original(...args);
+  } as typeof fetch;
+  try {
+    const client = new ProductMarketClient({baseUrl: 'https://api.example'});
+    await assert.rejects(client.catalog(0, {signal: AbortSignal.abort()}), {code: 'STOCK_CANCELLED'});
+    globalThis.fetch = function (this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(new Response('{}', {status: 503, headers: {'content-type': 'application/json'}}));
+    } as typeof fetch;
+    const bound = new ProductMarketClient({baseUrl: 'https://api.example'});
+    await assert.rejects(bound.catalog(0), (error: {code?: string}) => error.code !== 'STOCK_NETWORK_ERROR', 'the request reaches fetch instead of failing as a network error');
+  } finally {globalThis.fetch = original;}
+});

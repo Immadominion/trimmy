@@ -3,6 +3,7 @@ import type {ProductMarketClient, StockDiscoveryAsset} from './market-client';
 import type {CareerSummary, PaperPortfolio, PaperPreview, PaperReceipt, ProductProfile} from './practice-client';
 import type {PracticeSession} from './practice-session';
 import {CompanyLogo, Loading, SalArt, art, errorCopy, micros, shares, toPaperMicros} from './ui';
+import {FirstOrderCelebration} from './first-day-followup';
 
 type Phase = 'welcome' | 'note' | 'practice' | 'review' | 'receipt';
 interface Company {assetId: string; name: string; symbol: string; mint: string}
@@ -12,7 +13,10 @@ export interface FirstDayProps {
   readonly portfolio: PaperPortfolio | null; readonly career: CareerSummary | null;
   readonly ensureDesk: () => Promise<void>; readonly onExplore: () => void;
   readonly onExit: (completed: boolean) => Promise<void>;
-  readonly onCommitted: (receipt: PaperReceipt) => Promise<void>; readonly onPending: () => void;
+  /** The picked company rides along so the celebration can name it before public facts load. */
+  readonly onCommitted: (receipt: PaperReceipt, company?: {readonly name: string; readonly logoUrl: string | null}) => Promise<void>; readonly onPending: () => void;
+  /** Mobile's receipt Continue: records the confirmed order and opens the follow-up. */
+  readonly onReceiptContinue: (orderId: string) => Promise<void>;
   readonly onStep?: (step: string) => void;
   readonly onSignIn?: () => void;
 }
@@ -26,6 +30,8 @@ function companies(assets: readonly StockDiscoveryAsset[]): Company[] {
       symbol: variant.symbol ?? asset.symbol ?? 'Stock token', mint: variant.mint}] : [];
   }).slice(0, 3);
 }
+/** The web ships art for the three starter tokens; other logos come from public facts. */
+export function tokenArt(symbol: string): string | null {return ['AAPLx', 'TSLAx', 'METAx'].includes(symbol) ? art(`token-${symbol}.webp`) : null;}
 function markHistory(phase: Phase, push: boolean): void {
   const previous: unknown = window.history.state;
   const state = {...(previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {}), trimmyFirstDay: phase};
@@ -83,6 +89,7 @@ export function FirstDay(props: FirstDayProps) {
     if (!mounted.current) return;
     currentPhase.current = next; markHistory(next, push); setPhase(next); setError(null);
   }
+  /** false: Skip (records introduction-skipped). true: leave for the desk without any launch write. */
   async function exit(completed: boolean) {
     if (locked.current) return; locked.current = true; setBusy(true); setError(null);
     markHistory(currentPhase.current, false);
@@ -95,7 +102,8 @@ export function FirstDay(props: FirstDayProps) {
     if (locked.current) return;
     if (phase === 'review') edit();
     else if (phase === 'welcome') callbacks.current.onExplore();
-    else void exit(phase === 'receipt');
+    // The celebration owns Back: it continues, as on mobile. It never skips.
+    else if (phase !== 'receipt') void exit(false);
   };
   function completedProfile(profile: ProductProfile | null): boolean {
     return profile?.launchCheckpoint === 'app' || profile?.hasConfirmedPaperTrade === true;
@@ -144,16 +152,19 @@ export function FirstDay(props: FirstDayProps) {
       const order = await session.commitOrder(preview);
       if (!mounted.current) return;
       setReceipt(order); setPreview(null); go('receipt');
-      try {await callbacks.current.onCommitted(order);}
+      try {await callbacks.current.onCommitted(order, selected ? {name: selected.name, logoUrl: tokenArt(selected.symbol)} : undefined);}
       catch {if (mounted.current) setNotice('Your order is confirmed. Your desk is still refreshing.');}
     } catch (reason) {if (mounted.current) {setError(reason); callbacks.current.onPending();}}
     finally {locked.current = false; if (mounted.current) setBusy(false);}
   }
-  const receiptCareer = receipt && career?.firstConfirmedBuy?.orderId === receipt.id ? career : null;
   const companyName = selected?.name ?? receipt?.symbol ?? 'your company';
+  if (phase === 'receipt' && receipt) return <FirstOrderCelebration evidence={{orderId: receipt.id, assetId: receipt.assetId,
+    variantMint: receipt.variantMint, symbol: receipt.symbol, quantityMicros: receipt.quantityMicros, cashDebitPaperMicros: receipt.cashDebitPaperMicros}}
+    name={selected?.name ?? null} logoUrl={tokenArt(receipt.symbol)}
+    career={career} loading={false} onRetry={() => {}} onContinue={() => callbacks.current.onReceiptContinue(receipt.id)}/>;
   return <section className={`first-day first-day-${phase}`} data-motion={props.motion} aria-label="Your first day">
-    {phase !== 'welcome' && <button className="intro-close" aria-label={phase === 'receipt' ? 'Go to your desk' : 'Skip first day'} disabled={busy}
-      onClick={() => void exit(phase === 'receipt')}>×</button>}
+    {phase !== 'welcome' && <button className="intro-close" aria-label="Skip first day" disabled={busy}
+      onClick={() => void exit(false)}>×</button>}
     {phase === 'welcome' && <div className="intro-welcome"><div className="intro-art"><SalArt motion={props.motion}/></div><div className="intro-copy">
       <p className="intro-eyebrow">Sal’s saved you a seat.</p><h1 ref={heading} tabIndex={-1}>Your first day starts here.</h1>
       <p>Pick a company. Make a move.<br/>Find your feet on Wall Street.</p><div className="intro-actions"><button className="primary" onClick={() => go('note')}>Start my first day</button>
@@ -180,12 +191,7 @@ export function FirstDay(props: FirstDayProps) {
         <div><dt>Paper to spend</dt><dd>{micros(preview.cashDebitPaperMicros)} paper</dd></div><div><dt>Paper cash after</dt><dd>{micros(preview.cashAfterPaperMicros)} paper</dd></div></dl>
       <button className="primary" disabled={busy || pending || remaining === 0} onClick={() => void confirm()}>{busy ? 'Confirming…' : 'Confirm paper buy'}</button>
       <p className="intro-disclosure">{remaining > 0 ? `Quote expires in ${remaining}s` : 'Quote expired. Get a new review.'}</p><button className="text-button" disabled={busy} onClick={edit}>Edit amount</button></div>}
-    {phase === 'receipt' && receipt && <div className="intro-receipt"><div className="intro-receipt-mark" aria-hidden="true">✓</div><h1 ref={heading} tabIndex={-1}>Your first move is made.</h1>
-      <p>You bought {shares(receipt.quantityMicros)} shares of {receipt.symbol}.</p><dl className="intro-summary"><div><dt>Paper spent</dt><dd>{micros(receipt.cashDebitPaperMicros)}</dd></div>
-        <div><dt>Paper cash left</dt><dd>{micros(receipt.cashAfterPaperMicros)}</dd></div></dl>
-      {receiptCareer && <p className="intro-reward">{receiptCareer.rank.label} · {receiptCareer.trims.total.toLocaleString()} Trims total</p>}
-      <button className="primary" disabled={busy} onClick={() => void exit(true)}>{busy ? 'Updating your desk…' : 'Go to my desk'}</button><p className="intro-disclosure">Confirmed paper order. No real money moved.</p><MobileAppPrompt/></div>}
-    {pending && phase !== 'receipt' && <div className="intro-pending" role="status"><strong>Your last order needs checking.</strong><p>Return to your desk to recover its result before making another move.</p><button className="text-button" disabled={busy} onClick={() => void exit(false)}>Check from desk</button></div>}
+    {pending && phase !== 'receipt' && <div className="intro-pending" role="status"><strong>Your last order needs checking.</strong><p>Return to your desk to recover its result before making another move.</p><button className="text-button" disabled={busy} onClick={() => void exit(true)}>Check from desk</button></div>}
     {error !== null && <p className="intro-error" role="alert">{errorCopy(error)}</p>}
     {notice !== null && <p className="intro-error" role="status">{notice}</p>}
   </section>;

@@ -21,9 +21,6 @@ const routes: Readonly<Record<string, readonly string[]>> = {
 };
 /** One order's reconciliation read; the id is a canonical UUID and nothing else. */
 const orderStatus = /^\/v1\/trading\/order\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-function allowed(pathname: string, method: string): boolean {
-  return routes[pathname]?.includes(method) === true || method === 'GET' && orderStatus.test(pathname);
-}
 /** Review and settlement read the chain and a quote provider; give them the API's own time. */
 const slowRoutes = new Set(['/v1/trading/preview', '/v1/trading/execute', '/v1/trading/order']);
 /** Exact read hints the money reads need, validated before they cross the relay. */
@@ -44,6 +41,26 @@ function readHints(req: IncomingMessage, pathname: string): Record<string, strin
     if (cache === 'no-cache') hints['cache-control'] = cache;
   }
   return hints;
+}
+
+// Web parity (first day, settings, Career actions, Market social, community).
+// Production browser access for each is tracked in docs/WEB_API_REQUESTS.md.
+const parityRoutes: Readonly<Record<string, readonly string[]>> = {
+  '/v1/career/reason-privacy': ['GET', 'PUT'], '/v1/career/trade-reasons': ['GET', 'POST'],
+  '/v1/career/promotions': ['POST'], '/v1/career/day-context': ['GET', 'PUT'],
+  '/v1/account/paper/reset': ['POST'], '/v1/account/closure': ['POST'],
+  '/v1/community': ['GET'], '/v1/markets/stocks/holders': ['GET'],
+  '/v1/following': ['GET', 'PUT'], '/v1/social/reason-reports': ['POST'],
+};
+const uuidSegment = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const parityPatterns: readonly {readonly path: RegExp; readonly methods: readonly string[]}[] = [
+  {path: new RegExp(`^/v1/community/following/${uuidSegment}$`), methods: ['PUT']},
+  {path: new RegExp(`^/v1/social/blocks/${uuidSegment}$`), methods: ['GET', 'PUT']},
+];
+/** Own-money routes, one order's status read and the parity routes; nothing else crosses the relay. */
+function allowed(pathname: string, method: string): boolean {
+  return Boolean(routes[pathname]?.includes(method) || method === 'GET' && orderStatus.test(pathname) ||
+    parityRoutes[pathname]?.includes(method) || parityPatterns.some(route => route.path.test(pathname) && route.methods.includes(method)));
 }
 
 function problem(res: ServerResponse, status: number, code: string) {

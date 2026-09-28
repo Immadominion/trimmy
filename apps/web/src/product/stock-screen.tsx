@@ -7,6 +7,7 @@ import {useMoney} from './money/money-api';
 import {discoveryRefs} from './money/market-tradeable';
 import {LiveOrderPanel} from './money/live-order-panel';
 import {marketLabel, type VariantOption} from './money/live-trading';
+import {CompanyFollow, CompanySections, type CompanySocial} from './company-social';
 
 const ranges: readonly [StockInsightPeriod, string][] = [['day', '1D'], ['week', '1W'], ['month', '1M'], ['year', '1Y']];
 
@@ -45,6 +46,8 @@ export interface StockScreenProps {
   readonly portfolio: PaperPortfolio | null; readonly onBack: () => void; readonly onDesk: () => void;
   readonly ensureDesk: () => Promise<void>; readonly onCommitted: (receipt: PaperReceipt) => Promise<void>;
   readonly onPending: () => void;
+  /** Mobile's Follow, Holders and Comments (company-social.tsx). */
+  readonly social?: CompanySocial;
   /** Real mode: leave for Paper when this company has no token to trade with real money. */
   readonly onPracticeInPaper?: () => void;
 }
@@ -106,7 +109,8 @@ export function StockScreen(props: StockScreenProps) {
   return <>
     <button className="company-back" onClick={props.onBack}>← Back to Market</button>
     <div className="company-layout"><section className="company-reading">
-      <div className="company-heading"><CompanyLogo name={name} url={facts?.imageUrl ?? card?.imageUrl ?? null} large/><div><h1>{name}</h1><p>{facts?.symbol ?? card?.symbol ?? 'Company'}{variant ? ` / ${variant.label ?? variant.symbol ?? 'Selected token'}` : ''}</p></div></div>
+      <div className="company-heading"><CompanyLogo name={name} url={facts?.imageUrl ?? card?.imageUrl ?? null} large/><div><h1>{name}</h1><p>{facts?.symbol ?? card?.symbol ?? 'Company'}{variant ? ` / ${variant.label ?? variant.symbol ?? 'Selected token'}` : ''}</p></div>
+        {props.social && <CompanyFollow card={card ?? {assetId, name, symbol: facts?.symbol ?? null, imageUrl: facts?.imageUrl ?? null, stock: facts?.stock ?? null, primaryVariant: null}} social={props.social}/>}</div>
       <div className="company-price">{chartBusy ? '…' : usd(insight?.priceUsd)}</div>
       <p className="company-price-caption">{insight?.changePercent24h != null && <span className={insight.changePercent24h < 0 ? 'negative' : 'positive'}>{change(insight.changePercent24h)} today</span>}Selected token · USD reference</p>
       <div className="range-picker" aria-label="Chart period">{ranges.map(([value, label]) => <button key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>)}<button aria-label="Refresh chart" onClick={() => setChartRevision(n => n + 1)}>↻</button></div>
@@ -118,6 +122,7 @@ export function StockScreen(props: StockScreenProps) {
       {variant?.advisory && <div className="notice warning"><strong>Token caution</strong><p>{variant.advisory.reason}</p></div>}
       <div className="company-section"><h2>About {name}</h2><p>{facts?.description ?? insight?.description ?? 'A company description is not available right now.'}</p></div>
       {insight && <dl className="company-metrics"><div><dt>Token trading volume · 24h</dt><dd>{compactUsd(insight.volume24hUsd)}</dd></div><div><dt>Token liquidity</dt><dd>{compactUsd(insight.liquidityUsd)}</dd></div><div><dt>Token holders</dt><dd>{insight.holders?.toLocaleString() ?? 'Unavailable'}</dd></div><div><dt>Company market cap</dt><dd>{compactUsd(insight.stockMarketCapUsd)}</dd></div></dl>}
+      {props.social && mint && <CompanySections assetId={assetId} mint={mint} social={props.social}/>}
       <p className="source-note">Data from Tokens.xyz. {insight ? `Checked ${new Date(insight.observedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}. ${Date.parse(insight.refreshAfter) <= clock ? 'Prices may have changed; refresh for a new read. ' : ''}` : ''}Reference prices are for research. {money.real ? 'A real order gets its own reviewed quote.' : 'Your paper order gets its own current quote.'}{mint ? <><br/>Selected token: {mint}</> : null}</p>
     </section>
     {money.real ? liveOptions && !liveOptions.some(option => option.asset)
