@@ -8,9 +8,13 @@
  */
 import {USDC_MINT} from './amounts.js';
 
-export const CAPABILITIES_MAX_ASSETS = 4000;
-export const CAPABILITIES_MAX_UNAVAILABLE = 8000;
-export const CAPABILITIES_MAX_BYTES = 2_000_000;
+/** Bounds for one read. The API admits tokens automatically, so these sit well above today's list (as mobile's do). */
+export const CAPABILITIES_MAX_ASSETS = 10_000;
+export const CAPABILITIES_MAX_UNAVAILABLE = 10_000;
+export const CAPABILITIES_MAX_BYTES = 8_388_608;
+/** Sells carry no per-token cap under schema 3: a limit at or above this reads as none. */
+export const UNCAPPED_RAW = 10n ** 18n;
+export function uncapped(raw: string): boolean {return BigInt(raw) >= UNCAPPED_RAW;}
 const MAX_ISSUERS = 32;
 
 const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -263,6 +267,8 @@ const REASONS: Readonly<Record<string, string>> = Object.freeze({
 export class TradingCapabilities {
   readonly #byMint: Map<string, TradingAsset>;
   readonly #byAssetId: Map<string, TradingAsset[]>;
+  /** Tokens Real mode can list for sale: the issuer must be offered. Computed once. */
+  readonly tradeableAssets: readonly TradingAsset[];
   constructor(
     /** 1 for servers that predate issuer terms, 2 for issuer-aware servers. */
     readonly schemaVersion: 1 | 2, readonly enabled: boolean, readonly assets: readonly TradingAsset[],
@@ -272,7 +278,11 @@ export class TradingCapabilities {
   ) {
     this.#byMint = new Map(assets.map(asset => [asset.mint, asset]));
     this.#byAssetId = new Map();
-    for (const asset of assets) this.#byAssetId.set(asset.assetId, [...this.#byAssetId.get(asset.assetId) ?? [], asset]);
+    for (const asset of assets) {
+      const group = this.#byAssetId.get(asset.assetId);
+      if (group) group.push(asset); else this.#byAssetId.set(asset.assetId, [asset]);
+    }
+    this.tradeableAssets = Object.freeze(assets.filter(asset => issuers.get(asset.issuerId)?.offered === true));
   }
   get legacy(): boolean {return this.schemaVersion < 2;}
   forMint(mint: string | null | undefined): TradingAsset | null {return mint ? this.#byMint.get(mint) ?? null : null;}
@@ -285,8 +295,6 @@ export class TradingCapabilities {
   tradeableNow(asset: TradingAsset): boolean {
     return this.enabled && this.issuers.get(asset.issuerId)?.offered === true && (asset.market === null || asset.market.status === 'open');
   }
-  /** Tokens Real mode can list for sale: the issuer must be offered. */
-  get tradeableAssets(): readonly TradingAsset[] {return this.assets.filter(asset => this.issuers.get(asset.issuerId)?.offered === true);}
   variantLabel(asset: TradingAsset): string {return `${this.issuers.get(asset.issuerId)?.name ?? 'Issuer'} · ${asset.symbol}`;}
 
   /**
@@ -297,7 +305,9 @@ export class TradingCapabilities {
    */
   variantsFor(assetId: string, discovery?: readonly DiscoveryVariantRef[]): readonly TradingAsset[] {
     const liquidity = discovery ? new Map(discovery.map(v => [v.mint, v.liquidityUsd ?? null])) : null;
-    const candidates = liquidity ? this.assets.filter(asset => liquidity.has(asset.mint)) : this.#byAssetId.get(assetId) ?? [];
+    // Indexed by mint: a handful of lookups per company, never a scan of every token.
+    const candidates = liquidity ? [...liquidity.keys()].map(mint => this.#byMint.get(mint)).filter((asset): asset is TradingAsset => asset !== undefined)
+      : this.#byAssetId.get(assetId) ?? [];
     const matched = candidates.map((asset, index) => ({asset, index})).filter(({asset}) => this.issuers.get(asset.issuerId)?.offered === true);
     matched.sort((a, b) => {
       const left = liquidity?.get(a.asset.mint) ?? null, right = liquidity?.get(b.asset.mint) ?? null;
@@ -358,7 +368,8 @@ export function parseTradingCapabilities(value: unknown): TradingCapabilities {
   }
   const version = data['schemaVersion'];
   const legacy = (version === undefined || version === null || version === 1) && !('issuers' in data);
-  if (!legacy && version !== 2) fail('Unsupported trading capabilities');
+  // Schema 3 reads keep the version 2 shape; a version 3 payload is read the same way.
+  if (!legacy && version !== 2 && version !== 3) fail('Unsupported trading capabilities');
   const rows = data['assets'] as unknown[];
   if (rows.length > CAPABILITIES_MAX_ASSETS) fail('Too many assets');
   const assets = rows.map(row => parseAsset(row, legacy));

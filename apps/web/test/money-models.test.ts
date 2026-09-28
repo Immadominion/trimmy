@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {amountRaw, formatRawUnits, groupedDecimal, percentFromBps, rawDecimal, ShareScale, signedLamports, usdcDollars} from '../src/product/money/amounts.js';
-import {marketHours, marketLabel, marketTime, parseMarketState, parseTradingCapabilities, type DiscoveryVariantRef} from '../src/product/money/live-trading.js';
+import {marketHours, marketLabel, marketTime, parseMarketState, parseTradingCapabilities, uncapped, type DiscoveryVariantRef} from '../src/product/money/live-trading.js';
 import {base58Decode, base58Encode, base64ToBytes, bytesToBase64, checkSignedTransaction, MAX_SIGNED_TRANSACTION_BASE64,
   parseTransaction, planSigning, TransactionCheckError} from '../src/product/money/solana-wire.js';
 import {parseHoldings} from '../src/product/money/wallet-models.js';
@@ -61,7 +61,7 @@ test('capabilities read the nested disclosure shape, market state and offer stat
   assert.equal(withdrawn.tradeableAssets.some(asset => asset.issuerId === 'prestocks'), false);
   const paused = parseTradingCapabilities({...raw, enabled: false});
   assert.equal(paused.tradeableNow(paused.assets[0]!), false); assert.equal(paused.companyTradeable('apple'), false);
-  for (const broken of [{...raw, network: 'solana:devnet'}, {...raw, schemaVersion: 3},
+  for (const broken of [{...raw, network: 'solana:devnet'}, {...raw, schemaVersion: 4},
     {...raw, assets: [...raw.assets, raw.assets[0]]}, {...raw, assets: [{...raw.assets[0], issuerId: 'unknown'}]},
     {...raw, issuers: [{...raw.issuers[0], termsUrl: 'http://example.com/terms'}]}]) {
     assert.throws(() => parseTradingCapabilities(broken));
@@ -225,4 +225,32 @@ test('market states read in mobile’s words, in local time, and a present but u
   assert.equal(marketTime(at(26, 12, 0), now), '12:00 PM');
   assert.equal(parseMarketState({status: 'halted'})?.status, 'unknown'); assert.equal(parseMarketState('open')?.status, 'unknown');
   assert.equal(parseMarketState(undefined), null);
+});
+
+test('schema 3: every automatically admitted token, uncapped sells, and honest copy for the directory’s refusals', () => {
+  const raw = fixture('trading-capabilities-v3-2026-09-28-automatic.json') as {assets: Record<string, unknown>[]; unavailable: Record<string, unknown>[]; issuers: Record<string, unknown>[]};
+  const caps = parseTradingCapabilities(raw);
+  assert.equal(caps.assets.length, 541); assert.equal(caps.unavailable.size, 8);
+  assert.equal(new Set(caps.assets.map(asset => asset.assetId)).size, 425);
+  assert.ok(caps.assets.every(asset => uncapped(asset.maxSellInputRaw)), 'sells carry no per-token cap');
+  assert.equal(uncapped('100000000'), false); assert.equal(uncapped('999999999999999999'), false); assert.equal(uncapped('1000000000000000000'), true);
+  assert.equal(caps.assets.filter(asset => caps.tradeableNow(asset)).length, 386, 'closed Ondo sessions do not trade; market hours come from each asset');
+  const refused = [...caps.unavailable.values()][0]!;
+  assert.equal(refused.reason, 'identity_unverified'); assert.equal(refused.market, null);
+  assert.equal(caps.reasonFor(refused.mint), 'Trimmy could not confirm who issued this token.');
+  const withReasons = parseTradingCapabilities({...raw, unavailable: [
+    {mint: 'Restrict11111111111111111111111111111111111', issuerId: 'backpack', symbol: 'RSTR', reason: 'token_restricted'},
+    {mint: 'NtXffer111111111111111111111111111111111111', issuerId: 'tessera', symbol: 'NOFF', reason: 'issuer_not_offered'},
+    {mint: 'Suspend111111111111111111111111111111111111', issuerId: 'xstocks', symbol: 'SUSP', reason: 'held_back'},
+    {mint: 'Mystery111111111111111111111111111111111111', issuerId: null, symbol: null, reason: 'a_future_reason'}],
+    issuers: raw.issuers.map(issuer => issuer['issuerId'] === 'tessera' ? {...issuer, offered: false, notOfferedReason: 'Tessera is not offered for now.'} : issuer)});
+  assert.equal(withReasons.reasonFor('Restrict11111111111111111111111111111111111'), 'The issuer has restrictions on this token that Trimmy cannot accept.');
+  assert.equal(withReasons.reasonFor('NtXffer111111111111111111111111111111111111'), 'Tessera is not offered for now.');
+  assert.equal(withReasons.reasonFor('Suspend111111111111111111111111111111111111'), 'Paused while Trimmy checks this token.');
+  assert.equal(withReasons.reasonFor('Mystery111111111111111111111111111111111111'), 'Not available to trade in Trimmy.', 'an unknown reason stays safe');
+  // Tokens are indexed by mint: checking every company with its own token list stays quick at this size.
+  const companies = [...new Set(caps.assets.map(asset => asset.assetId))].map(id => caps.assets.filter(asset => asset.assetId === id).map(asset => ({mint: asset.mint})));
+  const started = performance.now();
+  for (let round = 0; round < 20; round++) for (const [index, list] of companies.entries()) caps.companyTradeable(`company-${index}`, list);
+  assert.ok(performance.now() - started < 500, 'thousands of company checks stay well under half a second');
 });

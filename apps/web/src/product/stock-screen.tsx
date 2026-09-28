@@ -99,7 +99,8 @@ export function StockScreen(props: StockScreenProps) {
   const variant = variants.find(v => v.mint === mint) ?? null;
   const name = facts?.name ?? card?.name ?? assetId.replaceAll('-', ' ');
   const money = useMoney();
-  useEffect(() => {if (money.real) void money.refreshCapabilities();}, [money.real, money.refreshCapabilities]);
+  // Opening a company reads the token list again, as mobile does, so a list that was stale corrects itself.
+  useEffect(() => {if (money.real) void money.refreshCapabilities(true);}, [money.real, money.refreshCapabilities, assetId]);
   const discovery = busy && !variants.length ? null : discoveryRefs(variants);
   const liveOptions = money.real && money.capabilities?.enabled && discovery ? money.capabilities.optionsFor(assetId, discovery, facts?.symbol ?? card?.symbol ?? assetId) : null;
   // The token chosen here, else the most liquid tradeable one; never another issuer's token by accident.

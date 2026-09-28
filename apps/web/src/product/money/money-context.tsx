@@ -87,18 +87,25 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
   const [capabilities, setCapabilities] = useState<TradingCapabilities | null>(null);
   const [capabilitiesFailed, setCapabilitiesFailed] = useState(false);
   const [fundWalletOpen, setFundWalletOpen] = useState(false);
-  const capabilitiesRequest = useRef<{promise: Promise<void>; at: number} | null>(null);
+  const capabilitiesRequest = useRef<{promise: Promise<void>; at: number; settled: boolean} | null>(null);
   const [clock, setClock] = useState(Date.now);
 
+  /**
+   * `force` reads the list again unless a read is already running (a company page
+   * opening, or a refusal): after an API restart the list is briefly short, and a
+   * fresh read corrects it. Otherwise a read from the last minute is reused.
+   */
   const refreshCapabilities = useCallback((force = false): Promise<void> => {
     const orders = setup?.orders;
     if (!orders) return Promise.resolve();
     const recent = capabilitiesRequest.current;
-    if (recent && (!force || Date.now() - recent.at < 1_000) && Date.now() - recent.at < 60_000) return recent.promise;
-    const promise = orders.capabilities().then(value => {setCapabilities(value); setCapabilitiesFailed(false);},
-      () => {if (orders.current) {setCapabilitiesFailed(true); capabilitiesRequest.current = null;}});
-    capabilitiesRequest.current = {promise, at: Date.now()};
-    return promise;
+    if (recent && (!recent.settled || !force && Date.now() - recent.at < 60_000)) return recent.promise;
+    const request = {promise: Promise.resolve(), at: Date.now(), settled: false};
+    request.promise = orders.capabilities().then(value => {setCapabilities(value); setCapabilitiesFailed(false);},
+      () => {if (orders.current) {setCapabilitiesFailed(true); if (capabilitiesRequest.current === request) capabilitiesRequest.current = null;}})
+      .finally(() => {request.settled = true;});
+    capabilitiesRequest.current = request;
+    return request.promise;
   }, [setup]);
   const refreshWallet = useCallback(() => setup?.wallet.refresh() ?? Promise.resolve(), [setup]);
 

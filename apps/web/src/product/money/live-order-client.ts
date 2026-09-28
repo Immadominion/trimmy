@@ -31,10 +31,12 @@ export function liveOrderMessage(code: string, retryAfterSeconds: number | null 
     case 'NO_ROUTE': return 'No route for this order right now. Try another amount.';
     case 'MARKET_CLOSED': return 'This stock trades while US markets are open. Try again then.';
     case 'BELOW_MINIMUM': return 'This order is under the market maker’s minimum. Try a larger amount.';
+    case 'PRICE_OFF_MARKET': return 'That price is too far from the market right now. Try again shortly or a smaller amount.';
     case 'FEE_TOO_HIGH': return 'The fees are too high for this order. Try later.';
     case 'ACCOUNT_REQUIRED': return 'Sign in again to use your wallet.';
     case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': return 'This order needs a fresh quote.';
-    case 'MARKET_INPUT_INVALID': return 'Check the amount and try again.';
+    // The API checks the company and token pair on the spot and refuses one that does not qualify.
+    case 'MARKET_INPUT_INVALID': return 'Trimmy can’t trade this token right now. Choose another version or company.';
     case 'LIVE_UNAVAILABLE': return 'Trading couldn’t connect. Try again.';
     default: return 'Couldn’t complete this step. Try again.';
   }
@@ -42,7 +44,7 @@ export function liveOrderMessage(code: string, retryAfterSeconds: number | null 
 
 const KNOWN = new Set(['ACCOUNT_REQUIRED', 'WALLET_REQUIRED', 'ORDER_PENDING', 'QUOTE_EXPIRED', 'INVALID_REVIEW',
   'INVALID_SIGNATURE', 'ADD_USDC', 'ADD_SOL', 'INSUFFICIENT_HOLDINGS', 'NO_ROUTE', 'FEE_TOO_HIGH', 'LIVE_BUSY',
-  'TRADE_LIMIT', 'TERMS_REQUIRED', 'MARKET_CLOSED', 'BELOW_MINIMUM', 'MARKET_INPUT_INVALID', 'LIVE_UNAVAILABLE']);
+  'TRADE_LIMIT', 'TERMS_REQUIRED', 'MARKET_CLOSED', 'BELOW_MINIMUM', 'PRICE_OFF_MARKET', 'MARKET_INPUT_INVALID', 'LIVE_UNAVAILABLE']);
 
 export type LiveOrderStatus = 'reviewed' | 'pending' | 'confirmed' | 'failed' | 'expired';
 export interface LiveOrderTerms {
@@ -209,9 +211,12 @@ export class LiveOrderClient {
   }
   get current(): boolean {return !this.#signal?.aborted;}
 
-  /** Public read. A server from before issuer terms rejects `schema=2` with 400. */
+  /**
+   * Public read. Schema 3 lists every tradeable token; an older server answers
+   * 400 and is asked for schema 2, then for the plain legacy shape.
+   */
   async capabilities(): Promise<TradingCapabilities> {
-    for (const path of ['/v1/trading/capabilities?schema=2', '/v1/trading/capabilities']) {
+    for (const path of ['/v1/trading/capabilities?schema=3', '/v1/trading/capabilities?schema=2', '/v1/trading/capabilities']) {
       let response;
       try {
         response = await requestJson(this.#fetch, `${this.#base}${path}`, {timeoutMs: 12_000, maxBytes: CAPABILITIES_MAX_BYTES, signal: this.#signal});

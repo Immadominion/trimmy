@@ -170,7 +170,8 @@ export function createDevelopmentRelay(apiOrigin: string, fetcher: typeof fetch 
       if (reader) for (;;) {
         const {done, value} = await reader.read(); if (done) break;
         length += value.byteLength;
-        if (length > 2_097_152) {await reader.cancel(); throw new Error('Response too large');}
+        // The token list can run to 8 MB as the API admits tokens automatically; everything else stays at 2 MB.
+        if (length > (url.pathname === '/v1/trading/capabilities' ? 8_388_608 : 2_097_152)) {await reader.cancel(); throw new Error('Response too large');}
         chunks.push(value);
       }
       const responseHeaders: Record<string, string> = {'content-type': response.headers.get('content-type') ?? 'application/json',

@@ -7,7 +7,7 @@
 import {useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode} from 'react';
 import {amountRaw, percentFromBps, rawDecimal, ShareScale, signedLamports, solLabel, usdcLabel, USDC_DECIMALS} from './amounts.js';
 import {explorerUrl, type LiveOrder} from './live-order-client.js';
-import {marketHours, marketLabel, type DiscoveryVariantRef, type MarketState, type TradingAsset, type TradingCapabilities, type TradingIssuer} from './live-trading.js';
+import {marketHours, marketLabel, uncapped, type DiscoveryVariantRef, type MarketState, type TradingAsset, type TradingCapabilities, type TradingIssuer} from './live-trading.js';
 import {useMoney} from './money-api.js';
 import type {LiveOrderSession, OrderSessionState} from './order-session.js';
 import {coherentHoldings} from './wallet-controller.js';
@@ -97,6 +97,8 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     ? ShareScale.fromDisplay(asset.decimals, holding.amountRaw, holding.displayAmount) : ShareScale.plain(asset.decimals), [asset, holding]);
   const balanceRaw = holdings === null ? null : side === 'sell' ? holding?.availableToTradeRaw ?? '0' : holdings.usdc.availableToTradeRaw;
   const limitRaw = asset ? side === 'sell' ? asset.maxSellInputRaw : asset.maxBuyInputRaw : '0';
+  // Schema 3 sells have no per-token cap: holdings and the server's price check bound them.
+  const limited = asset !== null && !uncapped(limitRaw);
   const maxRaw = balanceRaw === null || !asset ? null : BigInt(balanceRaw) < BigInt(limitRaw) ? balanceRaw : limitRaw;
   const symbol = asset?.symbol ?? companyName;
   const label = (raw: string) => side === 'sell' ? `${scale.label(raw)} ${symbol}` : usdcLabel(raw);
@@ -115,6 +117,8 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     if (side === 'sell') {fill(maxRaw); setCapped(balanceRaw !== null && BigInt(balanceRaw) > BigInt(limitRaw) ? 'Max' : null);}
     else if (BigInt(maxRaw) < 5_000_000n) fill(maxRaw);
   }, [asset?.mint, maxRaw, side]);
+  // A token the API refused on the spot, or a stale list after an API restart: read the list again.
+  useEffect(() => {if (state.noticeCode === 'MARKET_INPUT_INVALID') void money.refreshCapabilities(true);}, [state.noticeCode]);
   useEffect(() => {
     if (!state.termsRequired || !issuer) return;
     money.terms?.record(issuer.issuerId, issuer.attestation.version, false); setTermsVersion(value => value + 1);
@@ -193,14 +197,14 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     <div className="amount-field live-amount">{side === 'buy' && <span aria-hidden="true">$</span>}
       <input id="live-amount" inputMode="decimal" autoComplete="off" maxLength={40} value={amount} disabled={busy}
         onChange={event => {touched.current = true; const value = event.target.value.replace(/[^0-9.]/g, ''); setAmount(value); if (capped && preset?.text !== value.trim()) setCapped(null);}}
-        aria-describedby="live-available live-limit"/>
+        aria-describedby={limited ? 'live-available live-limit' : 'live-available'}/>
       <span>{side === 'sell' ? symbol : 'USDC'}</span></div>
     <div className="live-available-row"><span id="live-available">{available}</span>
       <button className="text-button" disabled={busy || maxRaw === null || maxRaw === '0'} onClick={() => percent(100)}>Max</button></div>
     {unspendable && <p className="trade-caption">Some of your {symbol} is in another token account. Only {scale.label(holding.availableToTradeRaw)} {symbol} can be sold here.</p>}
     <div className="amount-options">{side === 'sell' ? [25, 50, 75].map(value => <button key={value} disabled={busy || maxRaw === null} onClick={() => percent(value)}>{value}%</button>)
       : [5, 10, 25, 50].map(value => <button key={value} disabled={busy} onClick={() => {touched.current = true; setPreset(null); setCapped(null); setAmount(String(value));}}>${value}</button>)}</div>
-    <p className="trade-caption" id="live-limit">{capped === null ? `Order limit: ${label(limitRaw)}` : `${capped} capped at the order limit of ${label(limitRaw)}.`}</p>
+    {limited && <p className="trade-caption" id="live-limit">{capped === null ? `Order limit: ${label(limitRaw)}` : `${capped} capped at the order limit of ${label(limitRaw)}.`}</p>}
     {side === 'buy' && asset.minBuyInputRaw !== '1' && <p className="trade-caption">Orders start at {label(asset.minBuyInputRaw)}.</p>}
     {asset.market && (!marketOpen || asset.market.usSessions) && <MarketStateNote state={asset.market}/>}
     <div ref={termsRef}><IssuerCard issuer={issuer} transferFeeBps={asset.transferFeeBps} accepted={accepted} disabled={busy} highlight={state.termsRequired && !accepted}

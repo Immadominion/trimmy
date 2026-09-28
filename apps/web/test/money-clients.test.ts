@@ -15,16 +15,20 @@ function fetcher(reply: (url: string, init: RequestInit) => Response | Promise<R
 }
 const header = (init: RequestInit, name: string) => (init.headers as Record<string, string>)[name];
 
-test('capabilities read schema 2 first, fall back for an older server, and never carry credentials', async () => {
+test('capabilities read schema 3 first, fall back to schema 2 and then the plain list, and never carry credentials', async () => {
   const modern = fetcher(() => Response.json(capabilities));
   const client = new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN, fetch: modern.fetch});
   assert.equal((await client.capabilities()).assets.length, 60);
-  assert.equal(modern.seen[0]?.url, '/api/v1/trading/capabilities?schema=2');
+  assert.equal(modern.seen[0]?.url, '/api/v1/trading/capabilities?schema=3'); assert.equal(modern.seen.length, 1);
   assert.equal(header(modern.seen[0]!.init, 'authorization'), undefined); assert.equal(modern.seen[0]!.init.credentials, 'omit');
+  const schema2 = fetcher(url => url.endsWith('schema=3') ? Response.json({code: 'INVALID'}, {status: 400}) : Response.json(capabilities));
+  assert.equal((await new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN, fetch: schema2.fetch}).capabilities()).schemaVersion, 2);
+  assert.deepEqual(schema2.seen.map(item => item.url), ['/api/v1/trading/capabilities?schema=3', '/api/v1/trading/capabilities?schema=2']);
   const legacy = fetcher(url => url.includes('schema') ? Response.json({code: 'INVALID'}, {status: 400}) : Response.json({enabled: false,
     network: 'solana:mainnet-beta', maxBuyUsdc: '100', minimumSolBalanceLamports: '5000', assets: []}));
   const old = await new LiveOrderClient({baseUrl: 'https://api.example.com', bearer: async () => TOKEN, fetch: legacy.fetch}).capabilities();
-  assert.equal(old.legacy, true); assert.deepEqual(legacy.seen.map(item => item.url), ['https://api.example.com/v1/trading/capabilities?schema=2', 'https://api.example.com/v1/trading/capabilities']);
+  assert.equal(old.legacy, true); assert.deepEqual(legacy.seen.map(item => item.url), ['https://api.example.com/v1/trading/capabilities?schema=3',
+    'https://api.example.com/v1/trading/capabilities?schema=2', 'https://api.example.com/v1/trading/capabilities']);
   await assert.rejects(new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN, fetch: fetcher(() => Response.json({enabled: true})).fetch}).capabilities(),
     (error: LiveOrderError) => error.code === 'LIVE_UNAVAILABLE');
   assert.throws(() => new LiveOrderClient({baseUrl: 'http://api.example.com', bearer: async () => TOKEN}));
@@ -100,4 +104,40 @@ test('wallet reads ask for holdings v2 with a slot floor and a fresh context onl
   await assert.rejects(refused.readHoldings(), /ACCOUNT_HOLDINGS_WALLET_MISSING/);
   const signedOut = new AccountWalletClient({baseUrl: '/api', accountId: ACCOUNT_ID, bearer: async () => null, fetch: http.fetch});
   await assert.rejects(signedOut.readContext(), /TOKEN_UNAVAILABLE/);
+});
+
+test('the token list may run to 8 MB and 10,000 tokens; anything larger is refused before parsing', async () => {
+  const base = capabilities as {assets: Record<string, unknown>[]};
+  const template = base.assets[0]!;
+  const many = (count: number, pad = 0) => ({...base, assets: Array.from({length: count}, (_, index) => ({...template,
+    assetId: `token-${index}`, symbol: `T${index}`, name: `Token ${index}${' '.repeat(pad)}`.slice(0, 160),
+    mint: `${base58(index).padStart(8, '1')}${'A'.repeat(36)}`}))});
+  function base58(value: number): string {
+    const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    let out = '';
+    do {out = alphabet[value % 58]! + out; value = Math.floor(value / 58);} while (value > 0);
+    return out;
+  }
+  const big = JSON.stringify(many(9_000));
+  assert.ok(big.length > 2_100_000 && big.length < 8_388_608, `a realistic large list (${big.length} bytes)`);
+  const client = new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN,
+    fetch: fetcher(() => new Response(big, {headers: {'content-type': 'application/json'}})).fetch});
+  assert.equal((await client.capabilities()).assets.length, 9_000);
+  const huge = 'x'.repeat(8_388_609);
+  const refusing = new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN,
+    fetch: fetcher(() => new Response(huge, {headers: {'content-type': 'application/json'}})).fetch});
+  await assert.rejects(refusing.capabilities(), (error: LiveOrderError) => error.code === 'LIVE_UNAVAILABLE');
+});
+
+test('PRICE_OFF_MARKET and a token the API does not qualify get clear copy', async () => {
+  const wallet = (await signer()).address;
+  void wallet;
+  const replies = [Response.json({code: 'PRICE_OFF_MARKET'}, {status: 409}), Response.json({code: 'MARKET_INPUT_INVALID'}, {status: 400})];
+  const client = new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN, fetch: fetcher(() => replies.shift()!).fetch});
+  const input = {assetId: 'apple', variantMint: 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', side: 'sell' as const, amountRaw: '5000000',
+    termsAccepted: {issuerId: 'xstocks', version: '2026-09-27'}};
+  await assert.rejects(client.preview(input), (error: LiveOrderError) => error.code === 'PRICE_OFF_MARKET' &&
+    error.message === 'That price is too far from the market right now. Try again shortly or a smaller amount.');
+  await assert.rejects(client.preview(input), (error: LiveOrderError) => error.code === 'MARKET_INPUT_INVALID' &&
+    error.message === 'Trimmy can’t trade this token right now. Choose another version or company.');
 });

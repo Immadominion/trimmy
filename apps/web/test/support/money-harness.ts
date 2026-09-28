@@ -23,10 +23,10 @@ export async function apiVerifier(): Promise<Verify> {
   }
   return verifier;
 }
-export function capabilitiesFixture() {
-  return parseTradingCapabilities(JSON.parse(readFileSync(new URL('../fixtures/trading-capabilities-v2-2026-09-28-funds.json', import.meta.url), 'utf8')));
-}
-export const liveCapabilitiesJson = () => JSON.parse(readFileSync(new URL('../fixtures/trading-capabilities-v2-2026-09-28-funds.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+/** The live list as recorded read-only from `?schema=3` on 28 September: 541 tokens admitted automatically. */
+export const CAPABILITIES_FIXTURE = '../fixtures/trading-capabilities-v3-2026-09-28-automatic.json';
+export const liveCapabilitiesJson = () => JSON.parse(readFileSync(new URL(CAPABILITIES_FIXTURE, import.meta.url), 'utf8')) as Record<string, unknown>;
+export function capabilitiesFixture() {return parseTradingCapabilities(liveCapabilitiesJson());}
 
 export class MemoryStorage implements MoneyStorage {
   readonly data = new Map<string, string>();

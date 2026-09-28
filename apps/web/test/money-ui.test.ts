@@ -214,7 +214,9 @@ test('the Real Market marks tradeable companies and builds the Tradeable list fr
     await market.waitFor(() => market.dom.window.document.querySelector('.market-lists') !== null, 'tradeable list');
     await market.waitFor(() => market.all('[data-testid="market-tradeable-apple"]').length === 1, 'Apple marker');
     await market.click('Tradeable');
-    const companies = new Set((liveCapabilitiesJson() as {assets: {assetId: string}[]}).assets.map(asset => asset.assetId));
+    // Companies with a token that trades now; closed market-maker sessions wait, from each asset's own market state.
+    const companies = new Set((liveCapabilitiesJson() as {assets: {assetId: string; market: {status: string}}[]}).assets
+      .filter(asset => asset.market.status === 'open').map(asset => asset.assetId));
     assert.equal(market.all('.stock-row').length, companies.size, 'the Tradeable list comes from the capabilities, not a fixed set');
     const paper = await moneyPage();
     try {
