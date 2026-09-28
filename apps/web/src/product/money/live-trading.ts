@@ -290,14 +290,15 @@ export class TradingCapabilities {
   variantLabel(asset: TradingAsset): string {return `${this.issuers.get(asset.issuerId)?.name ?? 'Issuer'} · ${asset.symbol}`;}
 
   /**
-   * Every offered token of a company that discovery also lists for it, most
-   * liquid first. Without a discovery list only the company id is matched.
+   * Every offered token of a company, most liquid first. With discovery's own
+   * token list, tokens are matched by mint: the API lists each token under one
+   * Market asset, which need not share the registry's company id. Without a
+   * discovery list only the company id is matched.
    */
   variantsFor(assetId: string, discovery?: readonly DiscoveryVariantRef[]): readonly TradingAsset[] {
-    const candidates = this.#byAssetId.get(assetId) ?? [];
     const liquidity = discovery ? new Map(discovery.map(v => [v.mint, v.liquidityUsd ?? null])) : null;
-    const matched = candidates.map((asset, index) => ({asset, index})).filter(({asset}) =>
-      (liquidity === null || liquidity.has(asset.mint)) && this.issuers.get(asset.issuerId)?.offered === true);
+    const candidates = liquidity ? this.assets.filter(asset => liquidity.has(asset.mint)) : this.#byAssetId.get(assetId) ?? [];
+    const matched = candidates.map((asset, index) => ({asset, index})).filter(({asset}) => this.issuers.get(asset.issuerId)?.offered === true);
     matched.sort((a, b) => {
       const left = liquidity?.get(a.asset.mint) ?? null, right = liquidity?.get(b.asset.mint) ?? null;
       if (left !== null && right !== null && left !== right) return right - left;

@@ -6,6 +6,7 @@ import {marketHours, marketLabel, marketTime, parseMarketState, parseTradingCapa
 import {base58Decode, base58Encode, base64ToBytes, bytesToBase64, checkSignedTransaction, MAX_SIGNED_TRANSACTION_BASE64,
   parseTransaction, planSigning, TransactionCheckError} from '../src/product/money/solana-wire.js';
 import {parseHoldings} from '../src/product/money/wallet-models.js';
+import {parseStockSearchPage} from '../src/markets/discovery.js';
 import {explorerUrl, LiveOrderError, parseLiveOrder, parseTradeHistory} from '../src/product/money/live-order-client.js';
 import {ACCOUNT_ID, AAPLX, ONDO_AAPL as ONDO, holdingsJson, message, orderJson, signer, signSlot, stockHolding, unsigned} from './support/money-fixtures.js';
 
@@ -172,19 +173,39 @@ test('live orders and history parse the API contract and reject shapes that coul
   assert.throws(() => parseTradeHistory({schemaVersion: 1, network: 'solana:mainnet-beta', orders: [], nextCursor: 'abc'}));
 });
 
-test('the live capabilities with market states: minimums, US-session tokens, and refusals that say when they open', () => {
-  const caps = parseTradingCapabilities(fixture('trading-capabilities-v2-2026-09-27-market-state.json'));
-  assert.equal(caps.assets.length, 75); assert.equal(caps.unavailable.size, 432);
-  assert.deepEqual(caps.usMarket, {session: 'offhours', between: null, changesAt: '2026-09-28T00:05:00.000Z'});
+test('the live capabilities with funds and market states: minimums, US-session tokens, and refusals that say when they open', () => {
+  const caps = parseTradingCapabilities(fixture('trading-capabilities-v2-2026-09-28-funds.json'));
+  assert.equal(caps.assets.length, 84); assert.equal(caps.unavailable.size, 464);
+  assert.deepEqual(caps.usMarket, {session: 'overnight', between: null, changesAt: '2026-09-28T07:55:00.000Z'});
   const meta = caps.assets.find(asset => asset.symbol === 'METAon')!, apple = caps.forMint(AAPLX)!;
   assert.equal(meta.route, 'rfq'); assert.equal(meta.minBuyInputRaw, '2000000'); assert.equal(apple.minBuyInputRaw, '1');
   assert.equal(marketLabel(apple.market!), 'Open 24/7'); assert.equal(marketLabel(meta.market!), 'Open now, including weekends');
   assert.equal(marketHours(meta.market!), 'Trades around the clock, with short pauses between US sessions.');
-  assert.equal(caps.assets.filter(asset => caps.tradeableNow(asset)).length, 75);
-  const abnb = caps.unavailable.get('128qNYovdGv2YqayErcJgU7gDwbNVX1VuoxbtWz8ondo')!;
-  assert.equal(abnb.symbol, 'ABNBon'); assert.equal(abnb.market?.status, 'closed');
-  assert.match(caps.reasonFor(abnb.mint, Date.parse('2026-09-27T20:00:00Z')), /^Its market is closed\. It opens .+, then Trimmy checks it\.$/);
+  // Funds come through the same list: nothing about them is hard-coded.
+  const funds = ['sp500', 'nasdaq', 'gold', 'strategy-pp-variable', 'oil', 'copper', 'proshares-ultrapro-short-qqq', 'silver', 'proshares-ultrapro-qqq'];
+  assert.deepEqual(funds.filter(id => caps.companyTradeable(id)), funds);
+  const rtx = caps.unavailable.get('12BvLZtzjdssAycxPeBQUjukhmgQpULAvy6SroYdondo')!;
+  assert.equal(rtx.symbol, 'RTXon'); assert.equal(rtx.market?.status, 'closed');
+  assert.match(caps.reasonFor(rtx.mint, Date.parse('2026-09-28T02:00:00Z')), /^Its market is closed\. It opens .+, then Trimmy checks it\.$/);
   assert.equal(caps.reasonFor('1FWZtdWN7y38BSXGzbs8D6Shk88oL9atDNgbVz9ondo'), 'Its market is open. Trimmy is checking it before you can trade.');
+});
+
+test('schema 2 fund search: tokens are matched to Market assets by mint, and a second listing of a fund is not tradeable', () => {
+  const caps = parseTradingCapabilities(fixture('trading-capabilities-v2-2026-09-28-funds.json'));
+  const gold = parseStockSearchPage(fixture('market-search-gold-schema2-2026-09-28.json'));
+  const spy = parseStockSearchPage(fixture('market-search-spy-schema2-2026-09-28.json'));
+  assert.deepEqual(gold.results.map(row => row.category), ['commodity', 'equity', 'equity', 'equity', 'commodity']);
+  assert.deepEqual(spy.results.map(row => [row.assetId, row.category]), [['sp500', 'etf'], ['spdr-sandp-500-etf', 'etf'], ['dnut', 'equity'], ['stock-mv5mof9x', 'equity']]);
+  const refs = (row: (typeof gold.results)[number]) => row.variants.map(variant => ({mint: variant.mint, issuer: variant.issuer, label: variant.label, symbol: variant.symbol, liquidityUsd: variant.market?.liquidityUsd ?? null}));
+  const goldAsset = gold.results.find(row => row.assetId === 'gold')!;
+  const options = caps.optionsFor('gold', refs(goldAsset), 'XAU');
+  assert.equal(options.filter(option => option.tradeable).map(option => option.asset?.symbol).join(), 'GLDx');
+  assert.equal(options.length, goldAsset.variants.length, 'every gold token is listed, tradeable or with its reason');
+  assert.equal(caps.companyTradeable('sp500', refs(spy.results[0]!)), true);
+  assert.equal(caps.companyTradeable('spdr-sandp-500-etf', refs(spy.results[1]!)), false, 'no duplicate listing of the same fund');
+  // A registry token listed under a Market asset with another id still matches by its mint.
+  const renamed = caps.optionsFor('some-other-id', refs(goldAsset), 'XAU');
+  assert.equal(renamed.find(option => option.tradeable)?.asset?.assetId, 'gold', 'orders keep the registry id the API expects');
 });
 
 test('market states read in mobile’s words, in local time, and a present but unreadable state never trades', () => {

@@ -24,9 +24,9 @@ export async function apiVerifier(): Promise<Verify> {
   return verifier;
 }
 export function capabilitiesFixture() {
-  return parseTradingCapabilities(JSON.parse(readFileSync(new URL('../fixtures/trading-capabilities-v2-2026-09-27-market-state.json', import.meta.url), 'utf8')));
+  return parseTradingCapabilities(JSON.parse(readFileSync(new URL('../fixtures/trading-capabilities-v2-2026-09-28-funds.json', import.meta.url), 'utf8')));
 }
-export const liveCapabilitiesJson = () => JSON.parse(readFileSync(new URL('../fixtures/trading-capabilities-v2-2026-09-27-market-state.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+export const liveCapabilitiesJson = () => JSON.parse(readFileSync(new URL('../fixtures/trading-capabilities-v2-2026-09-28-funds.json', import.meta.url), 'utf8')) as Record<string, unknown>;
 
 export class MemoryStorage implements MoneyStorage {
   readonly data = new Map<string, string>();
