@@ -161,6 +161,37 @@ void main() {
     },
   );
 
+  test(
+    'loading more reads several pages at once and keeps their order',
+    () async {
+      final catalog = _Catalog(total: 200);
+      final runtime = _runtime(_Facts(), catalog: catalog);
+      addTearDown(runtime.session.dispose);
+      addTearDown(runtime.facts.dispose);
+      addTearDown(runtime.research.dispose);
+      await runtime.session.loadCatalog();
+      catalog.failing.add(80);
+      await runtime.session.loadMore();
+      expect(catalog.offsets, [0, 20, 40, 60, 80]);
+      expect(runtime.session.companies.map((c) => c.assetId), [
+        'company-0',
+        'company-20',
+        'company-40',
+        'company-60',
+      ]);
+      expect(runtime.session.loadMoreMessage, isNotNull);
+      catalog.failing.clear();
+      await runtime.session.loadMore();
+      await runtime.session.loadMore();
+      await runtime.session.loadMore();
+      expect(runtime.session.companies.length, 10);
+      expect(runtime.session.companies.last.assetId, 'company-180');
+      expect(runtime.session.hasMore, false);
+      expect(runtime.session.loadMoreMessage, isNull);
+      expect(catalog.offsets.where((offset) => offset >= 200), isEmpty);
+    },
+  );
+
   test('starter picks use one cards read and never preload full facts', () async {
     final repository = _Facts();
     final runtime = _runtime(repository);
@@ -216,18 +247,32 @@ void main() {
 }
 
 final class _Catalog implements MarketCatalogGateway {
+  _Catalog({this.total = 22});
+
+  final int total;
   bool fail = false;
+  final failing = <int>{};
+  final offsets = <int>[];
   MarketCompany? found;
   @override
   Future<MarketCatalogPage> load({int offset = 0}) async {
-    if (fail) throw StateError('offline');
+    offsets.add(offset);
+    if (fail || failing.contains(offset)) throw StateError('offline');
+    if (total == 22) {
+      return MarketCatalogPage(
+        [
+          testCompany(assetId: 'nvidia'),
+          if (offset > 0) testCompany(assetId: 'tesla'),
+        ],
+        22,
+        offset == 0 ? 20 : null,
+      );
+    }
+    final next = offset + 20;
     return MarketCatalogPage(
-      [
-        testCompany(assetId: 'nvidia'),
-        if (offset > 0) testCompany(assetId: 'tesla'),
-      ],
-      22,
-      offset == 0 ? 20 : null,
+      [testCompany(assetId: 'company-$offset')],
+      total,
+      next < total ? next : null,
     );
   }
 

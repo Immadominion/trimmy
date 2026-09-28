@@ -57,6 +57,11 @@ final class ProductMarketSession extends ChangeNotifier {
     }
   }
 
+  /// Catalog pages hold 20 companies, so the pages after the next are known
+  /// in advance and several load at once.
+  static const _pageSize = 20;
+  static const _pagesPerLoad = 4;
+
   Future<void> loadMore() async {
     final offset = _nextOffset;
     if (_disposed ||
@@ -69,21 +74,42 @@ final class ProductMarketSession extends ChangeNotifier {
     _loadingMore = true;
     _loadMoreMessage = null;
     notifyListeners();
+    final offsets = [
+      for (
+        var next = offset;
+        next == offset ||
+            next < _total && next < offset + _pageSize * _pagesPerLoad;
+        next += _pageSize
+      )
+        next,
+    ];
+    final reads = [
+      for (final next in offsets)
+        catalog!
+            .load(offset: next)
+            .then<MarketCatalogPage?>((page) => page, onError: (_) => null),
+    ];
     try {
-      final page = await catalog!.load(offset: offset);
+      final pages = await Future.wait(reads);
       if (_disposed) return;
       final existing = _catalogCompanies.map((c) => c.assetId).toSet();
-      _catalogCompanies = List.unmodifiable([
-        ..._catalogCompanies,
-        ...page.companies.where((c) => !existing.contains(c.assetId)),
-      ]);
-      _total = page.total;
-      _nextOffset = page.nextOffset;
-      _applyFacts();
-    } catch (_) {
-      if (!_disposed) {
-        _loadMoreMessage = 'Could not load more stocks. Try again.';
+      final added = <MarketCompany>[];
+      // Keep pages in order: stop at the first that failed, and continue
+      // from it next time.
+      for (final page in pages) {
+        if (page == null) {
+          _loadMoreMessage = 'Could not load more stocks. Try again.';
+          break;
+        }
+        for (final company in page.companies) {
+          if (existing.add(company.assetId)) added.add(company);
+        }
+        _total = page.total;
+        _nextOffset = page.nextOffset;
+        if (page.nextOffset == null) break;
       }
+      _catalogCompanies = List.unmodifiable([..._catalogCompanies, ...added]);
+      _applyFacts();
     } finally {
       _loadingMore = false;
       if (!_disposed) notifyListeners();
