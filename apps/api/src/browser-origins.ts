@@ -157,6 +157,7 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       '/v1/markets/stocks/history',
       '/v1/markets/stocks/quotes/raydium',
       '/v1/markets/stocks/catalog', '/v1/markets/stocks/cards', '/v1/markets/stocks/facts', '/v1/markets/stocks/insight',
+      '/v1/markets/stocks/prices',
       '/v1/markets/stocks/holders',
       '/v1/trading/capabilities',
       '/v1/social/x/profile',

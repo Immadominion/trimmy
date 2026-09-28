@@ -112,6 +112,7 @@ describe('explicit browser origin configuration and preflight', () => {
         ['/v1/markets/stocks/catalog?offset=0', 'GET'], ['/v1/markets/stocks/cards?query=apple', 'GET'],
         ['/v1/markets/stocks/facts?assetId=apple&mint=x&period=1d', 'GET'], ['/v1/markets/stocks/insight?assetId=apple', 'GET'],
         ['/v1/markets/stocks/holders?mint=x', 'GET'], ['/v1/markets/prestocks', 'GET'],
+        ['/v1/markets/stocks/prices?mints=x', 'GET'],
       ]) {
         const response = await app.inject({method: 'OPTIONS', url: url!, headers: {
           origin, 'access-control-request-method': method!, 'access-control-request-headers': 'Authorization, Content-Type',
