@@ -89,6 +89,7 @@ export function FirstDay(props: FirstDayProps) {
     if (!mounted.current) return;
     currentPhase.current = next; markHistory(next, push); setPhase(next); setError(null);
   }
+  /** false: Skip (records introduction-skipped). true: leave for the desk without any launch write. */
   async function exit(completed: boolean) {
     if (locked.current) return; locked.current = true; setBusy(true); setError(null);
     markHistory(currentPhase.current, false);
@@ -190,7 +191,7 @@ export function FirstDay(props: FirstDayProps) {
         <div><dt>Paper to spend</dt><dd>{micros(preview.cashDebitPaperMicros)} paper</dd></div><div><dt>Paper cash after</dt><dd>{micros(preview.cashAfterPaperMicros)} paper</dd></div></dl>
       <button className="primary" disabled={busy || pending || remaining === 0} onClick={() => void confirm()}>{busy ? 'Confirming…' : 'Confirm paper buy'}</button>
       <p className="intro-disclosure">{remaining > 0 ? `Quote expires in ${remaining}s` : 'Quote expired. Get a new review.'}</p><button className="text-button" disabled={busy} onClick={edit}>Edit amount</button></div>}
-    {pending && phase !== 'receipt' && <div className="intro-pending" role="status"><strong>Your last order needs checking.</strong><p>Return to your desk to recover its result before making another move.</p><button className="text-button" disabled={busy} onClick={() => void exit(false)}>Check from desk</button></div>}
+    {pending && phase !== 'receipt' && <div className="intro-pending" role="status"><strong>Your last order needs checking.</strong><p>Return to your desk to recover its result before making another move.</p><button className="text-button" disabled={busy} onClick={() => void exit(true)}>Check from desk</button></div>}
     {error !== null && <p className="intro-error" role="alert">{errorCopy(error)}</p>}
     {notice !== null && <p className="intro-error" role="status">{notice}</p>}
   </section>;

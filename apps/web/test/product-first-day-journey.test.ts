@@ -219,3 +219,24 @@ test('the celebration names the company picked in the first day even before publ
     assert.equal(h.dom.window.document.querySelector('.first-order-company img')?.getAttribute('src'), '/trimmy/token-AAPLx.webp');
   } finally {await h.close();}
 });
+
+test('a lost first-order response is checked from the desk without skipping, then continues to the celebration', async () => {
+  let lose = true;
+  const h = await harness({reply: call => {
+    if (call.path.endsWith('/orders/commit') && lose) {lose = false; throw new TypeError('Receipt lost');}
+    return undefined;
+  }});
+  try {
+    await h.app(); await h.click('Start my first day'); await h.click('Continue');
+    await h.click('Choose Apple'); await h.click('Review paper buy'); await h.click('Confirm paper buy');
+    assert.match(h.text(), /Your last order needs checking\./);
+    await h.click('Check from desk');
+    assert.deepEqual(h.api.state.launches, [], 'checking an order never records a skipped introduction');
+    assert.match(h.text(), /Let’s check your last order\./);
+    await h.click('Check order');
+    assert.match(h.text(), /You’ve placed your first order!/);
+    assert.equal(h.api.calls.filter(call => call.path.endsWith('/orders/commit')).length, 2, 'the same order is replayed, never bought twice');
+    await h.click('Continue');
+    assert.deepEqual(h.api.state.launches, ['paper-trade-confirmed']);
+  } finally {await h.close();}
+});
