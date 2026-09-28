@@ -135,6 +135,24 @@ void main() {
     },
   );
 
+  test('a confirmed order shows what it actually moved once recorded', () {
+    final filled = _trade(5)
+      ..['fill'] = {'inputAmountRaw': '5000000', 'outputAmountRaw': '12300000'};
+    final pending = _trade(6, status: 'pending')
+      ..['fill'] = {'inputAmountRaw': '1', 'outputAmountRaw': '1'};
+    final page = LiveTradeHistoryPage.fromJson(
+      _page([filled, pending, _trade(7)]),
+    );
+    expect(page.orders[0].filled, isTrue);
+    expect(page.orders[0].paidLabelWith(), '5 USDC');
+    expect(page.orders[0].filledOutputLabelWith(), '0.123 NVDAx');
+    // Only a confirmed order can carry a fill; without one the quote shows.
+    expect(page.orders[1].filled, isFalse);
+    expect(page.orders[2].filled, isFalse);
+    expect(page.orders[2].filledOutputLabelWith(), '0.12345678 NVDAx');
+    expect(page.orders[0].withStatus(LiveTradeStatus.confirmed).filled, isTrue);
+  });
+
   test(
     'a market maker fill links to the wallet, since its id is the maker signature',
     () {

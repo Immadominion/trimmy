@@ -105,13 +105,19 @@ export function TradeHistoryScreen({onBack, onOpenAsset, identities, pollMs = 10
       return <article key={order.id} className={`history-row ${order.status}`}>
         <button className="history-summary" aria-expanded={open} onClick={() => setExpanded(prior => {const next = new Set(prior); if (open) next.delete(order.id); else next.add(order.id); return next;})}>
           <CompanyLogo name={name} url={identities?.get(order.assetId)?.imageUrl ?? null} size={40}/>
-          <span className="history-main"><strong>{order.buy ? 'Buy' : 'Sell'} {order.symbol}</strong><small>{amount(order, order.inputAmountRaw, order.buy)}</small></span>
+          <span className="history-main"><strong>{order.buy ? 'Buy' : 'Sell'} {order.symbol}</strong><small>{amount(order, order.fill?.inputAmountRaw ?? order.inputAmountRaw, order.buy)}</small></span>
           <span className="history-meta"><strong className={`history-status ${order.status}`}>{STATUS[order.status]}</strong><small>{when(order.createdAt)}</small></span>
         </button>
         {open && <div className="history-detail">
-          <dl><div><dt>Quoted output</dt><dd>{amount(order, order.quotedOutputAmountRaw, !order.buy)}</dd></div>
-            <div><dt>Minimum output</dt><dd>{amount(order, order.minimumOutputAmountRaw, !order.buy)}</dd></div></dl>
-          <p className="trade-caption">Order estimates. See the transaction for the final amounts.</p>
+          {order.fill ? <>
+            <dl><div><dt>{order.buy ? 'You paid' : 'You sold'}</dt><dd>{amount(order, order.fill.inputAmountRaw, order.buy)}</dd></div>
+              <div><dt>You received</dt><dd>{amount(order, order.fill.outputAmountRaw, !order.buy)}</dd></div></dl>
+            <p className="trade-caption">Final amounts from the confirmed transaction.</p>
+          </> : <>
+            <dl><div><dt>Quoted output</dt><dd>{amount(order, order.quotedOutputAmountRaw, !order.buy)}</dd></div>
+              <div><dt>Minimum output</dt><dd>{amount(order, order.minimumOutputAmountRaw, !order.buy)}</dd></div></dl>
+            <p className="trade-caption">Order estimates. See the transaction for the final amounts.</p>
+          </>}
           <div className="history-links"><a className="text-button" href={explorerUrl(order)} target="_blank" rel="noreferrer noopener">{order.rfq ? 'View wallet activity ↗' : 'View transaction ↗'}</a>
             {onOpenAsset && <button className="text-button" onClick={() => onOpenAsset(order.assetId, order.mint)}>Open stock</button>}</div>
         </div>}

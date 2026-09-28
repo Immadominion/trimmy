@@ -34,6 +34,8 @@ class LiveTradeRecord {
     required this.quotedOutputAmountRaw,
     required this.minimumOutputAmountRaw,
     this.rfq = false,
+    this.filledInputRaw,
+    this.filledOutputRaw,
   });
   final String id, wallet, signature, assetId, mint, symbol, name;
 
@@ -45,6 +47,11 @@ class LiveTradeRecord {
   final int decimals;
   final bool buy;
   final String inputAmountRaw, quotedOutputAmountRaw, minimumOutputAmountRaw;
+
+  /// What the confirmed transaction actually moved, once the server recorded
+  /// it. Null before then, and for orders that did not confirm.
+  final String? filledInputRaw, filledOutputRaw;
+  bool get filled => filledInputRaw != null && filledOutputRaw != null;
   LiveTradeRecord withStatus(LiveTradeStatus next) => LiveTradeRecord(
     id: id,
     wallet: wallet,
@@ -62,6 +69,8 @@ class LiveTradeRecord {
     quotedOutputAmountRaw: quotedOutputAmountRaw,
     minimumOutputAmountRaw: minimumOutputAmountRaw,
     rfq: rfq,
+    filledInputRaw: filledInputRaw,
+    filledOutputRaw: filledOutputRaw,
   );
 
   /// USDC, or shares of the token. Shares use [scale] when the wallet's
@@ -75,6 +84,12 @@ class LiveTradeRecord {
       _label(quotedOutputAmountRaw, !buy, scale);
   String minimumOutputLabelWith([LiveShareScale? scale]) =>
       _label(minimumOutputAmountRaw, !buy, scale);
+
+  /// The filled input when known, else what the order was reviewed to spend.
+  String paidLabelWith([LiveShareScale? scale]) =>
+      _label(filledInputRaw ?? inputAmountRaw, buy, scale);
+  String filledOutputLabelWith([LiveShareScale? scale]) =>
+      _label(filledOutputRaw ?? quotedOutputAmountRaw, !buy, scale);
   String get inputLabel => inputLabelWith();
   String get quotedOutputLabel => quotedOutputLabelWith();
   String get minimumOutputLabel => minimumOutputLabelWith();
@@ -147,6 +162,20 @@ class LiveTradeRecord {
         BigInt.parse(minimum) > BigInt.parse(output)) {
       throw const FormatException('Invalid trade amounts');
     }
+    // A fill arrives only for confirmed orders; anything else is ignored.
+    final fill = value['fill'];
+    String? filled(String name) {
+      if (fill is! Map || status != LiveTradeStatus.confirmed) return null;
+      final raw = fill[name];
+      return raw is String &&
+              RegExp(r'^[1-9][0-9]{0,19}$').hasMatch(raw) &&
+              BigInt.parse(raw) <= BigInt.parse('18446744073709551615')
+          ? raw
+          : null;
+    }
+
+    final filledInput = filled('inputAmountRaw'),
+        filledOutput = filled('outputAmountRaw');
     return LiveTradeRecord(
       id: field(
         value,
@@ -172,6 +201,8 @@ class LiveTradeRecord {
       quotedOutputAmountRaw: output,
       minimumOutputAmountRaw: minimum,
       rfq: asset['route'] == 'rfq',
+      filledInputRaw: filledOutput == null ? null : filledInput,
+      filledOutputRaw: filledInput == null ? null : filledOutput,
     );
   }
 }
@@ -703,7 +734,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
                         style: type.titleMedium,
                       ),
                       const SizedBox(height: 4),
-                      Text(order.inputLabelWith(scale), style: type.bodyMedium),
+                      Text(order.paidLabelWith(scale), style: type.bodyMedium),
                     ],
                   ),
                 ),
@@ -730,7 +761,19 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
                 Text(dateLabel, style: type.bodySmall),
               ],
             ),
-            if (expanded) ...[
+            if (expanded && order.filled) ...[
+              const SizedBox(height: 18),
+              Text(order.buy ? 'You paid' : 'You sold', style: type.bodySmall),
+              Text(order.paidLabelWith(scale), style: type.titleMedium),
+              const SizedBox(height: 10),
+              Text('You received', style: type.bodySmall),
+              Text(order.filledOutputLabelWith(scale), style: type.titleMedium),
+              const SizedBox(height: 10),
+              Text(
+                'Final amounts from the confirmed transaction.',
+                style: type.bodySmall,
+              ),
+            ] else if (expanded) ...[
               const SizedBox(height: 18),
               Text('Quoted output', style: type.bodySmall),
               Text(order.quotedOutputLabelWith(scale), style: type.titleMedium),
@@ -742,6 +785,8 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
                 'Order estimates. See the transaction for the final amounts.',
                 style: type.bodySmall,
               ),
+            ],
+            if (expanded) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,

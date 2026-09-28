@@ -140,6 +140,8 @@ export interface TradeRecord {
   /** Filled by a market maker: the transaction id is the maker's signature, not this one. */
   readonly rfq: boolean;
   readonly inputAmountRaw: string; readonly quotedOutputAmountRaw: string; readonly minimumOutputAmountRaw: string;
+  /** What the confirmed transaction actually moved, once the server recorded it. */
+  readonly fill: {readonly inputAmountRaw: string; readonly outputAmountRaw: string} | null;
 }
 export interface TradeHistoryPage {readonly orders: readonly TradeRecord[]; readonly nextCursor: string | null}
 
@@ -167,12 +169,19 @@ function historyRecord(value: unknown): TradeRecord {
   if (input === '0' || output === '0' || BigInt(minimum) > BigInt(output)) fault();
   const field = (source: Record<string, unknown>, key: string, pattern: RegExp) =>
     typeof source[key] === 'string' && pattern.test(source[key] as string) ? source[key] as string : fault();
+  // A fill arrives only for confirmed orders; anything else is ignored.
+  const fillRow = row['fill'] !== null && typeof row['fill'] === 'object' && !Array.isArray(row['fill']) && row['status'] === 'confirmed'
+    ? row['fill'] as Record<string, unknown> : null;
+  const filled = (key: string) => typeof fillRow?.[key] === 'string' && /^[1-9][0-9]{0,19}$/.test(fillRow[key] as string) &&
+    BigInt(fillRow[key] as string) <= 18_446_744_073_709_551_615n ? fillRow[key] as string : null;
+  const fillInput = filled('inputAmountRaw'), fillOutput = filled('outputAmountRaw');
   return Object.freeze({id: field(row, 'id', /^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/), wallet: field(row, 'wallet', MINT),
     status: row['status'] as TradeStatus, signature: field(row, 'signature', SIGNATURE), createdAt: date('createdAt'),
     updatedAt: date('updatedAt'), assetId: field(asset!, 'assetId', /^[a-z0-9_-]{1,128}$/), mint,
     symbol: field(asset!, 'symbol', /^[^\x00-\x1f\x7f]{1,32}$/), name: field(asset!, 'name', /^[^\x00-\x1f\x7f]{1,160}$/),
     decimals: asset!['decimals'] as number, buy, rfq: asset!['route'] === 'rfq', inputAmountRaw: input,
-    quotedOutputAmountRaw: output, minimumOutputAmountRaw: minimum});
+    quotedOutputAmountRaw: output, minimumOutputAmountRaw: minimum,
+    fill: fillInput && fillOutput ? Object.freeze({inputAmountRaw: fillInput, outputAmountRaw: fillOutput}) : null});
 }
 
 export function parseTradeHistory(value: unknown): TradeHistoryPage {

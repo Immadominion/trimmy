@@ -38,12 +38,18 @@ test('real history is a bounded read of only the authenticated active account, w
         VALUES($1,$2,$3,$4,$5,clock_timestamp(),$6,$7,$8,$8)`,
       [fixture.id,user,wallet,review,Buffer.alloc(100),fixture.status,fixture.signature,fixture.at]);
     }
+    // What the confirmed order actually moved (migration 0033).
+    await owner.query("UPDATE trimmy.live_stock_orders SET filled_input_raw='1000000',filled_output_raw='399000' WHERE id=$1",[fixtures[1]!.id]);
+    await assert.rejects(owner.query("UPDATE trimmy.live_stock_orders SET filled_input_raw='1',filled_output_raw='1' WHERE id=$1",[fixtures[2]!.id]),
+      /live_stock_orders_fill_confirmed/);
     const before=await owner.query('SELECT id,status,signature,created_at::text,updated_at::text FROM trimmy.live_stock_orders WHERE user_id=$1 ORDER BY id',[user]);
     assert.deepEqual(await repository.list(other,20),[]);
     const first=await repository.list(user,2) as any[];
     assert.deepEqual(first.map(row=>row.id),fixtures.slice(0,3).map(row=>row.id));
     assert.equal(first[0].createdAt,fixtures[0]!.at);
-    assert.deepEqual(Object.keys(first[0]).sort(),['createdAt','id','signature','status','terms','updatedAt','wallet']);
+    assert.deepEqual(Object.keys(first[0]).sort(),['createdAt','fill','id','signature','status','terms','updatedAt','wallet']);
+    assert.equal(first[0].fill,null);
+    assert.deepEqual(first[1].fill,{inputAmountRaw:'1000000',outputAmountRaw:'399000'});
     assert.deepEqual(Object.keys(first[0].terms).sort(),['inputAmountRaw','inputMint','minimumOutputAmountRaw','outputMint','quotedOutputAmountRaw','side']);
     const second=await repository.list(user,2,{createdAt:first[1].createdAt,id:first[1].id}) as any[];
     assert.deepEqual(second.map(row=>row.id),fixtures.slice(2,4).map(row=>row.id));

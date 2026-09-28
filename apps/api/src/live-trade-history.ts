@@ -67,12 +67,17 @@ function project(value:unknown) {
   const quotedOutputAmountRaw=amount(terms['quotedOutputAmountRaw']);
   const minimumOutputAmountRaw=amount(terms['minimumOutputAmountRaw']);
   if(BigInt(minimumOutputAmountRaw)>BigInt(quotedOutputAmountRaw))return unavailable();
+  // What the confirmed transaction moved (migration 0033), when recorded.
+  const filled=row['fill']===null||row['fill']===undefined?null:record(row['fill']);
+  const fill=filled===null?null:{inputAmountRaw:amount(filled['inputAmountRaw']),outputAmountRaw:amount(filled['outputAmountRaw'])};
+  if(fill && status!=='confirmed')return unavailable();
   return {
     id,wallet,status:status as 'pending'|'confirmed'|'failed'|'expired',signature,createdAt,updatedAt,
     // route 'rfq': the stored signature is the user's, not the transaction id (the market maker's).
     asset:{assetId:asset.assetId,mint:asset.mint,symbol:asset.symbol,name:asset.name,decimals:asset.decimals,route:asset.route},
     terms:{side,inputMint:inputMint as string,outputMint:outputMint as string,inputAmountRaw,quotedOutputAmountRaw,minimumOutputAmountRaw},
     amountUnits:'raw_token_units' as const,amountsStatus:'reviewed_quote' as const,
+    ...(fill?{fill}:{}),
   };
 }
 export class PostgresLiveTradeHistory implements LiveTradeHistoryRepository {

@@ -42,6 +42,8 @@ export interface LiveOrderStore {
  create(user:string,id:string,wallet:string,review:ReviewedStockOrderIntent,wire:Uint8Array,terms?:LiveOrderTermsAcceptance):Promise<LiveOrder>;
  begin(user:string,id:string,digest:string,signature:string):Promise<LiveOrder>;
  resolve(user:string,id:string,status:'confirmed'|'failed'|'expired'):Promise<LiveOrder>;
+ /** What a confirmed order moved (migration 0033); false when already recorded. */
+ recordFill?(user:string,id:string,inputRaw:string,outputRaw:string):Promise<boolean>;
 }
 export class PostgresLiveOrderStore implements LiveOrderStore {
  constructor(private readonly pool:Pool) {}
@@ -60,6 +62,34 @@ export class PostgresLiveOrderStore implements LiveOrderStore {
  }
  async begin(user:string,id:string,digest:string,signature:string){return (await this.call(user,'SELECT trimmy.live_order_begin($1,$2,$3,$4) AS value',[user,id,digest,signature]))!;}
  async resolve(user:string,id:string,status:'confirmed'|'failed'|'expired'){return (await this.call(user,'SELECT trimmy.live_order_resolve($1,$2,$3) AS value',[user,id,status]))!;}
+ async recordFill(user:string,id:string,inputRaw:string,outputRaw:string){
+  return (await this.call(user,'SELECT trimmy.live_order_record_fill($1,$2,$3,$4) AS value',[user,id,inputRaw,outputRaw])) as unknown===true;
+ }
+}
+
+/**
+ * What an order moved for the wallet, from its confirmed transaction's token
+ * balances: the input token's decrease and the output token's increase, across
+ * all of the wallet's accounts for each. Null when either is not positive.
+ */
+export function orderFill(meta:unknown,wallet:string,inputMint:string,outputMint:string):{inputRaw:string;outputRaw:string}|null {
+ const m=meta as {preTokenBalances?:unknown;postTokenBalances?:unknown}|null;
+ const total=(rows:unknown,mint:string)=>{
+  if(!Array.isArray(rows))return null;
+  let sum=0n;
+  for(const row of rows as {mint?:unknown;owner?:unknown;uiTokenAmount?:{amount?:unknown}}[]) {
+   if(row?.mint!==mint || row.owner!==wallet)continue;
+   const amount=row.uiTokenAmount?.amount;
+   if(typeof amount!=='string' || !/^(0|[1-9][0-9]{0,19})$/.test(amount))return null;
+   sum+=BigInt(amount);
+  }
+  return sum;
+ };
+ const inBefore=total(m?.preTokenBalances,inputMint),inAfter=total(m?.postTokenBalances,inputMint);
+ const outBefore=total(m?.preTokenBalances,outputMint),outAfter=total(m?.postTokenBalances,outputMint);
+ if(inBefore===null||inAfter===null||outBefore===null||outAfter===null)return null;
+ const spent=inBefore-inAfter,received=outAfter-outBefore;
+ return spent>0n && received>0n?{inputRaw:String(spent),outputRaw:String(received)}:null;
 }
 
 export class LiveTradeError extends Error {constructor(readonly code:string){super(code);}}
@@ -295,7 +325,14 @@ export class LiveStockOrders {
   try{return (await this.status(user,id))!;}catch(_){return pending;}
  }
  async status(user:string,id?:string):Promise<LiveOrder|null> {
-  const order=await this.options.store.read(user,id);if(order?.status==='reviewed' && Date.parse(order.expires_at)<=this.#now())return {...order,status:'expired'};if(!order||order.status!=='pending')return order;
+  const order=await this.options.store.read(user,id);if(order?.status==='reviewed' && Date.parse(order.expires_at)<=this.#now())return {...order,status:'expired'};
+  // A fill that could not be read at confirmation is tried again for an hour.
+  const stored=order as (LiveOrder&{filled_input_raw?:string|null;updated_at?:string})|null;
+  if(stored?.status==='confirmed' && stored.filled_input_raw===null && Date.parse(stored.updated_at??'')>this.#now()-3_600_000) {
+   const transaction=stored.review.terms?.route==='rfq'?(await this.rfqTransaction(stored).catch(()=>null))?.signature:stored.signature;
+   if(transaction)await this.#recordFill(user,stored,transaction);
+  }
+  if(!order||order.status!=='pending')return order;
   if(order.review.terms?.route==='rfq')return this.rfqStatus(user,order);
   const result=await this.rpc('getSignatureStatuses',[[order.signature],{searchTransactionHistory:true}]);
   if(!Array.isArray(result?.value)||result.value.length!==1)fail('LIVE_UNAVAILABLE');
@@ -304,6 +341,7 @@ export class LiveStockOrders {
    if(!Number.isSafeInteger(status.slot)||status.slot<1 || !Object.hasOwn(status,'err') ||
     (status.err!==null && !reportedTransactionError(status.err)))fail('LIVE_UNAVAILABLE');
    const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed'));
+   if(settled.status==='confirmed')await this.#recordFill(user,order,order.signature!);
    return {...settled,confirmedSlot:status.slot};
   }
   if(status===null) {
@@ -348,6 +386,7 @@ export class LiveStockOrders {
   if(found) {
    if(found.err!==null && !reportedTransactionError(found.err))fail('LIVE_UNAVAILABLE');
    const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,found.err===null?'confirmed':'failed'));
+   if(settled.status==='confirmed')await this.#recordFill(user,order,found.signature);
    return {...settled,confirmedSlot:found.slot};
   }
   // Same rule as aggregator orders: finalized and confirmed heights past the
@@ -359,6 +398,19 @@ export class LiveStockOrders {
    return this.#alertSettled(order,await this.options.store.resolve(user,order.id,'expired'));
   }
   return order;
+ }
+ /**
+  * Records what a confirmed order actually moved. Best effort: history shows the
+  * reviewed quote until a fill is recorded, and a database without migration 0033
+  * simply records nothing.
+  */
+ async #recordFill(user:string,order:LiveOrder,transaction:string):Promise<void> {
+  if(!this.options.store.recordFill)return;
+  try {
+   const tx=await this.rpc('getTransaction',[transaction,{commitment:'confirmed',maxSupportedTransactionVersion:0,encoding:'json'}]);
+   const fill=orderFill(tx?.meta,order.wallet,order.review.terms.inputMint,order.review.terms.outputMint);
+   if(fill)await this.options.store.recordFill(user,order.id,fill.inputRaw,fill.outputRaw);
+  }catch{/* The fill can be recorded on a later read of this order. */}
  }
  /** Tells the operator when a signed order failed on chain or was never executed. */
  #alertSettled(order:LiveOrder,settled:LiveOrder):LiveOrder {

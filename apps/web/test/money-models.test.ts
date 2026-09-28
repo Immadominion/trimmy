@@ -171,6 +171,13 @@ test('live orders and history parse the API contract and reject shapes that coul
   assert.equal(explorerUrl({...page.orders[0]!, rfq: false}), `https://solscan.io/tx/${'4'.repeat(88)}`);
   assert.throws(() => parseTradeHistory({schemaVersion: 1, network: 'solana:mainnet-beta', orders: [row, row], nextCursor: null}));
   assert.throws(() => parseTradeHistory({schemaVersion: 1, network: 'solana:mainnet-beta', orders: [], nextCursor: 'abc'}));
+  // What a confirmed order actually moved, and nothing for an order that has not confirmed.
+  const fill = {inputAmountRaw: '5000000', outputAmountRaw: '18950000'};
+  const filled = parseTradeHistory({schemaVersion: 1, network: 'solana:mainnet-beta', nextCursor: null, orders: [
+    {...row, status: 'confirmed', fill}, {...row, id: '66666666-6666-4666-8666-666666666666', fill}]});
+  assert.deepEqual(filled.orders[0]!.fill, fill);
+  assert.equal(filled.orders[1]!.fill, null);
+  assert.equal(page.orders[0]!.fill, null);
 });
 
 test('the live capabilities with funds and market states: minimums, US-session tokens, and refusals that say when they open', () => {

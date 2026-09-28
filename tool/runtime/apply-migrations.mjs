@@ -64,6 +64,7 @@ export const MIGRATION_DIGESTS = Object.freeze({
   '0030_intern_workdays': 'bb4e4ac4bc97915ddbe791961c7062caaf755d408a2b62a50c8458d5ba93539b',
   '0031_live_stock_orders': 'e89be7e4aeb4123d6befefe0d00cbde50033a4db8fa47ae546f65c8452f6493c',
   '0032_live_stock_order_history': '183b08902d4c31ebfc2c2a45fbcbd7f9442309b26b346a58406a973418c0136b',
+  '0033_live_stock_order_fills': '69659226ecc146ffe67c50c9a53685afa2b4f02b9fc00b95c6ec8553dad5ba07',
 });
 
 /** One fixed lock so two deploys cannot migrate the same database at once. */

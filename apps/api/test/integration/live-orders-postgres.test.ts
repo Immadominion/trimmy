@@ -10,7 +10,7 @@ test('financial dispatch is account-scoped, once-only and survives lost response
  const owner=new Pool({host,port:65455,database:'postgres',user:'trimmy_daily_owner'});let runtime:Pool|undefined;
  try{
   await owner.query(`CREATE ROLE live_test_runtime LOGIN NOSUPERUSER NOBYPASSRLS;GRANT USAGE ON SCHEMA trimmy TO live_test_runtime;
-   GRANT EXECUTE ON FUNCTION trimmy.live_order_read(uuid,uuid),trimmy.live_order_create(uuid,uuid,text,jsonb,bytea,timestamptz),trimmy.live_order_begin(uuid,uuid,text,text),trimmy.live_order_resolve(uuid,uuid,text) TO live_test_runtime`);
+   GRANT EXECUTE ON FUNCTION trimmy.live_order_read(uuid,uuid),trimmy.live_order_create(uuid,uuid,text,jsonb,bytea,timestamptz),trimmy.live_order_begin(uuid,uuid,text,text),trimmy.live_order_resolve(uuid,uuid,text),trimmy.live_order_record_fill(uuid,uuid,text,text) TO live_test_runtime`);
   runtime=new Pool({host,port:65455,database:'postgres',user:'live_test_runtime'});const api=new PostgresLiveOrderStore(runtime);
   const user=randomUUID(),other=randomUUID(),wallet='FbP8bwmje245N5k3GTrx7BcKcDwbJNbfvEaEbF8eewY1';
   await owner.query('INSERT INTO trimmy.users(id) VALUES($1),($2)',[user,other]);
@@ -25,6 +25,13 @@ test('financial dispatch is account-scoped, once-only and survives lost response
   await assert.rejects(api.create(user,randomUUID(),wallet,review,Buffer.alloc(100)),/ORDER_PENDING/);
   await assert.rejects(api.begin(user,id,review.reviewDigestSha256,'3'.repeat(88)),/INVALID_REVIEW/);
   await api.resolve(user,id,'confirmed');await api.resolve(user,id,'failed');assert.equal((await api.read(user,id))?.status,'confirmed');
+  // A confirmed order's fill is recorded once, by its own account only, and never changed.
+  assert.equal(await api.recordFill(other,id,'1','2').catch(()=>false),false);
+  assert.equal(await api.recordFill(user,id,'2000000','587000'),true);
+  assert.equal(await api.recordFill(user,id,'1','1'),false);
+  const filled=await api.read(user,id) as unknown as {filled_input_raw:string;filled_output_raw:string};
+  assert.deepEqual([filled.filled_input_raw,filled.filled_output_raw],['2000000','587000']);
+  await assert.rejects(api.recordFill(user,id,'-1','1'),/INVALID_REQUEST/);
   await assert.rejects(runtime.query('UPDATE trimmy.live_stock_orders SET status=\'reviewed\''),/permission denied/);
   const expired=randomUUID();await api.create(user,expired,wallet,review,Buffer.alloc(100));
   await owner.query("UPDATE trimmy.live_stock_orders SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",[expired]);

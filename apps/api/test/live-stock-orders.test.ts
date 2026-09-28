@@ -10,7 +10,7 @@ import type {StockTradingAsset} from '../src/stock-trading-catalog.js';
 import {STOCK_ISSUERS} from '../src/stock-issuers.js';
 /** The current attestation for the asset's issuer, as a new client sends it. */
 const terms=(asset:StockTradingAsset)=>({issuerId:asset.issuerId,version:STOCK_ISSUERS[asset.issuerId].disclosure.attestation.version});
-import {LiveStockOrders,verifyReviewedSignature,registerLiveStockRoutes} from '../src/live-stock-orders.js';
+import {LiveStockOrders,verifyReviewedSignature,registerLiveStockRoutes,orderFill} from '../src/live-stock-orders.js';
 import type {LiveOrder,LiveOrderStore,LiveStockAdapters} from '../src/live-stock-orders.js';
 import type {ReviewedStockOrderIntent} from '../src/stock-order-review.js';
 import {StockMarketStates} from '../src/stock-market-state.js';
@@ -324,4 +324,36 @@ test('a busy quote request says when to retry',async()=>{
   const preview=await app.inject({method:'POST',url:'/v1/trading/preview',payload:{assetId:stock.assetId,variantMint:stock.mint,side:'buy',amountRaw:'1000000',termsAccepted:terms(stock)}});
   assert.equal(preview.statusCode,429);assert.equal(preview.json().code,'LIVE_BUSY');assert.equal(preview.headers['retry-after'],'3');
  }finally{await app.close();}
+});
+
+test('a confirmed order records what the wallet actually moved, from its transaction',async()=>{
+ const f=fixture();const usdc='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',stock='XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
+ const review={...f.order.review,terms:{side:'buy',inputMint:usdc,outputMint:stock,route:'aggregator'}} as unknown as ReviewedStockOrderIntent;
+ let current:LiveOrder={...f.order,review,status:'pending',signature:'2'.repeat(88)};
+ const fills:string[][]=[];
+ const store={read:async()=>current,resolve:async(_u:string,_i:string,status:LiveOrder['status'])=>current={...current,status},
+  recordFill:async(_u:string,id:string,input:string,output:string)=>{fills.push([id,input,output]);return true;}} as unknown as LiveOrderStore;
+ const balance=(mint:string,owner:string,amount:string)=>({mint,owner,uiTokenAmount:{amount}});
+ const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async(_url,init)=>{
+  const {method}=JSON.parse(String(init?.body));
+  const result=method==='getSignatureStatuses'?{value:[{confirmationStatus:'confirmed',slot:501,err:null}]}
+   :method==='getTransaction'?{slot:501,meta:{err:null,
+    preTokenBalances:[balance(usdc,f.order.wallet,'5000000'),balance(usdc,'Other1111111111111111111111111111111111111','9')],
+    postTokenBalances:[balance(usdc,f.order.wallet,'3000000'),balance(stock,f.order.wallet,'587000'),balance(usdc,'Other1111111111111111111111111111111111111','2000009')]}}:null;
+  return Response.json({jsonrpc:'2.0',id:1,result});
+ }});
+ const settled=await service.status('user','test');
+ assert.equal(settled?.status,'confirmed');
+ // The wallet's USDC fell by 2 and it received its first stock tokens; the other owner is not counted.
+ assert.deepEqual(fills,[['test','2000000','587000']]);
+});
+
+test('a fill needs a positive spend and delivery by the wallet itself',()=>{
+ const wallet='FbP8bwmje245N5k3GTrx7BcKcDwbJNbfvEaEbF8eewY1',a='A'.repeat(43),b='B'.repeat(43);
+ const row=(mint:string,owner:string,amount:string)=>({mint,owner,uiTokenAmount:{amount}});
+ assert.deepEqual(orderFill({preTokenBalances:[row(a,wallet,'10'),row(a,wallet,'5')],postTokenBalances:[row(a,wallet,'3'),row(b,wallet,'7')]},wallet,a,b),
+  {inputRaw:'12',outputRaw:'7'});
+ assert.equal(orderFill({preTokenBalances:[row(a,wallet,'10')],postTokenBalances:[row(a,wallet,'10'),row(b,wallet,'7')]},wallet,a,b),null);
+ assert.equal(orderFill({preTokenBalances:[row(a,wallet,'x')],postTokenBalances:[]},wallet,a,b),null);
+ assert.equal(orderFill(null,wallet,a,b),null);
 });

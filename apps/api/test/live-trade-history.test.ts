@@ -133,3 +133,13 @@ test('configured web clients can read history through a bounded GET preflight',a
     }
   }finally{await app.close();}
 });
+
+test('history shows what a confirmed order actually moved, beside its reviewed quote',async()=>{
+  const {app}=setup([row(3,{fill:{inputAmountRaw:'1000000',outputAmountRaw:'512000'}}),row(2)]);
+  try {
+    const orders=(await app.inject({url:'/v1/trading/history',headers:auth})).json().orders;
+    assert.deepEqual(orders[0].fill,{inputAmountRaw:'1000000',outputAmountRaw:'512000'});
+    assert.equal(orders[0].amountsStatus,'reviewed_quote','older apps keep reading the quote');
+    assert.equal('fill' in orders[1],false);
+  }finally{await app.close();}
+});
