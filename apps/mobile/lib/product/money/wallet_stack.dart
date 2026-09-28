@@ -131,7 +131,7 @@ class _WalletStackState extends State<WalletStack>
                     style: _actionStyle(),
                     onPressed: widget.onBuy,
                     icon: const Icon(Icons.add_rounded, size: 21),
-                    label: const Text('Fast buy'),
+                    label: const _ActionLabel('Fast buy'),
                   ),
                 ),
                 if (widget.real) ...[
@@ -140,7 +140,7 @@ class _WalletStackState extends State<WalletStack>
                       style: _actionStyle(),
                       onPressed: widget.onAddMoney,
                       icon: const Icon(Icons.south_west_rounded, size: 20),
-                      label: const Text('Add money'),
+                      label: const _ActionLabel('Add money'),
                     ),
                   ),
                   if (widget.onSend != null)
@@ -150,7 +150,7 @@ class _WalletStackState extends State<WalletStack>
                         style: _actionStyle(),
                         onPressed: widget.onSend,
                         icon: const Icon(Icons.north_east_rounded, size: 20),
-                        label: const Text('Send'),
+                        label: const _ActionLabel('Send'),
                       ),
                     ),
                 ] else
@@ -159,7 +159,7 @@ class _WalletStackState extends State<WalletStack>
                       style: _actionStyle(),
                       onPressed: widget.onHistory,
                       icon: const Icon(Icons.history_rounded, size: 20),
-                      label: const Text('History'),
+                      label: const _ActionLabel('History'),
                     ),
                   ),
               ],
@@ -374,5 +374,16 @@ class CashAssetMarks extends StatelessWidget {
         ),
       ),
     ),
+  );
+}
+
+/// One line at any width: three actions share the row in Real mode.
+class _ActionLabel extends StatelessWidget {
+  const _ActionLabel(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
   );
 }
