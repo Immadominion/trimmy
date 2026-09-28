@@ -34,7 +34,7 @@ test('preview sends exactly the order and the accepted issuer terms, and maps ev
   const wallet = (await signer()).address;
   const replies: Response[] = [Response.json({order: orderJson({wallet, transaction: 'AQID'})}),
     ...['TERMS_REQUIRED', 'MARKET_CLOSED', 'ADD_SOL', 'FEE_TOO_HIGH', 'ORDER_PENDING'].map(code => Response.json({code}, {status: 409})),
-    Response.json({code: 'LIVE_BUSY'}, {status: 429}), Response.json({code: 'ACCOUNT_REQUIRED'}, {status: 401}), Response.json({code: 'SOMETHING_NEW'}, {status: 503})];
+    Response.json({code: 'LIVE_BUSY'}, {status: 429, headers: {'retry-after': '3'}}), Response.json({code: 'ACCOUNT_REQUIRED'}, {status: 401}), Response.json({code: 'SOMETHING_NEW'}, {status: 503})];
   const http = fetcher(() => replies.shift()!);
   const client = new LiveOrderClient({baseUrl: '/api', bearer: async () => TOKEN, fetch: http.fetch});
   const input = {assetId: 'apple', variantMint: 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', side: 'buy' as const, amountRaw: '5000000',
@@ -48,6 +48,7 @@ test('preview sends exactly the order and the accepted issuer terms, and maps ev
   assert.deepEqual(codes.map(entry => entry[0]), ['TERMS_REQUIRED', 'MARKET_CLOSED', 'ADD_SOL', 'FEE_TOO_HIGH', 'ORDER_PENDING', 'LIVE_BUSY', 'ACCOUNT_REQUIRED', 'LIVE_UNAVAILABLE']);
   assert.equal(codes[1]![1], 'This stock trades while US markets are open. Try again then.');
   assert.equal(codes[2]![1], 'Add SOL to cover network and account fees.');
+  assert.equal(codes[5]![1], 'Quotes are busy. Try again in 3 seconds.', 'the API’s Retry-After says when to try again');
 });
 
 test('trading calls fail closed without a bound bearer or after the identity changes, and report lost replies as uncertain', async () => {

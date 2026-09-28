@@ -200,8 +200,8 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     {unspendable && <p className="trade-caption">Some of your {symbol} is in another token account. Only {scale.label(holding.availableToTradeRaw)} {symbol} can be sold here.</p>}
     <div className="amount-options">{side === 'sell' ? [25, 50, 75].map(value => <button key={value} disabled={busy || maxRaw === null} onClick={() => percent(value)}>{value}%</button>)
       : [5, 10, 25, 50].map(value => <button key={value} disabled={busy} onClick={() => {touched.current = true; setPreset(null); setCapped(null); setAmount(String(value));}}>${value}</button>)}</div>
-    <p className="trade-caption" id="live-limit">{capped === null ? `Order limit: ${label(limitRaw)}` : `${capped} capped at the order limit of ${label(limitRaw)}.`}
-      {side === 'buy' && asset.minBuyInputRaw !== '1' && ` Orders start at ${label(asset.minBuyInputRaw)}.`}</p>
+    <p className="trade-caption" id="live-limit">{capped === null ? `Order limit: ${label(limitRaw)}` : `${capped} capped at the order limit of ${label(limitRaw)}.`}</p>
+    {side === 'buy' && asset.minBuyInputRaw !== '1' && <p className="trade-caption">Orders start at {label(asset.minBuyInputRaw)}.</p>}
     {asset.market && (!marketOpen || asset.market.usSessions) && <MarketStateNote state={asset.market}/>}
     <div ref={termsRef}><IssuerCard issuer={issuer} transferFeeBps={asset.transferFeeBps} accepted={accepted} disabled={busy} highlight={state.termsRequired && !accepted}
       onAccepted={value => {money.terms?.record(issuer.issuerId, issuer.attestation.version, value); setTermsVersion(version => version + 1);}}/></div>

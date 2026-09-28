@@ -162,6 +162,8 @@ export class LiveOrderSession {
     const order = this.#state.order;
     if (!order || this.#state.phase !== 'reviewed' || this.#busy) return;
     if (this.#now() >= Date.parse(order.expiresAt)) this.#set({phase: 'expired', order: {...order, status: 'expired'}});
+    // A timer can fire a moment before the clock reaches the deadline: check again then.
+    else this.#watchQuote();
   }
 
   /** Back to the amount, dropping the reviewed quote. */

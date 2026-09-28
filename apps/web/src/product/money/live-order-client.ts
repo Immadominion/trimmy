@@ -10,12 +10,16 @@ import {CAPABILITIES_MAX_BYTES, parseTradingCapabilities, type TradingCapabiliti
 
 /** Carries a bounded code; its message is the person-facing copy for that code. */
 export class LiveOrderError extends Error {
-  constructor(readonly code: string) {super(liveOrderMessage(code)); this.name = 'LiveOrderError';}
+  constructor(readonly code: string, readonly retryAfterSeconds: number | null = null) {
+    super(liveOrderMessage(code, retryAfterSeconds)); this.name = 'LiveOrderError';
+  }
 }
 
 /** Mobile's copy for every code the API can return, plus local signing outcomes. */
-export function liveOrderMessage(code: string): string {
+export function liveOrderMessage(code: string, retryAfterSeconds: number | null = null): string {
   switch (code) {
+    case 'LIVE_BUSY': return retryAfterSeconds !== null && retryAfterSeconds > 0
+      ? `Quotes are busy. Try again in ${retryAfterSeconds} ${retryAfterSeconds === 1 ? 'second' : 'seconds'}.` : 'Quotes are busy. Try again in a moment.';
     case 'ADD_USDC': return 'Add USDC to your Solana wallet first.';
     case 'ADD_SOL': return 'Add SOL to cover network and account fees.';
     case 'INSUFFICIENT_HOLDINGS': return 'You don’t have enough of this token to sell.';
@@ -24,7 +28,6 @@ export function liveOrderMessage(code: string): string {
     case 'WALLET_REQUIRED': return 'Create your wallet to continue.';
     case 'ORDER_PENDING': return 'Your previous trade is still confirming.';
     case 'QUOTE_EXPIRED': return 'That price expired. Get a fresh quote.';
-    case 'LIVE_BUSY': return 'Quotes are busy. Try again in a moment.';
     case 'NO_ROUTE': return 'No route for this order right now. Try another amount.';
     case 'MARKET_CLOSED': return 'This stock trades while US markets are open. Try again then.';
     case 'BELOW_MINIMUM': return 'This order is under the market maker’s minimum. Try a larger amount.';
@@ -249,7 +252,7 @@ export class LiveOrderClient {
     const response = await this.#send(method, path, body, 32_768, this.#timeout, 'LIVE_UNAVAILABLE');
     if (response.status !== 200) {
       const code = responseCode(response.body);
-      throw new LiveOrderError(response.status === 401 ? 'ACCOUNT_REQUIRED' : code && KNOWN.has(code) ? code : 'LIVE_UNAVAILABLE');
+      throw new LiveOrderError(response.status === 401 ? 'ACCOUNT_REQUIRED' : code && KNOWN.has(code) ? code : 'LIVE_UNAVAILABLE', response.retryAfter);
     }
     const data = response.body;
     if (data === null || typeof data !== 'object' || Array.isArray(data) || !('order' in data)) invalid();

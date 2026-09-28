@@ -21,7 +21,11 @@ export interface MoneyRequest {
   readonly maxBytes: number;
   readonly signal?: AbortSignal | undefined;
 }
-export interface MoneyResponse {readonly status: number; readonly body: unknown}
+export interface MoneyResponse {
+  readonly status: number; readonly body: unknown;
+  /** Seconds from a `Retry-After` header (exposed by the API to browsers), or null. */
+  readonly retryAfter: number | null;
+}
 
 export function moneyApiBase(value: string): string {return normalizePracticeApiBase(value);}
 
@@ -70,7 +74,8 @@ export async function requestJson(fetcher: typeof fetch, url: string, request: M
       if (type !== 'application/json') throw new MoneyHttpError('INVALID');
       try {body = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes));} catch {throw new MoneyHttpError('INVALID');}
     }
-    return {status: response.status, body};
+    const retry = response.headers.get('retry-after');
+    return {status: response.status, body, retryAfter: retry !== null && /^\d{1,4}$/.test(retry.trim()) ? Math.min(Number(retry.trim()), 3600) : null};
   } catch (error) {
     controller.abort();
     void reader?.cancel().catch(() => {});

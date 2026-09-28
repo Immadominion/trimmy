@@ -91,7 +91,7 @@ export function FundWalletSheet({onClose}: {onClose(): void}) {
       <div className="fund-methods" role="radiogroup" aria-label="How to add money">
         <button role="radio" aria-checked={method === 'crypto'} className={method === 'crypto' ? 'selected' : ''} onClick={() => setMethod('crypto')}>
           <span>Crypto</span><small className="fund-tag recommended">Recommended</small></button>
-        <button role="radio" aria-checked={false} aria-disabled="true" className="unavailable" onClick={() => setMethod('card')}>
+        <button role="radio" aria-checked={method === 'card'} aria-disabled="true" className={`unavailable${method === 'card' ? ' selected' : ''}`} onClick={() => setMethod('card')}>
           <span>Card</span><small className="fund-tag">Coming soon</small></button>
       </div>
       {method === 'card' ? <div className="fund-card-soon" role="status"><h3>Card payments are coming soon.</h3>
