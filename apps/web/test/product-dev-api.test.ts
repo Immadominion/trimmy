@@ -156,10 +156,14 @@ test('account bearers cross only existing product routes and guest proof stays c
     assert.equal((await send(path)).status, 404);
     assert.equal((await send(path, {method: 'DELETE'})).status, 404);
   }
-  for (const path of ['/api/v1/logout', '/api/v1/auth/login', '/api/v1/account/closure', '/api/v1/guest/claim/extra']) {
+  for (const path of ['/api/v1/logout', '/api/v1/auth/login', '/api/v1/account/closure/extra', '/api/v1/guest/claim/extra']) {
     assert.equal((await send(path, {method: 'POST', body: '{}'})).status, 404);
   }
   assert.equal(calls.length, paths.length, 'no arbitrary account or SDK proxy surface');
+  // Settings' account closure is an exact account route; its guest proof never crosses.
+  assert.equal((await send('/api/v1/account/closure', {method: 'POST', body: '{}', headers: {authorization: 'Bearer account-token', 'x-trimmy-guest': 'must-not-leak'}})).status, 200);
+  assert.equal(new Headers(calls.at(-1)!.options!.headers).has('x-trimmy-guest'), false);
+  assert.equal((await send('/api/v1/account/closure', {method: 'GET'})).status, 404);
 });
 
 test('duplicate physical bearer or guest claim fields cannot be collapsed into an authorized request', async t => {
@@ -220,4 +224,60 @@ test('a disconnected body causes no unhandled request error or upstream call', a
   assert.equal(calls.length, 0);
   assert.equal((await send('/api/v1/guest/session', {method: 'POST', body: '{}'})).status, 200);
   assert.equal(calls.length, 1);
+});
+
+test('relay forwards the own-money reads and order lifecycle, never funding, with exact read hints only', async t => {
+  const {calls, send} = await fixture(t);
+  const auth = {authorization: 'Bearer aaa.bbb.ccc'};
+  for (const path of ['/v1/trading/capabilities?schema=2', '/v1/trading/order', '/v1/trading/order/44444444-4444-4444-8444-444444444444',
+    '/v1/trading/history?limit=20&cursor=abc', '/v1/account/context']) {
+    assert.equal((await send('/api' + path, {headers: auth})).status, 200, path);
+  }
+  for (const path of ['/v1/trading/preview', '/v1/trading/execute']) {
+    assert.equal((await send('/api' + path, {method: 'POST', body: '{}', headers: auth})).status, 200, path);
+  }
+  assert.equal(calls[0]?.url, 'https://api.example/v1/trading/capabilities?schema=2');
+  assert.equal(calls[3]?.url, 'https://api.example/v1/trading/history?limit=20&cursor=abc');
+  const holdings = await send('/api/v1/account/holdings', {headers: {...auth, 'x-trimmy-holdings-version': '2', 'x-trimmy-holdings-min-slot': '812'}});
+  assert.equal(holdings.status, 200);
+  const forwarded = new Headers(calls.at(-1)?.options?.headers);
+  assert.equal(forwarded.get('x-trimmy-holdings-version'), '2'); assert.equal(forwarded.get('x-trimmy-holdings-min-slot'), '812');
+  assert.equal(forwarded.get('authorization'), 'Bearer aaa.bbb.ccc');
+  await send('/api/v1/account/context', {headers: {...auth, 'cache-control': 'no-cache'}});
+  assert.equal(new Headers(calls.at(-1)?.options?.headers).get('cache-control'), 'no-cache');
+  await send('/api/v1/account/context', {headers: {...auth, 'cache-control': 'max-age=0'}});
+  assert.equal(new Headers(calls.at(-1)?.options?.headers).get('cache-control'), null, 'other cache hints are dropped');
+  const before = calls.length;
+  const invalidHints: [string, Record<string, string | string[]>][] = [['/v1/account/holdings', {'x-trimmy-holdings-version': '3'}],
+    ['/v1/account/holdings', {'x-trimmy-holdings-min-slot': '0'}], ['/v1/account/holdings', {'x-trimmy-holdings-version': ['2', '2']}]];
+  for (const [path, headers] of invalidHints) {
+    assert.equal((await send('/api' + path, {headers: {...auth, ...headers}})).status, 400);
+  }
+  for (const path of ['/v1/trading/order/not-a-uuid', '/v1/funding/crossmint/orders', '/v1/account/wallet/challenge', '/v1/trading/order/44444444-4444-4444-8444-444444444444/extra']) {
+    assert.equal((await send('/api' + path, {headers: auth})).status, 404, path);
+  }
+  assert.equal((await send('/api/v1/trading/preview', {headers: auth})).status, 404, 'preview is POST only');
+  assert.equal(calls.length, before);
+});
+
+test('parity routes pass only their exact methods, UUID path parameters and query strings', async t => {
+  const {calls, send} = await fixture(t);
+  for (const [method, path] of [['GET', '/v1/career/reason-privacy'], ['PUT', '/v1/career/reason-privacy'], ['GET', '/v1/career/trade-reasons?scope=self&limit=20'],
+    ['POST', '/v1/career/trade-reasons'], ['POST', '/v1/career/promotions'], ['GET', '/v1/career/day-context'], ['PUT', '/v1/career/day-context'],
+    ['POST', '/v1/account/paper/reset'], ['GET', '/v1/community?scope=everyone'], ['PUT', '/v1/community/following/0f8fad5b-d9cb-469f-a165-70867728950e'],
+    ['GET', '/v1/markets/stocks/holders?mint=So11111111111111111111111111111111111111112'], ['GET', '/v1/following'], ['PUT', '/v1/following']] as const) {
+    assert.equal((await send('/api' + path, {method, ...(method === 'GET' ? {} : {body: '{}'})})).status, 200, `${method} ${path}`);
+  }
+  for (const [method, path] of [['DELETE', '/v1/career/reason-privacy'], ['PUT', '/v1/community/following/not-a-uuid'], ['GET', '/v1/community/following/0f8fad5b-d9cb-469f-a165-70867728950e'],
+    ['POST', '/v1/community'], ['PUT', '/v1/community/following/0f8fad5b-d9cb-469f-a165-70867728950e/extra']] as const) {
+    assert.equal((await send('/api' + path, {method})).status, 404, `${method} ${path}`);
+  }
+  assert.equal(calls.length, 13);
+});
+
+test('the token list may pass the relay up to 8 MB; every other read keeps the 2 MB cap', async t => {
+  const {send} = await fixture(t, 5_000, () => new Response(`"${'x'.repeat(3_000_000)}"`, {headers: {'content-type': 'application/json'}}));
+  const list = await send('/api/v1/trading/capabilities?schema=3');
+  assert.equal(list.status, 200); assert.equal(list.body.length, 3_000_002);
+  assert.equal((await send('/api/v1/markets/stocks/catalog')).status, 502);
 });

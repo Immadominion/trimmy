@@ -14,7 +14,55 @@ const routes: Readonly<Record<string, readonly string[]>> = {
   '/v1/markets/stocks/catalog': ['GET'], '/v1/markets/stocks/search': ['GET'],
   '/v1/markets/stocks/cards': ['GET'], '/v1/markets/stocks/variants': ['GET'],
   '/v1/markets/stocks/facts': ['GET'], '/v1/markets/stocks/insight': ['GET'],
+  '/v1/markets/stocks/prices': ['GET'],
+  // Own money: account wallet reads and the live order lifecycle (never funding).
+  '/v1/account/context': ['GET'], '/v1/account/holdings': ['GET'],
+  '/v1/trading/capabilities': ['GET'], '/v1/trading/preview': ['POST'], '/v1/trading/execute': ['POST'],
+  '/v1/trading/order': ['GET'], '/v1/trading/history': ['GET'],
 };
+/** One order's reconciliation read; the id is a canonical UUID and nothing else. */
+const orderStatus = /^\/v1\/trading\/order\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** Review and settlement read the chain and a quote provider; give them the API's own time. */
+const slowRoutes = new Set(['/v1/trading/preview', '/v1/trading/execute', '/v1/trading/order']);
+/** Exact read hints the money reads need, validated before they cross the relay. */
+function readHints(req: IncomingMessage, pathname: string): Record<string, string> | null {
+  const hints: Record<string, string> = {};
+  const take = (name: string, valid: RegExp): boolean => {
+    const value = credentialHeader(req, name);
+    if (value === null || value !== undefined && !valid.test(value)) return false;
+    if (value !== undefined) hints[name] = value;
+    return true;
+  };
+  if (pathname === '/v1/account/holdings' && (!take('x-trimmy-holdings-version', /^[12]$/) ||
+      !take('x-trimmy-holdings-min-slot', /^[1-9][0-9]{0,15}$/))) return null;
+  if (pathname === '/v1/account/context') {
+    // Browsers send this themselves for fetch cache 'no-store'; it asks for a fresh wallet link read.
+    const cache = credentialHeader(req, 'cache-control');
+    if (cache === null) return null;
+    if (cache === 'no-cache') hints['cache-control'] = cache;
+  }
+  return hints;
+}
+
+// Web parity (first day, settings, Career actions, Market social, community).
+// The deployed API allows each of these for the web app's exact origin.
+const parityRoutes: Readonly<Record<string, readonly string[]>> = {
+  '/v1/career/reason-privacy': ['GET', 'PUT'], '/v1/career/trade-reasons': ['GET', 'POST'],
+  '/v1/career/promotions': ['POST'], '/v1/career/day-context': ['GET', 'PUT'],
+  '/v1/account/paper/reset': ['POST'], '/v1/account/closure': ['POST'],
+  '/v1/community': ['GET'], '/v1/markets/stocks/holders': ['GET'],
+  '/v1/following': ['GET', 'PUT'], '/v1/social/reason-reports': ['POST'],
+};
+const uuidSegment = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const parityPatterns: readonly {readonly path: RegExp; readonly methods: readonly string[]}[] = [
+  {path: new RegExp(`^/v1/community/following/${uuidSegment}$`), methods: ['PUT']},
+  {path: new RegExp(`^/v1/social/blocks/${uuidSegment}$`), methods: ['GET', 'PUT']},
+];
+/** Own-money routes, one order's status read and the parity routes; nothing else crosses the relay. */
+function allowed(pathname: string, method: string): boolean {
+  return Boolean(routes[pathname]?.includes(method) || method === 'GET' && orderStatus.test(pathname) ||
+    parityRoutes[pathname]?.includes(method) || parityPatterns.some(route => route.path.test(pathname) && route.methods.includes(method)));
+}
 
 function problem(res: ServerResponse, status: number, code: string) {
   res.writeHead(status, {'content-type': 'application/json', 'cache-control': 'no-store'});
@@ -85,15 +133,16 @@ export function createDevelopmentRelay(apiOrigin: string, fetcher: typeof fetch 
     const url = new URL(relative, target);
     const method = req.method ?? 'GET';
     if (url.origin !== target.origin || rawPath.includes('\\') || /%2f|%5c|%2e/i.test(rawPath) ||
-        !routes[url.pathname]?.includes(method)) {
+        !allowed(url.pathname, method)) {
       problem(res, 404, 'LOCAL_ROUTE_UNAVAILABLE'); return;
     }
     const authorization = credentialHeader(req, 'authorization');
     const guestClaim = url.pathname === '/v1/guest/claim' ? credentialHeader(req, 'x-trimmy-guest') : undefined;
-    if (authorization === null || guestClaim === null) {
+    const hints = readHints(req, url.pathname);
+    if (authorization === null || guestClaim === null || hints === null) {
       problem(res, 400, 'LOCAL_AUTH_HEADERS_INVALID'); return;
     }
-    const headers = new Headers({accept: String(req.headers.accept ?? 'application/json')});
+    const headers = new Headers({accept: String(req.headers.accept ?? 'application/json'), ...hints});
     if (authorization !== undefined) headers.set('authorization', authorization);
     if (guestClaim !== undefined) headers.set('x-trimmy-guest', guestClaim);
     let body: string | undefined;
@@ -116,13 +165,14 @@ export function createDevelopmentRelay(apiOrigin: string, fetcher: typeof fetch 
       // cross this boundary. No cookies, Origin rewriting, generated SDK token,
       // API key, or administrative secret.
       const response = await fetcher(url, {method, headers, ...(body === undefined ? {} : {body}),
-        redirect: 'error', signal: AbortSignal.timeout(25_000)});
+        redirect: 'error', signal: AbortSignal.timeout(slowRoutes.has(url.pathname) || orderStatus.test(url.pathname) ? 55_000 : 25_000)});
       const reader = response.body?.getReader();
       const chunks: Uint8Array[] = []; let length = 0;
       if (reader) for (;;) {
         const {done, value} = await reader.read(); if (done) break;
         length += value.byteLength;
-        if (length > 2_097_152) {await reader.cancel(); throw new Error('Response too large');}
+        // The token list can run to 8 MB as the API admits tokens automatically; everything else stays at 2 MB.
+        if (length > (url.pathname === '/v1/trading/capabilities' ? 8_388_608 : 2_097_152)) {await reader.cancel(); throw new Error('Response too large');}
         chunks.push(value);
       }
       const responseHeaders: Record<string, string> = {'content-type': response.headers.get('content-type') ?? 'application/json',

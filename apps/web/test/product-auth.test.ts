@@ -129,9 +129,14 @@ test('provider cancellation leaves the guest signed out and does not remember th
 });
 
 test('a backend connection error cannot complete provider login and retry preserves its successful method', async () => {
-  const h = await harness({connect: async () => {throw Object.assign(new Error('private'), {code: 'PRACTICE_NETWORK_ERROR'});}});
+  let attempts = 0;
+  const h = await harness({connect: async () => {attempts++; throw Object.assign(new Error('private'), {code: 'PRACTICE_NETWORK_ERROR'});}});
   try {
     await h.run(() => h.auth.loginWithProvider('x')); await h.complete('twitter');
+    // It tries twice more by itself before showing the error.
+    assert.equal(h.auth.phase, 'connecting'); assert.equal(h.auth.errorCode, null);
+    await h.run(() => new Promise(resolve => setTimeout(resolve, 2400)));
+    assert.equal(attempts, 3);
     assert.equal(h.auth.phase, 'error'); assert.equal(h.auth.errorCode, 'PRACTICE_NETWORK_ERROR');
     assert.equal(h.auth.accountId, null); assert.equal(h.auth.authenticated, false); assert.equal(domRemembered(h.dom), null);
     h.implementations.connect = async () => ({accountId: ACCOUNT});
@@ -140,18 +145,37 @@ test('a backend connection error cannot complete provider login and retry preser
   } finally {await h.close();}
 });
 
-test('an existing-account conflict needs an explicit choice and does not silently provision or replace the guest', async () => {
+test('a connection that fails once and then succeeds signs in without showing an error', async () => {
+  let attempts = 0;
+  const h = await harness({connect: async () => {
+    if (++attempts === 1) throw Object.assign(new Error('private'), {code: 'PRACTICE_SESSION_CHANGED'});
+    return {accountId: ACCOUNT};
+  }});
+  try {
+    await h.run(() => h.auth.loginWithProvider('google')); await h.complete('google');
+    await h.run(() => new Promise(resolve => setTimeout(resolve, 800)));
+    assert.equal(attempts, 2); assert.equal(h.auth.errorCode, null); assert.equal(h.auth.authenticated, true);
+  } finally {await h.close();}
+});
+
+test('an account that already has a desk opens it, as on mobile, and keeps the guest desk separate', async () => {
   const h = await harness({connect: async input => {
     if (!input.openExistingAccount) throw Object.assign(new Error('private'), {code: 'GUEST_CLAIM_ACCOUNT_EXISTS'});
     return {accountId: ACCOUNT, guestDisposition: 'preserved'};
   }});
   try {
     await h.run(() => h.auth.loginWithProvider('google')); await h.complete('google');
-    assert.equal(h.auth.phase, 'account-choice'); assert.equal(h.auth.authenticated, false); assert.equal(h.requests.length, 1);
-    await h.flush(); assert.equal(h.requests.length, 1); assert.equal(domRemembered(h.dom), null);
-    await h.run(() => h.auth.openExistingAccount());
-    assert.equal(h.requests.length, 2); assert.equal(h.requests[1]?.openExistingAccount, true);
-    assert.equal(h.auth.authenticated, true); assert.equal(h.auth.guestDisposition, 'preserved');
+    assert.equal(h.requests.length, 2); assert.notEqual(h.requests[0]?.openExistingAccount, true); assert.equal(h.requests[1]?.openExistingAccount, true);
+    assert.equal(h.auth.authenticated, true); assert.equal(h.auth.guestDisposition, 'preserved'); assert.equal(h.auth.errorCode, null);
+  } finally {await h.close();}
+});
+
+test('the saved-desk choice appears only when opening the existing account also fails', async () => {
+  const h = await harness({connect: async () => {throw Object.assign(new Error('private'), {code: 'GUEST_CLAIM_ACCOUNT_EXISTS'});}});
+  try {
+    await h.run(() => h.auth.loginWithProvider('google')); await h.complete('google');
+    assert.equal(h.requests.length, 2); assert.equal(h.auth.phase, 'account-choice'); assert.equal(h.auth.authenticated, false);
+    assert.equal(domRemembered(h.dom), null);
   } finally {await h.close();}
 });
 

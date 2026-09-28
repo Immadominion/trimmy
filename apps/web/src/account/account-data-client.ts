@@ -99,7 +99,7 @@ export class AccountDataClient {
     this.subject = options.subject;
     this.accountId = accountId;
     this.#origin = origin.origin;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.#currentSubject = options.currentSubject;
     this.#accessToken = options.accessToken;
     this.#timeoutMs = timeoutMs;

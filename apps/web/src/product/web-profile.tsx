@@ -16,6 +16,8 @@ export interface WebProfileProps {
   readonly missions: CareerMissionBoard | null;
   readonly hasIdentity: boolean;
   readonly signedIn: boolean;
+  /** How the account signs in (an email or X @handle), shown when there is no Trimmy handle. */
+  readonly accountLabel?: string | null;
   readonly authBusy?: boolean;
   readonly busy?: boolean;
   readonly progressError?: boolean;
@@ -28,6 +30,8 @@ export interface WebProfileProps {
   readonly onRetry?: () => void;
   /** Resolve only after the server has saved the choice and the current profile has refreshed. */
   readonly onPersona?: (persona: TraderPersona) => Promise<void>;
+  /** Opens Settings: reminders, sound, paper reset, comment privacy and account closure. */
+  readonly onSettings?: () => void;
 }
 
 function ProfileIcon({file}: {file: string}) {
@@ -78,7 +82,7 @@ export function WebProfile(props: WebProfileProps) {
   }
 
   return <section className="web-profile" aria-labelledby="web-profile-heading">
-    <div className="page-intro"><h1 id="web-profile-heading">Profile</h1></div>
+    <div className="page-intro"><h1 id="web-profile-heading">Profile</h1>{props.onSettings && <button className="text-button web-profile-settings-link" onClick={props.onSettings}><ProfileIcon file="settings-gear.png"/>Settings</button>}</div>
     <div className="web-profile-overview">
       <section className="web-profile-identity" aria-label="Your trader">
         <div className="web-profile-person">
@@ -87,8 +91,8 @@ export function WebProfile(props: WebProfileProps) {
               alt={trader ? `${trader.label}, your chosen trader` : ''} width="108" height="108"/>
           </div>
           <div className="web-profile-name">
-            <h2>{handle ? `@${handle}` : trader ? trader.label : 'Make it yours'}</h2>
-            {handle && trader && <p>{trader.label}</p>}
+            <h2>{handle ? `@${handle}` : props.accountLabel ?? (trader ? trader.label : 'Make it yours')}</h2>
+            {(handle || props.accountLabel) && trader && <p>{trader.label}</p>}
             {!trader && <p>Choose who you play as.</p>}
             {career && <span className="web-profile-rank">{career.rank.label}</span>}
           </div>

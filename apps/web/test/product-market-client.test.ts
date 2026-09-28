@@ -3,6 +3,7 @@ import test from 'node:test';
 import {ProductMarketClient, ProductMarketError, parseStockCatalogPage, parseStockCardsPage, parseStockFacts,
   parseStockInsight} from '../src/product/market-client.js';
 import {searchFixture, variantsFixture} from '../src/markets/fixtures.test-support.js';
+import {parseStockSearchPage} from '../src/markets/discovery.js';
 import {RESEARCH_AAPLX_MINT, RESEARCH_USDC_MINT} from '../src/markets/estimate.js';
 
 const now = Date.parse('2026-09-24T12:00:00.000Z');
@@ -115,7 +116,7 @@ test('new product endpoints are fixed public GETs via explicit same-origin relay
 
 test('configured HTTPS origins work and noncanonical/credential/path bases fail before dispatch', async () => {
   let calls = 0;
-  const fetch: typeof globalThis.fetch = async input => {calls++; assert.equal(String(input), 'https://api.example/v1/markets/stocks/catalog?offset=0'); return Response.json(catalog());};
+  const fetch: typeof globalThis.fetch = async input => {calls++; assert.equal(String(input), 'https://api.example/v1/markets/stocks/catalog?offset=0&schema=2'); return Response.json(catalog());};
   await new ProductMarketClient({baseUrl: 'https://api.example', fetch}).catalog();
   for (const baseUrl of ['http://localhost:8080', '//evil.example', '/api/', '/api?key=secret', 'https://api.example/',
     'https://api.example/path', 'https://secret@api.example', 'HTTPS://API.EXAMPLE', 'https://api.example:443', 'https://api.example#x']) {
@@ -190,4 +191,77 @@ test('only known endpoint/status error codes cross the transport boundary', asyn
   await assert.rejects(failure(503, 'STOCK_RATE_LIMITED').catalog(), {code: 'STOCK_SERVICE_UNAVAILABLE'});
   const result = failure(503, 'STOCK_FACTS_UNAVAILABLE').cards('Apple');
   await assert.rejects(result, error => error instanceof ProductMarketError && error.message === 'STOCK_FACTS_UNAVAILABLE');
+});
+
+test('catalog, search and cards ask for funds and commodities (schema 2) and fall back once for an older server', async () => {
+  const seen: string[] = [];
+  let modern = true;
+  const etf = {...searchFixture('catalog', 20).results[0]!, assetId: 'sp500', name: 'SPDR S&P 500 ETF', symbol: 'SPY', category: 'etf'};
+  const gold = {...searchFixture('catalog', 20).results[0]!, assetId: 'gold', name: 'Gold', symbol: 'XAU', category: 'commodity',
+    providerPrimaryVariantMint: 'Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re', variants: [{...searchFixture().results[0]!.variants[0]!, variantId: 'gold-x', mint: 'Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re'}]};
+  const api = client(async input => {
+    const url = new URL(String(input), 'https://web.example'); seen.push(`${url.pathname}${url.search}`);
+    if (url.searchParams.get('schema') === '2' && !modern) return Response.json({error: {code: 'STOCK_INPUT_INVALID', message: 'Unknown field.', requestId: 'r'}}, {status: 400});
+    if (url.pathname.endsWith('/catalog')) {
+      const discovery = {...searchFixture('catalog', 20), results: modern ? [etf, gold] : [searchFixture().results[0]!]};
+      return Response.json({discovery, cards: discovery.results.map(row => ({assetId: row.assetId, name: row.name, symbol: row.symbol, imageUrl: null, stock: null, primaryVariant: null})),
+        offset: Number(url.searchParams.get('offset')), total: 300, nextOffset: Number(url.searchParams.get('offset')) + 40});
+    }
+    return Response.json({...searchFixture(url.searchParams.get('query')!, 20), results: modern ? [etf] : searchFixture().results});
+  });
+  const page = await api.catalog(20);
+  assert.deepEqual(page.discovery.results.map(row => row.category), ['etf', 'commodity']);
+  assert.equal(page.cards.length, 2, 'a schema 2 page may hold fewer than 20 rows'); assert.equal(page.nextOffset, 60, 'paging follows nextOffset');
+  assert.equal((await api.search('SPY')).results[0]?.category, 'etf');
+  assert.deepEqual(seen, ['/api/v1/markets/stocks/catalog?offset=20&schema=2', '/api/v1/markets/stocks/search?query=SPY&limit=20&schema=2']);
+  modern = false; seen.length = 0;
+  const older = client(async input => {
+    const url = new URL(String(input), 'https://web.example'); seen.push(`${url.pathname}${url.search}`);
+    if (url.searchParams.get('schema') === '2') return Response.json({error: {code: 'STOCK_INPUT_INVALID', message: 'Unknown field.', requestId: 'r'}}, {status: 400});
+    return Response.json(searchFixture(url.searchParams.get('query')!, 20));
+  });
+  assert.equal((await older.search('Apple')).results[0]?.category, 'equity');
+  await older.search('Apple');
+  assert.deepEqual(seen, ['/api/v1/markets/stocks/search?query=Apple&limit=20&schema=2', '/api/v1/markets/stocks/search?query=Apple&limit=20',
+    '/api/v1/markets/stocks/search?query=Apple&limit=20'], 'the fallback is remembered');
+  assert.throws(() => parseStockSearchPage({...searchFixture(), results: [{...searchFixture().results[0]!, category: 'crypto'}]}));
+});
+
+test('the default fetch is bound to the global, as browsers require', async () => {
+  const original = globalThis.fetch;
+  // Emulates Chrome's receiver check: fetch invoked as a method of another object throws.
+  globalThis.fetch = function (this: unknown, ...args: Parameters<typeof fetch>) {
+    if (this !== undefined && this !== globalThis) throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+    return original(...args);
+  } as typeof fetch;
+  try {
+    const client = new ProductMarketClient({baseUrl: 'https://api.example'});
+    await assert.rejects(client.catalog(0, {signal: AbortSignal.abort()}), {code: 'STOCK_CANCELLED'});
+    globalThis.fetch = function (this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(new Response('{}', {status: 503, headers: {'content-type': 'application/json'}}));
+    } as typeof fetch;
+    const bound = new ProductMarketClient({baseUrl: 'https://api.example'});
+    await assert.rejects(bound.catalog(0), (error: {code?: string}) => error.code !== 'STOCK_NETWORK_ERROR', 'the request reaches fetch instead of failing as a network error');
+  } finally {globalThis.fetch = original;}
+});
+
+test('holding prices ask for each held mint once and accept only trusted prices for them', async () => {
+  const other = 'XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB';
+  const urls: string[] = [];
+  const api = new ProductMarketClient({baseUrl: 'https://api.example', fetch: async input => {
+    urls.push(String(input));
+    return Response.json({schema: 1, observedAt: '2026-09-28T17:40:00.000Z', prices: [
+      {mint: RESEARCH_AAPLX_MINT, usdPerShare: 339.97, source: 'issuer', asOf: '2026-09-28T17:35:00.000Z'}]});
+  }, timeoutMs: 1000});
+  const prices = await api.prices([other, RESEARCH_AAPLX_MINT, RESEARCH_AAPLX_MINT]);
+  assert.deepEqual([...prices], [[RESEARCH_AAPLX_MINT, 339.97]]);
+  assert.equal(urls.length, 1);
+  assert.equal(new URL(urls[0]!).searchParams.get('mints'), [RESEARCH_AAPLX_MINT, other].sort().join(','));
+  await assert.rejects(api.prices(['not a mint']), {code: 'STOCK_INPUT_INVALID'});
+  for (const row of [{mint: other, usdPerShare: 1, source: 'issuer'}, {mint: RESEARCH_AAPLX_MINT, usdPerShare: 0, source: 'issuer'},
+    {mint: RESEARCH_AAPLX_MINT, usdPerShare: 1, source: 'trade'}]) {
+    const strict = client(async () => Response.json({schema: 1, prices: [row]}));
+    await assert.rejects(strict.prices([RESEARCH_AAPLX_MINT]), {code: 'STOCK_RESPONSE_INVALID'});
+  }
 });

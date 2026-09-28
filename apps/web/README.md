@@ -45,6 +45,42 @@ storage, an expired guest or a changed tab cannot silently create a replacement
 desk. Writes require Web Locks so two tabs cannot race the command journal.
 Paper amounts use exact fixed-point strings and shared domain arithmetic.
 
+## Own money (Real mode)
+
+Signed-in accounts can switch between Paper and Real, account by account, as on
+mobile. The switch sits on the Home balance card; Home balances and holdings,
+Fast buy, the Market's Tradeable markers and company order entry change
+together, and Real is pine green with a "Real money" label wherever it shows.
+Guests only ever see Paper; asking for Real (or Add money) sends them to sign
+in and lands them in Real afterwards. The code lives in `src/product/money/`.
+
+- **Wallet.** A Privy embedded Solana wallet, created only on "Create wallet".
+  Setup refreshes the Privy user first, requires exactly one embedded wallet,
+  then waits for the server's fresh context read to report the same address.
+- **Holdings v2.** USDC is the cash headline, SOL is shown for fees, stock
+  tokens are shown in shares (display scaling) with no invented value, and
+  what an order can spend is shown apart from the total.
+- **Add money.** Crypto deposit (Recommended): the linked wallet's Solana
+  address as a QR code, with mobile's copy. Card funding is "Coming soon" and
+  makes no request.
+- **Live orders.** Every token the API's trading capabilities (schema 3) list,
+  never a fixed set: the API admits tokens automatically, and a company page
+  rereads the list when it opens. Sells have no per-token cap. The issuer's warning comes before the eligibility tick;
+  the review shows the warning, terms, fees and expiry before Confirm; the
+  wallet signs the exact reviewed transaction (one signer, or the taker's slot
+  of a JupiterZ RFQ order); the order id is stored and read back before
+  execute; a lost reply is reconciled by id and never resent. Market states,
+  the market-maker minimum and maker delivery at fill are shown as on mobile.
+- **History.** Submitted orders with explorer links; pending ones are
+  reconciled by id.
+
+Configuration: `VITE_TRIMMY_PRODUCT_API_URL`, `VITE_PRIVY_APP_ID` and, for a
+dedicated Privy web client, `VITE_PRIVY_APP_CLIENT_ID`. Locally the
+relay forwards the money routes. Tests use recorded capabilities and Market
+variants, real Ed25519 keys, a contract-faithful fake of the trading routes
+and the API's own signature verifier; no test signs with a real wallet or
+reaches mainnet.
+
 ## Android download prompt
 
 Welcome, the first receipt and Profile recommend the mobile app. Until the
@@ -64,7 +100,7 @@ introduction and returns to that desk without requiring another buy.
 tracks comments/reasons, following, complete trade history and hosted release
 verification. [Current Career parity and the shared summary defect](../../docs/ARCHITECTURE.md)
 records the assignment contract and remaining backend repair for people filing
-before their first paper trade. Real-money trading remains unavailable.
+before their first paper trade. Real-money trading is described below.
 
 A production build needs `VITE_TRIMMY_PRODUCT_API_URL` set to a canonical HTTPS
 API origin and the deployed web origin explicitly permitted by that API. The

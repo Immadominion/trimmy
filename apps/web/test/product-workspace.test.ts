@@ -15,6 +15,7 @@ import {ProductMarketClient} from '../src/product/market-client.js';
 import {PracticeClient, PORTFOLIO_MEDIA_TYPE, PROFILE_MEDIA_TYPE} from '../src/product/practice-client.js';
 import type {PaperPortfolio, PaperPreview, PaperReceipt} from '../src/product/practice-client.js';
 import {PracticeSession, practiceStorageKey} from '../src/product/practice-session.js';
+import {JourneyStore} from '../src/product/journey-store.js';
 import type {PracticeStorage} from '../src/product/practice-session.js';
 import {searchFixture, variantFixture, variantsFixture} from '../src/markets/fixtures.test-support.js';
 import {RESEARCH_AAPLX_MINT as MINT, RESEARCH_USDC_MINT as OTHER_MINT} from '../src/markets/estimate.js';
@@ -76,7 +77,7 @@ function fixtures() {
   return {now, at, guest, profile, card, preview, receipt, portfolio, portfolioAfterBuy, insight, provenance, discovery, variantPage};
 }
 
-async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: string; profileMissing?: boolean} = {}) {
+async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: string; profileMissing?: boolean; guestChosen?: boolean} = {}) {
   const dom = new JSDOM('<!doctype html><div id="root"></div>', {url: `https://trimmy.example/${options.hash ?? ''}`, pretendToBeVisual: true});
   const saved = new Map<string, PropertyDescriptor | undefined>();
   function expose(name: string, value: unknown) {saved.set(name, Object.getOwnPropertyDescriptor(globalThis, name)); Object.defineProperty(globalThis, name, {configurable: true, writable: true, value});}
@@ -103,13 +104,17 @@ async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: 
       return json({schemaVersion: 2, profile: profileExists ? f.profile : null}, 200, PROFILE_MEDIA_TYPE);
     }
     if (call.path === '/v1/product/launch') {
-      if (!profileExists || f.profile.launchCheckpoint === 'app' || call.body?.['baseRevision'] !== f.profile.revision) {
+      // The server's transition table (migration 0026): confirmed trade moves first-trade to
+      // first-position; Skip and Finish move any earlier checkpoint to app.
+      const action = call.body?.['action'];
+      if (!profileExists || f.profile.launchCheckpoint === 'app' || call.body?.['baseRevision'] !== f.profile.revision ||
+        (action === 'paper-trade-confirmed' && f.profile.launchCheckpoint !== 'first-trade')) {
         return json({error: {code: 'PRODUCT_PROFILE_CHECKPOINT_CONFLICT', message: 'Checkpoint conflict.', requestId: GUEST_ID}}, 409);
       }
-      if (call.body?.['action'] === 'introduction-completed' && !f.profile.hasConfirmedPaperTrade) {
+      if ((action === 'introduction-completed' || action === 'paper-trade-confirmed') && !f.profile.hasConfirmedPaperTrade) {
         return json({error: {code: 'PRODUCT_PROFILE_LAUNCH_EVIDENCE_REQUIRED', message: 'Trade required.', requestId: GUEST_ID}}, 409);
       }
-      f.profile.revision++; f.profile.launchCheckpoint = 'app';
+      f.profile.revision++; f.profile.launchCheckpoint = action === 'paper-trade-confirmed' ? 'first-position' : 'app';
       return json({schemaVersion: 2, profile: f.profile}, 200, PROFILE_MEDIA_TYPE);
     }
     if (call.path === '/v1/account/paper/portfolio') return json(committed ? f.portfolioAfterBuy(lastPreview) : f.portfolio(), 200, PORTFOLIO_MEDIA_TYPE);
@@ -121,7 +126,9 @@ async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: 
     if (call.path === '/v1/account/paper/orders/commit') {committed = true; f.profile.hasConfirmedPaperTrade = true; return json(envelope('order', f.receipt(lastPreview)));}
     if (call.path === '/v1/career/summary') return json({schemaVersion: 1, career: {revision: 0, trims: {total: 0, today: 0, thisWeek: 0},
       rank: {id: 'rookie', label: 'Rookie', paperLimit: '10000', threshold: 0}, nextRank: {id: 'analyst', label: 'Analyst', threshold: 300, trimsRemaining: 300, promotionRequired: true},
-      streak: {days: 0, status: 'not-started', lastActiveDate: null}, careerStarted: false, firstConfirmedBuy: null, serverDate: f.at.slice(0, 10), updatedAt: null}});
+      streak: {days: 0, status: 'not-started', lastActiveDate: null}, careerStarted: false,
+      firstConfirmedBuy: committed ? {orderId: ORDER_ID, assetId: 'apple', variantMint: MINT, symbol: 'AAPLx', quantityMicros: lastPreview.quantityMicros, confirmedAt: f.at} : null,
+      serverDate: f.at.slice(0, 10), updatedAt: null}});
     if (call.path === '/v1/career/missions') return json({schemaVersion: 1, career: {revision: 0, currentRank: 'rookie'}, missions: []});
     if (call.path.endsWith('/catalog')) return json({discovery: f.discovery, cards: [f.card], offset: 0, total: 1, nextOffset: null});
     if (call.path.endsWith('/search')) {
@@ -147,7 +154,12 @@ async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: 
   const root = createRoot(dom.window.document.getElementById('root')!);
   const flush = async (ms = 25) => {await act(async () => {await delay(ms);});};
   const render = async (element: ReactElement) => {await act(async () => {root.render(element);}); await flush();};
-  const app = (strict = false) => {const element = createElement(ProductApp, {apiBase: '/api', practiceClient: practice, marketClient: market, storage}); return render(strict ? createElement(StrictMode, null, element) : element);};
+  const journeyStore = new JourneyStore(storage, '/api');
+  const app = (strict = false) => {
+    // Returning guests in these tests already made mobile's explicit account choice.
+    if (options.guestChosen !== false && storage.getItem(practiceStorageKey('/api')) !== null && !journeyStore.guestChosen()) journeyStore.chooseGuest();
+    const element = createElement(ProductApp, {apiBase: '/api', practiceClient: practice, marketClient: market, storage}); return render(strict ? createElement(StrictMode, null, element) : element);
+  };
   const text = () => dom.window.document.body.textContent ?? '';
   const button = (label: string) => [...dom.window.document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent?.trim() === label || item.getAttribute('aria-label') === label);
   const click = async (label: string) => {const target = button(label); assert.ok(target, `Button exists: ${label}`); await act(async () => {target.click();}); await flush();};
@@ -157,7 +169,10 @@ async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: 
     onBack() {}, onDesk() {}, onCommitted: callbacks.onCommitted ?? (async () => {}), onPending: callbacks.onPending ?? (() => {}),
   }));
   const close = async () => {await act(async () => {root.unmount();}); market.close(); dom.window.close(); for (const [name, descriptor] of saved) {if (descriptor) Object.defineProperty(globalThis, name, descriptor); else Reflect.deleteProperty(globalThis, name);}};
-  return {dom, f, root, storage, session, practice, market, calls, flush, render, app, stock, text, button, click, close};
+  const choice = (label: string) => [...dom.window.document.querySelectorAll<HTMLButtonElement>('.setup-choice')].find(item => item.querySelector('strong')?.textContent === label);
+  const pick = async (label: string) => {const target = choice(label); assert.ok(target, `Choice exists: ${label}`); await act(async () => {target.click();}); await flush();};
+  const markCommitted = () => {committed = true; f.profile.hasConfirmedPaperTrade = true;};
+  return {dom, f, root, storage, session, practice, market, calls, flush, render, app, stock, text, button, click, close, journeyStore, choice, pick, markCommitted};
 }
 
 async function firstDayPractice(h: Awaited<ReturnType<typeof harness>>) {
@@ -177,7 +192,7 @@ test('first-day Welcome opens the short note locally without creating a desk or 
   } finally {await h.close();}
 });
 
-test('Skip waits for its saved app checkpoint before opening an empty Desk and awards no fake progress', async () => {
+test('Skip waits for its saved app checkpoint, asks for the account choice, then opens an empty Desk with no fake progress', async () => {
   const pending = deferred<Response>();
   const h = await harness({profileMissing: true, reply: call => call.path === '/v1/product/launch' ? pending.promise : undefined});
   try {
@@ -192,6 +207,8 @@ test('Skip waits for its saved app checkpoint before opening an empty Desk and a
     assert.equal(h.calls.some(call => call.path.includes('/orders/')), false);
     Object.assign(h.f.profile, {revision: 2, launchCheckpoint: 'app'});
     pending.resolve(json({schemaVersion: 2, profile: h.f.profile}, 200, PROFILE_MEDIA_TYPE)); await h.flush();
+    assert.match(h.text(), /Your desk awaits\./); assert.equal(h.dom.window.document.querySelector('.balance-card'), null);
+    await h.click('Continue as guest');
     assert.match(h.text(), /Your desk\./); assert.match(h.text(), /10,000\.00/);
     assert.equal(h.dom.window.document.querySelector('.position-row'), null);
     assert.equal(h.dom.window.document.querySelector('.activity-row'), null);
@@ -234,21 +251,31 @@ test('review Edit and Escape retain the selected company and amount without comm
   } finally {await h.close();}
 });
 
-test('first-day receipt is confirmed before its separate Finish action and opens the real resulting Desk', async () => {
+test('first-day receipt celebrates the confirmed order, then asks for an account, reminders and money before the real Desk', async () => {
   const h = await harness({profileMissing: true});
   try {
     await firstDayPractice(h); await h.click('Choose Apple'); await h.click('Review paper buy');
     assert.equal(h.calls.some(call => call.path.endsWith('/commit')), false);
     await h.click('Confirm paper buy');
-    assert.match(h.text(), /Your first move is made\./); assert.match(h.text(), /100\.00/);
+    assert.match(h.text(), /You’ve placed your first order!/); assert.match(h.text(), /Now let’s create your trader profile\./);
+    assert.match(h.text(), /Invested100\.00paper/); assert.match(h.text(), /Shares 2/); assert.match(h.text(), /Buy confirmed/);
     assert.equal(h.calls.filter(call => call.path.endsWith('/commit')).length, 1);
-    assert.equal(h.calls.some(call => call.path === '/v1/product/launch'), false, 'receipt stays visible before Finish');
-    assert.doesNotMatch(h.text(), /\+20 Trims|Day 1 earned/);
+    assert.equal(h.calls.some(call => call.path === '/v1/product/launch'), false, 'the receipt stays visible until Continue');
     const saved = JSON.parse(h.storage.getItem(practiceStorageKey('/api'))!) as {lastReceipt: {id: string}; pendingCommit: unknown};
     assert.equal(saved.lastReceipt.id, ORDER_ID); assert.equal(saved.pendingCommit, null);
-    await h.click('Go to my desk');
-    const launches = h.calls.filter(call => call.path === '/v1/product/launch');
-    assert.equal(launches.length, 1); assert.equal(launches[0]?.body?.['action'], 'introduction-completed');
+    await h.click('Continue');
+    const confirmed = h.calls.filter(call => call.path === '/v1/product/launch');
+    assert.equal(confirmed.length, 1); assert.equal(confirmed[0]?.body?.['action'], 'paper-trade-confirmed');
+    assert.match(h.text(), /Your desk awaits\./); assert.match(h.text(), /Sign in or create your account\./);
+    assert.equal(h.journeyStore.guestChosen(), false);
+    await h.click('Continue as guest');
+    assert.equal(h.journeyStore.guestChosen(), true);
+    assert.match(h.text(), /A little nudge\?/);
+    await h.pick('Keep it quiet'); await h.click('Continue');
+    assert.match(h.text(), /Your next move\./); assert.match(h.text(), /Keep finding your feet, or fund your wallet\./);
+    await h.pick('Keep using free money');
+    const launches = h.calls.filter(call => call.path === '/v1/product/launch').map(call => call.body?.['action']);
+    assert.deepEqual(launches, ['paper-trade-confirmed', 'introduction-completed']);
     assert.match(h.text(), /Your desk\./);
     assert.match(h.dom.window.document.querySelector('.position-row')?.textContent ?? '', /AppleAAPLx · 2 shares/);
     assert.match(h.dom.window.document.querySelector('.balance-details')?.textContent ?? '', /9,900\.00/);
@@ -278,29 +305,28 @@ test('an in-flight first-day confirmation blocks duplicate submit, Skip and Back
     assert.equal(h.calls.some(call => call.path === '/v1/product/launch'), false);
     confirmed = true; h.f.profile.hasConfirmedPaperTrade = true;
     pending.resolve(json(envelope('order', h.f.receipt(h.f.preview(GUEST_ID))))); await h.flush();
-    assert.match(h.text(), /Your first move is made\./);
+    assert.match(h.text(), /You’ve placed your first order!/);
     assert.equal(h.calls.filter(call => call.path.endsWith('/commit')).length, 1);
   } finally {pending.resolve(json(envelope('order', h.f.receipt(h.f.preview(GUEST_ID))))); await h.close();}
 });
 
-test('a failed Finish keeps its confirmed receipt and retries the exact saved exit without buying again', async () => {
+test('a failed receipt Continue keeps the confirmed order and replays the exact saved checkpoint without buying again', async () => {
   let failed = false;
   const h = await harness({profileMissing: true, reply: call => {
-    if (call.path === '/v1/product/launch' && !failed) {failed = true; throw new TypeError('Finish response lost');}
+    if (call.path === '/v1/product/launch' && !failed) {failed = true; throw new TypeError('Continue response lost');}
     return undefined;
   }});
   try {
     await firstDayPractice(h); await h.click('Choose Apple'); await h.click('Review paper buy'); await h.click('Confirm paper buy');
-    await h.click('Go to my desk');
-    assert.match(h.text(), /Your first move is made\./);
+    await h.click('Continue');
+    assert.match(h.text(), /You’ve placed your first order!/); assert.match(h.text(), /Couldn’t continue\. Try again\./);
     const first = h.calls.find(call => call.path === '/v1/product/launch')!.body;
-    assert.equal(first?.['action'], 'introduction-completed');
-    await h.click('Go to my desk');
-    assert.match(h.text(), /Your desk\./);
+    assert.equal(first?.['action'], 'paper-trade-confirmed');
+    await h.click('Continue');
+    assert.match(h.text(), /Your desk awaits\./);
     const exits = h.calls.filter(call => call.path === '/v1/product/launch');
     assert.equal(exits.length, 2); assert.deepEqual(exits[1]?.body, first);
     assert.equal(h.calls.filter(call => call.path.endsWith('/commit')).length, 1);
-    assert.match(h.dom.window.document.querySelector('.position-row')?.textContent ?? '', /AppleAAPLx · 2 shares/);
   } finally {await h.close();}
 });
 
@@ -309,6 +335,8 @@ test('practice Back exits the entire introduction without sending an order', asy
   try {
     await firstDayPractice(h); await h.click('Choose Apple'); await h.click('50');
     await act(async () => {h.dom.window.dispatchEvent(new h.dom.window.PopStateEvent('popstate'));}); await h.flush();
+    assert.match(h.text(), /Your desk awaits\./, 'Skip reaches the explicit account choice');
+    await h.click('Continue as guest');
     assert.match(h.text(), /Your desk\./);
     assert.equal(h.calls.find(call => call.path === '/v1/product/launch')?.body?.['action'], 'introduction-skipped');
     assert.equal(h.calls.some(call => call.path.includes('/orders/')), false);
@@ -334,16 +362,20 @@ test('an interrupted Skip keeps the note and reload replays the same exit before
   } finally {await h.close();}
 });
 
-test('confirmed-buy evidence bypasses first-day reentry even when its finish checkpoint was not saved', async () => {
+test('confirmed-buy evidence resumes the celebration instead of first-day reentry or a second purchase', async () => {
   for (const hash of ['', '#start']) {
-    const h = await harness({hash, reply: call => call.path.endsWith('/portfolio')
-      ? json(h.f.portfolioAfterBuy(h.f.preview(GUEST_ID)), 200, PORTFOLIO_MEDIA_TYPE) : undefined});
+    const h = await harness({hash});
     try {
-      h.f.profile.launchCheckpoint = 'first-trade'; h.f.profile.hasConfirmedPaperTrade = true;
+      h.f.profile.launchCheckpoint = 'first-trade'; h.markCommitted();
       await h.session.ensureGuest(); await h.app();
-      assert.match(h.text(), /Your desk\./); assert.equal(h.button('Choose Apple'), undefined);
-      assert.equal(h.button('Confirm paper buy'), undefined); assert.equal(h.button('Start my first day'), undefined);
+      assert.match(h.text(), /You’ve placed your first order!/); assert.match(h.text(), /Shares 2/);
+      assert.doesNotMatch(h.text(), /Invested/, 'the amount is shown only from this order’s own receipt');
+      assert.equal(h.button('Choose Apple'), undefined); assert.equal(h.button('Confirm paper buy'), undefined);
+      assert.equal(h.button('Start my first day'), undefined);
       assert.equal(h.calls.some(call => call.path.includes('/orders/')), false);
+      await h.click('Continue');
+      assert.equal(h.calls.find(call => call.path === '/v1/product/launch')?.body?.['action'], 'paper-trade-confirmed');
+      assert.match(h.text(), /A little nudge\?/, 'a returning guest who already chose continues to reminders');
       assert.equal(h.calls.filter(call => call.path === '/v1/guest/session').length, 1);
     } finally {await h.close();}
   }

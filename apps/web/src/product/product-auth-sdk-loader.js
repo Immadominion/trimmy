@@ -20,6 +20,16 @@ export async function loadProductAuthSdk() {
       },
     };
   }
+  // Display-only labels for "Signed in with". Read from the live SDK user each render.
+  function logins(user) {
+    const text = value => typeof value === 'string' && value.length > 0 && value.length <= 254 ? value : null;
+    const items = [];
+    const email = text(user.email?.address), google = text(user.google?.email), x = text(user.twitter?.username);
+    if (email) items.push({method: 'email', label: email});
+    if (google) items.push({method: 'google', label: google});
+    if (x) items.push({method: 'x', label: `@${x}`});
+    return items;
+  }
   return {
     PrivyProvider: sdk.PrivyProvider,
     usePrivy() {
@@ -30,7 +40,7 @@ export async function loadProductAuthSdk() {
       }
       return {
         ready: value.ready, authenticated: value.authenticated,
-        user: value.user && typeof value.user.id === 'string' ? {id: value.user.id} : null,
+        user: value.user && typeof value.user.id === 'string' ? {id: value.user.id, logins: logins(value.user)} : null,
         error: Boolean(value.error),
         async getAccessToken() {const token = await value.getAccessToken(); return typeof token === 'string' ? token : null;},
         async logout() {await value.logout();},

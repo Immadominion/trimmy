@@ -3,6 +3,11 @@ import type {ProductMarketClient, StockCard, StockFacts, StockInsight, StockInsi
 import type {PracticeSession} from './practice-session';
 import type {PaperPortfolio, PaperPreview, PaperReceipt} from './practice-client';
 import {CompanyLogo, Failure, Loading, change, compactUsd, errorCopy, micros, shares, toPaperMicros, usd} from './ui';
+import {useMoney} from './money/money-api';
+import {discoveryRefs} from './money/market-tradeable';
+import {LiveOrderPanel} from './money/live-order-panel';
+import {marketLabel, type VariantOption} from './money/live-trading';
+import {CompanyFollow, CompanySections, type CompanySocial} from './company-social';
 
 const ranges: readonly [StockInsightPeriod, string][] = [['day', '1D'], ['week', '1W'], ['month', '1M'], ['year', '1Y']];
 
@@ -41,6 +46,19 @@ export interface StockScreenProps {
   readonly portfolio: PaperPortfolio | null; readonly onBack: () => void; readonly onDesk: () => void;
   readonly ensureDesk: () => Promise<void>; readonly onCommitted: (receipt: PaperReceipt) => Promise<void>;
   readonly onPending: () => void;
+  /** Mobile's Follow, Holders and Comments (company-social.tsx). */
+  readonly social?: CompanySocial;
+  /** Real mode: leave for Paper when this company has no token to trade with real money. */
+  readonly onPracticeInPaper?: () => void;
+}
+
+/** Every Market version of the company in Real mode: tradeable ones first, the rest with the reason. */
+function LiveVersions({options, selected, onSelect}: {options: readonly VariantOption[]; selected: string | null; onSelect(mint: string): void}) {
+  return <fieldset className="live-versions"><legend>Versions</legend>{options.map(option => <label key={option.mint} className={`live-version${option.asset ? '' : ' refused'}`}>
+    <input type="radio" name="live-version" value={option.mint} checked={selected === option.mint} disabled={!option.asset} onChange={() => onSelect(option.mint)}/>
+    <span><strong>{option.label}</strong><small className={option.tradeable ? 'tradeable' : ''}>{option.tradeable
+      ? option.asset?.market?.usSessions ? marketLabel(option.asset.market) : 'Tradeable' : option.reason ?? 'Not available to trade.'}</small></span>
+  </label>)}</fieldset>;
 }
 
 export function StockScreen(props: StockScreenProps) {
@@ -80,23 +98,41 @@ export function StockScreen(props: StockScreenProps) {
   }, [market, assetId, mint, period, chartRevision]);
   const variant = variants.find(v => v.mint === mint) ?? null;
   const name = facts?.name ?? card?.name ?? assetId.replaceAll('-', ' ');
+  const money = useMoney();
+  // Opening a company reads the token list again, as mobile does, so a list that was stale corrects itself.
+  useEffect(() => {if (money.real) void money.refreshCapabilities(true);}, [money.real, money.refreshCapabilities, assetId]);
+  const discovery = busy && !variants.length ? null : discoveryRefs(variants);
+  const liveOptions = money.real && money.capabilities?.enabled && discovery ? money.capabilities.optionsFor(assetId, discovery, facts?.symbol ?? card?.symbol ?? assetId) : null;
+  // The token chosen here, else the most liquid tradeable one; never another issuer's token by accident.
+  const liveMint = liveOptions ? liveOptions.find(option => option.asset && option.mint === mint)?.mint ??
+    liveOptions.find(option => option.tradeable)?.mint ?? liveOptions.find(option => option.asset)?.mint ?? null : null;
+  useEffect(() => {if (liveMint && liveMint !== mint) setMint(liveMint);}, [liveMint]);
   return <>
     <button className="company-back" onClick={props.onBack}>← Back to Market</button>
     <div className="company-layout"><section className="company-reading">
-      <div className="company-heading"><CompanyLogo name={name} url={facts?.imageUrl ?? card?.imageUrl ?? null} large/><div><h1>{name}</h1><p>{facts?.symbol ?? card?.symbol ?? 'Company'}{variant ? ` / ${variant.label ?? variant.symbol ?? 'Selected token'}` : ''}</p></div></div>
+      <div className="company-heading"><CompanyLogo name={name} url={facts?.imageUrl ?? card?.imageUrl ?? null} large/><div><h1>{name}</h1><p>{facts?.symbol ?? card?.symbol ?? 'Company'}{variant ? ` / ${variant.label ?? variant.symbol ?? 'Selected token'}` : ''}</p></div>
+        {props.social && <CompanyFollow card={card ?? {assetId, name, symbol: facts?.symbol ?? null, imageUrl: facts?.imageUrl ?? null, stock: facts?.stock ?? null, primaryVariant: null}} social={props.social}/>}</div>
       <div className="company-price">{chartBusy ? '…' : usd(insight?.priceUsd)}</div>
       <p className="company-price-caption">{insight?.changePercent24h != null && <span className={insight.changePercent24h < 0 ? 'negative' : 'positive'}>{change(insight.changePercent24h)} today</span>}Selected token · USD reference</p>
       <div className="range-picker" aria-label="Chart period">{ranges.map(([value, label]) => <button key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>)}<button aria-label="Refresh chart" onClick={() => setChartRevision(n => n + 1)}>↻</button></div>
       {chartBusy ? <div className="chart-empty"><Loading>Getting price history…</Loading></div> : insight ? <TokenChart insight={insight}/> : <div className="chart-empty"><p>Price history is unavailable right now.</p>{chartError !== null && <button className="text-button" onClick={() => setChartRevision(n => n + 1)}>Try again</button>}</div>}
       {busy && <Loading>Getting company details…</Loading>}
       {error !== null && <Failure message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}
-      {variants.length > 0 && <><label className="sr-only" htmlFor="token-version">Token version</label><select id="token-version" className="token-select" value={mint ?? ''} onChange={event => setMint(event.target.value)}>{variants.map(v => <option key={v.mint} value={v.mint}>{v.symbol ?? v.name ?? v.variantId} · {v.label ?? v.issuer ?? 'Token'}</option>)}</select></>}
+      {liveOptions && liveOptions.length > 0 ? <LiveVersions options={liveOptions} selected={liveMint} onSelect={setMint}/>
+      : variants.length > 0 && <><label className="sr-only" htmlFor="token-version">Token version</label><select id="token-version" className="token-select" value={mint ?? ''} onChange={event => setMint(event.target.value)}>{variants.map(v => <option key={v.mint} value={v.mint}>{v.symbol ?? v.name ?? v.variantId} · {v.label ?? v.issuer ?? 'Token'}</option>)}</select></>}
       {variant?.advisory && <div className="notice warning"><strong>Token caution</strong><p>{variant.advisory.reason}</p></div>}
       <div className="company-section"><h2>About {name}</h2><p>{facts?.description ?? insight?.description ?? 'A company description is not available right now.'}</p></div>
       {insight && <dl className="company-metrics"><div><dt>Token trading volume · 24h</dt><dd>{compactUsd(insight.volume24hUsd)}</dd></div><div><dt>Token liquidity</dt><dd>{compactUsd(insight.liquidityUsd)}</dd></div><div><dt>Token holders</dt><dd>{insight.holders?.toLocaleString() ?? 'Unavailable'}</dd></div><div><dt>Company market cap</dt><dd>{compactUsd(insight.stockMarketCapUsd)}</dd></div></dl>}
-      <p className="source-note">Data from Tokens.xyz. {insight ? `Checked ${new Date(insight.observedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}. ${Date.parse(insight.refreshAfter) <= clock ? 'Prices may have changed; refresh for a new read. ' : ''}` : ''}Reference prices are for research. Your paper order gets its own current quote.{mint ? <><br/>Selected token: {mint}</> : null}</p>
+      {props.social && mint && <CompanySections assetId={assetId} mint={mint} social={props.social}/>}
+      <p className="source-note">Data from Tokens.xyz. {insight ? `Checked ${new Date(insight.observedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}. ${Date.parse(insight.refreshAfter) <= clock ? 'Prices may have changed; refresh for a new read. ' : ''}` : ''}Reference prices are for research. {money.real ? 'A real order gets its own reviewed quote.' : 'Your paper order gets its own current quote.'}{mint ? <><br/>Selected token: {mint}</> : null}</p>
     </section>
-    {variant ? <TradePanel key={`${assetId}:${variant.mint}`} {...props} variant={variant} name={name}/> : <aside className="trade-panel"><h2>Practice a move.</h2><p className="trade-caption">A supported token and a current quote are needed to review a paper order.</p></aside>}
+    {money.real ? liveOptions && !liveOptions.some(option => option.asset)
+      ? <aside className="trade-panel live"><p className="money-badge real">Real money</p><h2>Not tradeable with real money yet.</h2>
+        <p className="trade-caption">{liveOptions.length === 1 ? liveOptions[0]!.reason : 'None of this company’s tokens can be traded in Trimmy right now.'}</p>
+        {props.onPracticeInPaper && <button className="secondary full" onClick={props.onPracticeInPaper}>Practice in Paper</button>}</aside>
+      : <LiveOrderPanel key={`${assetId}:${liveMint ?? ''}`} assetId={assetId} mint={liveMint} companyName={name} discovery={discovery}
+        {...(props.onPracticeInPaper ? {onPracticeInPaper: props.onPracticeInPaper} : {})}/>
+    : variant ? <TradePanel key={`${assetId}:${variant.mint}`} {...props} variant={variant} name={name}/> : <aside className="trade-panel"><h2>Practice a move.</h2><p className="trade-caption">A supported token and a current quote are needed to review a paper order.</p></aside>}
     </div>
   </>;
 }

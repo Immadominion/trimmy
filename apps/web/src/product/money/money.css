@@ -1,0 +1,139 @@
+/* Own money. Real is pine green, Paper stays violet, so the two are never confused. */
+:root{--pine:#26634f;--pine-ink:#1f5443;--pine-soft:#e3f1e9;--pine-line:#b6dacb;--loss:#b74e60}
+
+/* Mode switch and markers */
+.money-mode-switch{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 13px;border-radius:12px;font-size:12px;font-weight:600;color:#fff;background:#ffffff24}
+.money-mode-switch:hover{background:#ffffff38}
+.money-mode-switch span{font-size:14px;line-height:1}
+.money-badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.2px;border-radius:8px;padding:4px 8px;margin:0 0 12px}
+.money-badge.real{color:var(--pine-ink);background:var(--pine-soft)}
+.money-badge.paper{color:#6245bd;background:#f1ebfd}
+.nav-money-mode{display:inline-block;margin:0 0 12px 14px;font-size:11px;font-weight:600;color:var(--pine-ink);background:var(--pine-soft);border-radius:8px;padding:5px 9px}
+.market-tradeable{display:inline-block;margin-left:8px;font-weight:700;color:var(--pine)}
+.market-tradeable.waiting{font-weight:600;color:#8a6a2f}
+.market-lists{display:flex;gap:8px;margin:0 0 14px}
+.market-lists button{min-height:40px;padding:0 16px;border-radius:13px;background:#f3f2f6;font-size:13px;font-weight:600;color:#5f596c}
+.market-lists button[aria-pressed=true]{background:var(--pine-soft);color:var(--pine-ink)}
+
+/* Balance cards */
+.desk-screen .balance-card .balance-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.desk-screen .balance-card.real-balance{background:var(--pine) url('/trimmy/profile-sky.webp') center/cover;background-blend-mode:multiply;box-shadow:inset 0 0 0 4px var(--pine-line)}
+.desk-screen .real-balance .balance-label{color:#dff1e8}
+.desk-screen .real-balance .balance-amount small{color:#dff1e8}
+.desk-screen .real-details{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.desk-screen .real-details>div:first-child{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#dff1e8}
+.desk-screen .real-details strong{font-size:13px;font-weight:500;color:#fff}
+.cash-marks,.desk-screen .real-details .cash-marks{display:flex;flex-direction:row;gap:0;flex:0 0 auto}
+.cash-marks img{width:40px;height:40px;border-radius:50%;background:#fff;padding:2px;object-fit:cover}
+.cash-marks img+img{margin-left:-14px}
+.desk-screen .balance-actions{display:flex;gap:10px;margin-top:18px}
+.desk-screen .balance-actions button{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 16px;border-radius:14px;background:#ffffff24;color:#fff;font-size:13px;font-weight:600}
+.desk-screen .balance-actions button:hover{background:#ffffff38}
+.desk-screen .real-holdings .position-value{color:var(--muted)}
+
+/* Sheets */
+.money-sheet-backdrop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:#251b3857}
+.money-sheet{width:min(460px,100%);max-height:min(92vh,760px);overflow:auto;background:#fff;border-radius:28px;padding:22px 24px 26px;box-shadow:0 24px 60px #251b3833}
+.money-sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.money-sheet-head h2{flex:1;font-family:Bricolage,Dejanire,sans-serif;font-size:28px;letter-spacing:-.8px}
+.money-sheet-head .money-badge{margin:0}
+.money-close{width:44px;height:44px;border-radius:14px;font-size:24px;line-height:1;color:#5f596c}
+.money-close:hover{background:#f3f2f6}
+.fund-methods{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:20px;background:#f3f2f6}
+.fund-methods button{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:58px;border-radius:16px;font-weight:600}
+.fund-methods button.selected{background:#fff;box-shadow:0 2px 4px #00000012}
+.fund-methods button.unavailable{color:#8d879a}
+.fund-tag{font-size:10px;font-weight:600;color:#7a7488}
+.fund-tag.recommended{color:var(--pine)}
+.fund-state,.fund-deposit,.fund-card-soon{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:22px 4px 4px}
+.fund-state img{width:120px;height:auto}
+.fund-state h3,.fund-deposit h3,.fund-card-soon h3{font-size:20px}
+.money-qr-frame{padding:14px;border-radius:28px;background:#f2f7f4}
+.money-qr{display:block;width:min(250px,64vw);height:auto;color:#225b48;border-radius:16px}
+.fund-address{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.fund-note{font-size:13px;color:#675582;max-width:320px}
+.fund-note.subtle{color:#81768f;font-size:12px}
+.fund-full-address{font-size:12px;color:#81768f;max-width:100%}
+.fund-full-address code{display:block;word-break:break-all;margin-top:6px;color:var(--ink)}
+.fund-message{margin-top:14px;font-size:13px;color:var(--loss);text-align:center}
+.fund-deposit .primary,.fund-state .primary{background:var(--pine);box-shadow:0 3px 0 var(--pine-ink)}
+
+/* Live order panel */
+.trade-panel.live{background:#f3f8f5;box-shadow:inset 0 0 0 1px #dcebe2}
+.trade-panel.live .primary.live-action,.trade-panel.live .live-result .primary{background:var(--pine);box-shadow:0 3px 0 var(--pine-ink)}
+.live-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.live-heading .text-button{margin-top:0}
+.live-amount{display:flex;align-items:center;gap:8px}
+.live-amount>span[aria-hidden]{font-size:22px;color:#5f596c}
+.live-available-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:#5f596c;margin:6px 0 4px}
+.live-available-row .text-button{margin-top:0}
+.issuer-card{margin:16px 0;border-radius:24px;background:#ede7fb;padding:4px 4px 8px}
+.issuer-card.needs-tick{box-shadow:0 0 0 2px var(--loss)}
+.issuer-face{background:#fff;border-radius:20px;padding:14px 16px}
+.issuer-face h3{font-size:16px;display:flex;flex-direction:column;gap:2px}
+.issuer-face h3 small{font-size:11px;font-weight:400;color:#81768f}
+.issuer-warning{display:flex;gap:9px;align-items:flex-start;margin:10px 0 0;font-size:13px;font-weight:700;line-height:1.45;color:var(--ink)}
+.issuer-warning span{flex:0 0 18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:12px;color:#fff;background:var(--loss);margin-top:1px}
+.issuer-warning.review{padding:14px 16px;border-radius:18px;background:#fff5f6;margin:0 0 14px}
+.issuer-summary,.issuer-fact{font-size:12px;color:#675582;margin-top:6px}
+.issuer-fee{font-size:12px;color:var(--loss);margin-top:8px;font-weight:600}
+.issuer-tick{display:flex;gap:10px;align-items:flex-start;padding:12px 12px 4px;font-size:13px;line-height:1.45;cursor:pointer}
+.issuer-tick input{width:20px;height:20px;margin:1px 0 0;accent-color:#6245bd;flex:0 0 auto}
+.issuer-terms{display:inline-block;padding:8px 12px;font-size:13px;font-weight:600}
+.live-review dd{text-align:right}
+.market-state-note{margin:14px 0 0;padding:14px 16px;border-radius:18px;background:#fff4e5}
+.market-state-note.open{background:#eff7f1}
+.market-state-note strong{display:block;font-size:14px;font-weight:800}
+.market-state-note p{margin-top:4px;font-size:12px;color:#675582}
+.settlement-note{padding:12px 14px;border-radius:16px;background:#eff7f1;color:var(--pine-ink)}
+.live-result{text-align:center}
+.receipt-mark.pending{background:#f1ebfd;color:#6245bd}
+.receipt-mark.muted{background:#f3f2f6;color:#6245bd}
+.live-versions{border:0;margin:18px 0 0;padding:0;display:grid;gap:8px}
+.live-versions legend{font-weight:700;margin-bottom:8px}
+.live-version{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:#f7f5fb;cursor:pointer}
+.live-version input{margin-top:3px;accent-color:var(--pine)}
+.live-version span{display:flex;flex-direction:column;gap:3px}
+.live-version small{font-size:12px;color:#81768f}
+.live-version small.tradeable{color:var(--pine);font-weight:700}
+.live-version.refused{cursor:default;opacity:.85}
+
+/* Fast buy */
+.fast-buy-search{width:100%;min-height:48px;border-radius:16px;border:1px solid var(--line);padding:0 16px;margin-bottom:10px}
+.fast-buy-list{list-style:none;margin:0;padding:0}
+.fast-buy-list button{display:flex;align-items:center;gap:12px;width:100%;min-height:62px;padding:8px 6px;border-radius:14px;text-align:left}
+.fast-buy-list button:hover{background:#f7f3fe}
+.fast-buy.real .fast-buy-list button:hover{background:var(--pine-soft)}
+.fast-buy-list span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.fast-buy-list small{font-size:12px;color:#81768f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fast-buy-message{text-align:center;padding:24px 8px;color:#675582}
+
+/* History */
+.trade-history{max-width:760px;margin:0 auto}
+.trade-history .page-intro{display:flex;align-items:center;gap:14px;margin:8px 0 22px}
+.trade-history .page-intro .money-badge{margin:0}
+.history-list{display:grid;gap:12px}
+.history-row{border-radius:20px;background:#faf8fd}
+.history-summary{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;text-align:left}
+.history-main{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.history-main small,.history-meta small{font-size:12px;color:#81768f}
+.history-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.history-status{font-size:12px}
+.history-status.confirmed{color:var(--green)}
+.history-status.failed{color:var(--loss)}
+.history-status.pending,.history-status.expired{color:var(--muted)}
+.history-detail{padding:0 16px 14px 68px}
+.history-detail dl{margin:0;display:grid;gap:8px}
+.history-detail dt{font-size:11px;color:#81768f}
+.history-detail dd{margin:2px 0 0;font-weight:600}
+.history-links{display:flex;gap:18px;flex-wrap:wrap}
+
+@media(max-width:700px){
+  .money-sheet-backdrop{align-items:end;padding:0}
+  .money-sheet{width:100%;border-radius:28px 28px 0 0;max-height:92vh}
+  .desk-screen .balance-actions button{flex:1;justify-content:center}
+  .history-detail{padding-left:16px}
+}
+@media(prefers-reduced-motion:reduce){.money-sheet{scroll-behavior:auto}}
+/* Total balance: cash and stocks named under the headline. */
+.desk-screen .real-balance .balance-split{margin:6px 0 0;font-size:13px;color:#e3d9ff;font-variant-numeric:tabular-nums}

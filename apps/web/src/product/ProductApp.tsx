@@ -21,9 +21,39 @@ import {ProductAuthProvider, useProductAuth, type ProductAuthConfig, type Produc
 import type {ProductAuthSdkPort} from './product-auth-sdk-loader';
 import {createProductAccountConnector} from './product-account';
 import {SignInScreen} from './sign-in-screen';
+// Own money (Real mode): see money/money-api.ts for the entry points other screens use.
+import {MoneyProvider} from './money/money-context';
+import {requestRealAfterSignIn, useMoney, type MoneyApi} from './money/money-api';
+import {MoneyModeSwitch, RealBalanceCard, RealHoldings} from './money/real-desk';
+import {TradeHistoryScreen} from './money/trade-history';
+import {FastBuySheet as LiveFastBuySheet, type FastBuyChoice} from './money/fast-buy-sheet';
+import type {ProductWalletSdkPort} from './money/wallet-sdk-loader';
+import type {MoneyStorage} from './money/stores';
+import {coherentHoldings} from './money/wallet-controller';
+import {JourneyScreens} from './journey-screens';
+import {useFirstDayJourney} from './use-first-day-journey';
+import {isJourneyScreen} from './journey';
+import type {SignInIntent} from './journey-store';
+import {openFundWallet, registerFundWalletOpener, type FundWalletSource} from './fund-wallet';
+import {GuestDeskRecovery} from './guest-desk-recovery';
+import {SettingsScreen, type PaperResetOutcome} from './settings-screen';
+import {ProductApiClient} from './product-api';
+import {PAPER_RESET_CONFIRMATION, PendingMutations, ambiguous, careerApi, newMutationId, type PaperResetWrite} from './career-actions';
+import {useReasonPrivacy} from './use-reason-privacy';
+import {useCareerMilestones} from './career-milestones';
+import {useCareerDayContext} from './use-career-day-context';
+import {useFollowing, useSearchRecents} from './market-social';
+import type {CompanySocial} from './company-social';
+import {CommunityPreview, CommunityScreen} from './community-screen';
+import {FastBuySheet as PracticeFastBuySheet} from './fast-buy';
+import {HomeActions, HomeInvitations, type HomeParity} from './home-extras';
+import {EntryDoodle, type DoodleScene} from './entry-doodle';
+import {useHoldingPrices} from './money/holding-values';
+import {PracticeError} from './practice-client';
 import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares} from './ui';
 
-type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work';
+type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work' | 'history' | 'settings' | 'community' | 'updates';
+
 type Route = {page: Page; assetId?: string; mint?: string; assignmentId?: string};
 const pages: readonly {page: Page; title: string; icon: string}[] = [
   {page: 'desk', title: 'Desk', icon: 'nav-plumpy-desk.png'},
@@ -39,13 +69,13 @@ function readRoute(): Route {
     const mint = new URLSearchParams(search).get('mint');
     return {page, assetId, ...(mint && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint) ? {mint} : {})};
   }
-  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || pages.some(item => item.page === page) ? page as Page : 'desk'};
+  return {page: page === 'start' || page === 'welcome' || page === 'sign-in' || page === 'daily' || page === 'history' || page === 'settings' || page === 'community' || page === 'updates' || pages.some(item => item.page === page) ? page as Page : 'desk'};
 }
 function browserStorage(): PracticeStorage {
   try {return window.localStorage;} catch {return {getItem() {throw new Error('Storage unavailable');}, setItem() {throw new Error('Storage unavailable');}};}
 }
-type Snapshot = {portfolio: PaperPortfolio | null; profile: ProductProfile | null; career: CareerSummary | null; missions: CareerMissionBoard | null; checkedAt: number | null};
-const emptySnapshot: Snapshot = {portfolio: null, profile: null, career: null, missions: null, checkedAt: null};
+type Snapshot = {portfolio: PaperPortfolio | null; profile: ProductProfile | null; career: CareerSummary | null; missions: CareerMissionBoard | null; checkedAt: number | null; profileKnown: boolean};
+const emptySnapshot: Snapshot = {portfolio: null, profile: null, career: null, missions: null, checkedAt: null, profileKnown: false};
 
 export interface ProductAppProps {
   readonly apiBase?: string | null;
@@ -56,6 +86,12 @@ export interface ProductAppProps {
   readonly authSdk?: ProductAuthSdkPort;
   readonly connectAccount?: ConnectProductAccount;
   readonly accountAccess?: ProductAccountAccess;
+  /** Own money: tests inject the Privy wallet boundary, transport and storage. */
+  readonly walletSdk?: ProductWalletSdkPort;
+  readonly moneyFetch?: typeof globalThis.fetch;
+  readonly moneyStorage?: MoneyStorage | null;
+  /** Client for the social, settings and Career action routes. Defaults to the API origin. */
+  readonly productApi?: ProductApiClient;
 }
 export function ProductApp(props: ProductAppProps) {
   const apiBase = props.apiBase === undefined ? productApiBase() : props.apiBase;
@@ -71,10 +107,22 @@ function IdentityWorkspace(props: ProductAppProps) {
   const binding = useRef<{access: ProductAccountAccess | null; epoch: number}>({access: null, epoch: 0});
   if (binding.current.access !== auth.accountAccess) binding.current = {access: auth.accountAccess, epoch: binding.current.epoch + 1};
   if (auth.phase === 'restoring') return <div className="auth-restore"><img src={art('trimmy-mark.png')} alt="Trimmy"/><Loading>Opening Trimmy…</Loading></div>;
-  return <ProductWorkspace key={`${props.apiBase ?? 'unconfigured'}:${binding.current.epoch}`} {...props} {...(auth.accountAccess ? {accountAccess: auth.accountAccess} : {})}/>;
+  const key = `${props.apiBase ?? 'unconfigured'}:${binding.current.epoch}`;
+  return <MoneyProvider key={key} apiBase={props.apiBase ?? null} accountAccess={auth.accountAccess}
+    {...(props.walletSdk ? {walletSdk: props.walletSdk} : {})} {...(props.moneyFetch ? {fetch: props.moneyFetch} : {})}
+    {...(props.moneyStorage !== undefined ? {storage: props.moneyStorage} : {})}>
+    <ProductWorkspace {...props} {...(auth.accountAccess ? {accountAccess: auth.accountAccess} : {})}/>
+  </MoneyProvider>;
 }
-function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketClient, storage, accountAccess}: ProductAppProps) {
+function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketClient, storage, accountAccess, productApi: suppliedProductApi}: ProductAppProps) {
   const auth = useProductAuth();
+  const money = useMoney();
+  const [fastBuy, setFastBuy] = useState(false);
+  // The first day's "Add money" (and any other caller of fund-wallet.ts) opens the money side's
+  // deposit sheet, which also switches the account to Real, as mobile does. Only while own money
+  // is available; otherwise callers say plainly that deposits aren't open here.
+  const {available: moneyAvailable, openFundWallet: openDeposit} = money;
+  useEffect(() => moneyAvailable ? registerFundWalletOpener(() => openDeposit()) : undefined, [moneyAvailable, openDeposit]);
   const setup = useMemo(() => {
     if (!apiBase) return {session: null, market: null, error: null};
     try {return {session: new PracticeSession({client: practiceClient ?? new PracticeClient({baseUrl: apiBase}), storage: storage ?? browserStorage(), ...(accountAccess ? {account: accountAccess} : {})}),
@@ -85,6 +133,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
   const [restoring, setRestoring] = useState(Boolean(setup.session?.hasSavedIdentity));
   const [introInitial, setIntroInitial] = useState<'welcome' | 'note' | 'practice'>('welcome');
+  const [introStep, setIntroStep] = useState('welcome');
   const routeRef = useRef(route); routeRef.current = route;
   const introSettled = useRef(false);
   const startupRoutingPending = useRef(Boolean(setup.session?.hasSavedIdentity));
@@ -160,6 +209,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     const currentPortfolio = portfolio.status === 'fulfilled' && portfolio.value.revision >= (session.lastReceipt?.accountRevision ?? 0) ? portfolio.value : null;
     setSnapshot(prior => ({portfolio: portfolio.status === 'rejected' && prior.portfolio && prior.portfolio.revision >= (session.lastReceipt?.accountRevision ?? 0) ? prior.portfolio : currentPortfolio,
       profile: profile.status === 'fulfilled' ? profile.value : prior.profile,
+      profileKnown: profile.status === 'fulfilled' || prior.profileKnown,
       career: career.status === 'fulfilled' ? career.value : prior.career,
       missions: missions.status === 'fulfilled' ? missions.value : prior.missions, checkedAt: Date.now()}));
     if (portfolio.status === 'rejected') setError(portfolio.reason);
@@ -173,6 +223,50 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const progress = useProgress(session, Boolean(session?.hasIdentity) && !storageChanged && !restoring && !startupRoutingPending.current, route.page, refresh, Boolean(session?.pendingDailyDesk));
   const workCompleted = useCallback(async () => {await Promise.all([refresh(), progress.refresh()]);}, [refresh, progress.refresh]);
   const workdays = useWorkdays(session, Boolean(session?.hasIdentity) && !storageChanged && !restoring && !startupRoutingPending.current, route.page, workCompleted);
+  // First-day follow-up (mobile order): celebration, account choice, reminders, money choice.
+  const journeyStorage = useMemo(() => storage ?? browserStorage(), [storage]);
+  const [fundingUnavailable, setFundingUnavailable] = useState(false);
+  const journey = useFirstDayJourney({apiBase, storage: journeyStorage, session, accountId: accountAccess?.accountId ?? null,
+    profile: snapshot.profileKnown ? snapshot.profile : undefined, career: snapshot.career, guestDisposition: auth.guestDisposition,
+    restoreGuest, refresh, active: () => workspaceActive.current});
+  useEffect(() => {if (session?.isAccount) journey.forgetGuestChoice();}, [session, journey.forgetGuestChoice]);
+  // Settings, reason privacy and Career actions (mobile parity). Identity is this workspace's desk.
+  const productApi = useMemo(() => {
+    if (suppliedProductApi) return suppliedProductApi;
+    try {return apiBase ? new ProductApiClient({baseUrl: apiBase}) : null;} catch {return null;}
+  }, [apiBase, suppliedProductApi]);
+  const pendingMutations = useMemo(() => {try {return apiBase ? new PendingMutations(journeyStorage, apiBase) : null;} catch {return null;}}, [apiBase, journeyStorage]);
+  const productIdentity = session?.isAccount ? accountAccess ?? null : session?.guest ?? null;
+  const reasonPrivacy = useReasonPrivacy({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
+    enabled: Boolean(session?.hasIdentity) && !storageChanged && !restoring && (route.page === 'settings' || route.page === 'market' && Boolean(route.assetId))});
+  // Market and company social parity: Following (accounts), recents, Holders and Comments.
+  const following = useFollowing(productApi, session?.isAccount ? accountAccess ?? null : null);
+  const recents = useSearchRecents(journeyStorage, apiBase);
+  const marketSocial = {following, recents, onSignIn: () => openSignIn('app')};
+  const companySocial: CompanySocial | undefined = productApi ? {api: productApi, identity: productIdentity, accountSignedIn: Boolean(session?.isAccount),
+    following, privacy: reasonPrivacy.privacy, onOpenSettings: () => navigate({page: 'settings'}), onSignIn: () => openSignIn('app')} : undefined;
+  const careerRefresh = useCallback(async () => {await Promise.all([refresh(), progress.refresh()]);}, [refresh, progress.refresh]);
+  const milestones = useCareerMilestones({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
+    career: snapshot.career, missions: snapshot.missions, portfolio: snapshot.portfolio, refresh: careerRefresh});
+  // Mobile's Career day context: a web-first desk gets this browser's time zone once, then refreshes at each new Career day.
+  useCareerDayContext({api: productApi, identity: productIdentity, principal: journey.principal, pending: pendingMutations,
+    enabled: Boolean(session?.hasIdentity) && !storageChanged && !restoring && !startupRoutingPending.current && !session?.guestRecovery,
+    onConfigured: () => void careerRefresh(), onNewDay: () => {void careerRefresh(); void workdays.refresh();}});
+  // Home and community parity: compact Fast buy (practice, or own money in Real mode), Updates, trader invitation and Community.
+  const home: HomeParity = {onFastBuy: () => setFastBuy(true),
+    onUpdates: session?.isAccount && accountAccess ? () => navigate({page: 'updates'}) : undefined,
+    onChooseTrader: snapshot.profile && !snapshot.profile.onboarding.persona ? () => navigate({page: 'profile'}) : undefined,
+    community: <CommunityPreview api={productApi} account={session?.isAccount ? accountAccess ?? null : null}
+      onOpen={() => session?.isAccount ? navigate({page: 'community'}) : openSignIn('app')}/>};
+  const [oneTimeNotice, setOneTimeNotice] = useState<string | null>(null);
+  useEffect(() => {const text = journey.store?.consumeOneTimeNotice(); if (text) setOneTimeNotice(text);}, [journey.store]);
+  const preservedExpired = useMemo(() => {
+    if (auth.guestDisposition !== 'preserved' || !apiBase) return false;
+    try {
+      const guest = new PracticeSession({client: practiceClient ?? new PracticeClient({baseUrl: apiBase}), storage: journeyStorage});
+      const code = guest.claimFailureCode; guest.close(); return code === 'GUEST_SESSION_EXPIRED';
+    } catch {return false;}
+  }, [auth.guestDisposition, apiBase, practiceClient, journeyStorage]);
 
   const ensureDesk = useCallback(async () => {
     if (!session) throw setup.error ?? new Error('Practice unavailable');
@@ -192,7 +286,9 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   }, [session, setup.error, refresh, restoreGuest]);
 
   function routeRestoredProfile(profile: ProductProfile | null) {
-    introSettled.current = session?.isAccount === true || profile?.launchCheckpoint === 'app' || profile?.hasConfirmedPaperTrade === true || session?.lastReceipt?.action === 'buy';
+    // Accounts follow their own saved checkpoint, as on mobile. A confirmed order or a
+    // later checkpoint belongs to the follow-up screens, never to a second first trade.
+    introSettled.current = (profile !== null && profile.launchCheckpoint !== 'first-trade') || profile?.hasConfirmedPaperTrade === true || session?.lastReceipt?.action === 'buy';
     if (routeRef.current.page === 'desk' || routeRef.current.page === 'start' || (routeRef.current.page === 'sign-in' && session?.isAccount)) {
       if (introSettled.current || session?.pendingCommit) navigate({page: 'desk'}, true);
       else {setIntroInitial(profile ? 'practice' : 'welcome'); navigate({page: 'start'}, true);}
@@ -223,6 +319,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
           const profile = existing || session.isAccount ? await session.readProfile() : null;
           routeRestoredProfile(profile);
           startupRoutingPending.current = false;
+          if (session.isAccount) await followSignInIntent(profile);
         }
         catch (reason) {if (active) {setError(reason); setBusy(false);}}
         finally {if (active) setRestoring(false);}
@@ -234,8 +331,10 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
 
   function start() {setIntroInitial('welcome'); navigate({page: 'welcome'});}
   const firstDayStep = useCallback((step: string) => {
+    setIntroStep(step);
     if (step !== 'welcome' && routeRef.current.page !== 'start') {routeRef.current = {page: 'start'}; setRoute({page: 'start'});}
   }, []);
+  /** Skip leaves the introduction. A confirmed order instead resumes its follow-up screens. */
   async function exitIntroduction(completed: boolean) {
     if (!session) throw new Error('Practice unavailable');
     await restoreGuest();
@@ -243,14 +342,87 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     // Replaying a saved exit can already return app. Never send a second transition.
     const profile = await session.ensureProfile();
     if (!workspaceActive.current) return;
-    if (profile.launchCheckpoint !== 'app') await session.advanceLaunch(completed ? 'introduction-completed' : 'introduction-skipped');
+    if (!completed && profile.launchCheckpoint !== 'app') await session.advanceLaunch('introduction-skipped');
     if (!workspaceActive.current) return;
     introSettled.current = true;
     await refresh();
     if (workspaceActive.current) navigate({page: 'desk'}, true);
   }
-  async function introCommitted(_receipt: PaperReceipt) {
+  /** The money choice ends the introduction; the server verifies the confirmed order first. */
+  async function finishIntroduction(addMoney: boolean) {
+    if (!session) throw new Error('Practice unavailable');
+    await restoreGuest();
     if (!workspaceActive.current) return;
+    const profile = await session.ensureProfile();
+    if (!workspaceActive.current) return;
+    if (profile.launchCheckpoint !== 'app') await session.advanceLaunch('introduction-completed');
+    if (!workspaceActive.current) return;
+    introSettled.current = true;
+    await refresh();
+    if (!workspaceActive.current) return;
+    navigate({page: 'desk'}, true);
+    if (addMoney) requestFunding('first-day');
+  }
+  function openSignIn(intent: SignInIntent | null = null) {journey.setSignInIntent(intent); navigate({page: 'sign-in'});}
+  /** Deposits need an account first, as mobile's `_openFunding` does (see fund-wallet.ts). */
+  function requestFunding(source: FundWalletSource) {
+    if (!session?.isAccount) {openSignIn('fund'); return;}
+    setFundingUnavailable(!openFundWallet(source));
+  }
+  async function followSignInIntent(profile: ProductProfile | null) {
+    const intent = journey.consumeSignInIntent();
+    // Signing in from the app keeps the person in the app (mobile's _skipIntroAfterAuth).
+    if (intent === 'app' && profile && profile.launchCheckpoint !== 'app') await exitIntroduction(false);
+    else if (intent === 'fund' && workspaceActive.current) requestFunding('first-day');
+  }
+  /** Explicit, confirmed replacement of an expired guest desk. The old record is archived, never deleted. */
+  async function startNewGuestDesk() {
+    if (!session) throw new Error('Practice unavailable');
+    await session.startNewGuestDesk();
+    if (!workspaceActive.current) return;
+    ++loadEpoch.current; setError(null); setSnapshot(emptySnapshot); introSettled.current = false;
+    setIntroInitial('welcome'); navigate({page: 'start'}, true);
+  }
+  /** Mobile's settings reset: the exact command is saved before dispatch and replayed after an ambiguous result. */
+  async function resetPaperDesk(): Promise<PaperResetOutcome> {
+    const principal = journey.principal, portfolio = snapshot.portfolio;
+    if (!session || !productApi || !productIdentity || !principal || !pendingMutations || !portfolio || session.pendingCommit) {
+      throw new PracticeError('PAPER_RESET_UNAVAILABLE', 'Paper reset is unavailable.');
+    }
+    const saved = pendingMutations.read<PaperResetWrite>('paper-reset', principal);
+    const body: PaperResetWrite = saved ?? {schemaVersion: 1, mutationId: newMutationId(), baseRevision: portfolio.revision, confirm: PAPER_RESET_CONFIRMATION};
+    if (!saved) pendingMutations.save('paper-reset', principal, body);
+    try {
+      const receipt = await careerApi.resetPaper(productApi, productIdentity, body);
+      pendingMutations.clear('paper-reset', principal);
+      const current = await session.readPortfolio().catch(() => null);
+      if (workspaceActive.current) await refresh();
+      const newerActivity = current !== null && current.revision > receipt.revision;
+      return {cashPaperMicros: newerActivity ? current.cashPaperMicros : receipt.cashPaperMicros, newerActivity};
+    } catch (error) {
+      if (!ambiguous(error)) pendingMutations.clear('paper-reset', principal);
+      if (error instanceof PracticeError && error.code === 'PAPER_PORTFOLIO_CHANGED' && workspaceActive.current) await refresh();
+      throw error;
+    } finally {setRevision(value => value + 1);}
+  }
+  /** Account-only and irreversible; the session ends locally after the API confirms, as on mobile. */
+  async function closeAccount() {
+    if (!productApi || !session?.isAccount || !accountAccess) throw new PracticeError('ACCOUNT_CLOSURE_UNAVAILABLE', 'Account closure is unavailable.');
+    const result = await careerApi.closeAccount(productApi, accountAccess);
+    journey.store?.setOneTimeNotice(result.note);
+    navigate({page: 'welcome'}, true);
+    await auth.logout();
+  }
+  async function chooseGuest() {
+    // A half-finished provider sign-in is dropped before the explicit guest choice is saved.
+    if (auth.subject && !(await auth.logout())) throw new Error('Sign-out did not finish.');
+    await journey.chooseGuest();
+    if (routeRef.current.page === 'sign-in') navigate({page: 'desk'}, true);
+  }
+  const [celebrationHint, setCelebrationHint] = useState<{orderId: string; name: string; logoUrl: string | null} | null>(null);
+  async function introCommitted(receipt: PaperReceipt, company?: {readonly name: string; readonly logoUrl: string | null}) {
+    if (!workspaceActive.current) return;
+    if (company) setCelebrationHint({orderId: receipt.id, ...company});
     ++loadEpoch.current;
     setSnapshot(prior => ({...prior, portfolio: null, career: null, missions: null}));
     setRevision(value => value + 1);
@@ -262,11 +434,8 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     setSnapshot(prior => ({...prior, portfolio: null, career: null, missions: null}));
     setBusy(true);
     setRevision(value => value + 1);
-    // A launch failure cannot turn a durable receipt into a failed order.
-    try {if (session && snapshot.profile?.launchCheckpoint !== 'app') {
-      const profile = snapshot.profile ?? await session.readProfile();
-      if (workspaceActive.current && profile?.launchCheckpoint !== 'app') await session.advanceLaunch('introduction-completed');
-    }} catch { /* Resume later; ledger remains authoritative. */ }
+    // A first confirmed order opens mobile's follow-up (celebration, account choice,
+    // reminders, money choice). An order never finishes the introduction by itself.
     if (workspaceActive.current) await refresh();
   }
   async function recover() {
@@ -290,6 +459,16 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   }, [session, route.page, restoring, refresh]);
 
   function select(card: StockCard) {cards.current.set(card.assetId, card); navigate({page: 'market', assetId: card.assetId, ...(card.primaryVariant ? {mint: card.primaryVariant.mint} : {})});}
+  // Paper/Real is account-scoped. A guest who asks for Real signs in first, then lands in Real.
+  function switchMoneyMode() {
+    if (money.available) {money.setReal(!money.real); return;}
+    requestRealAfterSignIn(); navigate({page: 'sign-in'});
+  }
+  function openFastBuyChoice(choice: FastBuyChoice) {
+    setFastBuy(false);
+    if (choice.card) cards.current.set(choice.assetId, choice.card);
+    navigate({page: 'market', assetId: choice.assetId, ...(choice.mint ? {mint: choice.mint} : {})});
+  }
   function motionSetting(value: boolean) {
     try {localStorage.setItem('trimmy.web.motion', value ? 'on' : 'off'); setMotion(value);} catch {setError(new Error('Motion preference could not be saved.'));}
   }
@@ -305,41 +484,87 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const selectedCard = route.assetId ? cards.current.get(route.assetId) : undefined;
   const hasGuest = Boolean(session?.hasIdentity);
   const signIn = route.page === 'sign-in' || (auth.subject !== null && !auth.authenticated) || auth.phase === 'connecting' || auth.phase === 'account-choice';
-  const firstDay = !signIn && (route.page === 'start' || route.page === 'welcome' || (route.page === 'desk' && !hasGuest && !busy));
+  const guestRecovery = session && !storageChanged ? session.guestRecovery : null;
+  const journeyScreen = Boolean(apiBase && session && market && !storageChanged && !restoring && !guestRecovery && (isJourneyScreen(journey.view) || journey.preservedNotice));
+  const recoveryScreen = guestRecovery !== null && !signIn;
+  const firstDay = !journeyScreen && !recoveryScreen && !signIn && (route.page === 'start' || route.page === 'welcome' || (route.page === 'desk' && !hasGuest && !busy));
 
-  return <div className={`product-shell${firstDay || signIn ? ' onboarding-shell' : ''}${route.page === 'market' && !route.assetId ? ' market-shell' : ''}${route.page === 'career' || route.page === 'daily' && !progress.pending ? ' career-shell' : ''}`} data-revision={revision}>
+  const onboarding = firstDay || signIn || journeyScreen || recoveryScreen;
+  // Mirrors the render order below: recovery, then the journey, then sign-in, then the first day.
+  const doodle: DoodleScene | null = !onboarding ? null : recoveryScreen ? 'preserved'
+    : journeyScreen ? (journey.preservedNotice ? 'preserved' : journey.view.kind === 'gate' ? 'account' : journey.view.kind === 'celebration' ? 'order'
+      : journey.view.kind === 'reminders' ? 'reminders' : 'money')
+    : signIn ? 'account' : introStep === 'receipt' ? 'order' : introStep === 'note' || introStep === 'practice' || introStep === 'review' ? introStep : 'welcome';
+  return <div className={`product-shell${onboarding ? ' onboarding-shell' : ''}${doodle ? ' entry-split' : ''}${route.page === 'market' && !route.assetId ? ' market-shell' : ''}${route.page === 'career' || route.page === 'daily' && !progress.pending ? ' career-shell' : ''}`} data-revision={revision}>
     <a className="skip" href="#main-content" onClick={event => {event.preventDefault(); heading.current?.focus();}}>Skip to content</a>
     <aside className="product-nav"><button className="product-brand" aria-label="Trimmy desk" onClick={() => navigate({page: 'desk'})}><img src={art('trimmy-mark.png')} alt=""/>trimmy</button>
-      <nav aria-label="Main navigation">{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{item.title}</span></button>)}</nav>
-      {snapshot.profile?.onboarding.persona && <button className="nav-identity" onClick={() => navigate({page:'profile'})}><img src={art(`persona-${snapshot.profile.onboarding.persona}-avatar-v1.png`)} alt=""/><span><strong>{snapshot.profile.onboarding.handle ? `@${snapshot.profile.onboarding.handle}` : `The ${snapshot.profile.onboarding.persona[0]!.toUpperCase()}${snapshot.profile.onboarding.persona.slice(1)}`}</strong>{snapshot.career && <small>{snapshot.career.rank.label}</small>}</span></button>}
+      {money.real && <span className="nav-money-mode" role="status">Real money</span>}
+      <nav aria-label="Main navigation">{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' || route.page === 'settings' && item.page === 'profile' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{item.title}</span></button>)}</nav>
+      {(snapshot.profile?.onboarding.persona || auth.logins.length > 0) && <button className="nav-identity" onClick={() => navigate({page:'profile'})}><img src={art(snapshot.profile?.onboarding.persona ? `persona-${snapshot.profile.onboarding.persona}-avatar-v1.png` : 'icons/nav-plumpy-profile.png')} alt=""/><span><strong>{snapshot.profile?.onboarding.handle ? `@${snapshot.profile.onboarding.handle}` : auth.logins[0]?.label ?? 'Your desk'}</strong>{snapshot.career && <small>{snapshot.career.rank.label}</small>}</span></button>}
     </aside>
-    <div className="product-body">{(firstDay || signIn) && <header className="onboard-header"><span className="product-brand"><img src={art('trimmy-mark.png')} alt=""/>trimmy</span>{firstDay && <button className="text-button" onClick={() => navigate({page: 'sign-in'})}>Sign in</button>}</header>}
+    <div className="product-body">{(firstDay || signIn || journeyScreen || recoveryScreen) && <header className="onboard-header"><span className="product-brand"><img src={art('trimmy-mark.png')} alt=""/>trimmy</span>{firstDay && <button className="text-button" onClick={() => navigate({page: 'sign-in'})}>Sign in</button>}</header>}
       <main id="main-content" ref={heading} tabIndex={-1} className="product-main">
       {!apiBase ? <div className="empty-page"><SalArt motion={motion}/><h1>Your desk is almost ready.</h1><p>Practice is unavailable here right now. Please try again later.</p></div>
       : storageChanged ? <div className="empty-page"><h1>Your desk changed in another tab.</h1><p>Reload to restore the latest desk before making another move.</p><button className="primary" onClick={() => window.location.reload()}>Reload your desk</button></div>
       : <>
-        {error !== null && <Failure title="Your desk needs a moment." message={errorCopy(error)} onRetry={() => void retryDesk()}/>}
+        {error !== null && !recoveryScreen && !guestRecovery && <Failure title="Your desk needs a moment." message={errorCopy(error)} onRetry={() => void retryDesk()}/>}
         {session?.pendingCommit && <div className="pending-order" role="status"><strong>Let’s check your last order.</strong><p>The connection ended before its receipt arrived. Checking uses the same order so it won’t be placed twice.</p><button className="text-button" disabled={busy} onClick={() => void recover()}>{busy ? 'Checking…' : 'Check order'}</button></div>}
         {recovered && <div className="notice" role="status">Your order is confirmed. The same receipt and updated desk are restored.</div>}
         {workdays.pending && !['career', 'work', 'daily'].includes(route.page) && <div className="work-recovery" role="status"><span>Your assignment has an unconfirmed save.</span><button className="text-button" disabled={workdays.working} onClick={() => void workdays.recover()}>{workdays.working ? 'Checking…' : 'Check saved work'}</button></div>}
-        {signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} onBack={() => navigate({page: hasGuest ? 'desk' : 'welcome'}, true)} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
-        {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)}/> : <MarketScreen client={market} onSelect={select}/>)}
-        {route.page === 'desk' && market && (busy && !snapshot.portfolio ? <Loading/> : snapshot.portfolio ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => navigate({page: 'sign-in'})} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}/> : null)}
-        {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title="Your career starts here." onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle}/>)}
+        {oneTimeNotice && !journeyScreen && <div className="notice" role="status">{oneTimeNotice}<button className="text-button" onClick={() => setOneTimeNotice(null)}>Dismiss</button></div>}
+        {fundingUnavailable && !journeyScreen && !signIn && <div className="notice" role="status">Adding money isn’t available on the web yet. You can keep practicing with free money.<button className="text-button" onClick={() => setFundingUnavailable(false)}>Dismiss</button></div>}
+        {recoveryScreen && guestRecovery ? <GuestDeskRecovery failure={guestRecovery} canSignIn={auth.enabled} onSignIn={() => openSignIn('app')} onStartNew={startNewGuestDesk}/>
+        : journeyScreen && market ? <JourneyScreens journey={journey} market={market} career={snapshot.career} portfolio={snapshot.portfolio} careerLoading={busy && !snapshot.career}
+          motion={motion} preservedExpired={preservedExpired} onGuest={chooseGuest} onAccount={() => navigate({page: 'desk'}, true)}
+          onRetryEvidence={() => void refresh()} onFinish={finishIntroduction} hint={celebrationHint}/>
+        : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} expiredGuestRecovery={guestRecovery !== null} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
+        {route.page === 'market' && market && (route.assetId && session ? <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)} onPracticeInPaper={() => money.setReal(false)} {...(companySocial ? {social: companySocial} : {})}/> : <MarketScreen client={market} onSelect={select} social={marketSocial} real={money.real} capabilities={money.capabilities}/>)}
+        {route.page === 'history' && (money.available ? <TradeHistoryScreen onBack={() => navigate({page: 'desk'})} onOpenAsset={(assetId, mint) => navigate({page: 'market', assetId, mint})}/>
+          : <div className="empty-page"><h1>Your trades</h1><p>Sign in to see the trades you made with your own money.</p><button className="primary" onClick={() => openSignIn('app')}>Sign in</button></div>)}
+        {route.page === 'desk' && market && (busy && !snapshot.portfolio && !money.real ? <Loading/> : snapshot.portfolio || money.real ? <Desk snapshot={snapshot} market={market} workdays={workdays} onWork={openWork} motion={motion} onMarket={() => navigate({page: 'market'})} onCareer={() => navigate({page: 'career'})} onSignIn={auth.authenticated ? undefined : () => openSignIn('app')} onPosition={(assetId, mint) => navigate({page: 'market', assetId, mint})}
+          money={money} onSwitchMode={switchMoneyMode} onFastBuy={() => setFastBuy(true)} onHistory={() => navigate({page: 'history'})} home={home}/> : null)}
+        {(route.page === 'community' || route.page === 'updates') && (productApi && session?.isAccount && accountAccess
+          ? <CommunityScreen key={route.page} api={productApi} account={accountAccess} initialScope={route.page === 'updates' ? 'notifications' : 'everyone'}
+            onOpenAsset={assetId => navigate({page: 'market', assetId})} onBack={() => navigate({page: 'desk'})}/>
+          : <div className="empty-page"><h1>See what traders are saying</h1><p>Sign in to join the Trimmy community.</p><button className="primary" onClick={() => openSignIn('app')}>Sign in</button></div>)}
+        {fastBuy && market && (money.real ? <LiveFastBuySheet market={market} knownCards={cards.current} onOpen={openFastBuyChoice} onClose={() => setFastBuy(false)}/>
+          : session && <PracticeFastBuySheet market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk}
+          onCommitted={committed} onPending={() => setRevision(value => value + 1)} saveReason={productApi ? milestones.saveReasonFor : null} onClose={() => setFastBuy(false)}/>)}
+        {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title="Your career starts here." onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle} milestones={milestones}/>)}
         {progress.pending && route.page !== 'daily' && <div className="work-recovery" role="status"><span>Your earlier desk story needs confirmation.</span><button className="text-button" onClick={() => navigate({page:'daily'})}>Check clock-out</button></div>}
         {route.page === 'daily' && progress.pending && <DailyStoryScreen progress={progress} onBack={() => navigate({page:'career'})}/>}
         {route.page === 'work' && (!hasGuest ? <GuestInvitation title="Your first assignment awaits." onStart={start} motion={motion}/> : assignment ? canOpenWork(assignment, workdays.journey!.assignments) ? <WorkdayScreen key={assignment.id} assignment={assignment} working={workdays.working} error={workdays.error} pending={Boolean(workdays.pending)} onSubmit={workdays.saveStep} onSaveDraft={workdays.saveDraft} onRecover={workdays.recover} onBack={() => commitNavigation({page:'career'})} registerLeaveGuard={registerLeaveGuard} onCue={workSound.play}/> : <div className="empty-page"><h1>{assignment.title}</h1><p>File day {assignment.ordinal - 1} to open this assignment.</p><button className="primary" onClick={() => navigate({page:'career'})}>Back to Career</button></div> : workdays.loading ? <Loading>Opening your assignment…</Loading> : <div className="empty-page"><h1>Your assignment couldn’t open.</h1><button className="text-button" onClick={() => void workdays.refresh()}>Try again</button><button className="primary" onClick={() => navigate({page:'career'})}>Back to Career</button></div>)}
-        {route.page === 'profile' && <WebProfile profile={snapshot.profile} career={snapshot.career} missions={snapshot.missions} hasIdentity={hasGuest} signedIn={auth.authenticated} authBusy={auth.busy} busy={busy} progressError={careerError !== null} motion={motion} onMotion={motionSetting} onStart={start} onCareer={() => navigate({page: 'career'})} onSignIn={() => navigate({page: 'sign-in'})} onSignOut={() => {navigate({page: 'sign-in'}, true); void auth.logout();}} onRetry={() => void refresh()} {...(hasGuest ? {onPersona: changePersona} : {})}/>}
+        {route.page === 'settings' && <SettingsScreen signedIn={Boolean(session?.isAccount)} authBusy={auth.busy} handle={snapshot.profile?.onboarding.handle ?? null} logins={auth.logins}
+          persona={snapshot.profile?.onboarding.persona ? `The ${snapshot.profile.onboarding.persona[0]!.toUpperCase()}${snapshot.profile.onboarding.persona.slice(1)}` : null}
+          paperLimit={snapshot.career?.rank.paperLimit ?? null} reminder={journey.reminder} remindersAvailable={journey.principal !== null}
+          onSaveReminder={journey.saveReminder} sound={workSound.enabled} onSound={workSound.toggle} motion={motion} onMotion={motionSetting}
+          privacy={hasGuest ? reasonPrivacy : null}
+          resetAvailable={hasGuest && Boolean(snapshot.portfolio) && !session?.pendingCommit}
+          resetPending={Boolean(journey.principal && pendingMutations?.read('paper-reset', journey.principal))} onResetPaper={resetPaperDesk}
+          closeAvailable={Boolean(session?.isAccount && accountAccess)} onCloseAccount={closeAccount}
+          onSignIn={() => openSignIn('app')} onSignOut={() => {navigate({page: 'sign-in'}, true); void auth.logout();}}
+          onTrader={() => navigate({page: 'profile'})} onAddMoney={() => requestFunding('settings')} onBack={() => navigate({page: 'profile'})}/>}
+        {route.page === 'profile' && <WebProfile onSettings={() => navigate({page: 'settings'})} profile={snapshot.profile} career={snapshot.career} missions={snapshot.missions} hasIdentity={hasGuest} signedIn={auth.authenticated} accountLabel={auth.logins[0]?.label ?? null} authBusy={auth.busy} busy={busy} progressError={careerError !== null} motion={motion} onMotion={motionSetting} onStart={start} onCareer={() => navigate({page: 'career'})} onSignIn={() => openSignIn('app')} onSignOut={() => {navigate({page: 'sign-in'}, true); void auth.logout();}} onRetry={() => void refresh()} {...(hasGuest ? {onPersona: changePersona} : {})}/>}
         </>}
       </>}
       </main>
     </div>
+    {doodle && <EntryDoodle scene={doodle} motion={motion}/>}
   </div>;
 }
 
-function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, onSignIn, onPosition}: {snapshot: Snapshot; market: ProductMarketClient; workdays: WorkdaysState; onWork: (id: string) => void; motion: boolean; onMarket: () => void; onCareer: () => void; onSignIn?: (() => void) | undefined; onPosition: (assetId: string, mint: string) => void}) {
-  const portfolio = snapshot.portfolio!;
-  const identities = useCompanyIdentities(market, [...portfolio.positions.map(p => p.assetId), ...portfolio.recentOrders.map(o => o.assetId)], portfolio);
+/** Real mode can open before the paper desk loads; the paper side then reads as empty, never as a balance. */
+const emptyPortfolio: PaperPortfolio = {schemaVersion: 2, mode: 'paper', unit: {kind: 'paper', scaleDigits: 6}, revision: 0,
+  startingCashPaperMicros: '0', cashPaperMicros: '0', openedAt: null, updatedAt: null, positions: [], recentOrders: [],
+  valuation: {status: 'unavailable', portfolioRevision: 0, openPositionCount: 0, pricedPositionCount: 0, cashPaperMicros: '0',
+    knownValuePaperMicros: '0', totalPaperMicros: null, positions: []}};
+function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, onSignIn, onPosition, money, onSwitchMode, onFastBuy, onHistory, home}: {snapshot: Snapshot; market: ProductMarketClient; workdays: WorkdaysState; onWork: (id: string) => void; motion: boolean; onMarket: () => void; onCareer: () => void; onSignIn?: (() => void) | undefined; onPosition: (assetId: string, mint: string) => void;
+  money: MoneyApi; onSwitchMode: () => void; onFastBuy: () => void; onHistory: () => void; home?: HomeParity}) {
+  const portfolio = snapshot.portfolio ?? emptyPortfolio;
+  const realHoldings = coherentHoldings(money.wallet);
+  const holdingPrices = useHoldingPrices(market, money.real ? realHoldings : null);
+  const identities = useCompanyIdentities(market, [...portfolio.positions.map(p => p.assetId), ...portfolio.recentOrders.map(o => o.assetId),
+    ...(money.real ? realHoldings?.stockTokens.map(token => token.assetId) ?? [] : [])], money.real ? realHoldings : portfolio);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {const timer = window.setInterval(() => setClock(Date.now()), 5000); return () => clearInterval(timer);}, []);
   const open = portfolio.positions.filter(position => BigInt(position.quantityMicros) > 0n);
@@ -355,18 +580,23 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
   return <section className="desk-screen" aria-label="Your desk">
     <div className="page-intro"><h1>Your desk.</h1>{onSignIn && <button className="secondary save-desk" onClick={onSignIn}>Save your desk</button>}</div>
     <div className="desk-overview">
+      {money.real ? <RealBalanceCard onSwitch={onSwitchMode} onFastBuy={onFastBuy} onAddMoney={money.openFundWallet} prices={holdingPrices}/> :
       <section className="balance-card" aria-label="Paper balance">
-        <div className="balance-heading"><div className="balance-label">{total !== null ? 'Your paper balance' : 'Your paper cash'}</div><div className="balance-coins" aria-hidden="true">{open.slice(0,3).map(position => <CompanyLogo key={position.assetId + position.variantMint} name={identities.get(position.assetId)?.name ?? position.symbol} url={identities.get(position.assetId)?.imageUrl ?? null} size={34}/>)}</div></div>
+        <div className="balance-heading"><div className="balance-label">{total !== null ? 'Your paper balance' : 'Your paper cash'}</div><MoneyModeSwitch real={false} onSwitch={onSwitchMode}/><div className="balance-coins" aria-hidden="true">{open.slice(0,3).map(position => <CompanyLogo key={position.assetId + position.variantMint} name={identities.get(position.assetId)?.name ?? position.symbol} url={identities.get(position.assetId)?.imageUrl ?? null} size={34}/>)}</div></div>
         <div className="balance-amount">{micros(total ?? portfolio.cashPaperMicros)}<small>paper</small></div>
         <div className="balance-details"><div><span>Available to practice</span><strong>{micros(portfolio.cashPaperMicros)}</strong></div><div><span>Open positions</span><strong>{open.length}</strong></div></div>
         {open.length > 0 && !fresh && <p className="checked">Holding prices are updating.</p>}
-      </section>
+        <div className="balance-actions"><button aria-label="Fast buy" onClick={onFastBuy}><span aria-hidden="true">+</span>Fast buy</button></div>
+      </section>}
       <aside className="desk-mentor" aria-label="A note from Sal">
         <SalArt motion={motion}/>
         <div className="desk-mentor-copy"><span className="desk-mentor-label">A note from Sal{career && <span>{career.rank.label}</span>}</span><h2>{salTitle}</h2><p>{salCopy}</p><button className="text-button" onClick={salAction}>{salActionLabel}<span aria-hidden="true">↗</span></button></div>
       </aside>
     </div>
+    {home && <HomeActions home={home}/>}
     <WorkdayEntry workdays={workdays} onOpen={onWork}/>
+    {money.real ? <div className="desk-holdings"><RealHoldings identities={identities} prices={holdingPrices} onOpen={holding => onPosition(holding.assetId, holding.mint)}
+      onExplore={onFastBuy} onAddMoney={money.openFundWallet} onHistory={onHistory}/></div> :
     <div className={`desk-holdings${portfolio.recentOrders.length ? ' has-activity' : ''}`}>
       <section className="desk-section desk-positions">
         <div className="section-line"><h2>Your positions{open.length > 0 && <span className="desk-count">{open.length}</span>}</h2><button className="text-button" onClick={onMarket}>Explore Market<span aria-hidden="true">↗</span></button></div>
@@ -377,7 +607,8 @@ function Desk({snapshot, market, workdays, onWork, motion, onMarket, onCareer, o
         })}
       </section>
       {portfolio.recentOrders.length > 0 && <section className="desk-section desk-activity"><div className="section-line"><h2>Recent moves</h2></div>{portfolio.recentOrders.slice(0, 5).map(order => <div className="activity-row" key={order.id}><CompanyLogo name={identities.get(order.assetId)?.name ?? order.symbol} url={identities.get(order.assetId)?.imageUrl ?? null} size={34}/><div className="activity-copy"><strong>{order.action === 'buy' ? 'Bought' : 'Sold'} {identities.get(order.assetId)?.name ?? order.symbol}</strong><span>{shares(order.quantityMicros)} shares · {dateLabel(order.committedAt)}</span></div><div className="activity-value">{micros(order.action === 'buy' ? order.cashDebitPaperMicros : order.cashCreditPaperMicros)}<small>paper</small></div></div>)}</section>}
-    </div>
+    </div>}
+    {home && <div className="home-invitations"><HomeInvitations home={home}/></div>}
   </section>;
 }
 

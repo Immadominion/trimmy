@@ -3,7 +3,8 @@ import type {StockSearchPage, StockVariantsPage} from '../markets/discovery.js';
 import {assetId, integer, invalid, list, metric, mint, optionalText, record, schema, sourceUrl,
   StockResearchError, text, timestamp, unique} from '../markets/validation.js';
 
-export type {StockDiscoveryAsset, StockVariant, StockSearchPage, StockVariantsPage} from '../markets/discovery.js';
+export type {StockDiscoveryAsset, StockMarketCategory, StockVariant, StockSearchPage, StockVariantsPage} from '../markets/discovery.js';
+export {STOCK_MARKET_CATEGORIES} from '../markets/discovery.js';
 export {StockResearchError as ProductMarketError} from '../markets/validation.js';
 
 export interface StockSessionSnapshot {
@@ -28,7 +29,7 @@ export interface FactsProvenance {
 }
 export interface StockCatalogPage {
   readonly discovery: StockSearchPage; readonly cards: readonly StockCard[];
-  /** Provider offsets include filtered non-equities; never advance by cards.length. */
+  /** Provider offsets include filtered rows (a page can hold fewer than 20); page by nextOffset, never by cards.length. */
   readonly offset: number; readonly total: number; readonly nextOffset: number | null;
 }
 export interface StockCardsPage extends FactsProvenance {
@@ -116,8 +117,9 @@ export function parseStockCatalogPage(value: unknown): StockCatalogPage {
   const cards = list(data['cards'], 20, parseStockCard);
   const offset = integer(data['offset'], 0, 10000), total = integer(data['total'], 0, 10000);
   const nextOffset = data['nextOffset'] === null ? null : integer(data['nextOffset'], 20, 10000);
+  // Offsets are provider positions in steps of 20; a page may hold fewer rows after filtering.
   if (offset % 20 !== 0 || discovery.query !== 'catalog' || discovery.limit !== 20 || cards.length !== discovery.results.length ||
-      nextOffset !== null && (nextOffset !== offset + 20 || nextOffset >= total)) invalid();
+      nextOffset !== null && (nextOffset <= offset || nextOffset % 20 !== 0 || nextOffset >= total)) invalid();
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i]!, row = discovery.results[i]!;
     if (card.assetId !== row.assetId || card.primaryVariant !== null &&
@@ -186,6 +188,23 @@ export function parseStockInsight(value: unknown): StockInsight {
     points: rows, chartStatus: status});
 }
 
+const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/u;
+
+/** Prices for the asked-for mints only, each positive and finite, from the issuer or a liquid market. */
+export function parseHoldingPrices(value: unknown, asked: ReadonlySet<string>): ReadonlyMap<string, number> {
+  const data = value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  if (!data || data['schema'] !== 1 || !Array.isArray(data['prices'])) invalid();
+  const prices = new Map<string, number>();
+  for (const row of data['prices'] as unknown[]) {
+    const item = row !== null && typeof row === 'object' && !Array.isArray(row) ? row as Record<string, unknown> : null;
+    const mint = item?.['mint'], usd = item?.['usdPerShare'], source = item?.['source'];
+    if (typeof mint !== 'string' || !asked.has(mint) || typeof usd !== 'number' || !Number.isFinite(usd) || usd <= 0 ||
+        (source !== 'issuer' && source !== 'market')) invalid();
+    prices.set(mint, usd);
+  }
+  return prices;
+}
+
 function input<T>(read: () => T): T {
   try { return read(); } catch { throw new StockResearchError('STOCK_INPUT_INVALID'); }
 }
@@ -204,24 +223,28 @@ function baseUrl(value: unknown): string {
 export class ProductMarketClient {
   readonly #base: string; readonly #fetch: typeof globalThis.fetch; readonly #timeout: number;
   readonly #active = new Set<() => void>(); #closed = false;
+  /** Funds and commodities need `schema=2`; a server from before them answers 400, once. */
+  #schema2 = true;
   constructor(options: ProductMarketOptions) {
-    this.#base = baseUrl(options.baseUrl); this.#fetch = options.fetch ?? globalThis.fetch; this.#timeout = options.timeoutMs ?? 12000;
+    this.#base = baseUrl(options.baseUrl);
+    // Bound: browsers reject fetch called with any receiver other than the global ("Illegal invocation").
+    this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis); this.#timeout = options.timeoutMs ?? 12000;
     if (typeof this.#fetch !== 'function' || !Number.isInteger(this.#timeout) || this.#timeout < 1 || this.#timeout > 30000)
       throw new StockResearchError('STOCK_INVALID_CONFIGURATION');
   }
   async catalog(offset = 0, options: MarketReadOptions = {}): Promise<StockCatalogPage> {
     input(() => { integer(offset, 0, 10000); if (offset % 20) invalid(); });
-    const result = parseStockCatalogPage(await this.#get('catalog', {offset: String(offset)}, options.signal));
+    const result = parseStockCatalogPage(await this.#listed('catalog', {offset: String(offset)}, options.signal));
     if (result.offset !== offset) invalid(); return result;
   }
   async search(query: string, options: MarketSearchOptions = {}): Promise<StockSearchPage> {
     const limit = options.limit ?? 20; input(() => {text(query, 80); integer(limit, 1, 20);});
-    const result = parseStockSearchPage(await this.#get('search', {query, limit: String(limit)}, options.signal));
+    const result = parseStockSearchPage(await this.#listed('search', {query, limit: String(limit)}, options.signal));
     if (result.query !== query || result.limit !== limit) invalid(); return result;
   }
   async cards(query: string, options: MarketSearchOptions = {}): Promise<StockCardsPage> {
     const limit = options.limit ?? 20; input(() => {text(query, 80); integer(limit, 1, 20);});
-    const result = parseStockCardsPage(await this.#get('cards', {query, limit: String(limit)}, options.signal));
+    const result = parseStockCardsPage(await this.#listed('cards', {query, limit: String(limit)}, options.signal));
     if (result.query !== query || result.limit !== limit) invalid(); return result;
   }
   async variants(id: string, options: MarketReadOptions = {}): Promise<StockVariantsPage> {
@@ -240,8 +263,28 @@ export class ProductMarketClient {
     if (result.assetId !== identity.assetId || result.mint !== identity.mint || result.period !== identity.period) invalid();
     return result;
   }
+  /**
+   * Trusted prices per displayed share for held tokens: the issuer's price, else
+   * a liquid market's. A token the server cannot price is left out.
+   */
+  async prices(mints: readonly string[], options: MarketReadOptions = {}): Promise<ReadonlyMap<string, number>> {
+    const ids = input(() => {
+      const list = [...new Set(mints)].sort();
+      if (!list.length || list.length > 50 || list.some(mint => !MINT.test(mint))) invalid();
+      return list;
+    });
+    return parseHoldingPrices(await this.#get('prices', {mints: ids.join(',')}, options.signal), new Set(ids));
+  }
   close(): void { this.#closed = true; for (const cancel of [...this.#active]) cancel(); }
-  async #get(endpoint: string, query: Record<string, string>, signal: AbortSignal | undefined): Promise<unknown> {
+  /** Catalog, search and cards with funds and commodities; an older server's 400 falls back to equities, as mobile does. */
+  async #listed(endpoint: string, query: Record<string, string>, signal: AbortSignal | undefined): Promise<unknown> {
+    if (this.#schema2) {
+      try {return await this.#get(endpoint, {...query, schema: '2'}, signal, true);}
+      catch (error) {if (!(error instanceof StockResearchError && error.code === 'STOCK_SCHEMA_UNSUPPORTED')) throw error; this.#schema2 = false;}
+    }
+    return this.#get(endpoint, query, signal);
+  }
+  async #get(endpoint: string, query: Record<string, string>, signal: AbortSignal | undefined, schemaProbe = false): Promise<unknown> {
     if (this.#closed || signal?.aborted) throw new StockResearchError('STOCK_CANCELLED');
     const url = `${this.#base}/v1/markets/stocks/${endpoint}?${new URLSearchParams(query)}`;
     const expectedUrl = this.#base === '/api'
@@ -281,6 +324,7 @@ export class ProductMarketClient {
         const bytes = new Uint8Array(count); let offset = 0;
         for (const chunk of chunks) {bytes.set(chunk, offset); offset += chunk.byteLength;}
         let value: unknown; try { value = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes)); } catch { invalid(); }
+        if (response.status === 400 && schemaProbe) throw new StockResearchError('STOCK_SCHEMA_UNSUPPORTED');
         if (response.status !== 200) serverFailure(response.status, value, ['cards', 'facts', 'insight'].includes(endpoint));
         return value;
       } catch (error) {

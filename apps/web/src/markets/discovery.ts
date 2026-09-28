@@ -24,8 +24,19 @@ export interface StockVariant {
   readonly symbol: string | null; readonly providerRedemptionTier: string | null;
   readonly advisory: StockAdvisory | null; readonly market: StockVariantMarket | null;
 }
+/**
+ * Listed instruments the Market shows. `schema=2` catalog, search and cards
+ * reads add exchange-traded funds and commodities (SPY, QQQ, gold); a server
+ * asked without it answers with equities only. One parser for every screen.
+ */
+export const STOCK_MARKET_CATEGORIES = Object.freeze(['equity', 'etf', 'commodity'] as const);
+export type StockMarketCategory = (typeof STOCK_MARKET_CATEGORIES)[number];
+export function parseStockCategory(value: unknown): StockMarketCategory {
+  if (!(STOCK_MARKET_CATEGORIES as readonly unknown[]).includes(value)) invalid();
+  return value as StockMarketCategory;
+}
 export interface StockDiscoveryAsset {
-  readonly assetId: string; readonly name: string | null; readonly symbol: string | null; readonly category: 'equity';
+  readonly assetId: string; readonly name: string | null; readonly symbol: string | null; readonly category: StockMarketCategory;
   readonly providerPrimaryVariantMint: string | null; readonly variants: readonly StockVariant[];
   /** Also includes flagged sibling variants omitted from the bounded search. */
   readonly advisories: readonly StockAssetAdvisory[];
@@ -83,7 +94,7 @@ function variants(value: unknown): readonly StockVariant[] {
 }
 function asset(value: unknown): StockDiscoveryAsset {
   const data = record(value, ['assetId', 'name', 'symbol', 'category', 'providerPrimaryVariantMint', 'variants', 'advisories']);
-  if (data['category'] !== 'equity') invalid();
+  const category = parseStockCategory(data['category']);
   const rows = variants(data['variants']);
   const primary = data['providerPrimaryVariantMint'] === null ? null : mint(data['providerPrimaryVariantMint']);
   if (primary !== null && !rows.some(row => row.mint === primary)) invalid();
@@ -95,7 +106,7 @@ function asset(value: unknown): StockDiscoveryAsset {
         flag.reason !== row.advisory?.reason || flag.since !== row.advisory?.since)) invalid();
   }
   return Object.freeze({assetId: assetId(data['assetId']), name: optionalText(data['name']), symbol: optionalText(data['symbol'], 40),
-    category: 'equity', providerPrimaryVariantMint: primary, variants: rows, advisories: flags});
+    category, providerPrimaryVariantMint: primary, variants: rows, advisories: flags});
 }
 export function parseStockSearchPage(value: unknown): StockSearchPage {
   const data = record(value, [...provenanceKeys, 'query', 'limit', 'completeCatalog', 'results']);
