@@ -56,6 +56,8 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/career/workdays/draft': Object.freeze(['POST']),
   '/v1/career/daily-desk': Object.freeze(['GET']),
   '/v1/career/daily-desk/complete': Object.freeze(['POST']),
+  // Career's "Activity this week" on the web, as on mobile.
+  '/v1/career/activity-week': Object.freeze(['GET']),
   '/v1/community': Object.freeze(['GET']),
   '/v1/community/following/:socialId': Object.freeze(['PUT']),
   // Web parity with mobile: followed stocks, blocking a trader, reporting a

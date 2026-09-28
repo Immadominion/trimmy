@@ -298,7 +298,7 @@ describe('explicit browser origin configuration and preflight', () => {
       for (const [url, method] of [
         ['/v1/career/workdays', 'GET'], ['/v1/career/workdays/step', 'POST'],
         ['/v1/career/workdays/draft', 'POST'], ['/v1/career/daily-desk', 'GET'],
-        ['/v1/career/daily-desk/complete', 'POST'], ['/v1/community', 'GET'],
+        ['/v1/career/daily-desk/complete', 'POST'], ['/v1/career/activity-week', 'GET'], ['/v1/community', 'GET'],
         ['/v1/community?scope=following', 'GET'],
         ['/v1/community?scope=everyone&at=2026-09-25T00%3A00%3A00.000Z&id=10000000-0000-4000-a000-000000000001', 'GET'],
         [target, 'PUT'],
@@ -315,6 +315,7 @@ describe('explicit browser origin configuration and preflight', () => {
         ['/v1/career/workdays', 'POST', 'authorization'],
         ['/v1/career/workdays/step', 'PUT', 'authorization'],
         ['/v1/career/daily-desk/complete?date=x', 'POST', 'authorization'],
+        ['/v1/career/activity-week', 'POST', 'authorization'], ['/v1/career/activity-week?userId=x', 'GET', 'authorization'],
         ['/v1/community', 'POST', 'authorization'],
         [target, 'POST', 'authorization'], [target, 'DELETE', 'authorization'],
         [`${target}?notifications=true`, 'PUT', 'authorization'],
