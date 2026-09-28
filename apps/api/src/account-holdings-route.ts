@@ -1,7 +1,7 @@
 import {address, getAddressEncoder, isOffCurveAddress} from '@solana/kit';
 import type {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify';
-import {JUPITER_QUOTE_ASSETS} from './jupiter-quote-reader.js';
-import {STOCK_TRADING_IDENTITIES, findStockTradingAssetByMint} from './stock-trading-catalog.js';
+import { JUPITER_QUOTE_ASSETS, AAPLX_MINT } from './jupiter-quote-reader.js';
+import {findStockTradingAssetByMint, stockTradingIdentities} from './stock-trading-catalog.js';
 import {parsePracticeIdentity} from './practice-identity.js';
 import type {PracticeIdentity} from './practice-identity.js';
 import {parsePracticeUserId} from './practice-repository.js';
@@ -373,7 +373,7 @@ function projectTokenBalance(value: unknown, expected: TokenProjectionExpectatio
 }
 
 function projectStockBalances(value: unknown): readonly AccountHoldingsStockBalance[] {
-  if (!Array.isArray(value) || value.length > STOCK_TRADING_IDENTITIES.length) return responseInvalid();
+  if (!Array.isArray(value) || value.length > stockTradingIdentities().length) return responseInvalid();
   const seenMints = new Set<string>();
   const seenAccounts = new Set<string>();
   return Object.freeze(value.map(item => {
@@ -434,7 +434,7 @@ function projectSnapshot(value: unknown, expectedOwner: string, version: 1 | 2):
   const rawAaplx = ownData(balances, 'aaplx');
   const aaplxRecord = plainRecord(rawAaplx);
   const baseAaplx = projectTokenBalance(rawAaplx, {
-    symbol: 'AAPLx', mint: JUPITER_QUOTE_ASSETS.AAPLx.mint, decimals: 8,
+    symbol: 'AAPLx', mint: AAPLX_MINT, decimals: 8,
     tokenProgram: STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022,
   });
   if (!aaplxRecord || ownData(aaplxRecord, 'displayResolution') !== 'token_2022_scaled_ui_unresolved' ||

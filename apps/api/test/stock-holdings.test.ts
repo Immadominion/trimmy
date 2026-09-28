@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { it } from 'node:test';
 import { address, getAddressDecoder, getAddressEncoder, getProgramDerivedAddress } from '@solana/kit';
 import type { Address } from '@solana/kit';
-import { JUPITER_QUOTE_ASSETS } from '../src/jupiter-quote-reader.js';
+import { JUPITER_QUOTE_ASSETS, AAPLX_MINT } from '../src/jupiter-quote-reader.js';
 import {STOCK_TRADING_ASSETS} from '../src/stock-trading-catalog.js';
 import {
   admitServerVerifiedStockOwner,
@@ -138,7 +138,7 @@ it('returns exact raw mainnet holdings and explicitly aggregates canonical plus 
   const legacy = address(STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy);
   const token2022 = address(STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022);
   const usdcMint = address(JUPITER_QUOTE_ASSETS.USDC.mint);
-  const aaplxMint = address(JUPITER_QUOTE_ASSETS.AAPLx.mint);
+  const aaplxMint = address(AAPLX_MINT);
   const usdcAssociated = await associated(ownerAddress, usdcMint, legacy);
   const aaplxAssociated = await associated(ownerAddress, aaplxMint, token2022);
   const rpc = transport({
@@ -260,7 +260,7 @@ it('validates token account program, parsed mint, owner, state, decimals, space 
     (value) => { (value['account'] as Record<string, unknown>)['executable'] = true; },
     (value) => { parsedData(value)['program'] = 'spl-token-2022'; },
     (value) => { parsed(value)['type'] = 'mint'; },
-    (value) => { info(value)['mint'] = JUPITER_QUOTE_ASSETS.AAPLx.mint; },
+    (value) => { info(value)['mint'] = AAPLX_MINT; },
     (value) => { info(value)['owner'] = ancillaryTwo; },
     (value) => { info(value)['isNative'] = true; },
     (value) => { info(value)['state'] = 'uninitialized'; },

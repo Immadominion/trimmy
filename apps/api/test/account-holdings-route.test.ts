@@ -9,7 +9,7 @@ import type {
   AccountHoldingsAdapters,
   AccountHoldingsReader,
 } from '../src/account-holdings-route.js';
-import {JUPITER_QUOTE_ASSETS} from '../src/jupiter-quote-reader.js';
+import { JUPITER_QUOTE_ASSETS, AAPLX_MINT } from '../src/jupiter-quote-reader.js';
 import {STOCK_TRADING_ASSETS} from '../src/stock-trading-catalog.js';
 import type {PracticeIdentity} from '../src/practice-identity.js';
 import {
@@ -57,7 +57,7 @@ function tokenBalance(symbol: 'USDC' | 'AAPLx') {
   return Object.freeze({
     kind: 'spl_token' as const,
     symbol,
-    mint: usdc ? JUPITER_QUOTE_ASSETS.USDC.mint : JUPITER_QUOTE_ASSETS.AAPLx.mint,
+    mint: usdc ? JUPITER_QUOTE_ASSETS.USDC.mint : AAPLX_MINT,
     tokenProgram: usdc ? STOCK_HOLDINGS_TOKEN_PROGRAMS.legacy : STOCK_HOLDINGS_TOKEN_PROGRAMS.token2022,
     decimals: usdc ? 6 as const : 8 as const,
     amountRaw: '0',
@@ -186,7 +186,7 @@ test('returns a strict public projection for the server-derived same-subject wal
           usdc: {symbol: 'USDC', mint: JUPITER_QUOTE_ASSETS.USDC.mint, decimals: 6, amountRaw: '0',
             amountUnits: 'raw_token_units', observedSlot: 101, accountCount: 0, accountTopology: 'none',
             aggregation: 'all_valid_owner_token_accounts', hasFrozenAccounts: false},
-          aaplx: {symbol: 'AAPLx', mint: JUPITER_QUOTE_ASSETS.AAPLx.mint, decimals: 8, amountRaw: '0',
+          aaplx: {symbol: 'AAPLx', mint: AAPLX_MINT, decimals: 8, amountRaw: '0',
             amountUnits: 'raw_token_units', observedSlot: 102, accountCount: 0, accountTopology: 'none',
             aggregation: 'all_valid_owner_token_accounts', hasFrozenAccounts: false,
             displayResolution: 'token_2022_scaled_ui_unresolved', displayAmount: null, shareAmount: null,
@@ -339,7 +339,7 @@ test('malformed reader snapshots fail closed instead of crossing HTTP', async ()
     {...snapshot, balances: {...snapshot.balances,
       nativeSol: {...snapshot.balances.nativeSol, amountRaw: '01'}}},
     {...snapshot, balances: {...snapshot.balances,
-      usdc: {...snapshot.balances.usdc, mint: JUPITER_QUOTE_ASSETS.AAPLx.mint}}},
+      usdc: {...snapshot.balances.usdc, mint: AAPLX_MINT}}},
     {...snapshot, balances: {...snapshot.balances,
       aaplx: {...snapshot.balances.aaplx, displayAmount: '0'}}},
     {...snapshot, consistency: {...snapshot.consistency,
@@ -544,7 +544,7 @@ test('v2 keeps total ownership while limiting trading availability to an initial
       availableToTradeRaw: '100000000',
       accounts: [
         {address: JUPITER_QUOTE_ASSETS.USDC.mint, amountRaw: '60000000', state, associated: true},
-        {address: JUPITER_QUOTE_ASSETS.AAPLx.mint, amountRaw: '40000000', state: 'initialized', associated: false},
+        {address: AAPLX_MINT, amountRaw: '40000000', state: 'initialized', associated: false},
       ].sort((a, b) => a.address.localeCompare(b.address))};
     const value = {...original, balances: {...original.balances, usdc, tokens: [stock]}} as unknown as StockHoldingsSnapshot;
     const instance = buildApp({logger: false, accountHoldings: adapters({read: async () => value})});

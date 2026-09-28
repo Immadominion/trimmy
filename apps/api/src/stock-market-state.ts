@@ -154,15 +154,18 @@ export function calendarMarketStates(now: number): StockMarketStateOf {
 export class StockMarketStates {
   readonly #ondo: OndoMarketStatusReader | null;
   readonly #pauses: StockMintPauseReader | null;
-  readonly #mints: readonly string[];
+  readonly #mints: () => readonly string[];
   readonly #now: () => number;
   readonly #waitMs: number;
 
-  constructor(options: {ondo: OndoMarketStatusReader | null; pauses: StockMintPauseReader | null; mints: readonly string[];
+  constructor(options: {ondo: OndoMarketStatusReader | null; pauses: StockMintPauseReader | null;
+    /** The tradeable mints to watch; a function when the list grows. */
+    mints: readonly string[] | (() => readonly string[]);
     now?: () => number; waitMs?: number}) {
     this.#ondo = options.ondo;
     this.#pauses = options.pauses;
-    this.#mints = Object.freeze([...options.mints]);
+    const mints = options.mints;
+    this.#mints = typeof mints === 'function' ? mints : () => mints;
     this.#now = options.now ?? Date.now;
     this.#waitMs = options.waitMs ?? 2_500;
   }
@@ -173,7 +176,7 @@ export class StockMarketStates {
       new Promise<T>(resolve => { setTimeout(() => resolve(fallback()), this.#waitMs).unref?.(); })]);
     const [ondo, pauses] = await Promise.all([
       this.#ondo === null ? Promise.resolve(null) : wait(this.#ondo.read(), () => this.#ondo!.peek()),
-      this.#pauses === null ? Promise.resolve(new Map<string, boolean>()) : wait(this.#pauses.read(this.#mints), () => this.#pauses!.peek()),
+      this.#pauses === null ? Promise.resolve(new Map<string, boolean>()) : wait(this.#pauses.read(this.#mints()), () => this.#pauses!.peek()),
     ]);
     const now = this.#now();
     return (issuerId, symbol, mint) => stockMarketState({issuerId, symbol, now, mintPaused: pauses.get(mint) ?? null, ondo});

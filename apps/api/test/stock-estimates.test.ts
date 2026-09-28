@@ -63,7 +63,7 @@ it('validates asset, issuer mint, side and raw input bounds before any request',
     {amountRaw: '1e7'}, {amountRaw: '100000001'}, {amountRaw: '18446744073709551616'}, {taker: 'unwanted'}]) {
     await assert.rejects(api.estimate({...input, ...bad} as StockEstimateInput), codeIs('MARKET_INPUT_INVALID'));
   }
-  await assert.rejects(api.estimate({...input, side: 'sell', amountRaw: '100000001'}), codeIs('MARKET_INPUT_INVALID'));
+  await assert.rejects(api.estimate({...input, side: 'sell', amountRaw: '18446744073709551616'}), codeIs('MARKET_INPUT_INVALID'));
   assert.equal(calls, 0);
 });
 it('accepts each exact research cap and preserves large u64 outputs as strings', async () => {

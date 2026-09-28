@@ -1,23 +1,39 @@
 import { parseRawAmount } from '@trimmy/domain';
 
-import { STOCK_TRADING_ASSETS } from './stock-trading-catalog.js';
-import type { StockTradingSymbol } from './stock-trading-catalog.js';
+import type { StockTradingIdentity } from './stock-trading-catalog.js';
 
-// Active assets only: a suspended identity stays recognizable for history and
-// holdings (stock-trading-catalog.ts) but can no longer be quoted.
-const stocks = Object.fromEntries(STOCK_TRADING_ASSETS.map(asset => [asset.symbol, Object.freeze({
-  symbol: asset.symbol, mint: asset.mint, decimals: asset.decimals, maxInputRaw: asset.maxSellInputRaw,
-})])) as Readonly<Record<StockTradingSymbol, Readonly<{symbol: StockTradingSymbol; mint: string; decimals: number; maxInputRaw: string}>>>;
+/** One side of a quote: a token and the most of it one order may send. */
+export interface QuoteAsset {
+  readonly symbol: string;
+  readonly mint: string;
+  readonly decimals: number;
+  readonly maxInputRaw: string;
+}
 export const JUPITER_QUOTE_ASSETS = Object.freeze({
   SOL: Object.freeze({symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112', decimals: 9, maxInputRaw: '1000000000'}),
   USDC: Object.freeze({symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6, maxInputRaw: '100000000'}),
-  ...stocks,
 });
+/** Apple's xStock: the original tradeable token, still named directly by holdings. */
+export const AAPLX_MINT = 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
+/** A stock token as a quote side. Stocks are named by their token, never by symbol. */
+export function stockQuoteAsset(stock: Pick<StockTradingIdentity, 'symbol' | 'mint' | 'decimals' | 'maxSellInputRaw'>): QuoteAsset {
+  return Object.freeze({symbol: stock.symbol, mint: stock.mint, decimals: stock.decimals, maxInputRaw: stock.maxSellInputRaw});
+}
 export interface JupiterQuoteInput {
-  readonly inputAsset: keyof typeof JUPITER_QUOTE_ASSETS;
-  readonly outputAsset: keyof typeof JUPITER_QUOTE_ASSETS;
+  /** 'SOL' or 'USDC', or a stock token (stockQuoteAsset). */
+  readonly inputAsset: keyof typeof JUPITER_QUOTE_ASSETS | QuoteAsset;
+  readonly outputAsset: keyof typeof JUPITER_QUOTE_ASSETS | QuoteAsset;
   readonly amountRaw: string;
 }
+const quoteAsset = (side: JupiterQuoteInput['inputAsset']): QuoteAsset => {
+  if (typeof side === 'string') {
+    if (!Object.hasOwn(JUPITER_QUOTE_ASSETS, side)) throw new MarketEstimateError('MARKET_INPUT_INVALID');
+    return JUPITER_QUOTE_ASSETS[side];
+  }
+  if (side === null || typeof side !== 'object' || typeof side.mint !== 'string' || typeof side.symbol !== 'string' ||
+      !Number.isInteger(side.decimals) || typeof side.maxInputRaw !== 'string') throw new MarketEstimateError('MARKET_INPUT_INVALID');
+  return side;
+};
 export interface MarketEstimate {
   readonly schemaVersion: 1;
   readonly kind: 'indicative';
@@ -53,15 +69,16 @@ export class MarketEstimateError extends Error {
 }
 function invalid(): never { throw new MarketEstimateError('MARKET_RESPONSE_INVALID'); }
 function validateJupiterQuoteInput(input: JupiterQuoteInput): void {
-  if (!input || !Object.hasOwn(JUPITER_QUOTE_ASSETS, input.inputAsset) ||
-      !Object.hasOwn(JUPITER_QUOTE_ASSETS, input.outputAsset) || input.inputAsset === input.outputAsset ||
-      (input.inputAsset !== 'USDC' && input.outputAsset !== 'USDC') ||
-      Object.keys(input).some((key) => !['inputAsset', 'outputAsset', 'amountRaw'].includes(key))) {
+  if (!input || Object.keys(input).some((key) => !['inputAsset', 'outputAsset', 'amountRaw'].includes(key))) {
+    throw new MarketEstimateError('MARKET_INPUT_INVALID');
+  }
+  const from = quoteAsset(input.inputAsset), to = quoteAsset(input.outputAsset);
+  if (from.mint === to.mint || (from.mint !== JUPITER_QUOTE_ASSETS.USDC.mint && to.mint !== JUPITER_QUOTE_ASSETS.USDC.mint)) {
     throw new MarketEstimateError('MARKET_INPUT_INVALID');
   }
   try {
     const amount = parseRawAmount(input.amountRaw);
-    if (amount <= 0n || amount > BigInt(JUPITER_QUOTE_ASSETS[input.inputAsset].maxInputRaw)) throw new Error();
+    if (amount <= 0n || amount > BigInt(from.maxInputRaw)) throw new Error();
   } catch { throw new MarketEstimateError('MARKET_INPUT_INVALID'); }
 }
 
@@ -128,8 +145,8 @@ export class JupiterQuoteReader {
     try {
       const url = new URL(endpoint);
       url.search = new URLSearchParams({
-        inputMint: JUPITER_QUOTE_ASSETS[request.inputAsset].mint,
-        outputMint: JUPITER_QUOTE_ASSETS[request.outputAsset].mint,
+        inputMint: quoteAsset(request.inputAsset).mint,
+        outputMint: quoteAsset(request.outputAsset).mint,
         amount: request.amountRaw,
         slippageBps: String(JUPITER_RESEARCH_SLIPPAGE_BPS),
       }).toString();
@@ -189,8 +206,8 @@ export function parseEstimate(payload: unknown, input: JupiterQuoteInput, starte
   if (!Number.isSafeInteger(received) || received < started || received >= started + refreshWindowMs) throw new MarketEstimateError('MARKET_ESTIMATE_STALE');
   if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) invalid();
   const data = payload as Record<string, unknown>;
-  const from = JUPITER_QUOTE_ASSETS[input.inputAsset];
-  const to = JUPITER_QUOTE_ASSETS[input.outputAsset];
+  const from = quoteAsset(input.inputAsset);
+  const to = quoteAsset(input.outputAsset);
   if (data['inputMint'] !== from.mint || data['outputMint'] !== to.mint || data['inAmount'] !== input.amountRaw ||
       data['swapMode'] !== 'ExactIn' || data['transaction'] !== null || data['taker'] !== null ||
       data['errorCode'] !== undefined || data['error'] !== undefined || data['errorMessage'] !== undefined) invalid();

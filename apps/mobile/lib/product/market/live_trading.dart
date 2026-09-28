@@ -8,11 +8,14 @@ import 'market_models.dart';
 
 const liveUsdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
-/// Bounds for one capabilities read. A multi-issuer catalog lists every
-/// tradeable token, so these sit well above today's list but stay finite.
-const liveCapabilitiesMaxAssets = 600;
-const liveCapabilitiesMaxUnavailable = 1200;
-const liveCapabilitiesMaxBytes = 524288;
+/// Bounds for one capabilities read. The server lists every tradeable token it
+/// finds automatically, so these sit well above today's list but stay finite.
+const liveCapabilitiesMaxAssets = 10000;
+const liveCapabilitiesMaxUnavailable = 10000;
+const liveCapabilitiesMaxBytes = 8388608;
+
+/// Sells carry no per-token cap: a limit at or above this reads as none.
+final liveUncappedRaw = BigInt.parse('1000000000000000000');
 const _maxIssuers = 16;
 
 final _mintPattern = RegExp(r'^[1-9A-HJ-NP-Za-km-z]{32,44}$');
@@ -688,7 +691,13 @@ Future<LiveTradingCapabilities> fetchLiveTradingCapabilities(
   final transport = client ?? http.Client();
   try {
     final route = origin.resolve('/v1/trading/capabilities');
+    // Schema 3 lists every tradeable token; older servers answer 400 and are
+    // asked for schema 2, then the plain legacy shape.
     return await _readCapabilities(
+          transport,
+          route.replace(queryParameters: {'schema': '3'}),
+        ) ??
+        await _readCapabilities(
           transport,
           route.replace(queryParameters: {'schema': '2'}),
         ) ??

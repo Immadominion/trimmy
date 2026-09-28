@@ -10,7 +10,8 @@ import { getMintEncoder as getLegacyMintEncoder, getTokenEncoder as getLegacyTok
   AccountState as LegacyAccountState } from '@solana-program/token';
 import { getSetComputeUnitLimitInstructionDataEncoder,
   getSetComputeUnitPriceInstructionDataEncoder } from '@solana-program/compute-budget';
-import { JUPITER_QUOTE_ASSETS, orderSlippageBps, parseEstimate } from '../src/jupiter-quote-reader.js';
+import { STOCK_TRADING_ASSETS } from '../src/stock-trading-catalog.js';
+import { JUPITER_QUOTE_ASSETS, orderSlippageBps, parseEstimate, stockQuoteAsset } from '../src/jupiter-quote-reader.js';
 import { STOCK_ESTIMATE_ASSET } from '../src/stock-estimates.js';
 import type { StockEstimate } from '../src/stock-estimates.js';
 import { KNOWN_PROGRAMS } from '../src/solana-instruction-decoders.js';
@@ -382,7 +383,7 @@ describe('RFQ quotes, signatures and settlement', () => {
     const started = NOW;
     const quote = {inputMint: usdcMint, outputMint: stockMint, inAmount: '10000000', outAmount: '2972350', otherAmountThreshold: '2868318',
       swapMode: 'ExactIn', slippageBps: 350, feeBps: 10, feeMint: usdcMint, router: 'metis', transaction: null, taker: null};
-    const pair = {inputAsset: 'USDC', outputAsset: 'AAPLx', amountRaw: '10000000'} as const;
+    const pair = {inputAsset: 'USDC' as const, outputAsset: stockQuoteAsset(STOCK_TRADING_ASSETS[0]!), amountRaw: '10000000'};
     assert.equal(parseEstimate(quote, pair, started, started + 100, 350).slippageBps, 350);
     assert.throws(() => parseEstimate(quote, pair, started, started + 100));
     assert.throws(() => parseEstimate({...quote, slippageBps: 50}, pair, started, started + 100, 350));
@@ -394,12 +395,12 @@ describe('RFQ quotes, signatures and settlement', () => {
     const quote = {inputMint: usdcMint, outputMint: stockMint, inAmount: '10000000', outAmount: '2972350', otherAmountThreshold: '2972350',
       swapMode: 'ExactIn', slippageBps: 0, feeBps: 10, feeMint: usdcMint, router: 'jupiterz', swapType: 'rfq', transaction: null, taker: null,
       expireAt: String(Math.floor(NOW / 1000) + 55)};
-    const parsed = parseEstimate(quote, {inputAsset: 'USDC', outputAsset: 'AAPLx', amountRaw: '10000000'}, started, started + 100);
+    const parsed = parseEstimate(quote, {inputAsset: 'USDC', outputAsset: stockQuoteAsset(STOCK_TRADING_ASSETS[0]!), amountRaw: '10000000'}, started, started + 100);
     assert.equal(parsed.slippageBps, 0);
     assert.equal(parsed.router, 'jupiterz');
     assert.equal(parsed.providerExpiresAt, new Date((Math.floor(NOW / 1000) + 55) * 1000).toISOString());
-    assert.throws(() => parseEstimate({...quote, slippageBps: 50}, {inputAsset: 'USDC', outputAsset: 'AAPLx', amountRaw: '10000000'}, started, started + 100));
-    assert.throws(() => parseEstimate({...quote, otherAmountThreshold: '2972000'}, {inputAsset: 'USDC', outputAsset: 'AAPLx', amountRaw: '10000000'}, started, started + 100));
+    assert.throws(() => parseEstimate({...quote, slippageBps: 50}, {inputAsset: 'USDC', outputAsset: stockQuoteAsset(STOCK_TRADING_ASSETS[0]!), amountRaw: '10000000'}, started, started + 100));
+    assert.throws(() => parseEstimate({...quote, otherAmountThreshold: '2972000'}, {inputAsset: 'USDC', outputAsset: stockQuoteAsset(STOCK_TRADING_ASSETS[0]!), amountRaw: '10000000'}, started, started + 100));
   });
 
   function rfqOrder() {

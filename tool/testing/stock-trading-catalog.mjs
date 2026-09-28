@@ -1,5 +1,5 @@
 /** Read-only issuer / mainnet / quote re-verification of admitted assets. No wallet, taker, signer or
- * execution endpoint. Admission itself (all issuers, simulated orders) is tool/testing/stock-admission.mjs. */
+ * execution endpoint. Admission is automatic (apps/api/src/stock-token-directory.ts). */
 import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {setTimeout as pause} from 'node:timers/promises';

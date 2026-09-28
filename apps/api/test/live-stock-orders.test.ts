@@ -173,7 +173,8 @@ test('live preview requests each selected stock in both directions and reports n
     assert.equal(url.searchParams.get('taker'),wallet);
     // Transfer-fee tokens widen the tolerance by their own fee; RFQ tokens use market makers only.
     assert.equal(url.searchParams.get('slippageBps'),String(50+asset.transferFeeBps));
-    assert.equal(url.searchParams.get('excludeRouters'),asset.route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx');
+    const route=orderRequests===1?asset.route:asset.route==='rfq'?'aggregator':'rfq';
+    assert.equal(url.searchParams.get('excludeRouters'),route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx');
     return Response.json({error:'Failed to get quotes'},{status:400});
    }
    const request=JSON.parse(String(options?.body));
@@ -184,7 +185,8 @@ test('live preview requests each selected stock in both directions and reports n
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
   const amountRaw=side==='sell' && BigInt(asset.maxSellInputRaw)<1000000n?asset.maxSellInputRaw:'1000000';
   await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side,amountRaw,termsAccepted:terms(asset)}),/NO_ROUTE/);
-  assert.equal(orderRequests,1);
+  // With no quote on its usual route, a token tries the other one; Ondo's trade only with market makers.
+  assert.equal(orderRequests,asset.issuerId==='ondo'?1:2);
  }
 });
 
@@ -195,7 +197,7 @@ test('live preview refuses a swapped issuer/company identity before touching a w
  assert.equal(reads,0);
 });
 
-test('buy and sell caps return an explicit limit error before reading providers or spending funds',async()=>{
+test('the buy cap returns an explicit limit error before reading providers or spending funds',async()=>{
  let reads=0;
  const wallet=fixture().order.wallet;
  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store:{} as LiveOrderStore,fetch:async()=>{reads++;throw Error('unexpected');}});
@@ -204,8 +206,9 @@ test('buy and sell caps return an explicit limit error before reading providers 
  } as unknown as LiveStockAdapters;
  const app=Fastify();registerLiveStockRoutes(app,adapters);
  try {
-  for(const asset of STOCK_TRADING_ASSETS)for(const side of ['buy','sell'] as const) {
-   const cap=BigInt(side==='buy'?asset.maxBuyInputRaw:asset.maxSellInputRaw);
+  // Sells are bounded by holdings and each order's market price check, not a per-token cap.
+  for(const asset of STOCK_TRADING_ASSETS)for(const side of ['buy'] as const) {
+   const cap=BigInt(asset.maxBuyInputRaw);
    for(const amountRaw of [String(cap+1n),String(cap*10n)]) {
    const input={assetId:asset.assetId,variantMint:asset.mint,side,amountRaw};
    await assert.rejects(service.preview('user',wallet,input),{code:'TRADE_LIMIT'});

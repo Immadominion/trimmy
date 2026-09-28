@@ -82,7 +82,8 @@ test('a valid mint paired with a different company is rejected before provider r
   }
   const apple = STOCK_TRADING_ASSETS[0]!;
   for (const side of ['buy', 'sell'] as const) {
-    for (const amountRaw of ['0', '01', '1.0', '1e6', '100000001']) {
+    // Buys are capped at 100 USDC; sells only by holdings and each order's price check.
+    for (const amountRaw of ['0', '01', '1.0', '1e6', side === 'buy' ? '100000001' : '18446744073709551616']) {
       await assert.rejects(reader.estimate({assetId: apple.assetId, variantMint: apple.mint, side, amountRaw}), {code: 'MARKET_INPUT_INVALID'});
     }
   }
@@ -106,7 +107,7 @@ test('legacy capabilities keep the installed-app contract: active xStocks only, 
       assert.deepEqual(actual, {assetId: asset.assetId, mint: asset.mint, symbol: asset.symbol, name: asset.name,
         decimals: asset.decimals, maxBuyInputRaw: asset.maxBuyInputRaw, maxSellInputRaw: asset.maxSellInputRaw});
     }
-    assert.equal((await app.inject('/v1/trading/capabilities?schema=3')).statusCode, 400);
+    assert.equal((await app.inject('/v1/trading/capabilities?schema=4')).statusCode, 400);
     assert.equal((await app.inject('/v1/trading/capabilities?other=1')).statusCode, 400);
   } finally {await app.close();}
 });

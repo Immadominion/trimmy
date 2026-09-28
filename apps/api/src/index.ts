@@ -1,7 +1,8 @@
 import {LiveStockOrders} from './live-stock-orders.js';
 import {OndoMarketStatusReader} from './ondo-market-status.js';
 import {StockMarketStates, StockMintPauseReader} from './stock-market-state.js';
-import {STOCK_TRADING_ASSETS} from './stock-trading-catalog.js';
+import {stockTradingAssets} from './stock-trading-catalog.js';
+import {StockTokenDirectory} from './stock-token-directory.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -86,18 +87,25 @@ const raydiumStockQuotes = readRaydiumStockQuotes(process.env);
 const accountHoldings = linkedIdentities && practice.authenticateContext && holdingsReader
   ? {linkedIdentities, authenticate: practice.authenticateContext, holdings: holdingsReader} : undefined;
 const liveRpc = process.env['SOLANA_MAINNET_RPC_URL'];
+// Every stock token the Market lists from a supported issuer, checked automatically:
+// no token is approved by hand. It sweeps the catalog every 30 minutes and checks a
+// new token the moment an order names it.
+const tokenDirectory = liveRpc ? new StockTokenDirectory({rpcUrl: liveRpc, ...(stockDiscovery ? {discovery: stockDiscovery} : {})}) : undefined;
+tokenDirectory?.start();
 // Whether each stock can trade now: Ondo's live status for its tokens, and each
 // mint's on-chain pause flag. Both are cached and bounded; the session calendar
 // decides alone when they are unavailable.
 const marketStates = liveRpc ? new StockMarketStates({ondo: new OndoMarketStatusReader(),
-  pauses: new StockMintPauseReader({rpcUrl: liveRpc}), mints: STOCK_TRADING_ASSETS.map(asset => asset.mint)}) : undefined;
+  pauses: new StockMintPauseReader({rpcUrl: liveRpc}), mints: () => stockTradingAssets().map(asset => asset.mint)}) : undefined;
 const liveStocks = liveRpc &&
     practice.liveOrderStore && practice.authenticateContext && linkedIdentities
   ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
       executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet',
       ...(marketStates ? {marketStates} : {}),
+      ...(tokenDirectory ? {directory: tokenDirectory} : {}),
       service: new LiveStockOrders({rpcUrl: liveRpc, store: practice.liveOrderStore,
         ...(marketStates ? {marketStates} : {}),
+        ...(tokenDirectory ? {directory: tokenDirectory} : {}),
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
   : undefined;
 const paperAuthenticate = practice.authenticate && practice.guestSessionRepository
@@ -122,6 +130,9 @@ const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions,
   relationshipSafetyEnabled,
   ...(publicHolders ? {publicHolders} : {}),
   ...(liveStocks ? {liveStocks} : {}),
+  // Past orders' tokens that no source lists any more still show in history.
+  ...(practiceOptions.liveTradeHistory && tokenDirectory ? {liveTradeHistory: {...practiceOptions.liveTradeHistory,
+    recall: (mints: readonly string[]) => tokenDirectory.recall(mints)}} : {}),
   ...(relationshipSafetyReadiness ? {relationshipSafetyReadiness} : {}),
   ...(invitations ? {invitations} : {}),
   ...(accountClosure ? {accountClosure} : {}),

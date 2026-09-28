@@ -5,14 +5,17 @@ import type {FastifyInstance, FastifyRequest, FastifyReply} from 'fastify';
 import type {ExistingPracticeAccountAuthentication} from './practice-session-routes.js';
 import type {PrivyLinkedIdentityResolution} from './privy-linked-identities.js';
 import type {PracticeIdentity} from './practice-identity.js';
-import {STOCK_TRADING_ASSETS,findStockTradingAsset} from './stock-trading-catalog.js';
+import {STOCK_ASSET_ID_PATTERN,STOCK_MINT_PATTERN,STOCK_TRADING_ASSETS,findStockTradingAsset,stockTradingAssets} from './stock-trading-catalog.js';
+import type {StockTradingAsset} from './stock-trading-catalog.js';
 import {LEGACY_STOCK_ISSUER,STOCK_ISSUER_IDS,acceptsIssuerTerms} from './stock-issuers.js';
 import {stockIssuerCapabilities,unavailableVariantsNow} from './stock-market-availability.js';
+import type {StockTokenDirectory} from './stock-token-directory.js';
+import {orderPriceAcceptable} from './stock-order-price.js';
 import {calendarMarketStates} from './stock-market-state.js';
 import type {StockMarketStates,StockMarketStateOf} from './stock-market-state.js';
 import {usMarketMoment} from './us-equity-calendar.js';
 import type {StockIssuerId,StockTermsAcceptance} from './stock-issuers.js';
-import {JUPITER_QUOTE_ASSETS, orderSlippageBps, parseEstimate} from './jupiter-quote-reader.js';
+import {JUPITER_QUOTE_ASSETS, orderSlippageBps, parseEstimate, stockQuoteAsset} from './jupiter-quote-reader.js';
 import {bindStockOrderDraft, copyStockDraftBytesForReview, STOCK_DRAFT_MAINNET_GENESIS} from './stock-order-draft.js';
 import {SolanaMainnetLookupTableResolver} from './stock-order-lookup-resolver.js';
 import {SolanaMainnetStockOrderLifetimeVerifier} from './stock-order-lifetime-verifier.js';
@@ -117,7 +120,10 @@ export function verifyReviewedSignature(order:LiveOrder,encoded:string):string {
 
 interface Options {rpcUrl:string;store:LiveOrderStore;apiKey?:string;fetch?:typeof fetch;stages?:StockOrderReviewStages;now?:()=>number;
  /** Live market states; without them the published session calendar alone decides. */
- marketStates?:StockMarketStates}
+ marketStates?:StockMarketStates;
+ /** Finds tokens the Market lists that no order has named yet; without it only known tokens trade. */
+ directory?:StockTokenDirectory}
+
 /** Market states now, live when configured. */
 export async function marketStatesNow(states:StockMarketStates|undefined,now:number):Promise<StockMarketStateOf>{
  return states?states.snapshot():calendarMarketStates(now);
@@ -150,6 +156,27 @@ export class LiveStockOrders {
   return result.result;
  }
  private headers(){return {'accept':'application/json',...(this.options.apiKey?{'x-api-key':this.options.apiKey}:{})};}
+ readonly #prices=new Map<string,{readonly at:number;readonly usd:number|null}>();
+ /** Jupiter's market price per whole token (before any display multiplier), cached briefly; null when it has none. */
+ async #marketPrice(mint:string):Promise<number|null> {
+  const cached=this.#prices.get(mint);
+  if(cached && this.#now()-cached.at<30_000)return cached.usd;
+  let usd:number|null=null;
+  try {
+   const page=await this.json(`https://api.jup.ag/price/v3?ids=${mint}`,{method:'GET',headers:this.headers()});
+   const row=page?.[mint];
+   const value=row?.scaledUiConfig?.usdPricePrescaled ?? row?.usdPrice;
+   usd=typeof value==='number' && Number.isFinite(value) && value>0?value:null;
+  }catch{usd=null;}
+  if(this.#prices.size>2000)this.#prices.clear();
+  this.#prices.set(mint,{at:this.#now(),usd});
+  return usd;
+ }
+ /** Refuses an order priced far worse than the token's market (stock-order-price.ts). */
+ async #checkMarketPrice(stock:StockTradingAsset,buying:boolean,inputRaw:string,outputRaw:string,feeBps:number,payload:any):Promise<void> {
+  if(!orderPriceAcceptable({buying,inputRaw,outputRaw,decimals:stock.decimals,transferFeeBps:stock.transferFeeBps,swapFeeBps:feeBps,
+   referenceUsd:await this.#marketPrice(stock.mint),priceImpactPct:payload?.priceImpactPct}))fail('PRICE_OFF_MARKET');
+ }
  private async chain() {
   if(await this.rpc('getGenesisHash')!==STOCK_DRAFT_MAINNET_GENESIS)fail('WRONG_NETWORK');
   const height=await this.rpc('getBlockHeight',[{commitment:'finalized'}]);
@@ -159,6 +186,8 @@ export class LiveStockOrders {
  async preview(user:string,wallet:string,request:StockEstimateInput&{termsAccepted?:StockTermsAcceptance}):Promise<LiveOrder> {
   if(!request || typeof request!=='object')fail('MARKET_INPUT_INVALID');
   const {termsAccepted,...input}=request;
+  // A token the Market lists that no order has named yet is checked now.
+  if(typeof input.assetId==='string' && typeof input.variantMint==='string')await this.options.directory?.ensure(input.assetId,input.variantMint);
   const requestedAsset=input && findStockTradingAsset(input.assetId,input.variantMint);
   if(requestedAsset && Object.keys(input).length===4 && ['buy','sell'].includes(input.side) &&
     typeof input.amountRaw==='string' && /^[1-9][0-9]{0,19}$/.test(input.amountRaw) &&
@@ -186,17 +215,28 @@ export class LiveStockOrders {
     balance.context.slot<1 || (previousSlot!==undefined && balance.context.slot<previousSlot))fail('LIVE_UNAVAILABLE');
    if(balance.value<LIVE_STOCK_MIN_SOL_LAMPORTS)fail('ADD_SOL');
    const stock=findStockTradingAsset(input.assetId,input.variantMint)!;
-   const buying=input.side==='buy';const pair={inputAsset:buying?'USDC':stock.symbol,outputAsset:buying?stock.symbol:'USDC',amountRaw:input.amountRaw} as const;
-   // Each issuer has one reviewed route: Jupiter's aggregator (metis), or JupiterZ
-   // market makers (RFQ) for issuers whose liquidity exists only there.
-   const route=stock.route;
+   const buying=input.side==='buy';const stockSide=stockQuoteAsset(stock);
+   const pair={inputAsset:buying?'USDC' as const:stockSide,outputAsset:buying?stockSide:'USDC' as const,amountRaw:input.amountRaw};
+   const inputMint=buying?JUPITER_QUOTE_ASSETS.USDC.mint:stock.mint,outputMint=buying?stock.mint:JUPITER_QUOTE_ASSETS.USDC.mint;
+   // Two reviewed routes: Jupiter's aggregator (metis) and JupiterZ market makers
+   // (RFQ). The token's usual route goes first and the other is tried when it has no
+   // quote. Ondo's tokens trade only with market makers, and a client without issuer
+   // terms cannot sign a market maker's order.
+   const routes:readonly ('aggregator'|'rfq')[]=stock.issuerId==='ondo'?['rfq']:termsAccepted===undefined?['aggregator']:
+    stock.route==='rfq'?['rfq','aggregator']:['aggregator','rfq'];
    // A token's own transfer fee is withheld from what arrives; Jupiter quotes before it.
    const slippageBps=orderSlippageBps(stock.transferFeeBps);
+   let route=routes[0]!,payload:any,started=0,received=0,providerText='';
+   for(const candidate of routes) {
+    route=candidate;
+    const url=new URL('https://api.jup.ag/swap/v2/order');
+    url.search=new URLSearchParams({inputMint,outputMint,amount:input.amountRaw,taker:wallet,slippageBps:String(slippageBps),excludeRouters:route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
+    started=this.#now();payload=await this.json(url.toString(),{method:'GET',headers:this.headers()},true);received=this.#now();
+    providerText=[payload?.error,payload?.errorMessage].filter(value=>typeof value==='string').join(' ');
+    // Only a route with no quote at all moves on; a funding or hours answer is final.
+    if(payload?.transaction || payload?.errorCode!==undefined || /market hours/i.test(providerText))break;
+   }
    const expectedRouter=route==='rfq'?'jupiterz':'metis';
-   const url=new URL('https://api.jup.ag/swap/v2/order');
-   url.search=new URLSearchParams({inputMint:JUPITER_QUOTE_ASSETS[pair.inputAsset].mint,outputMint:JUPITER_QUOTE_ASSETS[pair.outputAsset].mint,amount:input.amountRaw,taker:wallet,slippageBps:String(slippageBps),excludeRouters:route==='rfq'?'metis,dflow,okx':'jupiterz,dflow,okx',priorityFeeLamports:'100000',broadcastFeeType:'maxCap'}).toString();
-   const started=this.#now();const payload=await this.json(url.toString(),{method:'GET',headers:this.headers()},true);const received=this.#now();
-   const providerText=[payload?.error,payload?.errorMessage].filter(value=>typeof value==='string').join(' ');
    if(/market hours/i.test(providerText)) {
     // Ondo's market makers give one message for a closed market and for an order
     // under their $1 minimum after fees; the token's own market state tells them apart.
@@ -220,6 +260,7 @@ export class LiveStockOrders {
    // independently decodes instructions, resolves accounts and simulates it.
    const quote=parseEstimate({...payload,transaction:null,taker:null},pair,started,received,slippageBps);
    if(quote.swapFee.basisPoints>100)fail('FEE_TOO_HIGH');
+   await this.#checkMarketPrice(stock,buying,input.amountRaw,quote.output.estimatedAmountRaw,quote.swapFee.basisPoints,payload);
    const expected:StockEstimate={...quote,...input,executionEnabled:false,eligibility:'unverified',amountUnits:'raw_token_units'};
    const draft=bindStockOrderDraft(payload,{authenticatedUserId:user,verifiedTaker:wallet,expected,requestStartedAt:new Date(received).toISOString(),chainObservation:observation,validityAuthority:{now:this.#now,readChainObservation:()=>this.chain()}});
    const binding={authenticatedUserId:user,verifiedTaker:wallet,requestId:draft.summary.requestId,transactionMessageHash:draft.summary.transactionMessageHash,bindingHash:draft.summary.bindingHash};
@@ -336,6 +377,8 @@ export interface LiveStockAdapters {
  service:LiveStockOrders;
  /** Live market states for capabilities; the calendar alone without them. */
  marketStates?:StockMarketStates;
+ /** Tokens found automatically, and why others were refused. */
+ directory?:StockTokenDirectory;
 }
 export function liveStockExecutionEnabled(adapters?:LiveStockAdapters):boolean {return !!adapters && adapters.executionEnabled!==false;}
 function publicOrder(order:LiveOrder|null) {
@@ -364,7 +407,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_CLOSED','BELOW_MINIMUM','MARKET_INPUT_INVALID'];
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_CLOSED','BELOW_MINIMUM','PRICE_OFF_MARKET','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;
@@ -374,9 +417,10 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    return reply.code(code==='ACCOUNT_REQUIRED'?401:code==='MARKET_INPUT_INVALID'?400:code==='LIVE_BUSY'?429:known.includes(code)?409:503).send({code:known.includes(code)?code:'LIVE_UNAVAILABLE'});
   }
  }
- app.get<{Querystring:{schema?:'2'}}>('/v1/trading/capabilities',{schema:{querystring:{type:'object',additionalProperties:false,properties:{schema:{enum:['2']}}}}},async request=>{
+ // schema=3 lists every tradeable token; schema=2 keeps installed apps' limit of 600.
+ app.get<{Querystring:{schema?:'2'|'3'}}>('/v1/trading/capabilities',{schema:{querystring:{type:'object',additionalProperties:false,properties:{schema:{enum:['2','3']}}}}},async request=>{
   const common={enabled:liveStockExecutionEnabled(adapters),network:'solana:mainnet-beta',maxBuyUsdc:'100',minimumSolBalanceLamports:String(LIVE_STOCK_MIN_SOL_LAMPORTS)};
-  if(request.query.schema!=='2') {
+  if(request.query.schema===undefined) {
    // Installed clients reject more than 128 assets, only know the original
    // issuer's disclosure and sign single-signer transactions only. Keep their
    // contract exactly: active xStocks on the aggregator route.
@@ -389,17 +433,17 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
   return {schemaVersion:2,...common,issuers:stockIssuerCapabilities(),
    // The US session in force, for context: most tokens trade around the clock regardless.
    usMarket:{session:moment.session,between:moment.gap,changesAt:new Date(moment.changesAt).toISOString()},
-   assets:STOCK_TRADING_ASSETS.map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})=>
+   assets:(request.query.schema==='3'?stockTradingAssets():stockTradingAssets().slice(0,600)).map(({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route})=>
     ({assetId,mint,symbol,name,issuerId,decimals,maxBuyInputRaw,maxSellInputRaw,transferFeeBps,route,
      // Market makers need at least $1 after fees; $2 leaves room for the fee and price moves.
      minBuyInputRaw:route==='rfq'?'2000000':'1',
      market:stateOf(issuerId,symbol,mint)})),
    // Market variants that cannot be traded, with the reason to show instead of a buy button.
-   unavailable:unavailableVariantsNow(stateOf)};
+   unavailable:unavailableVariantsNow(adapters?.directory?.refusals()??[])};
  });
  app.get<{Params:{id:string}}>('/v1/trading/order/:id',{schema:{querystring:noQuery,params:{type:'object',additionalProperties:false,required:['id'],properties:{id:{type:'string',format:'uuid'}}}}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user,request.params.id)));
  app.get('/v1/trading/order',{schema:{querystring:noQuery}},(request,reply)=>run(request,reply,user=>adapters!.service.status(user)));
- app.post<{Body:StockEstimateInput&{termsAccepted?:StockTermsAcceptance}}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{enum:[...new Set(STOCK_TRADING_ASSETS.map(asset=>asset.assetId))]},variantMint:{enum:STOCK_TRADING_ASSETS.map(asset=>asset.mint)},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,19}$'},
+ app.post<{Body:StockEstimateInput&{termsAccepted?:StockTermsAcceptance}}>('/v1/trading/preview',{bodyLimit:2048,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['assetId','variantMint','side','amountRaw'],properties:{assetId:{type:'string',maxLength:100,pattern:STOCK_ASSET_ID_PATTERN.source},variantMint:{type:'string',pattern:STOCK_MINT_PATTERN.source},side:{enum:['buy','sell']},amountRaw:{type:'string',pattern:'^[1-9][0-9]{0,19}$'},
    termsAccepted:{type:'object',additionalProperties:false,required:['issuerId','version'],properties:{issuerId:{enum:[...STOCK_ISSUER_IDS]},version:{type:'string',pattern:'^[0-9]{4}-[0-9]{2}-[0-9]{2}$'}}}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.preview(user,wallet,request.body),true));
  app.post<{Body:{id:string;reviewDigest:string;signedTransaction:string}}>('/v1/trading/execute',{bodyLimit:4096,schema:{querystring:noQuery,body:{type:'object',additionalProperties:false,required:['id','reviewDigest','signedTransaction'],properties:{id:{type:'string',format:'uuid'},reviewDigest:{type:'string',pattern:'^[0-9a-f]{64}$'},signedTransaction:{type:'string',minLength:88,maxLength:1644,pattern:'^[A-Za-z0-9+/]+={0,2}$'}}}}},(request,reply)=>run(request,reply,(user,wallet)=>adapters!.service.execute(user,wallet,request.body.id,request.body.reviewDigest,request.body.signedTransaction),true));
 }

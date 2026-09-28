@@ -91,7 +91,8 @@ test('accepted terms (and the legacy xStocks request) proceed to the reviewed ro
     const service = new LiveStockOrders({rpcUrl: 'https://rpc.example', store: noStore, fetch: fake as typeof fetch});
     await assert.rejects(service.preview('user', wallet, {assetId: asset.assetId, variantMint: asset.mint, side: 'buy', amountRaw: '1000000',
       ...(terms ? {termsAccepted: terms} : {})}), {code: 'NO_ROUTE'});
-    assert.equal(orderRequests, 1);
+    // The other route is tried too, except for Ondo (market makers only) and clients without issuer terms.
+    assert.equal(orderRequests, asset.issuerId === 'ondo' || terms === undefined ? 1 : 2);
   }
 });
 

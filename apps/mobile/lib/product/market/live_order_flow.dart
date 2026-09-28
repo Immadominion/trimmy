@@ -38,6 +38,8 @@ class LiveOrderFailure implements Exception {
       'This stock trades while US markets are open. Try again then.',
     'BELOW_MINIMUM' =>
       'This order is under the market maker’s minimum. Try a larger amount.',
+    'PRICE_OFF_MARKET' =>
+      'That price is too far from the market right now. Try again shortly or a smaller amount.',
     'FEE_TOO_HIGH' => 'The fees are too high for this order. Try later.',
     'ACCOUNT_REQUIRED' => 'Sign in again to use your wallet.',
     'INVALID_REVIEW' ||
@@ -1084,13 +1086,14 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         ],
       ),
       const SizedBox(height: 12),
-      Text(
-        _cappedPreset == null
-            ? 'Order limit: $limit'
-            : '$_cappedPreset capped at the order limit of $limit.',
-        key: const ValueKey('live-order-limit'),
-        style: type.bodySmall,
-      ),
+      if (_limitRaw < liveUncappedRaw)
+        Text(
+          _cappedPreset == null
+              ? 'Order limit: $limit'
+              : '$_cappedPreset capped at the order limit of $limit.',
+          key: const ValueKey('live-order-limit'),
+          style: type.bodySmall,
+        ),
       const SizedBox(height: 20),
       _IssuerCard(
         key: _termsKey,

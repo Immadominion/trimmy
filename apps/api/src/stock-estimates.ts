@@ -1,5 +1,5 @@
 import { parseRawAmount } from '@trimmy/domain';
-import { JupiterQuoteReader, MarketEstimateError, readJupiterQuoteReader } from './jupiter-quote-reader.js';
+import { JupiterQuoteReader, MarketEstimateError, readJupiterQuoteReader, stockQuoteAsset } from './jupiter-quote-reader.js';
 import { STOCK_TRADING_ASSETS, findStockTradingAsset } from './stock-trading-catalog.js';
 import type { StockTradingAssetId } from './stock-trading-catalog.js';
 import type { JupiterEstimateOptions, MarketEstimate } from './jupiter-quote-reader.js';
@@ -49,9 +49,10 @@ export class JupiterStockEstimates implements StockEstimates {
     validateStockEstimateInput(input);
     const request = Object.freeze({...input});
     const asset = findStockTradingAsset(request.assetId, request.variantMint)!;
+    const stock = stockQuoteAsset(asset);
     const quote = await this.#reader.estimate({
-      inputAsset: request.side === 'buy' ? 'USDC' : asset.symbol,
-      outputAsset: request.side === 'buy' ? asset.symbol : 'USDC', amountRaw: request.amountRaw,
+      inputAsset: request.side === 'buy' ? 'USDC' : stock,
+      outputAsset: request.side === 'buy' ? stock : 'USDC', amountRaw: request.amountRaw,
     });
     return Object.freeze({...quote, assetId: request.assetId, variantMint: request.variantMint, side: request.side,
       executionEnabled: false, eligibility: 'unverified', amountUnits: 'raw_token_units'});

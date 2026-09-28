@@ -300,7 +300,7 @@ void main() {
     });
 
     test(
-      'requests schema 2 and falls back once when an older server says 400',
+      'requests schema 3, falling back to 2 and then legacy when older servers say 400',
       () async {
         final urls = <Uri>[];
         final caps = await fetchLiveTradingCapabilities(
@@ -308,12 +308,13 @@ void main() {
           client: MockClient((request) async {
             urls.add(request.url);
             expect(request.followRedirects, isFalse);
-            return request.url.queryParameters['schema'] == '2'
+            return request.url.queryParameters.containsKey('schema')
                 ? http.Response(jsonEncode({'code': 'INVALID_REQUEST'}), 400)
                 : http.Response(jsonEncode(capabilities()), 200);
           }),
         );
         expect(urls.map((url) => url.toString()), [
+          'https://api.trimmy.test/v1/trading/capabilities?schema=3',
           'https://api.trimmy.test/v1/trading/capabilities?schema=2',
           'https://api.trimmy.test/v1/trading/capabilities',
         ]);
@@ -340,38 +341,44 @@ void main() {
       },
     );
 
-    test('a full catalog fits and anything past 512 KB is refused', () async {
-      final full = capabilitiesV2Json(
-        assets: [
-          for (var i = 0; i < liveCapabilitiesMaxAssets; i++)
-            assetJson(
-              assetId: 'company-$i',
-              mint: fakeMint(i),
-              symbol: 'C$i',
-              name: 'Company $i Tokenized Stock',
-            ),
-        ],
-      );
-      final body = jsonEncode(full);
-      expect(utf8.encode(body).length, greaterThan(65536));
-      final caps = await fetchLiveTradingCapabilities(
-        Uri.parse('https://api.trimmy.test'),
-        client: MockClient((_) async => http.Response(body, 200)),
-      );
-      expect(caps.assets, hasLength(liveCapabilitiesMaxAssets));
-      await expectLater(
-        fetchLiveTradingCapabilities(
+    test(
+      'a full catalog fits and anything past the byte bound is refused',
+      () async {
+        final full = capabilitiesV2Json(
+          assets: [
+            for (var i = 0; i < 3000; i++)
+              assetJson(
+                assetId: 'company-$i',
+                mint: fakeMint(i),
+                symbol: 'C$i',
+                name: 'Company $i Tokenized Stock',
+              ),
+          ],
+        );
+        final body = jsonEncode(full);
+        expect(utf8.encode(body).length, greaterThan(65536));
+        final caps = await fetchLiveTradingCapabilities(
           Uri.parse('https://api.trimmy.test'),
-          client: MockClient(
-            (_) async => http.Response(
-              jsonEncode({...full, 'padding': 'x' * liveCapabilitiesMaxBytes}),
-              200,
+          client: MockClient((_) async => http.Response(body, 200)),
+        );
+        expect(caps.assets, hasLength(3000));
+        await expectLater(
+          fetchLiveTradingCapabilities(
+            Uri.parse('https://api.trimmy.test'),
+            client: MockClient(
+              (_) async => http.Response(
+                jsonEncode({
+                  ...full,
+                  'padding': 'x' * liveCapabilitiesMaxBytes,
+                }),
+                200,
+              ),
             ),
           ),
-        ),
-        throwsFormatException,
-      );
-    });
+          throwsFormatException,
+        );
+      },
+    );
   });
 
   group('offered issuers and unavailable tokens', () {

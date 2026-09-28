@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { MarketEstimateError } from './jupiter-quote-reader.js';
 import type { RaydiumStockQuotes } from './raydium-stock-quotes.js';
-import { STOCK_TRADING_ASSETS } from './stock-trading-catalog.js';
+import { STOCK_ASSET_ID_PATTERN, STOCK_MINT_PATTERN } from './stock-trading-catalog.js';
 import { validateStockEstimateInput } from './stock-estimates.js';
 import type { StockEstimateInput } from './stock-estimates.js';
 
@@ -15,8 +15,9 @@ export function registerRaydiumStockQuoteRoute(app: FastifyInstance,
       type: 'object', additionalProperties: false,
       required: ['assetId', 'variantMint', 'side', 'amountRaw'],
       properties: {
-        assetId: {type: 'string', enum: [...new Set(STOCK_TRADING_ASSETS.map(asset => asset.assetId))]},
-        variantMint: {type: 'string', enum: STOCK_TRADING_ASSETS.map(asset => asset.mint)},
+        // Any token shape here; the handler checks it is a tradeable token.
+        assetId: {type: 'string', maxLength: 100, pattern: STOCK_ASSET_ID_PATTERN.source},
+        variantMint: {type: 'string', pattern: STOCK_MINT_PATTERN.source},
         side: {type: 'string', enum: ['buy', 'sell']},
         amountRaw: {type: 'string', pattern: '^[1-9][0-9]{0,8}$', maxLength: 9},
       },

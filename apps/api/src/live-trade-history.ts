@@ -14,6 +14,8 @@ export interface LiveTradeHistoryRepository {
 export interface LiveTradeHistoryAdapters {
   authenticate(request:FastifyRequest):Promise<{userId:string}|null>;
   repository:LiveTradeHistoryRepository;
+  /** Recognizes past orders' tokens that no current source lists, for display. */
+  recall?(mints:readonly string[]):Promise<void>;
 }
 class HistoryError extends Error {
   constructor(readonly code:'INVALID_REQUEST'|'HISTORY_UNAVAILABLE'){super(code);}
@@ -106,6 +108,11 @@ export function registerLiveTradeHistoryRoute(app:FastifyInstance,adapters?:Live
       const before=parseCursor(query['cursor'],account.userId);
       const rows=await adapters.repository.list(account.userId,limit,before);
       if(!Array.isArray(rows) || rows.length>limit+1)return unavailable();
+      if(adapters.recall) {
+        const mints=rows.flatMap(row=>{const terms=record(record(row)['terms']);return [terms['inputMint'],terms['outputMint']];})
+          .filter((mint):mint is string=>typeof mint==='string' && mint!==JUPITER_QUOTE_ASSETS.USDC.mint && !findStockTradingAssetByMint(mint));
+        if(mints.length)await adapters.recall(mints).catch(()=>undefined);
+      }
       const projected=rows.map(project);
       let previous=before;
       for(const row of projected){

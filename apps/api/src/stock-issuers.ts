@@ -4,9 +4,9 @@
  *    including the issuer's key warning and a versioned eligibility attestation
  *    the server requires on preview. Texts summarise each issuer's own terms as
  *    read on 2026-09-27 (links in termsUrl); they are not legal advice.
- *  - identity: pinned on-chain authorities and official sources the admission
- *    tool uses to prove a mint belongs to the issuer. Discovery metadata alone
- *    never admits a token (tool/testing/stock-admission.mjs).
+ *  - identity: pinned on-chain authorities the token directory checks,
+ *    together with a curated listing, to prove a mint belongs to the issuer
+ *    (stock-token-directory.ts). Neither alone admits a token.
  *  - offer: whether Trimmy offers trading in the issuer's tokens at all. A
  *    not-offered issuer's registry entries stay recognisable for holdings and
  *    history but cannot be quoted or traded.
