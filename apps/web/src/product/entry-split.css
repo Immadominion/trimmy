@@ -1,0 +1,56 @@
+/* Entry screens on wide screens: words and actions on the left half, a doodle of desk objects on the right half. */
+.entry-doodle{display:none}
+
+@media(min-width:980px){
+  .onboarding-shell.entry-split .product-body{width:50%}
+  .onboarding-shell.entry-split .onboard-header{max-width:none;padding:0 clamp(28px,4.4vw,76px)}
+  .onboarding-shell.entry-split .product-main{display:flex;flex-direction:column;max-width:none;width:100%;margin:0;padding:6px clamp(28px,4.4vw,76px) 40px}
+  .onboarding-shell.entry-split .product-main>*{flex-shrink:0}
+  .entry-split .first-day,.entry-split .sign-in-screen,.entry-split .journey-screen{width:100%;max-width:470px;margin:auto}
+  .entry-split .first-day-practice{padding-top:8px}
+
+  /* The doodle carries the art, so the column keeps only words and actions. */
+  .entry-split .intro-art,.entry-split .sign-in-art,.entry-split .journey-state-art,.entry-split .journey-icon,.entry-split .journey-preserved-art{display:none}
+  .entry-split .intro-welcome{display:block;padding:0}
+  .entry-split .intro-copy{max-width:none;text-align:left}
+  .entry-split .intro-copy h1{font-size:52px;letter-spacing:-1.8px;max-width:420px;text-wrap:balance}
+  .entry-split h1{text-wrap:balance}
+  .entry-split .intro-copy>p:not(.intro-eyebrow):not(.intro-disclosure){font-size:17px;max-width:360px}
+  .entry-split .intro-copy .intro-actions{max-width:300px}
+  .entry-split .intro-welcome>.intro-mobile-prompt{max-width:none;margin:44px 0 0}
+  .entry-split .sign-in-screen{display:block;padding:0}
+  .entry-split .sign-in-content{max-width:none}
+  .entry-split .sign-in-content h1{font-size:44px;letter-spacing:-1.4px}
+  .entry-split .journey-state{text-align:left}
+  .entry-split .journey-screen h1{font-size:42px;letter-spacing:-1.3px}
+  .entry-split .intro-note{margin:30px auto 20px}
+
+  .entry-doodle{display:block;position:fixed;top:14px;right:14px;bottom:14px;left:50%;overflow:hidden;border-radius:34px;container-type:size;
+    background:#f5f1fd radial-gradient(circle,#e1d6f6 1.1px,transparent 1.35px) 0 0/22px 22px}
+  .entry-doodle::before{content:'';position:absolute;left:var(--hx,50%);top:var(--hy,50%);width:70cqmin;height:70cqmin;translate:-50% -50%;border-radius:50%;
+    background:radial-gradient(circle,#fff 0,rgba(255,255,255,.75) 42%,rgba(255,255,255,0) 70%)}
+  .entry-doodle-ink{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .entry-doodle-ink path{fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+  .entry-doodle-ink .trail{stroke:#b9a3ee;stroke-width:2;stroke-dasharray:6 7}
+  .entry-doodle-piece{position:absolute;left:var(--x);top:var(--y);width:calc(var(--size) * 1cqmin);height:auto;translate:-50% -50%;rotate:var(--turn);
+    filter:drop-shadow(0 1.6cqmin 1.8cqmin rgba(83,52,145,.14));animation:doodle-in .8s cubic-bezier(.2,.9,.3,1.2) calc(var(--i) * 80ms) both}
+  .entry-doodle-piece.hero{filter:drop-shadow(0 2.4cqmin 2.8cqmin rgba(83,52,145,.18))}
+  .entry-doodle-piece.coin{border-radius:50%;filter:none;box-shadow:0 0 0 .7cqmin #fff,0 1.4cqmin 2.2cqmin rgba(83,52,145,.2)}
+  .entry-doodle-spark{position:absolute;left:var(--x);top:var(--y);width:clamp(14px,3cqmin,28px);height:auto;translate:-50% -50%;
+    animation:doodle-in .6s ease-out calc(320ms + var(--i) * 90ms) both}
+  .entry-doodle-spark path{fill:#b59df2}
+  .entry-doodle-spark.tone-1 path{fill:#95d9bf}
+  .entry-doodle-spark.tone-2 path{fill:#f3c766}
+  .entry-doodle[data-motion=true] .entry-doodle-piece{animation:doodle-in .8s cubic-bezier(.2,.9,.3,1.2) calc(var(--i) * 80ms) both,doodle-float 6.5s ease-in-out calc(var(--i) * -1.3s) infinite alternate}
+  .entry-doodle[data-motion=true] .entry-doodle-spark{animation:doodle-in .6s ease-out calc(320ms + var(--i) * 90ms) both,doodle-twinkle 3.4s ease-in-out calc(var(--i) * -.9s) infinite}
+}
+@media(min-width:980px) and (max-height:720px){
+  .entry-split .intro-copy h1{font-size:44px}
+  .entry-split .journey-screen h1{font-size:36px}
+}
+@keyframes doodle-in{from{opacity:0;scale:.84}to{opacity:1;scale:1}}
+@keyframes doodle-float{from{transform:translateY(-1cqmin)}to{transform:translateY(1cqmin)}}
+@keyframes doodle-twinkle{0%,100%{transform:scale(1)}50%{transform:scale(.7)}}
+@media(prefers-reduced-motion:reduce){.entry-doodle *{animation:none!important}}
+/* Headings take focus only so screen readers announce each step; they aren't controls, so no ring. */
+.onboarding-shell h1[tabindex="-1"]:focus-visible,.onboarding-shell .product-main:focus-visible{outline:none}

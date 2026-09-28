@@ -12,6 +12,7 @@ import './product/money/money.css';
 import './product/journey.css';
 import './product/settings.css';
 import './product/market-social.css';
+import './product/entry-split.css';
 
 
 export {ProductApp};

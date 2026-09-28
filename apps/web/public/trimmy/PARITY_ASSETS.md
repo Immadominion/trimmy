@@ -26,3 +26,7 @@ Byte-for-byte copies of the mobile artwork on the Real balance card (mobile `Cas
 | --- | --- | --- |
 | `money/cash-usdc.png` | `6d14601d0b1109046e366592b8c0f256ffb075f69180b65dddd97ae665d49f9e` | `trimmy/apps/mobile/assets/images/ui_review/cash-usdc.png` |
 | `money/cash-sol.png` | `b0fb83e48d1b455333436ae158cd9e547b7493ef4f5b2d5de3d678e93a994d4c` | `trimmy/apps/mobile/assets/images/ui_review/cash-sol.png` |
+
+## Entry-screen doodles, 28 September 2026
+
+`doodles/*.webp` are smaller copies of the web's own artwork for the right half of the entry screens (`src/product/entry-doodle.tsx`): each is cropped to its visible edges, fitted within 360 px (Sal within 720 px) and saved as WebP. Sources: `career-world/<same name>.png`; `sal-chair` from `sal-chair-welcome-v3-still.png`, `sal` from `sal-neutral-v2.png`. No new artwork was made.
