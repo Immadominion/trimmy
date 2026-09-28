@@ -34,10 +34,11 @@ export function createProductWalletSdk(sdk, solana) {
       const embedded = connected.wallets.filter(wallet => wallet?.standardWallet?.isPrivyWallet === true &&
         typeof wallet.address === 'string' && ADDRESS.test(wallet.address));
       return {
-        ready: privy.ready && connected.ready === true,
+        // Setup needs only Privy's session; signing also needs the wallet connected (see signable).
+        ready: privy.ready,
         subject,
         wallets: subject ? embeddedSolanaWallets(privy.user) : [],
-        signable: embedded.map(wallet => wallet.address),
+        signable: connected.ready === true ? embedded.map(wallet => wallet.address) : [],
         async refreshUser() {
           const user = await account.refreshUser();
           return {subject: typeof user?.id === 'string' ? user.id : null, wallets: embeddedSolanaWallets(user)};

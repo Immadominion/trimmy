@@ -140,10 +140,27 @@ test('the Privy boundary counts only embedded Solana wallets and signs with Priv
     useSignTransaction: () => ({signTransaction: async (input: {transaction: Uint8Array}) => {calls.push(input); return {signedTransaction: input.transaction};}}),
   });
   const snapshot = port.useEmbeddedSolana();
-  assert.deepEqual(snapshot.signable, [user.address]); assert.equal(snapshot.subject, SUBJECT);
+  assert.deepEqual(snapshot.signable, [user.address]); assert.equal(snapshot.subject, SUBJECT); assert.equal(snapshot.ready, true);
   await snapshot.signTransaction(user.address, new Uint8Array([1]));
   assert.deepEqual((calls[0] as {options: unknown}).options, {uiOptions: {showWalletUIs: false}});
   assert.equal((calls[0] as {wallet: unknown}).wallet, connected);
   await assert.rejects(snapshot.signTransaction(external.address, new Uint8Array([1])));
   assert.throws(() => createProductWalletSdk({}, {}));
+});
+
+test('wallet setup waits only for Privy’s session, while signing waits for the connected wallet', async () => {
+  const user = await signer();
+  let walletsReady = false;
+  const port = createProductWalletSdk({
+    usePrivy: () => ({ready: true, authenticated: true, user: {id: SUBJECT, linkedAccounts: []}}),
+    useUser: () => ({refreshUser: async () => ({id: SUBJECT, linkedAccounts: []})}),
+  }, {
+    useWallets: () => ({ready: walletsReady, wallets: walletsReady ? [{address: user.address, standardWallet: {isPrivyWallet: true}}] : []}),
+    useCreateWallet: () => ({createWallet: async () => ({wallet: {address: user.address}})}),
+    useSignTransaction: () => ({signTransaction: async (input: {transaction: Uint8Array}) => ({signedTransaction: input.transaction})}),
+  });
+  const before = port.useEmbeddedSolana();
+  assert.equal(before.ready, true, 'a user without a wallet can still create one'); assert.deepEqual(before.signable, []);
+  walletsReady = true;
+  assert.deepEqual(port.useEmbeddedSolana().signable, [user.address]);
 });

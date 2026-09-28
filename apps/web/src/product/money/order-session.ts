@@ -218,8 +218,12 @@ export class LiveOrderSession {
         const expired = code === 'QUOTE_EXPIRED' || this.#now() >= Date.parse(order.expiresAt);
         this.#set({phase: expired ? 'expired' : 'reviewed', order: expired ? {...order, status: 'expired'} : order, noticeCode: code,
           notice: code === 'STORAGE_REQUIRED' ? 'Allow browser storage so Trimmy can keep track of this order. No order was sent.'
-            : expired ? 'That price expired. Get a fresh quote. No order was sent.' : code === 'ACCOUNT_CHANGED'
-            ? 'Your account changed. No order was sent.' : 'Signing didn’t finish. No order was sent.'});
+            : expired ? 'That price expired. Get a fresh quote. No order was sent.'
+            : code === 'ACCOUNT_CHANGED' ? 'Your account changed. No order was sent.'
+            : code === 'WALLET_UNAVAILABLE' ? 'Your wallet is still connecting. Try again in a moment. No order was sent.'
+            : code === 'WALLET_CHANGED' ? 'Your wallet changed. Get a fresh quote. No order was sent.'
+            : code === 'SIGNING_TIMEOUT' ? 'Your wallet didn’t answer in time. No order was sent.'
+            : 'Signing didn’t finish. No order was sent.'});
       }
     } finally {this.#busy = false;}
   }

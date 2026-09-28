@@ -12,7 +12,7 @@ export interface EmbeddedSolanaSnapshot {
   readonly subject: string | null;
   /** Embedded (walletClientType `privy`) Solana wallets on the user, or null when the user object is malformed. */
   readonly wallets: readonly EmbeddedSolanaWalletRef[] | null;
-  /** Embedded wallets the SDK can sign with right now. */
+  /** Embedded wallets the SDK can sign with right now (empty until Privy's wallets are connected). */
   readonly signable: readonly string[];
   /** Re-reads the user from Privy; a previous create may have succeeded without its reply. */
   refreshUser(): Promise<{readonly subject: string | null; readonly wallets: readonly EmbeddedSolanaWalletRef[] | null}>;
