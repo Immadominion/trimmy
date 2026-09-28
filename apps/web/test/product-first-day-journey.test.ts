@@ -107,7 +107,7 @@ test('Add money as a guest finishes the introduction, then asks the guest to sig
   } finally {release(); await h.close();}
 });
 
-test('a signed-in account opens the fund-wallet merge point, or says plainly that deposits are not open yet', async () => {
+test('a signed-in account opens Add money, or says plainly that deposits are not open yet', async () => {
   const storage = new MemoryStorage(), celebrated = new JourneyStore(storage, '/api');
   celebrated.acknowledgeCelebration(journeyPrincipal({guestId: GUEST_ID}), ORDER_ID);
   const opened: FundWalletSource[] = [];

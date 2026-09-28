@@ -360,7 +360,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     if (addMoney) requestFunding('first-day');
   }
   function openSignIn(intent: SignInIntent | null = null) {journey.setSignInIntent(intent); navigate({page: 'sign-in'});}
-  /** Deposits need an account first, as mobile's `_openFunding` does. The sheet is a merge point. */
+  /** Deposits need an account first, as mobile's `_openFunding` does (see fund-wallet.ts). */
   function requestFunding(source: FundWalletSource) {
     if (!session?.isAccount) {openSignIn('fund'); return;}
     setFundingUnavailable(!openFundWallet(source));

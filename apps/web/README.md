@@ -74,23 +74,8 @@ in and lands them in Real afterwards. The code lives in `src/product/money/`.
 - **History.** Submitted orders with explorer links; pending ones are
   reconciled by id.
 
-**Entry points for other screens** (all from `src/product/money/money-api.ts`,
-available anywhere under `ProductApp`, which mounts `MoneyProvider` per
-signed-in account):
-
-- `useMoney().openFundWallet()` opens the Add money sheet (crypto deposit,
-  wallet creation included) and switches the account to Real, as mobile's
-  `_openFunding` does. A first-day "fund wallet" step only needs this call.
-- `<FundWalletSheet onClose={…}/>` (`fund-wallet-sheet.tsx`) is the same
-  sheet as a component, for a screen that manages its own open state.
-- `useMoney()` also gives `available` (signed in with an API), `real`,
-  `setReal(value)`, the wallet state and `capabilities`.
-- `requestRealAfterSignIn()` remembers, for ten minutes in this tab, that a
-  guest chose Real before signing in.
-
-Configuration: `VITE_TRIMMY_PRODUCT_API_URL`, `VITE_PRIVY_APP_ID` and the web
-client's `VITE_PRIVY_APP_CLIENT_ID` (see
-[the API and provider requests](../../docs/WEB_API_REQUESTS.md)). Locally the
+Configuration: `VITE_TRIMMY_PRODUCT_API_URL`, `VITE_PRIVY_APP_ID` and, for a
+dedicated Privy web client, `VITE_PRIVY_APP_CLIENT_ID`. Locally the
 relay forwards the money routes. Tests use recorded capabilities and Market
 variants, real Ed25519 keys, a contract-faithful fake of the trading routes
 and the API's own signature verifier; no test signs with a real wallet or

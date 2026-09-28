@@ -44,7 +44,7 @@ function readHints(req: IncomingMessage, pathname: string): Record<string, strin
 }
 
 // Web parity (first day, settings, Career actions, Market social, community).
-// Production browser access for each is tracked in docs/WEB_API_REQUESTS.md.
+// The deployed API allows each of these for the web app's exact origin.
 const parityRoutes: Readonly<Record<string, readonly string[]>> = {
   '/v1/career/reason-privacy': ['GET', 'PUT'], '/v1/career/trade-reasons': ['GET', 'POST'],
   '/v1/career/promotions': ['POST'], '/v1/career/day-context': ['GET', 'PUT'],

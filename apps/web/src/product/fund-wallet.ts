@@ -1,18 +1,10 @@
 /**
- * MERGE POINT — fund wallet.
- *
- * The deposit sheet (crypto deposit: the wallet's Solana receive address and QR
- * for USDC, SOL for fees; card funding "Coming soon") is built in the separate
- * money-mode worktree. This module is the single call site the first-day
- * "Add money" choice (and later Desk or Settings) uses to open it.
- *
- * To wire it at merge: have the deposit sheet's host call
- * `registerFundWalletOpener(source => openDepositSheet(source))` once it is
- * mounted (or replace the body of `openFundWallet`). Callers already make sure
- * the person is signed in first, as mobile's `_openFunding` does.
- *
- * Until then `openFundWallet` returns false and callers say plainly that
- * deposits are not open on the web yet. It never pretends a deposit started.
+ * Opens the Add money sheet (crypto deposit; card funding "Coming soon") from
+ * the first day's "Add money" choice, the Desk or Settings. The money side
+ * registers the opener while own money is available (ProductApp); callers make
+ * sure the person is signed in first, as mobile's `_openFunding` does. With no
+ * opener, `openFundWallet` returns false and callers say plainly that adding
+ * money isn't open here. It never pretends a deposit started.
  */
 export type FundWalletSource = 'first-day' | 'desk' | 'settings';
 export type FundWalletOpener = (source: FundWalletSource) => void;
