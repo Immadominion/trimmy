@@ -387,20 +387,10 @@ void main() {
         find.byKey(const ValueKey('market-tradeable-tesla')),
         findsNothing,
       );
-      expect(find.text('Tradeable'), findsNWidgets(3));
+      // The two row markers only: there is no separate Tradeable list.
+      expect(find.text('Tradeable'), findsNWidgets(2));
+      expect(find.byKey(const ValueKey('market-list-all')), findsNothing);
       expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('the Tradeable chip filters to tradeable companies', (
-      tester,
-    ) async {
-      await show(tester, real: true);
-      await tester.tap(find.byKey(const ValueKey('market-list-tradeable')));
-      await tester.pumpAndSettle();
-      expect(order(tester), ['apple', 'nvidia']);
-      await tester.tap(find.byKey(const ValueKey('market-list-all')));
-      await tester.pumpAndSettle();
-      expect(order(tester), ['apple', 'nvidia', 'tesla', 'hims']);
     });
 
     testWidgets('the marker fits a 320px phone at 200% text', (tester) async {
@@ -441,7 +431,6 @@ void main() {
       await show(tester, real: false);
       expect(order(tester), ['tesla', 'apple', 'hims', 'nvidia']);
       expect(find.text('Tradeable'), findsNothing);
-      expect(find.byKey(const ValueKey('market-list-tradeable')), findsNothing);
     });
 
     testWidgets('paused trading claims nothing is tradeable', (tester) async {

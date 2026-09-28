@@ -151,7 +151,8 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
   List<MarketList> get _availableLists => [
     MarketList.all,
     if (widget.following != null) MarketList.following,
-    if (_marksTradeable) MarketList.tradeable,
+    // No Tradeable list: every listed company can be bought, and each row says
+    // whether its market is open.
     // Type tags show once the Market has companies of that type.
     for (final type in const [MarketList.etfs, MarketList.preIpo])
       if (widget.companies.any((company) => company.lists.contains(type))) type,
@@ -257,7 +258,6 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
       if (list == MarketList.following) {
         return following?.isFollowing(company.assetId) ?? false;
       }
-      if (list == MarketList.tradeable) return _tradeable(company);
       return list == MarketList.all || company.lists.contains(list);
     }).toList();
     switch (_activeSort) {
@@ -472,8 +472,6 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                   Text(
                     _activeList == MarketList.following
                         ? 'Your watchlist starts here.'
-                        : _activeList == MarketList.tradeable
-                        ? 'No tradeable stocks here yet.'
                         : _activeList == MarketList.etfs
                         ? 'No funds to show yet.'
                         : _activeList == MarketList.preIpo

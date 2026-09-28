@@ -20,10 +20,7 @@ enum MarketList {
   etfs('Funds'),
 
   /// Private companies, tokenized before listing: no share price yet.
-  preIpo('Pre-IPO'),
-
-  /// Real mode only: companies with at least one token Trimmy can trade.
-  tradeable('Tradeable');
+  preIpo('Pre-IPO');
 
   const MarketList(this.label);
   final String label;
