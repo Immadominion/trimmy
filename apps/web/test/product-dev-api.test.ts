@@ -274,3 +274,10 @@ test('parity routes pass only their exact methods, UUID path parameters and quer
   }
   assert.equal(calls.length, 13);
 });
+
+test('the token list may pass the relay up to 8 MB; every other read keeps the 2 MB cap', async t => {
+  const {send} = await fixture(t, 5_000, () => new Response(`"${'x'.repeat(3_000_000)}"`, {headers: {'content-type': 'application/json'}}));
+  const list = await send('/api/v1/trading/capabilities?schema=3');
+  assert.equal(list.status, 200); assert.equal(list.body.length, 3_000_002);
+  assert.equal((await send('/api/v1/markets/stocks/catalog')).status, 502);
+});

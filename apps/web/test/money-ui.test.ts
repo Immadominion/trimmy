@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {createElement, useEffect} from 'react';
 import {FundWalletSheet} from '../src/product/money/fund-wallet-sheet.js';
@@ -7,6 +8,7 @@ import {useMoney} from '../src/product/money/money-api.js';
 import {RealBalanceCard, RealHoldings} from '../src/product/money/real-desk.js';
 import {TradeHistoryScreen} from '../src/product/money/trade-history.js';
 import {MarketScreen} from '../src/product/market-screen.js';
+import {StockScreen} from '../src/product/stock-screen.js';
 import {ProductMarketClient} from '../src/product/market-client.js';
 import {searchFixture} from '../src/markets/fixtures.test-support.js';
 import {moneyPage} from './support/money-dom.js';
@@ -282,5 +284,70 @@ test('under StrictMode the wallet and the order session survive React’s double
     await page.click('Confirm buy');
     await page.waitFor(() => /Trade confirmed/.test(page.text()), 'confirmation');
     assert.equal(page.calls.filter(call => call.path === '/v1/trading/execute').length, 1);
+  } finally {await page.close();}
+});
+
+test('sells carry no per-token cap: no limit line, and Max offers the whole spendable balance', async () => {
+  const page = await moneyPage();
+  page.storage.data.set(REAL_KEY, 'real');
+  page.server.reply = call => call.path === '/v1/account/holdings' ? Response.json(holdingsJson(page.user.address, {
+    tokens: [stockHolding({assetId: 'apple', name: 'Apple xStock', symbol: 'AAPLx', mint: AAPLX, amountRaw: '250000000000', availableToTradeRaw: '250000000000',
+      displayAmount: '2500', displayResolution: 'rpc_ui_amount'})]})) : undefined;
+  try {
+    await page.render(createElement(LiveOrderPanel, {assetId: 'apple', mint: AAPLX, companyName: 'Apple', discovery: apple, initialSide: 'sell'}));
+    await page.waitFor(() => /Sell AAPLx/.test(page.text()) && /2,500 AAPLx available/.test(page.text()), 'sell entry');
+    assert.doesNotMatch(page.text(), /Order limit/, 'no sell limit line under schema 3');
+    await page.click('Max');
+    assert.equal(page.dom.window.document.querySelector<HTMLInputElement>('#live-amount')?.value, '2500', 'Max is the whole spendable balance');
+    assert.doesNotMatch(page.text(), /capped at the order limit/);
+    await page.click('Buy instead');
+    await page.waitFor(() => /Order limit: 100 USDC/.test(page.text()), 'buy limit');
+  } finally {await page.close();}
+});
+
+test('opening a company rereads the token list, so a token missing from a stale list becomes tradeable', async () => {
+  const page = await moneyPage();
+  page.storage.data.set(REAL_KEY, 'real');
+  let reads = 0;
+  const full = liveCapabilitiesJson() as {assets: {assetId: string}[]};
+  const variants = JSON.parse(readFileSync(new URL('./fixtures/market-variants-apple-2026-09-27.json', import.meta.url), 'utf8')) as unknown;
+  page.server.reply = call => {
+    if (call.path.startsWith('/v1/trading/capabilities')) {
+      reads++;
+      // Right after an API restart the list is short: the first read lacks Apple.
+      return Response.json(reads === 1 ? {...full, assets: full.assets.filter(asset => asset.assetId !== 'apple')} : full);
+    }
+    if (call.path.startsWith('/v1/markets/stocks/variants')) return Response.json(variants);
+    if (call.path.startsWith('/v1/markets/stocks/')) return Response.json({error: {code: 'STOCK_FACTS_UNAVAILABLE', message: 'Not in this test.', requestId: 'r'}}, {status: 503});
+    return undefined;
+  };
+  const market = new ProductMarketClient({baseUrl: '/api', fetch: page.fetch, timeoutMs: 1000});
+  try {
+    await page.render(createElement('div'));
+    await page.waitFor(() => reads === 1, 'the first (stale) read');
+    await page.flush(30);
+    await page.render(createElement(StockScreen, {assetId: 'apple', selectedMint: AAPLX, market, session: {} as never, portfolio: null,
+      onBack() {}, onDesk() {}, ensureDesk: async () => {}, onCommitted: async () => {}, onPending() {}}));
+    await page.waitFor(() => /Buy AAPLx/.test(page.text()), 'the corrected list');
+    assert.equal(reads, 2, 'the company page read the list again');
+    assert.match(page.text(), /xStocks · AAPLx\s*Tradeable/);
+  } finally {await page.close();}
+});
+
+test('a token the API does not qualify on the spot is explained, and the list is read again', async () => {
+  const page = await moneyPage();
+  page.storage.data.set(REAL_KEY, 'real');
+  let reads = 0;
+  page.server.reply = call => {
+    if (call.path.startsWith('/v1/trading/capabilities')) {reads++; return undefined;}
+    return call.path === '/v1/trading/preview' ? Response.json({code: 'MARKET_INPUT_INVALID'}, {status: 400}) : undefined;
+  };
+  try {
+    await page.render(createElement(LiveOrderPanel, {assetId: 'apple', mint: AAPLX, companyName: 'Apple', discovery: apple}));
+    await page.waitFor(() => /Buy AAPLx/.test(page.text()), 'entry');
+    const before = reads;
+    await page.tick(); await page.click('Review buy');
+    await page.waitFor(() => /Trimmy can’t trade this token right now\. Choose another version or company\./.test(page.text()), 'refusal copy');
+    await page.waitFor(() => reads > before, 'the list read again');
   } finally {await page.close();}
 });
