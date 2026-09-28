@@ -95,6 +95,10 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/trading/order': Object.freeze(['GET']),
   '/v1/trading/history': Object.freeze(['GET']),
   '/v1/trading/order/:id': Object.freeze(['GET']),
+  // Sending money out: the same authenticated, reviewed and user-signed flow.
+  '/v1/wallet/transfers/preview': Object.freeze(['POST']),
+  '/v1/wallet/transfers/execute': Object.freeze(['POST']),
+  '/v1/wallet/transfers/status': Object.freeze(['GET']),
   '/v1/account/paper/portfolio': Object.freeze(['GET']),
   '/v1/account/paper/orders/preview': Object.freeze(['POST']),
   '/v1/account/paper/orders/commit': Object.freeze(['POST']),
@@ -164,6 +168,7 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       '/v1/career/trade-reasons',
       '/v1/community',
       '/v1/trading/history',
+      '/v1/wallet/transfers/status',
     ].includes(route) &&
       request.raw.url?.split('?')[0] === route;
     const communityFollowRoute = route === '/v1/community/following/:socialId' &&

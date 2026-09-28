@@ -6,6 +6,7 @@ import {StockTokenDirectory, withCatalogSnapshot} from './stock-token-directory.
 import {jupiterSharePrices} from './stock-share-prices.js';
 import {JupiterTokenPrices} from './stock-token-prices.js';
 import {readOpsAlerts} from './ops-alerts.js';
+import {WalletTransfers} from './wallet-transfers.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -120,6 +121,11 @@ const liveStocks = liveRpc &&
         ...(tokenDirectory ? {directory: tokenDirectory} : {}),
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
   : undefined;
+// Sending money out of the user's wallet, under the same live switch as trading.
+const walletTransfers = liveRpc && practice.authenticateContext && linkedIdentities
+  ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
+      executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet', service: new WalletTransfers({rpcUrl: liveRpc})}
+  : undefined;
 const paperAuthenticate = practice.authenticate && practice.guestSessionRepository
   ? createGuestPaperAuthenticator(practice.authenticate, practice.guestSessionRepository) : practice.authenticate;
 const paperTrading = stockDiscovery && paperAuthenticate && practice.paperTradingRepository
@@ -142,6 +148,7 @@ const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions, ...
   relationshipSafetyEnabled,
   ...(publicHolders ? {publicHolders} : {}),
   ...(liveStocks ? {liveStocks} : {}),
+  ...(walletTransfers ? {walletTransfers} : {}),
   // Past orders' tokens that no source lists any more still show in history.
   ...(practiceOptions.liveTradeHistory && tokenDirectory ? {liveTradeHistory: {...practiceOptions.liveTradeHistory,
     recall: (mints: readonly string[]) => tokenDirectory.recall(mints)}} : {}),

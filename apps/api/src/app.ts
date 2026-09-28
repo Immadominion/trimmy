@@ -31,6 +31,8 @@ import { registerStockDiscoveryRoutes } from './stock-discovery-routes.js';
 import { registerStockFactsRoutes } from './stock-facts-routes.js';
 import { registerStockPriceRoutes } from './stock-price-routes.js';
 import type { OpsAlerts } from './ops-alerts.js';
+import { WALLET_TRANSFER_ROUTES, registerWalletTransferRoutes } from './wallet-transfers.js';
+import type { WalletTransferAdapters } from './wallet-transfers.js';
 import type { StockPriceReader } from './stock-price-routes.js';
 import type { StockFactsReader } from './stock-facts.js';
 import { ReadinessReporter } from './readiness.js';
@@ -127,6 +129,8 @@ export interface ApiOptions {
   readonly dailyDesk?: DailyDeskAdapters;
   readonly workdays?: WorkdayAdapters;
   readonly liveStocks?: LiveStockAdapters;
+  /** Sending USDC, SOL or a stock token out of the user's wallet. */
+  readonly walletTransfers?: WalletTransferAdapters;
   readonly liveTradeHistory?: LiveTradeHistoryAdapters;
   /** Explicit social activation gate. Absence is always disabled. */
   readonly relationshipSafetyEnabled?: boolean;
@@ -213,7 +217,8 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     // Career writes annotate a committed paper buy or record a server-verified
     // promotion. They cannot place an order or reach a wallet.
     const dailyDeskWrite = request.method === 'POST' && request.routeOptions.url === '/v1/career/daily-desk/complete';
-    const liveWrite = request.method === 'POST' && ['/v1/trading/preview','/v1/trading/execute'].includes(request.routeOptions.url ?? '');
+    const liveWrite = request.method === 'POST' && ['/v1/trading/preview','/v1/trading/execute',
+      WALLET_TRANSFER_ROUTES.preview, WALLET_TRANSFER_ROUTES.execute].includes(request.routeOptions.url ?? '');
     // These routes link an owned wallet and prepare/read a Crossmint checkout.
     // The cardholder completes payment at Crossmint; no charge endpoint exists here.
     const onrampWrite = request.method === 'POST' && ['/v1/funding/wallet', '/v1/funding/verify', '/v1/funding/orders', '/v1/funding/status'].includes(request.routeOptions.url ?? '');
@@ -342,6 +347,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   registerStockDiscoveryRoutes(app, options.stockDiscovery);
   registerStockFactsRoutes(app, options.stockFacts);
   registerStockPriceRoutes(app, options.stockPrices);
+  registerWalletTransferRoutes(app, options.walletTransfers);
   registerPublicHolders(app, options.publicHolders);
   registerStockEstimateRoute(app, options.stockEstimates ? {stockEstimates: options.stockEstimates} : {});
   registerSocialXRoutes(app, options.socialX);
