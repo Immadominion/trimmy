@@ -3,36 +3,35 @@ import type {ProductMarketClient} from '../market-client.js';
 import type {HoldingsSnapshot, WalletStockBalance} from './wallet-models.js';
 
 /**
- * What a held token is worth: the token's own market price (the API's variant
- * data for that exact mint) times the tokens held. Display only; a sale is still
- * quoted before it is signed. Pre-IPO tokens can trade far from a share price,
- * so the company's stock price is never used here.
+ * What a held token is worth: its shares (the display amount) times that token's
+ * trusted price per share from the API: the issuer's price, else a liquid
+ * market's. A token's last trade is not used on its own, because a token that
+ * barely trades can show many times its share price. Display only; a sale is
+ * still quoted before it is signed.
  */
 export type HoldingPrices = ReadonlyMap<string, number>;
 const REFRESH_MS = 60_000;
+/** After failed refreshes the last prices serve this long, then values go blank. */
+const KEEP_MS = 10 * 60_000;
 const none: HoldingPrices = new Map();
 
-export function useHoldingPrices(market: Pick<ProductMarketClient, 'variants'>, holdings: HoldingsSnapshot | null): HoldingPrices {
-  const key = holdings ? [...new Set(holdings.stockTokens.map(token => `${token.assetId} ${token.mint}`))].sort().join('|') : '';
-  const [state, setState] = useState<{key: string; prices: HoldingPrices}>({key: '', prices: none});
+export function useHoldingPrices(market: Pick<ProductMarketClient, 'prices'>, holdings: HoldingsSnapshot | null): HoldingPrices {
+  const key = holdings ? [...new Set(holdings.stockTokens.map(token => token.mint))].sort().join(',') : '';
+  const [state, setState] = useState<{key: string; prices: HoldingPrices; at: number}>({key: '', prices: none, at: 0});
   const [tick, setTick] = useState(0);
   useEffect(() => {const timer = window.setInterval(() => setTick(value => value + 1), REFRESH_MS); return () => clearInterval(timer);}, []);
   useEffect(() => {
     if (!key) return;
-    const held = key.split('|').map(pair => {const [assetId, mint] = pair.split(' '); return {assetId: assetId!, mint: mint!};});
     const controller = new AbortController();
-    void Promise.allSettled([...new Set(held.map(token => token.assetId))].map(assetId => market.variants(assetId, {signal: controller.signal}))).then(results => {
+    const mints = key.split(',');
+    const reads = [];
+    for (let index = 0; index < mints.length; index += 50) reads.push(market.prices(mints.slice(index, index + 50), {signal: controller.signal}));
+    void Promise.all(reads).then(parts => {
       if (controller.signal.aborted) return;
-      const prices = new Map<string, number>();
-      for (const result of results) {
-        if (result.status !== 'fulfilled') continue;
-        for (const variant of result.value.variants) {
-          const price = variant.market?.priceUsd;
-          if (typeof price === 'number' && Number.isFinite(price) && price > 0 && held.some(token => token.mint === variant.mint)) prices.set(variant.mint, price);
-        }
-      }
-      // A failed refresh keeps the last prices for the same holdings rather than blanking them.
-      setState(prior => ({key, prices: prices.size || prior.key !== key ? prices : prior.prices}));
+      setState({key, prices: new Map(parts.flatMap(part => [...part])), at: Date.now()});
+    }, () => {
+      if (controller.signal.aborted) return;
+      setState(prior => prior.key === key && Date.now() - prior.at < KEEP_MS ? prior : {key, prices: none, at: prior.at});
     });
     return () => controller.abort();
   }, [market, key, tick]);

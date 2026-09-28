@@ -188,6 +188,23 @@ export function parseStockInsight(value: unknown): StockInsight {
     points: rows, chartStatus: status});
 }
 
+const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/u;
+
+/** Prices for the asked-for mints only, each positive and finite, from the issuer or a liquid market. */
+export function parseHoldingPrices(value: unknown, asked: ReadonlySet<string>): ReadonlyMap<string, number> {
+  const data = value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  if (!data || data['schema'] !== 1 || !Array.isArray(data['prices'])) invalid();
+  const prices = new Map<string, number>();
+  for (const row of data['prices'] as unknown[]) {
+    const item = row !== null && typeof row === 'object' && !Array.isArray(row) ? row as Record<string, unknown> : null;
+    const mint = item?.['mint'], usd = item?.['usdPerShare'], source = item?.['source'];
+    if (typeof mint !== 'string' || !asked.has(mint) || typeof usd !== 'number' || !Number.isFinite(usd) || usd <= 0 ||
+        (source !== 'issuer' && source !== 'market')) invalid();
+    prices.set(mint, usd);
+  }
+  return prices;
+}
+
 function input<T>(read: () => T): T {
   try { return read(); } catch { throw new StockResearchError('STOCK_INPUT_INVALID'); }
 }
@@ -245,6 +262,18 @@ export class ProductMarketClient {
     const result = parseStockInsight(await this.#get('insight', {...identity}, options.signal));
     if (result.assetId !== identity.assetId || result.mint !== identity.mint || result.period !== identity.period) invalid();
     return result;
+  }
+  /**
+   * Trusted prices per displayed share for held tokens: the issuer's price, else
+   * a liquid market's. A token the server cannot price is left out.
+   */
+  async prices(mints: readonly string[], options: MarketReadOptions = {}): Promise<ReadonlyMap<string, number>> {
+    const ids = input(() => {
+      const list = [...new Set(mints)].sort();
+      if (!list.length || list.length > 50 || list.some(mint => !MINT.test(mint))) invalid();
+      return list;
+    });
+    return parseHoldingPrices(await this.#get('prices', {mints: ids.join(',')}, options.signal), new Set(ids));
   }
   close(): void { this.#closed = true; for (const cancel of [...this.#active]) cancel(); }
   /** Catalog, search and cards with funds and commodities; an older server's 400 falls back to equities, as mobile does. */

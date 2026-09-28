@@ -245,3 +245,23 @@ test('the default fetch is bound to the global, as browsers require', async () =
     await assert.rejects(bound.catalog(0), (error: {code?: string}) => error.code !== 'STOCK_NETWORK_ERROR', 'the request reaches fetch instead of failing as a network error');
   } finally {globalThis.fetch = original;}
 });
+
+test('holding prices ask for each held mint once and accept only trusted prices for them', async () => {
+  const other = 'XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB';
+  const urls: string[] = [];
+  const api = new ProductMarketClient({baseUrl: 'https://api.example', fetch: async input => {
+    urls.push(String(input));
+    return Response.json({schema: 1, observedAt: '2026-09-28T17:40:00.000Z', prices: [
+      {mint: RESEARCH_AAPLX_MINT, usdPerShare: 339.97, source: 'issuer', asOf: '2026-09-28T17:35:00.000Z'}]});
+  }, timeoutMs: 1000});
+  const prices = await api.prices([other, RESEARCH_AAPLX_MINT, RESEARCH_AAPLX_MINT]);
+  assert.deepEqual([...prices], [[RESEARCH_AAPLX_MINT, 339.97]]);
+  assert.equal(urls.length, 1);
+  assert.equal(new URL(urls[0]!).searchParams.get('mints'), [RESEARCH_AAPLX_MINT, other].sort().join(','));
+  await assert.rejects(api.prices(['not a mint']), {code: 'STOCK_INPUT_INVALID'});
+  for (const row of [{mint: other, usdPerShare: 1, source: 'issuer'}, {mint: RESEARCH_AAPLX_MINT, usdPerShare: 0, source: 'issuer'},
+    {mint: RESEARCH_AAPLX_MINT, usdPerShare: 1, source: 'trade'}]) {
+    const strict = client(async () => Response.json({schema: 1, prices: [row]}));
+    await assert.rejects(strict.prices([RESEARCH_AAPLX_MINT]), {code: 'STOCK_RESPONSE_INVALID'});
+  }
+});
