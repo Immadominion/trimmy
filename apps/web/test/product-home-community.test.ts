@@ -93,3 +93,23 @@ test('a guest opening Community is asked to sign in instead of seeing an empty f
     assert.equal(h.api.calls.some(call => call.path === '/v1/community'), false);
   } finally {await h.close();}
 });
+
+test('community follow and block paths always carry a lowercase socialId, with no query string', async () => {
+  const {ProductApiClient} = await import('../src/product/product-api.js');
+  const {communityApi} = await import('../src/product/community-screen.js');
+  const urls: string[] = [];
+  const api = new ProductApiClient({baseUrl: 'https://api.example', timeoutMs: 1000, fetch: async (url, init = {}) => {
+    urls.push(`${init.method ?? 'GET'} ${String(url)}`);
+    const path = new URL(String(url)).pathname;
+    if (path.startsWith('/v1/community/following/')) return Response.json({following: true});
+    if (init.method === 'PUT') return Response.json({schemaVersion: 1, mutationId: JSON.parse(String(init.body))['mutationId'], appliedRevision: 1,
+      block: {socialId: path.split('/').at(-1), handle: null, revision: 1, blocked: true, updatedAt: AT}});
+    return Response.json({schemaVersion: 1, block: {socialId: path.split('/').at(-1), revision: 0, blocked: false, updatedAt: null}});
+  }});
+  const account = {subject: 'did:privy:lowercaseTester', freshAccessToken: async () => 'token', signal: new AbortController().signal};
+  const upper = '9A9A9A9A-9A9A-4A9A-8A9A-9A9A9A9A9A9A';
+  await communityApi.follow(api, account, upper, true, true);
+  await communityApi.block(api, account, upper);
+  assert.deepEqual(urls, [`PUT https://api.example/v1/community/following/${upper.toLowerCase()}`,
+    `GET https://api.example/v1/social/blocks/${upper.toLowerCase()}`, `PUT https://api.example/v1/social/blocks/${upper.toLowerCase()}`]);
+});

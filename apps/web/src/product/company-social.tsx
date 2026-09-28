@@ -126,7 +126,8 @@ function CommentsPanel({assetId, mint, social}: {assetId: string; mint: string; 
       setCursor(page.nextCursor);
     } catch (reason) {setError(reason);} finally {setLoadingMore(false);}
   }, [api, cursor, loadingMore, audience, assetId, mint]);
-  if (!identity) return <div className="company-social-state"><strong>No comments yet</strong><p>Start practicing or sign in to see what other traders think.</p></div>;
+  // Without a desk the feed cannot be read, so say that instead of claiming there are no comments.
+  if (!identity) return <div className="company-social-state"><strong>See what traders think</strong><p>Start practicing or sign in to read comments on this company.</p></div>;
   const visible = (items ?? []).filter(item => !reported.has(item.reasonId));
   const sharedHere = audience === 'everyone' ? privacy?.visibility === 'everyone' : friendsAvailable && privacy?.visibility === 'friends';
   async function report(reason: SharedReason, category: string) {
