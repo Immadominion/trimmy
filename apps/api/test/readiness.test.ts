@@ -111,6 +111,16 @@ describe('GET /ready', () => {
         assert.equal(ready.json().financialOperationsEnabled, enabled);
         assert.equal((await app.inject('/health')).json().financialOperationsEnabled, enabled);
         assert.equal((await app.inject('/v1/trading/capabilities')).json().enabled, enabled);
+        const config = (await app.inject('/v1/config')).json();
+        assert.equal(config.capabilities.financialOperationsEnabled, enabled);
+        assert.equal(config.capabilities.swapsEnabled, enabled);
+        assert.equal(config.capabilities.persistenceEnabled, true);
+        assert.equal(config.capabilities.liveWalletsEnabled, true, 'existing wallets remain accessible during an execution pause');
+        assert.equal(config.moneyMode, enabled ? 'practice_and_real' : 'practice_only');
+        assert.equal(config.capabilities.mode, enabled ? 'live' : 'practice');
+        assert.equal(config.capabilities.supportedAssetIds.length > 0, enabled);
+        assert.equal(config.tradingCapabilitiesUrl, '/v1/trading/capabilities?schema=3');
+        assert.equal(config.fundingCapabilitiesUrl, '/v1/funding/capabilities');
         assert.equal(probes, 1);
       } finally { await app.close(); }
     }

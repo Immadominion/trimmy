@@ -256,7 +256,7 @@ describe('authenticated practice HTTP boundary', () => {
     try {
       const config = (await app.inject('/v1/config')).json();
       assert.equal(config.practiceSyncEnabled, true);
-      assert.equal(config.capabilities.persistenceEnabled, false);
+      assert.equal(config.capabilities.persistenceEnabled, true);
       assert.equal(config.capabilities.financialOperationsEnabled, false);
       const blocked: ['POST' | 'PUT' | 'PATCH' | 'DELETE', string][] = [
         ['POST', path], ['PATCH', path], ['DELETE', path], ['PUT', `${path}/`],

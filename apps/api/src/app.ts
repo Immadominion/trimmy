@@ -10,7 +10,7 @@ import {registerPublicHolders, type PublicTokenHolders} from './public-token-hol
 import { randomUUID } from 'node:crypto';
 import Fastify, { LogController } from 'fastify';
 import type { FastifyError, FastifyInstance, FastifyRequest, FastifyServerFactory } from 'fastify';
-import { FOUNDATION_CAPABILITIES } from '@trimmy/domain';
+import {stockTradingAssets} from './stock-trading-catalog.js';
 import { PRACTICE_PROGRESS_ROUTE, practiceSyncEnabled, registerPracticeRoutes } from './practice-routes.js';
 import type { PracticeSyncAdapters } from './practice-routes.js';
 import { PRACTICE_SESSION_ROUTE, practiceAccountsEnabled, registerPracticeSessionRoute } from './practice-session-routes.js';
@@ -145,6 +145,27 @@ export interface ApiOptions {
 const noQuery = { type: 'object', additionalProperties: false, properties: {} } as const;
 const safeError = (code: string, message: string, requestId: string) => ({ error: { code, message, requestId } });
 
+/** Configuration describes installed adapters, never permission for an order.
+ * Each financial route still authenticates, verifies eligibility and reviews
+ * the transaction. No provider calls are needed to describe this instance. */
+function runtimeCapabilities(options: ApiOptions) {
+  const swapsEnabled = liveStockExecutionEnabled(options.liveStocks);
+  const transfersEnabled = !!options.walletTransfers && options.walletTransfers.executionEnabled !== false;
+  const financialOperationsEnabled = swapsEnabled || transfersEnabled;
+  const persistenceEnabled = !!options.readiness || practiceSyncEnabled(options.practice) ||
+    practiceAccountsEnabled(options.practiceSessions) || paperTradingEnabled(options.paperTrading);
+  return {
+    mode: financialOperationsEnabled ? 'live' : persistenceEnabled ? 'practice' : 'foundation',
+    financialOperationsEnabled,
+    liveWalletsEnabled: accountContextEnabled(options.accountContext) || !!options.liveStocks || !!options.walletTransfers,
+    fundedGiftsEnabled: false,
+    swapsEnabled,
+    transfersEnabled,
+    persistenceEnabled,
+    supportedAssetIds: swapsEnabled ? [...new Set(stockTradingAssets().map(asset => asset.assetId))] : [],
+  };
+}
+
 /** Factory supports in-process request tests without starting a socket or contacting providers. */
 export function buildApp(options: ApiOptions = {}): FastifyInstance {
   const app = Fastify({
@@ -264,9 +285,9 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   app.get('/health', {schema: {querystring: noQuery}}, async () => ({
     status: 'ok',
     service: 'trimmy-api',
-    mode: 'foundation',
+    mode: runtimeCapabilities(options).mode,
     // Process liveness only; there is no claim that providers or a database are ready.
-    financialOperationsEnabled: liveStockExecutionEnabled(options.liveStocks),
+    financialOperationsEnabled: runtimeCapabilities(options).financialOperationsEnabled,
   }));
 
   // Liveness and readiness are separate answers on purpose. A restart policy
@@ -274,7 +295,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   // instance that cannot reach its database is the failure this prevents.
   const readiness = new ReadinessReporter({
     ...(options.readiness ? {probe: options.readiness} : {}),
-    financialOperationsEnabled: liveStockExecutionEnabled(options.liveStocks),
+    financialOperationsEnabled: runtimeCapabilities(options).financialOperationsEnabled,
   });
   app.get('/ready', {schema: {querystring: noQuery}}, async (_request, reply) => {
     const report = await readiness.report();
@@ -284,8 +305,10 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   app.get('/v1/config', {schema: {querystring: noQuery}}, async () => ({
     schemaVersion: 1,
     productName: 'Trimmy',
-    capabilities: FOUNDATION_CAPABILITIES,
-    moneyMode: 'practice_only',
+    capabilities: runtimeCapabilities(options),
+    moneyMode: runtimeCapabilities(options).financialOperationsEnabled ? 'practice_and_real' : 'practice_only',
+    tradingCapabilitiesUrl: '/v1/trading/capabilities?schema=3',
+    fundingCapabilitiesUrl: '/v1/funding/capabilities',
     practiceSyncEnabled: practiceSyncEnabled(options.practice),
     practiceAccountsEnabled: practiceAccountsEnabled(options.practiceSessions),
     watchlistSyncEnabled: watchlistEnabled(options.watchlist, WATCHLIST_ROUTE),
@@ -312,7 +335,9 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     productProfileEnabled: productProfileEnabled(options.productProfile),
     careerEnabled: careerEnabled(options.career),
     careerReasonSharingEnabled: careerReasonSharingEnabled(options.careerReasonSharing),
-    notice: 'Paper positions are simulations. Real asset transfers and swaps are unavailable.',
+    notice: runtimeCapabilities(options).financialOperationsEnabled
+      ? 'Paper positions are simulations. Real-money operations require an eligible account, supported assets and a current review. Check funding capabilities for payment availability.'
+      : 'Paper positions are simulations. New real-money orders and transfers are unavailable.',
   }));
 
   app.get('/v1/catalog', {schema: {querystring: noQuery}}, async () => ({
@@ -320,7 +345,8 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     assets: [],
     status: 'unverified',
     financialOperationsEnabled: liveStockExecutionEnabled(options.liveStocks),
-    reason: 'Issuer eligibility, market-data rights and individual mint verification are pending.',
+    reason: 'Legacy catalog. Use the trading capabilities endpoint for current supported tokens and issuer terms.',
+    tradingCapabilitiesUrl: '/v1/trading/capabilities?schema=3',
   }));
 
   registerPracticeRoutes(app, options.practice);

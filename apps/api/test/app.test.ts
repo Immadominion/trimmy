@@ -1,8 +1,28 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildApp } from '../src/app.js';
+import type {WalletTransferAdapters} from '../src/wallet-transfers.js';
 
 describe('foundation HTTP boundary', () => {
+  it('advertises transfers independently of swaps and honours an execution pause', async () => {
+    for (const executionEnabled of [true, false]) {
+      const walletTransfers = {executionEnabled, authenticate: async () => {throw new Error('must not authenticate');},
+        identities: {resolveFresh: async () => {throw new Error('must not call provider');}}, service: {}} as unknown as WalletTransferAdapters;
+      const app = buildApp({logger: false, walletTransfers});
+      try {
+        const config = (await app.inject('/v1/config')).json();
+        assert.equal(config.capabilities.transfersEnabled, executionEnabled);
+        assert.equal(config.capabilities.financialOperationsEnabled, executionEnabled);
+        assert.equal(config.capabilities.swapsEnabled, false);
+        assert.equal(config.capabilities.liveWalletsEnabled, true);
+        assert.equal(config.capabilities.fundedGiftsEnabled, false);
+        assert.deepEqual(config.capabilities.supportedAssetIds, []);
+        assert.equal((await app.inject('/health')).json().financialOperationsEnabled, executionEnabled);
+        assert.equal((await app.inject('/ready')).json().financialOperationsEnabled, executionEnabled);
+        assert.equal((await app.inject('/v1/trading/capabilities')).json().enabled, false);
+      } finally {await app.close();}
+    }
+  });
   it('reports process liveness without promising provider readiness', async () => {
     const app = buildApp({logger: false});
     try {
