@@ -114,7 +114,8 @@ with Node 24, npm 10.9.8, Flutter 3.44.2 and PostgreSQL installed, run
 `npm run verify:local`. This runs API/web, database integration and Android
 checks, retaining a per-commit report under `~/Library/Logs/Trimmy/verify`.
 Use `-- --checks api,database` for a subset, or `-- --checks ios` for an
-unsigned iOS build on macOS. The marketing branch can use `-- --checks site`.
+unsigned iOS build on macOS. To check a separate marketing checkout, use
+`node tool/verify-local.mjs --repo /path/to/site-checkout --checks site`.
 Public font preparation changes the disposable checkout; keep your licensed
 working copy separate. The Android check builds a debug APK, not a release.
 

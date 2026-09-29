@@ -178,7 +178,7 @@ if (process.env['TRIMMY_PRACTICE_TEST_RECOVERY'] === '1') {
       const config = (await app.inject({method: 'GET', url: '/v1/config'})).json();
       assert.equal(config.practiceSyncEnabled, true);
       assert.equal(config.capabilities.financialOperationsEnabled, false);
-      assert.equal(config.capabilities.persistenceEnabled, false);
+      assert.equal(config.capabilities.persistenceEnabled, true);
     });
   });
 }

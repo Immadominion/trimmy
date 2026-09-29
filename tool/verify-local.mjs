@@ -23,7 +23,7 @@ export const CHECKS = {
     ['flutter', ['test'], 'apps/mobile'],
     ['flutter', ['build', 'apk', '--debug', '--flavor', 'production'], 'apps/mobile'],
   ],
-  ios: [['flutter', ['build', 'ios', '--debug', '--no-codesign', '--flavor', 'production'], 'apps/mobile']],
+  ios: [['flutter', ['build', 'ios', '--debug', '--no-codesign'], 'apps/mobile']],
   site: [['npm', ['ci', '--no-audit', '--no-fund'], 'apps/site-v2'], ['npm', ['run', 'build'], 'apps/site-v2']],
 };
 
