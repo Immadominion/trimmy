@@ -1,6 +1,7 @@
 import { useState, type JSX, type ReactNode } from "react";
 import { goTo } from "@/lib/stepper";
 import { openGetApp } from "@/lib/getApp";
+import {PRODUCT_AVAILABILITY} from '../story/availability';
 import "./phone-app.css";
 
 /**
@@ -212,14 +213,12 @@ function Status() {
   return <Shell className="app-status-page">
     <span className="app-kicker app-kicker--violet">Build notes</span>
     <h2 className="app-title">Where we’re at</h2>
-    <div className="app-section-head"><h3><i className="app-dot" />Working today</h3></div>
-    <ul className="app-checks">
-      {["Practice buying and selling", "Live stock prices", "Sal’s first missions", "Your balance and stock holdings"].map((item) => <li key={item}><span aria-hidden="true" />{item}</li>)}
-    </ul>
-    <div className="app-section-head"><h3><i className="app-dot app-dot--violet" />Still building</h3></div>
-    <ul className="app-checks app-checks--next">
-      {["Friends’ activity", "Leagues", "Trading with your own money"].map((item) => <li key={item}><span aria-hidden="true" />{item}</li>)}
-    </ul>
+    {PRODUCT_AVAILABILITY.map((group, index) => <div key={group.label}>
+      <div className="app-section-head"><h3><i className={`app-dot${index ? ' app-dot--violet' : ''}`} />{group.label}</h3></div>
+      <ul className={`app-checks${index ? ' app-checks--next' : ''}`}>
+        {group.items.map(item => <li key={item}><span aria-hidden="true" />{item}</li>)}
+      </ul>
+    </div>)}
   </Shell>;
 }
 

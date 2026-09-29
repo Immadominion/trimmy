@@ -1,8 +1,9 @@
 /**
  * Story beats in order. Native scroll moves continuously between them.
  *
- * Copy is from docs/design/LANDING_COPY_V4.md. Change V4 first, then this file.
+ * Product availability is shared with the phone preview in availability.ts.
  */
+import {PRODUCT_AVAILABILITY} from './availability';
 
 export type Screen = {
   id: string;
@@ -101,7 +102,7 @@ export const SCREENS: Screen[] = [
   {
     id: "sal",
     heading: "A little guidance from Sal.",
-    body: ["Your boss gives you missions: make your first trade and explain what made you choose it. Learn one step at a time."],
+    body: ["Your boss has work for you. Check the evidence, make your call and file your update. Twenty intern assignments to get you started."],
   },
   {
     id: "trim",
@@ -117,15 +118,13 @@ export const SCREENS: Screen[] = [
   {
     id: "build",
     heading: "Here’s where we’re at.",
-    status: [
-      { label: "Working", text: "Practice buying and selling. Live stock prices. Sal’s first missions. Your balance and stock holdings." },
-      { label: "Still building", text: "Friends’ activity. Leagues. Trading with your own money." },
-    ],
+    status: PRODUCT_AVAILABILITY.map(group => ({label: group.label, text: group.items.join('. ') + '.'})),
+    note: "Real-money trading uses tokenized assets. Availability depends on the asset, issuer and your location. Card checkout is still in testing.",
   },
   {
     id: "close",
-    heading: "Your first day is coming.",
-    body: ["Get Trimmy for Android today. Seeker, iPhone and the web app are coming soon."],
+    heading: "Your desk is ready.",
+    body: ["Play in your browser or get Trimmy for Android, including Solana Seeker."],
     footer: "Trimmy is a Wall Street simulation game.",
   },
 ];
