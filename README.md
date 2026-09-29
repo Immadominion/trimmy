@@ -109,6 +109,22 @@ The unconfigured API starts on port **4100** with provider-backed features disab
 
 [Development](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md) · [Security](SECURITY.md) · [Asset credits](docs/ASSETS.md)
 
+Checks can also run without GitHub Actions. In a clean, short-path worktree,
+with Node 24, npm 10.9.8, Flutter 3.44.2 and PostgreSQL installed, run
+`npm run verify:local`. This runs API/web, database integration and Android
+checks, retaining a per-commit report under `~/Library/Logs/Trimmy/verify`.
+Use `-- --checks api,database` for a subset, or `-- --checks ios` for an
+unsigned iOS build on macOS. The marketing branch can use `-- --checks site`.
+Public font preparation changes the disposable checkout; keep your licensed
+working copy separate. The Android check builds a debug APK, not a release.
+
+Add `--publish` to report each result as a separate `local-verification/*`
+GitHub commit status using your existing `gh` login. Only clean starting
+checkouts can publish; source changes during checks prevent a successful
+status. Logs stay local. This does not clear a billing lock, replace existing
+required Actions checks or automatically run on future pushes. Run only
+trusted commits; there is no unattended pull-request runner on your Mac.
+
 ---
 
 Built for Stocklana. A first stock is a beginning. Learning why is the game.

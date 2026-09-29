@@ -13,6 +13,8 @@
     "npm": ">=10.9.8 <11"
   },
   "scripts": {
+    "verify:local": "node tool/verify-local.mjs",
+    "test:verification": "node --test tool/test/verify-local.test.mjs",
     "build": "npm run build:backend && npm run build:web",
     "build:backend": "tsc -b packages/domain apps/api",
     "build:web": "npm run build --workspace @trimmy/web",
@@ -30,7 +32,7 @@
     "dev:web": "npm run dev --workspace @trimmy/web",
     "preview:web": "npm run preview --workspace @trimmy/web",
     "start:api": "npm run start --workspace @trimmy/api",
-    "check": "npm run build:backend && npm run check:content && npm run check:discovery-contract && npm run check:wallet-possession-contract && npm run test:wallet-possession-contract && npm run typecheck && npm test && npm run test:provider-tools && npm run build:web && npm run test:solana && npm run test:stock-mints && npm run test:stock-inspection",
+    "check": "npm run build:backend && npm run check:content && npm run check:discovery-contract && npm run check:wallet-possession-contract && npm run test:wallet-possession-contract && npm run typecheck && npm test && npm run test:provider-tools && npm run build:web && npm run test:solana && npm run test:stock-mints && npm run test:stock-inspection && npm run test:verification",
     "generate:content": "node tool/generate-practice-catalog.mjs",
     "check:content": "node tool/generate-practice-catalog.mjs --check && node tool/check-practice-copy.mjs && npm run test:content",
     "test:content": "node --test tool/test/practice-catalog.test.mjs tool/test/practice-copy.test.mjs",
