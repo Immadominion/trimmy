@@ -434,7 +434,8 @@ describe('RFQ quotes, signatures and settlement', () => {
     const txId = 'M'.repeat(88);
     const pending = {...f.order, status: 'pending' as const, signature: takerSignature};
     let resolved: string | null = null;
-    const store = {read: async () => pending, resolve: async (_u: string, _i: string, status: string) => {resolved = status; return {...pending, status};}} as unknown as LiveOrderStore;
+    let recordedSlot: number | undefined;
+    const store = {read: async () => pending, resolve: async (_u: string, _i: string, status: string, slot?: number) => {resolved = status; recordedSlot = slot; return {...pending, status};}} as unknown as LiveOrderStore;
     const calls: string[] = [];
     const fake = (async (_url: unknown, options?: RequestInit) => {
       const request = JSON.parse(String(options?.body));
@@ -451,6 +452,7 @@ describe('RFQ quotes, signatures and settlement', () => {
     const settled = await service.status('user', 'rfq-order');
     assert.equal(resolved, 'confirmed');
     assert.equal(settled?.confirmedSlot, 777);
+    assert.equal(recordedSlot, 777, 'RFQ settlement persists the observed slot too');
     assert.deepEqual(calls, ['getSignaturesForAddress', 'getTransaction', 'getTransaction']);
   });
 

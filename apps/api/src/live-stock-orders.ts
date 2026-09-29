@@ -34,14 +34,14 @@ export interface LiveOrderTermsAcceptance {readonly issuerId:StockIssuerId;reado
 export interface LiveOrder {
  id:string;user_id:string;wallet:string;review:ReviewedStockOrderIntent&{termsAcceptance?:LiveOrderTermsAcceptance};unsignedTransaction:string;
  expires_at:string;status:'reviewed'|'pending'|'confirmed'|'failed'|'expired';signature:string|null;dispatch?:boolean;
- /** Confirmed RPC slot for a newly settled order; absent on legacy persisted reads. */
+ /** Confirmed RPC slot persisted with settlement; absent on legacy orders. */
  confirmedSlot?:number;
 }
 export interface LiveOrderStore {
  read(user:string,id?:string):Promise<LiveOrder|null>;
  create(user:string,id:string,wallet:string,review:ReviewedStockOrderIntent,wire:Uint8Array,terms?:LiveOrderTermsAcceptance):Promise<LiveOrder>;
  begin(user:string,id:string,digest:string,signature:string):Promise<LiveOrder>;
- resolve(user:string,id:string,status:'confirmed'|'failed'|'expired'):Promise<LiveOrder>;
+ resolve(user:string,id:string,status:'confirmed'|'failed'|'expired',confirmedSlot?:number):Promise<LiveOrder>;
  /** What a confirmed order moved (migration 0033); false when already recorded. */
  recordFill?(user:string,id:string,inputRaw:string,outputRaw:string):Promise<boolean>;
 }
@@ -61,7 +61,7 @@ export class PostgresLiveOrderStore implements LiveOrderStore {
   return (await this.call(user,'SELECT trimmy.live_order_create($1,$2,$3,$4,$5,$6) AS value',[user,id,wallet,JSON.stringify(stored),Buffer.from(wire),review.expiresAt]))!;
  }
  async begin(user:string,id:string,digest:string,signature:string){return (await this.call(user,'SELECT trimmy.live_order_begin($1,$2,$3,$4) AS value',[user,id,digest,signature]))!;}
- async resolve(user:string,id:string,status:'confirmed'|'failed'|'expired'){return (await this.call(user,'SELECT trimmy.live_order_resolve($1,$2,$3) AS value',[user,id,status]))!;}
+ async resolve(user:string,id:string,status:'confirmed'|'failed'|'expired',confirmedSlot?:number){return (await this.call(user,'SELECT trimmy.live_order_resolve($1,$2,$3,$4::bigint) AS value',[user,id,status,confirmedSlot??null]))!;}
  async recordFill(user:string,id:string,inputRaw:string,outputRaw:string){
   return (await this.call(user,'SELECT trimmy.live_order_record_fill($1,$2,$3,$4) AS value',[user,id,inputRaw,outputRaw])) as unknown===true;
  }
@@ -340,7 +340,7 @@ export class LiveStockOrders {
   if(status && ['confirmed','finalized'].includes(status.confirmationStatus)) {
    if(!Number.isSafeInteger(status.slot)||status.slot<1 || !Object.hasOwn(status,'err') ||
     (status.err!==null && !reportedTransactionError(status.err)))fail('LIVE_UNAVAILABLE');
-   const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed'));
+   const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,status.err===null?'confirmed':'failed',status.slot));
    if(settled.status==='confirmed')await this.#recordFill(user,order,order.signature!);
    return {...settled,confirmedSlot:status.slot};
   }
@@ -385,7 +385,7 @@ export class LiveStockOrders {
   const found=await this.rfqTransaction(order);
   if(found) {
    if(found.err!==null && !reportedTransactionError(found.err))fail('LIVE_UNAVAILABLE');
-   const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,found.err===null?'confirmed':'failed'));
+   const settled=this.#alertSettled(order,await this.options.store.resolve(user,order.id,found.err===null?'confirmed':'failed',found.slot));
    if(settled.status==='confirmed')await this.#recordFill(user,order,found.signature);
    return {...settled,confirmedSlot:found.slot};
   }

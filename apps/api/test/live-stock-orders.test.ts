@@ -67,14 +67,15 @@ test('explicit valid RPC success and transaction errors settle once with the obs
   {InsufficientFundsForRent:{account_index:4}},{ProgramExecutionTemporarilyRestricted:{account_index:0}}]) {
   const f=fixture();let settlements=0;
   let current:LiveOrder={...f.order,status:'pending',signature:'2'.repeat(88)};
-  const store={read:async()=>current,resolve:async(_user:string,_id:string,status:LiveOrder['status'])=>{settlements++;return current={...current,status};}} as unknown as LiveOrderStore;
+  const store={read:async()=>current,resolve:async(_user:string,_id:string,status:LiveOrder['status'],confirmedSlot?:number)=>{settlements++;return current={...current,status,...(confirmedSlot===undefined?{}:{confirmedSlot})};}} as unknown as LiveOrderStore;
   const alerts:string[]=[];
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,alerts:{notify:(kind:string)=>alerts.push(kind)} as unknown as OpsAlerts,
    fetch:async()=>Response.json({jsonrpc:'2.0',id:1,result:{value:[{confirmationStatus:'confirmed',slot:501,err}]}})});
   const settled=await service.status('user','test');
   assert.equal(settled?.status,err===null?'confirmed':'failed');
   assert.equal(settled?.confirmedSlot,501);
-  await service.status('user','test');assert.equal(settlements,1);
+  const restored=await service.status('user','test');assert.equal(settlements,1);
+  assert.equal(restored?.confirmedSlot,501,'a later read retains the confirmed balance floor');
   // The operator hears about each failed order once, and never about a confirmed one.
   assert.deepEqual(alerts,err===null?[]:['order_failed']);
  }

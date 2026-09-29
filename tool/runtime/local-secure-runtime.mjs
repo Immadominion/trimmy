@@ -49,6 +49,7 @@ export const MIGRATIONS = Object.freeze([
   '0031_live_stock_orders',
   '0032_live_stock_order_history',
   '0033_live_stock_order_fills',
+  '0034_live_order_confirmation_slot',
 ]);
 export const OWNER_ROLE = 'trimmy_runtime_owner';
 export const RUNTIME_ROLE = 'trimmy_practice_runtime';
@@ -773,7 +774,7 @@ export function runtimeGrants(role = RUNTIME_ROLE) {
     `GRANT EXECUTE ON FUNCTION trimmy.product_profile_get(uuid), trimmy.product_profile_has_confirmed_paper_trade(uuid), trimmy.product_profile_put(uuid, uuid, text, bigint, text, text, text, text, text, text), trimmy.product_launch_advance(uuid, uuid, text, bigint, text, uuid) TO ${role}`,
     // Career state is reachable only through definer functions. The serving
     // role receives no privilege on profiles, reasons, receipts or the ledger.
-    `GRANT EXECUTE ON FUNCTION trimmy.live_order_read(uuid,uuid), trimmy.live_order_create(uuid,uuid,text,jsonb,bytea,timestamptz), trimmy.live_order_begin(uuid,uuid,text,text), trimmy.live_order_resolve(uuid,uuid,text), trimmy.workday_read(uuid), trimmy.workday_save(uuid,text,integer,integer,jsonb,text), trimmy.daily_desk_get(uuid), trimmy.daily_desk_complete(uuid,date,text,text), trimmy.community_feed_get(uuid,text,timestamptz,uuid), trimmy.community_follow_set(uuid,uuid,boolean,boolean), trimmy.career_activity_week_get(uuid), trimmy.career_summary_get(uuid), trimmy.career_missions_get(uuid), trimmy.career_trade_reason_put(uuid, uuid, text, uuid, text), trimmy.career_promote(uuid, uuid, text, text), trimmy.career_day_context_get(uuid), trimmy.career_day_context_put(uuid, uuid, text, bigint, text) TO ${role}`,
+    `GRANT EXECUTE ON FUNCTION trimmy.live_order_read(uuid,uuid), trimmy.live_order_create(uuid,uuid,text,jsonb,bytea,timestamptz), trimmy.live_order_begin(uuid,uuid,text,text), trimmy.live_order_resolve(uuid,uuid,text), trimmy.live_order_resolve(uuid,uuid,text,bigint), trimmy.workday_read(uuid), trimmy.workday_save(uuid,text,integer,integer,jsonb,text), trimmy.daily_desk_get(uuid), trimmy.daily_desk_complete(uuid,date,text,text), trimmy.community_feed_get(uuid,text,timestamptz,uuid), trimmy.community_follow_set(uuid,uuid,boolean,boolean), trimmy.career_activity_week_get(uuid), trimmy.career_summary_get(uuid), trimmy.career_missions_get(uuid), trimmy.career_trade_reason_put(uuid, uuid, text, uuid, text), trimmy.career_promote(uuid, uuid, text, text), trimmy.career_day_context_get(uuid), trimmy.career_day_context_put(uuid, uuid, text, bigint, text) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.career_reason_privacy_get(uuid), trimmy.career_reason_privacy_put(uuid, uuid, text, bigint, text), trimmy.career_trade_reason_list(uuid, text, text, text, timestamptz, uuid, integer) TO ${role}`,
     `REVOKE ALL ON TABLE trimmy.career_reason_privacy, trimmy.career_reason_privacy_receipts FROM ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.paper_desk_reset(uuid, uuid, text, bigint) TO ${role}`,

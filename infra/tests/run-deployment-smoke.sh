@@ -120,9 +120,9 @@ migration_output="$(
     node tool/runtime/apply-migrations.mjs
 )"
 echo "$migration_output"
-grep -q 'Applied 33 migration(s)' <<<"$migration_output" \
-  || { echo 'FAIL: deployment smoke did not apply the current 33 migrations.' >&2; exit 1; }
-[[ "$(owner_psql -d trimmy -Atc "SELECT count(*)=33 AND max(version)='0033_live_stock_order_fills' FROM trimmy.schema_migrations")" == 't' ]] \
+grep -q 'Applied 34 migration(s)' <<<"$migration_output" \
+  || { echo 'FAIL: deployment smoke did not apply the current 34 migrations.' >&2; exit 1; }
+[[ "$(owner_psql -d trimmy -Atc "SELECT count(*)=34 AND max(version)='0034_live_order_confirmation_slot' FROM trimmy.schema_migrations")" == 't' ]] \
   || { echo 'FAIL: deployment smoke did not record the current 33-migration history.' >&2; exit 1; }
 [[ "$(owner_psql -d trimmy -Atc "SELECT count(*)=4 FROM pg_roles WHERE rolname=ANY(ARRAY['$runtime_role','$red_day_capability_role','$red_day_worker_role','$social_moderator_role'])")" == 't' ]] \
   || { echo 'FAIL: deployment smoke did not provision all four isolated roles.' >&2; exit 1; }
