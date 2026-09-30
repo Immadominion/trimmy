@@ -492,7 +492,17 @@ final class GuestSessionController
         );
         await store.writeIssuanceRequest(issuance);
       }
-      current = await client.create(issuance);
+      try {
+        current = await client.create(issuance);
+      } on GuestSessionException catch (error) {
+        if (error.failure != GuestSessionFailure.offline &&
+            error.failure != GuestSessionFailure.timeout &&
+            error.failure != GuestSessionFailure.unavailable) {
+          rethrow;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        current = await client.create(issuance);
+      }
       // One secure-store write replaces the pending proof with the credential.
       // A crash before it leaves the proof retryable; a crash after it restores
       // the credential, so there is no destructive cleanup gap.

@@ -168,6 +168,8 @@ class _ProductExperienceState extends State<ProductExperience>
   bool _skipIntroAfterAuth = false;
   bool _accountEntryRunning = false;
   bool _accountEntryFailed = false;
+  Future<void>? _paperOpeningRequest;
+  bool _catalogRequested = false;
   final _shellKey = GlobalKey<ProductShellState>();
   final _http = http.Client();
   final _career = CareerController();
@@ -573,7 +575,6 @@ class _ProductExperienceState extends State<ProductExperience>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && identical(_market, market)) {
           unawaited(market.loadStarterPicks());
-          unawaited(market.loadCatalog());
         }
       });
     }
@@ -684,13 +685,19 @@ class _ProductExperienceState extends State<ProductExperience>
     }
     if (!ready) return;
     _paperOpening = true;
+    final opening = _openPaperRepositories(
+      account: account,
+      phase: phase!,
+      principalHint: principalHint!,
+      generation: _portfolioGeneration,
+    );
+    _paperOpeningRequest = opening;
     unawaited(
-      _openPaperRepositories(
-        account: account,
-        phase: phase!,
-        principalHint: principalHint!,
-        generation: _portfolioGeneration,
-      ),
+      opening.whenComplete(() {
+        if (identical(_paperOpeningRequest, opening)) {
+          _paperOpeningRequest = null;
+        }
+      }),
     );
   }
 
@@ -1041,6 +1048,53 @@ class _ProductExperienceState extends State<ProductExperience>
     return parts.length == 1 ? grouped : '$grouped.${parts.last}';
   }
 
+  Future<void> _prepareIntroduction() async {
+    final account = widget.account;
+    if (account == null) return;
+    await account.initialize().timeout(const Duration(seconds: 10));
+    if (!mounted || !identical(account, widget.account)) {
+      throw const FormatException('Account changed. Please try again.');
+    }
+    if (account.phase == AccountPhase.error) {
+      await account.retryConnection().timeout(const Duration(seconds: 10));
+    }
+    if (!mounted || !identical(account, widget.account)) {
+      throw const FormatException('Account changed. Please try again.');
+    }
+    _syncPaperRepositories();
+    final generation = _portfolioGeneration;
+    await _paperOpeningRequest;
+    if (!mounted || !identical(account, widget.account)) {
+      throw const FormatException('Account changed. Please try again.');
+    }
+    if (widget.session.remotePrincipalKey != null &&
+        !widget.session.remoteProfileUsable) {
+      await widget.session.retryRemoteRead();
+    }
+    if (!mounted ||
+        !identical(account, widget.account) ||
+        generation != _portfolioGeneration ||
+        _paperPrincipalKey == null ||
+        !widget.session.remoteBoundTo(_paperPrincipalKey!) ||
+        !widget.session.remoteProfileUsable) {
+      throw const FormatException('Couldn’t connect. Please try again.');
+    }
+  }
+
+  Widget _introduction() => ProductIntroduction(
+    key: const ValueKey('product-introduction'),
+    showWelcomeNote: true,
+    onContinue: () async {
+      await _prepareIntroduction();
+      if (mounted) await widget.session.beginIntroduction();
+    },
+    onSkip: () async {
+      await _prepareIntroduction();
+      if (mounted) await widget.session.skipIntroduction();
+    },
+    onHaveAccount: _openSignIn,
+  );
+
   Future<void> _retryProductProfile() async {
     if (widget.session.remotePrincipalKey != null) {
       await widget.session.retryRemoteRead();
@@ -1369,6 +1423,17 @@ class _ProductExperienceState extends State<ProductExperience>
           onLater: _continueAsGuest,
         );
       }
+      // Welcome and the paper note contain no account data. They can open
+      // before authentication/profile networking on a fresh installation.
+      // Continuing still requires a server-owned desk; never invent progress.
+      if (!widget.session.hasSavedLaunchState &&
+          !_guestAccessApproved &&
+          !_entryAccountGateOpen &&
+          widget.session.launchStep == ProductLaunchStep.onboarding &&
+          (phase == AccountPhase.initializing || phase == AccountPhase.guest) &&
+          _guestRecoveryFailure == null) {
+        return _introduction();
+      }
       if (account != null) {
         final guestRecovery = _guestRecoveryFailure;
         if (phase == AccountPhase.guest && guestRecovery != null) {
@@ -1427,14 +1492,16 @@ class _ProductExperienceState extends State<ProductExperience>
           },
         );
       }
+      if (widget.session.launchStep == ProductLaunchStep.app &&
+          !_catalogRequested) {
+        _catalogRequested = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_market?.loadCatalog());
+        });
+      }
       final profile = widget.session.profile;
       return switch (widget.session.launchStep) {
-        ProductLaunchStep.onboarding => ProductIntroduction(
-          showWelcomeNote: true,
-          onContinue: widget.session.beginIntroduction,
-          onSkip: widget.session.skipIntroduction,
-          onHaveAccount: _openSignIn,
-        ),
+        ProductLaunchStep.onboarding => _introduction(),
         ProductLaunchStep.firstTrade => _firstTradePage(),
         ProductLaunchStep.firstPosition ||
         ProductLaunchStep.dayOne ||
@@ -3219,7 +3286,7 @@ class _ProductProfileUnavailable extends StatelessWidget {
   Widget build(BuildContext context) => ProductStatePage(
     artwork: TrimmyLiquidMark(size: 112, animate: loading),
     title: loading ? 'Opening Trimmy' : 'Couldn’t open Trimmy',
-    message: loading ? null : 'Try again to pick up where you left off.',
+    message: loading ? null : message,
     actions: [
       if (!loading) ProductButton(label: 'Try again', onPressed: onRetry),
     ],

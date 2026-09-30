@@ -59,7 +59,9 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       unawaited(
         navigatorKey.currentState!.push<void>(
@@ -68,7 +70,9 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       unawaited(
         navigatorKey.currentState!.push<void>(
           MaterialPageRoute(
@@ -76,19 +80,27 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       account.move(AccountPhase.connecting);
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Sign-in route'), findsOneWidget);
 
       account.move(AccountPhase.guest, principalKey: _principal);
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Sign-in route'), findsOneWidget);
       expect(navigatorKey.currentState!.canPop(), isTrue);
 
       account.move(AccountPhase.connecting);
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Sign-in route'), findsOneWidget);
 
       account.move(
@@ -96,7 +108,9 @@ void main() {
         accountId: _principal,
         principalKey: _principal,
       );
-      await tester.pumpAndSettle();
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       expect(find.text('Sign-in route'), findsNothing);
       expect(find.text('Settings route'), findsNothing);

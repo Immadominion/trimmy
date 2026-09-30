@@ -40,6 +40,21 @@ final class HttpProductProfileRepository implements ProductProfileRepository {
 
   @override
   Future<ProductProfileSnapshot?> read() async {
+    try {
+      return await _readOnce();
+    } on ProductProfileException catch (error) {
+      if (_closed ||
+          (error.failure != ProductProfileFailure.offline &&
+              error.failure != ProductProfileFailure.timeout &&
+              error.failure != ProductProfileFailure.unavailable)) {
+        rethrow;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      return _readOnce();
+    }
+  }
+
+  Future<ProductProfileSnapshot?> _readOnce() async {
     final response = await _request('GET');
     if (response.statusCode != 200) {
       _throwFailure(response.statusCode, response.body);

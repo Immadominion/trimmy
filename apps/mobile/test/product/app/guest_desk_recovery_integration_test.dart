@@ -13,6 +13,8 @@ import 'package:trimmy/markets/config.dart';
 import 'package:trimmy/markets/stock_research_host.dart';
 import 'package:trimmy/practice_sync/durable_state.dart';
 import 'package:trimmy/product/app/product_app.dart';
+import 'package:trimmy/ui_review/welcome_review_screen.dart';
+import 'package:trimmy/ui_review/review_welcome_note.dart';
 
 class _SignedOutAuth implements PracticeAuth {
   @override
@@ -130,6 +132,56 @@ Future<void> _reveal(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  testWidgets(
+    'fresh install opens Welcome and paper note when the API is offline',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final auth = _SignedOutAuth();
+      final guests = _ExpiredGuests(GuestSessionFailure.offline);
+      final client = MockClient(
+        (_) async => throw http.ClientException('offline'),
+      );
+      final account = AccountController(
+        auth: auth,
+        guestRepository: OfficeProgressRepository.fromPreferences(preferences),
+        store: _MemorySyncStore(),
+        httpClient: client,
+        baseUri: Uri.parse('https://api.trimmy.test'),
+        guestSessions: guests,
+      );
+      addTearDown(() async {
+        account.dispose();
+        await auth.close();
+        client.close();
+      });
+      await account.initialize();
+      await tester.pumpWidget(
+        StockResearchHost(
+          config: StockResearchConfig.parse(apiUrl: ''),
+          child: TrimmyProductApp(
+            preferences: preferences,
+            account: account,
+            accountConfigurationFailed: false,
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(WelcomeReviewScreen), findsOneWidget);
+      expect(find.text('Couldn’t open Trimmy'), findsNothing);
+      await tester.tap(find.text('Start my first day'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ReviewWelcomeNotePage), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ReviewWelcomeNotePage), findsOneWidget);
+      expect(find.text('Pick a company.'), findsNothing);
+      expect(preferences.getBool('trimmy.product.first-trade.v1'), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   testWidgets('expired paper identity becomes a stable recovery gate', (
     tester,
   ) async {
@@ -137,7 +189,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'trimmy.product.introduction-exited.v1': true,
+    });
     final preferences = await SharedPreferences.getInstance();
     final auth = _SignedOutAuth();
     final guests = _ExpiredGuests();
@@ -167,7 +221,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
 
     expect(find.text('Guest session expired'), findsOneWidget);
     expect(guests.guestIdCalls, 1);
@@ -187,7 +243,9 @@ void main() {
     );
     await _reveal(tester, confirm);
     await tester.tap(confirm.hitTestable());
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
 
     expect(guests.restartCalls, 1);
     expect(guests.observedFailure, GuestSessionFailure.expired);
@@ -203,7 +261,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'trimmy.product.introduction-exited.v1': true,
+    });
     final preferences = await SharedPreferences.getInstance();
     final auth = _SignedOutAuth();
     final guests = _ExpiredGuests(GuestSessionFailure.revoked);
@@ -233,7 +293,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
 
     expect(find.text('Guest session ended'), findsOneWidget);
     final start = find.byKey(const ValueKey('guest-recovery-start-new'));
@@ -245,7 +307,9 @@ void main() {
     );
     await _reveal(tester, confirm);
     await tester.tap(confirm.hitTestable());
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
 
     expect(guests.restartCalls, 1);
     expect(guests.observedFailure, GuestSessionFailure.revoked);
@@ -297,11 +361,15 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
     expect(find.text('Couldn’t open Trimmy'), findsOneWidget);
 
     await tester.tap(find.text('Try again'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
 
     expect(sessionRequests, 2);
     expect(account.phase, AccountPhase.error);
