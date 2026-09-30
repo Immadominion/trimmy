@@ -407,6 +407,10 @@ class _ProductExperienceState extends State<ProductExperience>
       _tradePush = TradePushController(
         preferences: widget.preferences,
         origin: pushOrigin,
+        identityReady: () => !const {
+          AccountPhase.initializing,
+          AccountPhase.connecting,
+        }.contains(widget.account?.phase),
         identity: () {
           final account = widget.account;
           final id = account?.accountId;

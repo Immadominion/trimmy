@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,createPublicKey,verify} from 'node:crypto';
 import {buildApp} from '../src/app.js';
-import {FcmPushSender,readPushConfig,TradePushWorker,type PushStore,type PushJob} from '../src/push-notifications.js';
+import {FcmPushSender,readPushConfig,readPushPlatforms,TradePushWorker,type PushStore,type PushJob} from '../src/push-notifications.js';
 import {OrderRecoveryWorker} from '../src/order-recovery-worker.js';
 const device='cf350000-0000-4000-a000-000000000001';
 const job:PushJob={id:device,deviceId:device,userId:'user',orderId:'order',status:'confirmed'};
@@ -43,18 +43,18 @@ test('FCM uses a signed short-lived assertion, generic copy, account-bound route
   sends++;assert.equal(String(url),'https://fcm.googleapis.com/v1/projects/trimmy-test/messages:send');
   const body=JSON.parse(String(init?.body));assert.equal(body.message.token,'device-token');
   assert.deepEqual(body.message.data,{kind:'trade_update',accountId:'user',orderId:'order',notificationId:device});
-  assert.equal(body.message.notification.body,'Your trade has an update. Open Trimmy to see it.');
+  assert.equal(body.message.notification.body,'Your trade is confirmed. Open Trimmy for details.');
   assert.equal(body.message.android.notification.tag,device);assert.equal(body.validate_only,true);
   return Response.json({name:'projects/trimmy-test/messages/accepted'});
  });
  assert.equal(await sender.send(job,'device-token',true),'sent');assert.equal(await sender.send(job,'device-token',true),'sent');
  assert.equal(oauth,1);assert.equal(sends,2);
 });
-test('only typed UNREGISTERED removes a token; auth/quota/network failures retry',async()=>{
+test('only typed UNREGISTERED removes a token; other malformed requests are dropped',async()=>{
  for(const [body,expected] of [
-  [{error:{status:'INVALID_ARGUMENT'}},'retry'],[{error:{status:'UNAUTHENTICATED'}},'retry'],
+  [{error:{status:'INVALID_ARGUMENT'}},'drop'],[{error:{status:'UNAUTHENTICATED'}},'drop'],
   [{error:{details:[{'@type':'type.googleapis.com/google.firebase.fcm.v1.FcmError',errorCode:'UNREGISTERED'}]}},'invalid_token'],
-  [{error:{details:[{errorCode:'UNREGISTERED'}]}},'retry'],
+  [{error:{details:[{errorCode:'UNREGISTERED'}]}},'drop'],
  ] as const){
   const sender=new FcmPushSender(credentials,async url=>String(url).includes('oauth2')?Response.json({access_token:'a',expires_in:3600}):Response.json(body,{status:400}));
   assert.equal(await sender.send(job,'device-token'),expected);
@@ -78,4 +78,32 @@ test('order recovery only calls status and releases work even when RPC is unavai
  const worker=new OrderRecoveryWorker({claim:async()=>[{id:'order',userId:'owner'}],release:async id=>{calls.push(['release',id]);}},
   {status:async(...args)=>{calls.push(args);throw Error('RPC unavailable');}},()=>{errors++;});
  await worker.tick();assert.deepEqual(calls,[['owner','order'],['release','order']]);assert.equal(errors,1);await worker.stop();
+});
+
+test('push platform rollout is explicit and rejects typos',()=>{assert.deepEqual(readPushPlatforms({}),['android']);assert.deepEqual(readPushPlatforms({TRIMMY_PUSH_PLATFORMS:'android,ios'}),['android','ios']);assert.deepEqual(readPushPlatforms({TRIMMY_PUSH_PLATFORMS:''}),[]);for(const value of ['web','ios,ios','android,'])assert.throws(()=>readPushPlatforms({TRIMMY_PUSH_PLATFORMS:value}));});
+
+
+test('FCM retries transient HTTP failures and refreshes OAuth after unauthorized',async()=>{
+ for (const status of [401,429,500,503]) {
+  let oauth=0;
+  const sender=new FcmPushSender(credentials,async url=>{
+   if(String(url).includes('oauth2')){oauth++;return Response.json({access_token:'a',expires_in:3600});}
+   return Response.json({error:{status:'UNAVAILABLE'}},{status});
+  });
+  assert.equal(await sender.send(job,'device-token'),'retry');
+  assert.equal(await sender.send(job,'device-token'),'retry');
+  assert.equal(oauth,status===401?2:1);
+ }
+ for (const status of [400,403,404]) {
+  const sender=new FcmPushSender(credentials,async url=>String(url).includes('oauth2')
+   ?Response.json({access_token:'a',expires_in:3600}):Response.json({error:{}},{status}));
+  assert.equal(await sender.send(job,'device-token'),'drop');
+ }
+});
+
+test('permanent provider rejection is finished and reported without device payload',async()=>{
+ const s=store();let alerts=0;const outcomes:string[]=[];
+ s.finish=async(_id,_worker,outcome)=>{outcomes.push(outcome);};
+ const worker=new TradePushWorker(s,{send:async()=> 'drop'},()=>{alerts++;});
+ await worker.tick();assert.deepEqual(outcomes,['drop']);assert.equal(alerts,1);await worker.stop();
 });

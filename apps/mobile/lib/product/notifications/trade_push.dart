@@ -30,6 +30,7 @@ class TradePushController extends ChangeNotifier {
     required this.preferences,
     required this.origin,
     required this.identity,
+    this.identityReady,
     required this.device,
     required this.onOpen,
     required this.onForeground,
@@ -40,6 +41,7 @@ class TradePushController extends ChangeNotifier {
   final SharedPreferences preferences;
   final Uri origin;
   final PushIdentity? Function() identity;
+  final bool Function()? identityReady;
   final TradePushDevice device;
   final VoidCallback onOpen, onForeground;
   final http.Client _client;
@@ -58,8 +60,14 @@ class TradePushController extends ChangeNotifier {
   Map<String, dynamic>? _pendingOpen;
 
   void bind() {
+    if (identityReady?.call() == false) return;
     final next = identity()?.id;
     if (_bound && next == _account) return;
+    final revoke =
+        (_bound && next != _account) ||
+        next == null ||
+        preferences.getBool('trimmy.tradePush.v1.$next') != true ||
+        preferences.getBool(_pendingKey(next)) == true;
     _bound = true;
     _generation++;
     _account = next;
@@ -68,7 +76,7 @@ class TradePushController extends ChangeNotifier {
     unawaited(
       _enqueue(() async {
         try {
-          await device.disable();
+          if (revoke) await device.disable();
         } catch (_) {
           /* Retry on resume. */
         }
@@ -137,6 +145,7 @@ class TradePushController extends ChangeNotifier {
       _account == owner &&
       identity()?.id == owner;
   Future<void> _sync() async {
+    if (identityReady?.call() == false) return;
     final generation = _generation;
     final owner = _account;
     if (owner == null) {
