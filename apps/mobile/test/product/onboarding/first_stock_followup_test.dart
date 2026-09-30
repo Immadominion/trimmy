@@ -154,8 +154,8 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Around 7 PM, your time.'), findsOneWidget);
-      await tester.tap(find.text('Once a day'));
+      expect(find.text('Around 7 PM, when work is waiting.'), findsOneWidget);
+      await tester.tap(find.text('On workdays'));
       await tester.pump();
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
@@ -197,7 +197,7 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Once a day'));
+      await tester.tap(find.text('On workdays'));
       await tester.pump();
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
