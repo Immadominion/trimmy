@@ -413,7 +413,7 @@ describe('RFQ quotes, signatures and settlement', () => {
       Buffer.from(getTransactionEncoder().encode({messageBytes, signatures} as never)).toString('base64');
     const takerSignature = Uint8Array.from(sign(null, Buffer.from(messageBytes), keys.privateKey));
     const review = {reviewDigestSha256: 'a'.repeat(64), reviewedAt: new Date(Date.now() - 5_000).toISOString(),
-      expiresAt: new Date(Date.now() + 30_000).toISOString(), evidence: {lastValidBlockHeight: '500'}, requestId: 'rfq',
+      expiresAt: new Date(Date.now() + 30_000).toISOString(), evidence: {lastValidBlockHeight: '500', observationSlot: '501'}, requestId: 'rfq',
       terms: {route: 'rfq'}} as unknown as ReviewedStockOrderIntent;
     const order: LiveOrder = {id: 'rfq-order', user_id: 'user', wallet, review, unsignedTransaction: encode({[maker]: null, [wallet]: null}),
       expires_at: review.expiresAt, status: 'reviewed', signature: null};
@@ -460,13 +460,13 @@ describe('RFQ quotes, signatures and settlement', () => {
     const f = rfqOrder();
     const takerSignature = verifyReviewedSignature(f.order, f.signed);
     const pending = {...f.order, status: 'pending' as const, signature: takerSignature};
-    for (const [height, expected] of [[450, 'pending'], [501, 'expired']] as const) {
+    for (const [height, valid, expected] of [[450, false, 'pending'], [501, true, 'pending'], [501, false, 'expired']] as const) {
       let resolved: string | null = null;
       const store = {read: async () => pending, resolve: async (_u: string, _i: string, status: string) => {resolved = status; return {...pending, status};}} as unknown as LiveOrderStore;
       const fake = (async (_url: unknown, options?: RequestInit) => {
         const request = JSON.parse(String(options?.body));
         const result = request.method === 'getSignaturesForAddress' ? [] : request.method === 'getGenesisHash'
-          ? '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d' : request.method === 'getBlockHeight' ? height : null;
+          ? '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d' : request.method === 'getBlockHeight' ? height : request.method === 'isBlockhashValid' ? {value: valid, context: {slot: 502}} : null;
         return Response.json({jsonrpc: '2.0', id: 1, result});
       }) as typeof fetch;
       const service = new LiveStockOrders({rpcUrl: 'https://rpc.example', store, fetch: fake});
