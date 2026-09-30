@@ -49,7 +49,11 @@ class TradePushController extends ChangeNotifier {
   bool _disposed = false, available = false, busy = false;
   Future<void> _tail = Future.value();
   String get _key => 'trimmy.tradePush.v1.${_account ?? 'guest'}';
-  bool get enabled => _account != null && preferences.getBool(_key) == true;
+  bool get _consented => _account != null && preferences.getBool(_key) == true;
+  String _pendingKey(String owner) => 'trimmy.tradePush.pendingOff.v1.$owner';
+  bool get enabled =>
+      _account != null &&
+      (_consented || preferences.getBool(_pendingKey(_account!)) == true);
   String? error;
   Map<String, dynamic>? _pendingOpen;
 
@@ -96,14 +100,12 @@ class TradePushController extends ChangeNotifier {
         }
         if (_current(owner, generation)) {
           await preferences.setBool(_key, true);
+          await preferences.remove(_pendingKey(owner));
         }
       } else {
+        await preferences.setBool(_pendingKey(owner), true);
         await preferences.setBool(_key, false);
-        try {
-          await _remove(owner);
-        } finally {
-          await device.disable();
-        }
+        await _disableDelivery(owner);
       }
     });
   }
@@ -154,26 +156,42 @@ class TradePushController extends ChangeNotifier {
         data['platforms'] is List &&
         (data['platforms'] as List).contains(device.platform);
     if (!available) return;
-    if (!enabled) {
-      try {
-        await _remove(owner);
-      } finally {
-        await device.disable();
-      }
+    if (!_consented) {
+      await _disableDelivery(owner);
       return;
     }
     final token = await device.token(askPermission: false);
     if (!_current(owner, generation)) return;
     if (token == null) {
       await preferences.setBool(_key, false);
-      try {
-        await _remove(owner);
-      } finally {
-        await device.disable();
-      }
+      await _disableDelivery(owner);
       return;
     }
     await _register(owner, token);
+  }
+
+  Future<void> _disableDelivery(String owner) async {
+    final generation = _generation;
+    var serverStopped = false, deviceStopped = false;
+    try {
+      await _remove(owner);
+      serverStopped = _current(owner, generation);
+    } catch (_) {
+      /* Device revocation may still stop delivery. */
+    }
+    try {
+      await device.disable();
+      deviceStopped = true;
+    } catch (_) {
+      /* A removed server registration is sufficient. */
+    }
+    if (serverStopped || deviceStopped) {
+      await preferences.remove(_pendingKey(owner));
+    } else {
+      throw const FormatException(
+        'Couldn’t turn off alerts. Try again when you’re online.',
+      );
+    }
   }
 
   Future<String> _installation() async {
@@ -231,7 +249,7 @@ class TradePushController extends ChangeNotifier {
     }
     if (data['accountId'] != _account ||
         identity()?.id != _account ||
-        !enabled) {
+        !_consented) {
       return;
     }
     if (opened) {

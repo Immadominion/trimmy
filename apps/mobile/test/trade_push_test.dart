@@ -49,6 +49,7 @@ void main() {
   late TradePushController controller;
   late List<http.Request> requests;
   late int opens, foreground;
+  late bool serverDown;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     preferences = await SharedPreferences.getInstance();
@@ -56,6 +57,7 @@ void main() {
     requests = [];
     opens = 0;
     foreground = 0;
+    serverDown = false;
     identity = PushIdentity('owner', () async => 'verified-token');
     controller = TradePushController(
       preferences: preferences,
@@ -66,6 +68,7 @@ void main() {
       onForeground: () => foreground++,
       client: MockClient((request) async {
         requests.add(request);
+        if (serverDown) throw StateError("offline");
         return http.Response(
           jsonEncode(
             request.method == 'GET'
@@ -209,6 +212,28 @@ void main() {
       device.revokeFails = false;
       await controller.refresh();
       expect(controller.error, isNull);
+    },
+  );
+  test(
+    'offline opt-out stays pending and retries without re-enrollment',
+    () async {
+      await controller.setEnabled(true);
+      serverDown = true;
+      device.revokeFails = true;
+      await controller.setEnabled(false);
+      expect(
+        controller.enabled,
+        true,
+        reason: 'Do not claim successful opt-out',
+      );
+      expect(controller.error, contains('Couldn’t turn off'));
+      expect(preferences.getBool('trimmy.tradePush.v1.owner'), false);
+      final priorPuts = requests.where((r) => r.method == 'PUT').length;
+      serverDown = false;
+      await controller.refresh();
+      expect(controller.enabled, false);
+      expect(controller.error, isNull);
+      expect(requests.where((r) => r.method == 'PUT').length, priorPuts);
     },
   );
 }
