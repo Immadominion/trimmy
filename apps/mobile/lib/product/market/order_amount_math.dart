@@ -1,22 +1,16 @@
+import '../../core/paper_decimal.dart';
+
 /// The paper ledger uses six fixed decimal places. Presets round down so they
 /// can never offer even one microshare more than the position owns.
 abstract final class OrderAmountMath {
   static final scale = BigInt.from(1000000);
 
-  static BigInt micros(String value) {
-    if (!RegExp(r'^\d+(?:\.\d{0,6})?$').hasMatch(value)) return BigInt.zero;
-    final parts = value.split('.');
-    return BigInt.parse(parts[0]) * scale +
-        BigInt.parse((parts.length == 1 ? '' : parts[1]).padRight(6, '0'));
-  }
+  static BigInt micros(String value) =>
+      RegExp(r'^\d+(?:\.\d{0,6})?$').hasMatch(value)
+      ? paperMicros(value)
+      : BigInt.zero;
 
-  static String decimal(BigInt value) {
-    final fraction = (value % scale)
-        .toString()
-        .padLeft(6, '0')
-        .replaceFirst(RegExp(r'0+$'), '');
-    return '${value ~/ scale}${fraction.isEmpty ? '' : '.$fraction'}';
-  }
+  static String decimal(BigInt value) => paperDecimal(value);
 
   static String portion(String shares, int percent) =>
       decimal(micros(shares) * BigInt.from(percent) ~/ BigInt.from(100));

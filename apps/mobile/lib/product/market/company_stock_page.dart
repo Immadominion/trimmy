@@ -1,3 +1,4 @@
+import '../../l10n/l10n.dart';
 import '../design/product_notice.dart';
 import 'dart:async';
 
@@ -803,18 +804,20 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
   }
 
   Widget _about() {
+    final formats = context.formats;
     final data = _snapshot;
     final description = data?.description ?? _company.description;
     final metrics = <(String, String)>[
       if (data?.volume24hUsd != null)
-        ('24h volume', compactDollars(data!.volume24hUsd!)),
+        ('24h volume', formats.compactUsd(data!.volume24hUsd!)),
       if (data?.liquidityUsd != null)
-        ('Liquidity', compactDollars(data!.liquidityUsd!)),
+        ('Liquidity', formats.compactUsd(data!.liquidityUsd!)),
       if (data?.tokenMarketCapUsd != null)
-        ('Token market cap', compactDollars(data!.tokenMarketCapUsd!)),
-      if (data?.holders != null) ('Token holders', _count(data!.holders!)),
+        ('Token market cap', formats.compactUsd(data!.tokenMarketCapUsd!)),
+      if (data?.holders != null)
+        ('Token holders', formats.integer(data!.holders!)),
       if (data?.stockMarketCapUsd != null)
-        ('Company market cap', compactDollars(data!.stockMarketCapUsd!)),
+        ('Company market cap', formats.compactUsd(data!.stockMarketCapUsd!)),
       if (_company.sector != null) ('Sector', _company.sector!),
     ];
     return Column(
@@ -948,11 +951,6 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
       ],
     );
   }
-
-  String _count(int value) => value.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (m) => '${m[1]},',
-  );
 
   Widget _tradeBar() {
     final canBuy = widget.tradingAvailable && _company.primaryVariant != null;

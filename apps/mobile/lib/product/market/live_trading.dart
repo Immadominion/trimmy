@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/paper_decimal.dart';
 import '../../account/account_amounts.dart';
 import 'market_models.dart';
 
@@ -773,10 +774,7 @@ String liveGroupedDecimal(String decimal) {
   if (match == null) return decimal;
   final whole = match[1]!.replaceFirst(RegExp(r'^0+(?=[0-9])'), '');
   final fraction = (match[2] ?? '').replaceFirst(RegExp(r'0+$'), '');
-  final grouped = whole.replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+$)'),
-    (m) => '${m[1]},',
-  );
+  final grouped = groupThousands(whole);
   return fraction.isEmpty ? grouped : '$grouped.$fraction';
 }
 

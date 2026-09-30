@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/paper_decimal.dart';
 import 'paper_order_repository.dart';
 
 @immutable
@@ -130,12 +131,12 @@ final class PaperPortfolioValuation {
   PaperPortfolioValuation currentAt(DateTime now) {
     final currentRows = <PaperPositionValuation>[];
     var priced = 0;
-    var knownMicros = _toPaperMicros(cashPaper);
+    var knownMicros = paperMicros(cashPaper);
     for (final position in positions) {
       if (position.isCurrentAt(now)) {
         currentRows.add(position);
         priced++;
-        knownMicros += _toPaperMicros(position.marketValuePaper!);
+        knownMicros += paperMicros(position.marketValuePaper!);
       } else {
         currentRows.add(PaperPositionValuation.unavailable(key: position.key));
       }
@@ -145,7 +146,7 @@ final class PaperPortfolioValuation {
         : priced == 0
         ? PaperPortfolioValuationStatus.unavailable
         : PaperPortfolioValuationStatus.partial;
-    final known = _fromPaperMicros(knownMicros);
+    final known = paperDecimal(knownMicros);
     return PaperPortfolioValuation(
       sourceIncluded: sourceIncluded,
       status: currentStatus,
@@ -391,27 +392,4 @@ final class PaperPortfolioSession {
 
 abstract interface class PaperPortfolioRepository {
   Future<PaperPortfolioSnapshot> read();
-}
-
-BigInt _toPaperMicros(String value) {
-  final negative = value.startsWith('-');
-  final absolute = negative ? value.substring(1) : value;
-  final parts = absolute.split('.');
-  final micros =
-      BigInt.parse(parts[0]) * BigInt.from(1000000) +
-      BigInt.parse(
-        (parts.length == 1 ? '' : parts[1]).padRight(6, '0').padLeft(1, '0'),
-      );
-  return negative ? -micros : micros;
-}
-
-String _fromPaperMicros(BigInt value) {
-  final negative = value.isNegative;
-  final absolute = value.abs();
-  final whole = absolute ~/ BigInt.from(1000000);
-  final fraction = (absolute % BigInt.from(1000000))
-      .toString()
-      .padLeft(6, '0')
-      .replaceFirst(RegExp(r'0+$'), '');
-  return '${negative ? '-' : ''}$whole${fraction.isEmpty ? '' : '.$fraction'}';
 }

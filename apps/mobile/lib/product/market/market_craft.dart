@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../design/paper_format.dart';
 import '../design/product_theme.dart';
 
@@ -25,15 +26,24 @@ abstract final class MarketPalette {
 RoundedSuperellipseBorder marketSquircle([double radius = 24]) =>
     RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(radius));
 
-String signedPercent(double value) {
-  if (value == 0) return '0.00%';
-  if (value.abs() < .01) return '${value < 0 ? '-' : '+'}<0.01%';
-  return '${value > 0 ? '+' : ''}${value.toStringAsFixed(2)}%';
+/// A day's change such as "+1.25%" or "-<0.01%", in [formats]' language
+/// (English when omitted).
+String signedPercent(double value, [AppFormats? formats]) {
+  final f = formats ?? AppFormats.english;
+  if (value == 0) return f.percent('0.00');
+  if (value.abs() < .01) return f.percent('${value < 0 ? '-' : '+'}<0.01');
+  return f.percent('${value > 0 ? '+' : ''}${value.toStringAsFixed(2)}');
 }
 
-String shortPrice(double? value) {
-  if (value == null || !value.isFinite) return 'Price unavailable';
-  return '\$${value.toStringAsFixed(value >= 100 ? 2 : 3)}';
+/// A share price: two places from $100, three below ("$9.125"), ungrouped
+/// as the English app has always shown it, in [formats]' language (English
+/// when omitted).
+String shortPrice(double? value, [AppFormats? formats]) {
+  final f = formats ?? AppFormats.english;
+  if (value == null || !value.isFinite) {
+    return f.messages.marketPriceUnavailable;
+  }
+  return f.usd(value.toStringAsFixed(value >= 100 ? 2 : 3));
 }
 
 class MarketPrimaryButton extends StatelessWidget {
@@ -430,14 +440,6 @@ class _MiniTrendPainter extends CustomPainter {
 }
 
 String cashtag(String symbol) => symbol.startsWith(r'$') ? symbol : '\$$symbol';
-String compactDollars(double value) {
-  for (final unit in const [(1e12, 'T'), (1e9, 'B'), (1e6, 'M'), (1e3, 'K')]) {
-    if (value.abs() >= unit.$1) {
-      return '\$${(value / unit.$1).toStringAsFixed(2)}${unit.$2}';
-    }
-  }
-  return '\$${value.toStringAsFixed(2)}';
-}
 
 /// Icons8 Plumpy artwork with a short native response when selected.
 class MarketActionIcon extends StatelessWidget {

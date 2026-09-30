@@ -1,3 +1,4 @@
+import '../../core/paper_decimal.dart';
 import '../market/paper_order_repository.dart';
 import '../market/paper_portfolio.dart';
 import 'desk_models.dart';
@@ -116,38 +117,15 @@ double? _gainPercent(
 }
 
 bool _positive(String value) =>
-    (_paperMicros(value) ?? BigInt.zero) > BigInt.zero;
+    (tryPaperMicros(value) ?? BigInt.zero) > BigInt.zero;
 
 String _sumPaperValues(Iterable<String> values) {
   var total = BigInt.zero;
   for (final value in values) {
-    final parsed = _paperMicros(value);
+    final parsed = tryPaperMicros(value);
     if (parsed != null) total += parsed;
   }
-  return _paperFromMicros(total);
-}
-
-BigInt? _paperMicros(String value) {
-  if (!RegExp(r'^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$').hasMatch(value)) {
-    return null;
-  }
-  final parts = value.split('.');
-  final fraction = (parts.length == 2 ? parts[1] : '').padRight(6, '0');
-  return BigInt.parse(parts.first) * BigInt.from(1000000) +
-      BigInt.parse(fraction.isEmpty ? '0' : fraction);
-}
-
-String _paperFromMicros(BigInt value) {
-  final whole = value ~/ BigInt.from(1000000);
-  final remainder = (value % BigInt.from(1000000))
-      .toString()
-      .padLeft(6, '0')
-      .replaceFirst(RegExp(r'0+$'), '');
-  final digits = whole.toString().replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => ',',
-  );
-  return '$digits${remainder.isEmpty ? '' : '.$remainder'}';
+  return paperDecimal(total, grouped: true);
 }
 
 DateTime? _lastBuy(

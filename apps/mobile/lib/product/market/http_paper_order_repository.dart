@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
+import '../../core/paper_decimal.dart';
 import '../../practice_sync/http_transport.dart';
 import '../../account/guest_session.dart';
 import '../career/http_career_repository.dart';
@@ -461,10 +462,7 @@ String _toMicros(String value, {required int maximumDecimals}) {
       fraction.isNotEmpty && !RegExp(r'^[0-9]+$').hasMatch(fraction)) {
     throw const PaperOrderException(PaperOrderFailure.invalidAmount);
   }
-  final padded = fraction.padRight(6, '0');
-  final micros =
-      BigInt.parse(parts.first) * BigInt.from(1000000) +
-      BigInt.parse(padded.isEmpty ? '0' : padded);
+  final micros = paperMicros(value);
   if (micros <= BigInt.zero || micros > BigInt.parse('999999999999999')) {
     throw const PaperOrderException(PaperOrderFailure.invalidAmount);
   }
@@ -475,10 +473,7 @@ String _fromMicros(BigInt value) {
   if (value < BigInt.zero) {
     throw const PaperOrderException(PaperOrderFailure.rejected);
   }
-  final whole = value ~/ BigInt.from(1000000);
-  final remainder = (value % BigInt.from(1000000)).toString().padLeft(6, '0');
-  final fraction = remainder.replaceFirst(RegExp(r'0+$'), '');
-  return fraction.isEmpty ? whole.toString() : '$whole.$fraction';
+  return paperDecimal(value);
 }
 
 void _bearer(String value) {

@@ -1,0 +1,19 @@
+# Localized copy for the Trimmy app. `flutter pub get`, `flutter run` and
+# `flutter test` regenerate the Dart classes from these ARB files because
+# pubspec.yaml sets `generate: true`; run `flutter gen-l10n` to do it by hand.
+#
+# Synthetic packages are gone in current Flutter, so the generated classes live
+# next to the ARB files in lib/l10n and are committed with them.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# English first, so a device language the app does not speak gets English.
+preferred-supported-locales:
+  - en
+# Every message needs an @description: translators only see the ARB file.
+required-resource-attributes: true
+# Keep the nullable getter. `context.l10n` falls back to English when a widget
+# is pumped without the delegate (most widget tests do exactly that).
+nullable-getter: true
+format: true
