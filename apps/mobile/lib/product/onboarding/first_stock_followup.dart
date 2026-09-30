@@ -7,10 +7,11 @@ import '../design/product_success_mark.dart';
 import '../design/product_theme.dart';
 import '../market/market_craft.dart';
 import '../notifications/notification_permission.dart';
+import '../workdays/workdays.dart';
 import 'onboarding_models.dart';
 
 enum ReminderPreference {
-  daily('Once a day', 'Around 7 PM, your time.'),
+  daily('On workdays', 'Around 7 PM, when work is waiting.'),
   occasional('A few times a week', 'Mon, Wed and Fri, around 7 PM.'),
   off('Keep it quiet', 'I’ll come back on my own.');
 
@@ -48,12 +49,16 @@ class ReminderPreferences {
 
   /// Reconciles the active profile without displaying an OS permission prompt.
   /// A previous denial may have been changed in system Settings since saving.
-  static Future<bool> sync(SharedPreferences preferences, String? principal) =>
-      ProductNotificationPermission.setReminder(
-        principal == null
-            ? ReminderPreference.off.name
-            : (read(preferences, principal) ?? ReminderPreference.off).name,
-      );
+  static Future<bool> sync(
+    SharedPreferences preferences,
+    String? principal, {
+    WorkJourney? journey,
+  }) => ProductNotificationPermission.setReminder(
+    principal == null
+        ? ReminderPreference.off.name
+        : (read(preferences, principal) ?? ReminderPreference.off).name,
+    journey: journey,
+  );
 }
 
 /// Optional preferences never submit another order. The final callback commits

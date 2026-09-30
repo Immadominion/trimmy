@@ -11,17 +11,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import java.time.DayOfWeek
-import java.time.ZonedDateTime
 
 /** Generic opt-in check-ins only: no account data or transaction notifications. */
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val preference = ReminderSchedule.preference(context)
-        if (intent.action == ReminderSchedule.DELIVER && preference != "off") {
-            ReminderSchedule.deliver(context)
+        if (intent.action == ReminderSchedule.DELIVER) {
+            ReminderSchedule.deliverOnce(context)
+        } else {
+            // Reboot/time changes may restore this one future appointment only.
+            ReminderSchedule.restore(context)
         }
-        ReminderSchedule.replace(context, preference)
     }
 }
 
@@ -47,19 +46,19 @@ object ReminderSchedule {
             manager.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE
     }
 
-    fun nextTime(preference: String, now: ZonedDateTime): ZonedDateTime {
-        require(preference == "daily" || preference == "occasional")
-        var next = now.withHour(19).withMinute(0).withSecond(0).withNano(0)
-        if (!next.isAfter(now)) next = next.plusDays(1)
-        if (preference == "occasional") {
-            while (next.dayOfWeek !in setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)) {
-                next = next.plusDays(1)
-            }
-        }
-        return next
+    fun createChannel(context: Context) {
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CHANNEL, "Workday reminders", NotificationManager.IMPORTANCE_DEFAULT),
+        )
     }
 
-    fun replace(context: Context, preference: String): Boolean {
+    fun restore(context: Context): Boolean {
+        val saved = preferences(context)
+        val at = saved.getLong("at", 0L).takeIf { it > System.currentTimeMillis() }
+        return replace(context, preference(context), at, saved.getString("body", null))
+    }
+
+    fun replace(context: Context, preference: String, at: Long?, body: String?): Boolean {
         require(preference in setOf("daily", "occasional", "off"))
         val alarm = context.getSystemService(AlarmManager::class.java)
         val delivery = PendingIntent.getBroadcast(
@@ -68,20 +67,28 @@ object ReminderSchedule {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         alarm.cancel(delivery)
-        if (!preferences(context).edit().putString("frequency", preference).commit()) return false
-        if (preference == "off") {
+        val whenMs = if (preference == "off") 0L else at ?: 0L
+        if (!preferences(context).edit().putString("frequency", preference)
+                .putLong("at", whenMs).putString("body", body?.take(240)).commit()) return false
+        context.getSystemService(NotificationManager::class.java).cancel(REQUEST)
+        if (whenMs <= System.currentTimeMillis()) {
             context.getSystemService(NotificationManager::class.java).cancel(REQUEST)
             return true
         }
         if (!allowed(context)) return false
-        val next = nextTime(preference, ZonedDateTime.now()).toInstant().toEpochMilli()
+        createChannel(context)
         // A check-in is not an alarm clock. Let Android batch it for battery life.
-        alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, delivery)
+        alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, whenMs, delivery)
         return true
     }
 
-    fun deliver(context: Context) {
-        if (!allowed(context)) return
+    fun deliverOnce(context: Context) {
+        val saved = preferences(context)
+        val at = saved.getLong("at", 0L)
+        val now = System.currentTimeMillis()
+        if (preference(context) == "off" || at == 0L || now < at) return
+        // Never replay a stale assignment after a long shutdown or deliver twice.
+        if (!saved.edit().remove("at").commit() || now - at > 6 * 60 * 60_000L || !allowed(context)) return
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, "Daily check-in", NotificationManager.IMPORTANCE_DEFAULT),
@@ -96,7 +103,7 @@ object ReminderSchedule {
         val notification = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_trimmy)
             .setContentTitle("Your desk is waiting")
-            .setContentText("Clock in for today's Trimmy challenge.")
+            .setContentText(saved.getString("body", "Your next assignment is waiting at your desk."))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)

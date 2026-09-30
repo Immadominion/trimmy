@@ -23,6 +23,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        ReminderSchedule.createChannel(this)
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel("trimmy_trade_updates", "Trade updates", NotificationManager.IMPORTANCE_DEFAULT),
         )
@@ -43,7 +44,7 @@ class MainActivity : FlutterActivity() {
                         return@setMethodCallHandler
                     }
                     try {
-                        result.success(ReminderSchedule.replace(this, preference!!))
+                        result.success(ReminderSchedule.replace(this, preference!!, call.argument<Number>("at")?.toLong(), call.argument<String>("body")))
                     } catch (_: Exception) {
                         result.error("SCHEDULE_FAILED", "The reminder could not be scheduled.", null)
                     }

@@ -40,7 +40,7 @@ import firebase_messaging
           result(FlutterError(code: "INVALID_FREQUENCY", message: "Choose a reminder frequency.", details: nil))
           return
         }
-        self.scheduleReminder(preference, result: result)
+        self.scheduleReminder(preference, at: args["at"] as? NSNumber, body: args["body"] as? String, result: result)
       case "consumeOpenCareer":
         let pending = UserDefaults.standard.bool(forKey: "trimmy.open_career")
         UserDefaults.standard.removeObject(forKey: "trimmy.open_career")
@@ -61,11 +61,12 @@ import firebase_messaging
     }
   }
 
-  private func scheduleReminder(_ preference: String, result: @escaping FlutterResult) {
+  private func scheduleReminder(_ preference: String, at: NSNumber?, body: String?, result: @escaping FlutterResult) {
     let center = UNUserNotificationCenter.current()
     center.removePendingNotificationRequests(withIdentifiers: reminderIds)
-    if preference == "off" {
-      center.removeDeliveredNotifications(withIdentifiers: reminderIds)
+    center.removeDeliveredNotifications(withIdentifiers: reminderIds)
+    guard preference != "off", let millis = at?.doubleValue,
+      millis.isFinite, millis / 1000 > Date().timeIntervalSince1970 else {
       result(true)
       return
     }
@@ -74,32 +75,20 @@ import firebase_messaging
         DispatchQueue.main.async { result(false) }
         return
       }
-      let weekdays: [Int?] = preference == "daily" ? [nil] : [2, 4, 6]
-      let group = DispatchGroup()
-      let lock = NSLock()
-      var failed = false
-      for weekday in weekdays {
-        var date = DateComponents()
-        date.hour = 19
-        date.minute = 0
-        date.weekday = weekday
-        let content = UNMutableNotificationContent()
-        content.title = "Your desk is waiting"
-        content.body = "Clock in for today's Trimmy challenge."
-        content.sound = .default
-        content.userInfo = ["trimmy.open_career": true]
-        let id = weekday.map { "trimmy.checkin.\($0)" } ?? "trimmy.checkin.daily"
-        let request = UNNotificationRequest(identifier: id, content: content,
-          trigger: UNCalendarNotificationTrigger(dateMatching: date, repeats: true))
-        group.enter()
-        center.add(request) { error in
-          if error != nil { lock.lock(); failed = true; lock.unlock() }
-          group.leave()
-        }
-      }
-      group.notify(queue: .main) {
-        if failed { center.removePendingNotificationRequests(withIdentifiers: self.reminderIds) }
-        result(!failed)
+      let date = Date(timeIntervalSince1970: millis / 1000)
+      var calendar = Calendar(identifier: .gregorian)
+      calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+      var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+      components.timeZone = calendar.timeZone
+      let content = UNMutableNotificationContent()
+      content.title = "Your desk is waiting"
+      content.body = String((body ?? "Your next assignment is waiting at your desk.").prefix(240))
+      content.sound = .default
+      content.userInfo = ["trimmy.open_career": true]
+      let request = UNNotificationRequest(identifier: "trimmy.checkin.daily", content: content,
+        trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))
+      center.add(request) { error in
+        DispatchQueue.main.async { result(error == nil) }
       }
     }
   }

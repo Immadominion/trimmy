@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trimmy/product/notifications/notification_permission.dart';
+import 'package:trimmy/product/workdays/workdays.dart';
 import 'package:trimmy/product/onboarding/first_stock_followup.dart';
 import 'package:trimmy/product/onboarding/onboarding_models.dart';
 
@@ -71,6 +72,38 @@ void main() {
         'off',
         'off',
       ]);
+    },
+  );
+
+  test(
+    'filing all work cancels delivery without changing the saved opt-in',
+    () async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return true;
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await ReminderPreferences.save(
+        prefs,
+        'a',
+        ReminderPreference.daily,
+        OnboardingNotificationStatus.granted,
+      );
+      final done = WorkJourney.fromJson({
+        'assignments': [
+          {
+            'id': 'one',
+            'ordinal': 1,
+            'title': 'Done',
+            'completedAt': '2026-10-01T10:00:00Z',
+          },
+        ],
+        'schedule': {'state': 'done'},
+      });
+      expect(await ReminderPreferences.sync(prefs, 'a', journey: done), isTrue);
+      expect((calls.single.arguments as Map)['at'], isNull);
+      expect(ReminderPreferences.read(prefs, 'a'), ReminderPreference.daily);
     },
   );
 
