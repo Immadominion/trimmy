@@ -20,7 +20,7 @@ class WorkdayScreen extends StatefulWidget {
 }
 
 class _WorkdayScreenState extends State<WorkdayScreen> {
-  late String _id = widget.assignmentId;
+  late final String _id = widget.assignmentId;
   final _number = TextEditingController(), _note = TextEditingController();
   final _selected = <String>{};
   String? _choice, _error;
@@ -256,7 +256,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                '+20 Trims',
+                                '+${work.trims} Trims',
                                 style: theme.titleMedium?.copyWith(
                                   color: ProductColor.gain,
                                 ),
@@ -264,6 +264,16 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                             ],
                           ),
                         ),
+                        if (widget.controller.journey?.upcoming
+                            case final next?) ...[
+                          const SizedBox(height: 24),
+                          Text(next.opensLabel(), style: theme.titleMedium),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Day ${next.ordinal}: ${next.title}',
+                            style: theme.bodyLarge,
+                          ),
+                        ],
                       ] else ...[
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,10 +416,11 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                                     },
                                   ),
                                 ),
-                            TextButton(
-                              onPressed: () => setState(() => _hint = !_hint),
-                              child: Text(_hint ? 'Hide hint' : 'Hint?'),
-                            ),
+                            if (work.misses > 0 || _error != null)
+                              TextButton(
+                                onPressed: () => setState(() => _hint = !_hint),
+                                child: Text(_hint ? 'Hide hint' : 'Hint?'),
+                              ),
                             if (_hint)
                               _surface(
                                 color: const Color(0xFFFFF4D6),
@@ -491,22 +502,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                     onPressed: _busy
                         ? null
                         : complete
-                        ? () {
-                            final next = widget.controller.journey?.current;
-                            if (next == null) {
-                              unawaited(_leave());
-                              return;
-                            }
-                            ReviewFeedback.shared.workCue(WorkSound.paper);
-                            setState(() {
-                              _id = next.id;
-                              _note.text = next.draft;
-                              _draftStatus = '';
-                              _error = null;
-                              _selected.clear();
-                              _displayStep = -1;
-                            });
-                          }
+                        ? _leave
                         : ready
                         ? _submit
                         : null,
@@ -514,9 +510,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                       _busy
                           ? 'Saving…'
                           : complete
-                          ? (widget.controller.journey?.current == null
-                                ? 'Back to the street'
-                                : 'Next day')
+                          ? 'Back to the street'
                           : work.step == 0
                           ? 'Check the evidence'
                           : work.step == 1

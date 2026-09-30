@@ -472,7 +472,7 @@ export class PracticeSession {
       this.#save({...this.#saved!, pendingWorkdayMutation: null}); return journey;
     } catch (error) {
       // These responses prove this command was rejected. Refresh the server snapshot before an explicit retry.
-      if (error instanceof PracticeError && ((error.status === 409 && ['WORK_CHANGED', 'WORK_LOCKED'].includes(error.code)) ||
+      if (error instanceof PracticeError && ((error.status === 409 && ['WORK_CHANGED', 'WORK_LOCKED', 'WORK_TOMORROW', 'WORK_CLOSED'].includes(error.code)) ||
         (error.status === 400 && ['INVALID_WORK', 'CHECK_EVIDENCE', 'CHECK_DECISION'].includes(error.code)))) {
         this.#save({...this.#saved!, pendingWorkdayMutation: null});
       }

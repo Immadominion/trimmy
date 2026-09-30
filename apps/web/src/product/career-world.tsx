@@ -1,6 +1,7 @@
 import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import type {CSSProperties} from 'react';
 import {Loading, art} from './ui';
+import {opensLabel} from './workday-schedule';
 
 export interface CareerWorldAssignment {
   readonly id: string;
@@ -12,9 +13,14 @@ export interface CareerWorldAssignment {
   readonly district: string;
   readonly completedAt: string | null;
   readonly step?: number;
+  /** Set on the next assignment while it waits for its weekday. */
+  readonly opensAt?: string;
 }
 export interface CareerWorldProps {
   readonly assignments: readonly CareerWorldAssignment[] | null;
+  /** The next assignment, when it has not opened yet. It follows the filed days on the street. */
+  readonly upcoming?: {readonly id: string; readonly ordinal: number; readonly title: string; readonly speaker: string;
+    readonly art: string; readonly district: string; readonly opensAt: string} | null;
   readonly loading?: boolean;
   readonly error?: string | null;
   readonly motion?: boolean;
@@ -51,13 +57,16 @@ function Lock() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5.5" y="10" width="13" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v2"/></svg>;
 }
 
-export function CareerWorld({assignments, loading = false, error = null, motion = true, onOpen, onRetry}: CareerWorldProps) {
+export function CareerWorld({assignments: listed, upcoming = null, loading = false, error = null, motion = true, onOpen, onRetry}: CareerWorldProps) {
+  const assignments = useMemo(() => listed && upcoming
+    ? [...listed, {...upcoming, brief: '', completedAt: null, step: 0}] as readonly CareerWorldAssignment[] : listed, [listed, upcoming]);
   const viewport = useRef<HTMLDivElement>(null), canvas = useRef<HTMLOListElement>(null);
   const positioned = useRef(false);
   const [geometry, setGeometry] = useState({width: 400, rowHeight: 300});
   const [futureCount, setFutureCount] = useState(10);
   const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
-  const current = assignments?.find(item => !item.completedAt);
+  const current = assignments?.find(item => !item.completedAt && !item.opensAt);
+  const focus = current ?? assignments?.find(item => item.opensAt);
   const count = (assignments?.length ?? 0) + futureCount;
   const path = useMemo(() => streetPath(geometry.width, geometry.rowHeight, count), [geometry, count]);
 
@@ -102,25 +111,26 @@ export function CareerWorld({assignments, loading = false, error = null, motion 
         {Array.from({length: count}, (_, index) => {
           const assignment = assignments[index];
           const done = !!assignment?.completedAt, active = !!assignment && assignment.id === current?.id;
+          const waiting = assignment?.opensAt ? opensLabel(assignment.opensAt) : null;
           const x = nodeX(index, geometry.width), artSize = Math.min(178, geometry.width * .41);
           const sceneryLeft = x < geometry.width / 2 ? geometry.width - artSize - 12 : 12;
           const titleLeft = Math.max(12, Math.min(geometry.width - 202, x - 95));
           const style = {'--world-node-x': `${x}px`, '--world-label-left': `${titleLeft}px`,
             '--world-art-left': `${sceneryLeft}px`, '--world-art-size': `${artSize}px`} as CSSProperties;
           const scenery = assignment?.art ?? careerScenery[index % careerScenery.length]!;
-          const label = assignment ? `Day ${assignment.ordinal}, ${assignment.title}, ${done ? 'filed' : active ? 'current assignment' : 'locked'}` : 'Coming later';
+          const label = assignment ? `Day ${assignment.ordinal}, ${assignment.title}, ${done ? 'filed' : active ? 'current assignment' : waiting ? `opens ${waiting}` : 'locked'}` : 'Coming later';
           const nodeContents = done ? <Seal/> : active ? assignment!.ordinal : assignment ? <Lock/> : <span aria-hidden="true">···</span>;
           return <li className={`career-world-row${active ? ' current' : ''}${done ? ' filed' : ''}${!assignment ? ' future' : ''}`}
-            key={assignment?.id ?? `future-${index}`} data-current={active ? 'true' : undefined} data-assignment-id={assignment?.id} style={style}>
+            key={assignment?.id ?? `future-${index}`} data-current={assignment && assignment.id === focus?.id ? 'true' : undefined} data-assignment-id={assignment?.id} style={style}>
             {(index % 5 === 0) && <p className="career-world-district">{assignment?.district ?? (index === assignments.length ? 'Beyond the first month' : 'The city keeps growing')}</p>}
             <img className="career-world-scenery" src={careerSceneryUrl(scenery)} width="178" height="178" loading="lazy" decoding="async" alt=""/>
             {index % 2 === 0 && <img className="career-world-small-scenery" src={careerSceneryUrl(careerScenery[(index * 7 + 3) % careerScenery.length]!)} width="64" height="64" loading="lazy" decoding="async" alt=""/>}
             {assignment && !active && !done ? <details className="career-world-locked">
               <summary className="career-world-node" aria-label={`${label}. Preview assignment.`}>{nodeContents}</summary>
-              <div className="career-world-preview"><strong>{assignment.title}</strong><p>{assignment.brief}</p><small>Complete day {assignment.ordinal - 1} to open this desk.</small></div>
+              <div className="career-world-preview"><strong>{assignment.title}</strong>{assignment.brief && <p>{assignment.brief}</p>}<small>{waiting ? `Opens ${waiting}. One new assignment each weekday.` : `Complete day ${assignment.ordinal - 1} to open this desk.`}</small></div>
             </details> : assignment ? <button className="career-world-node" type="button" aria-label={label} aria-current={active ? 'step' : undefined} onClick={() => onOpen(assignment.id)}>{nodeContents}</button>
               : <div className="career-world-node" aria-label={label}>{nodeContents}</div>}
-            <div className="career-world-label">{active && <span className="career-world-current-label">{(assignment?.step ?? 0) > 0 ? 'Continue' : 'Start here'}</span>}<strong>{assignment?.title ?? 'Coming later'}</strong>{done && <span className="career-world-filed-label">Filed</span>}</div>
+            <div className="career-world-label">{active && <span className="career-world-current-label">{(assignment?.step ?? 0) > 0 ? 'Continue' : 'Start here'}</span>}{waiting && <span className="career-world-current-label">Opens {waiting}</span>}<strong>{assignment?.title ?? 'Coming later'}</strong>{done && <span className="career-world-filed-label">Filed</span>}</div>
           </li>;
         })}
       </ol>

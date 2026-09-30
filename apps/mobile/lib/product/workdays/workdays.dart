@@ -15,6 +15,9 @@ class WorkAssignment {
   String get art => data['art'] as String;
   String get district => data['district'] as String;
   int get step => data['step'] as int? ?? 0;
+  int get misses => data['misses'] as int? ?? 0;
+  int get trims => data['trims'] as int? ?? (misses == 0 ? 20 : 10);
+  String? get decisionNote => data['decisionNote'] as String?;
   int get revision => data['revision'] as int? ?? 0;
   String get draft => data['draft'] as String? ?? '';
   bool get complete => data['completedAt'] != null;
@@ -32,9 +35,58 @@ class WorkAssignment {
       : 'assets/images/ui_review/persona-$speaker-avatar-v1.png';
 }
 
+/// Server-owned availability; the device never unlocks a day from its clock.
+class WorkUpcoming {
+  WorkUpcoming.fromJson(Map<String, dynamic> json)
+    : id = json['id'] as String,
+      ordinal = json['ordinal'] as int,
+      title = json['title'] as String,
+      art = json['art'] as String,
+      opensAt = DateTime.parse(json['opensAt'] as String) {
+    if (ordinal < 1 ||
+        title.isEmpty ||
+        !RegExp(r'^[a-z0-9-]+$').hasMatch(art)) {
+      throw const FormatException('Invalid next assignment');
+    }
+  }
+  final String id, title, art;
+  final int ordinal;
+  final DateTime opensAt;
+
+  String opensLabel({DateTime? now}) {
+    final local = opensAt.toLocal();
+    final today = (now ?? DateTime.now()).toLocal();
+    final days = DateTime.utc(
+      local.year,
+      local.month,
+      local.day,
+    ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
+    if (days <= 0) return 'Opens soon';
+    if (days == 1) return 'Opens tomorrow';
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    if (days < 7) return 'Opens ${weekdays[local.weekday - 1]}';
+    return 'Opens ${local.day}/${local.month}';
+  }
+}
+
 class WorkJourney {
   WorkJourney.fromJson(Map<String, dynamic> json)
-    : assignments = (json['assignments'] as List)
+    : upcoming = json['upcoming'] == null
+          ? null
+          : WorkUpcoming.fromJson(
+              Map<String, dynamic>.from(json['upcoming'] as Map),
+            ),
+      total = json['total'] as int?,
+      scheduleState = (json['schedule'] as Map?)?['state'] as String?,
+      assignments = (json['assignments'] as List)
           .map((e) => WorkAssignment(Map<String, dynamic>.from(e as Map)))
           .toList() {
     if (assignments.isEmpty ||
@@ -42,8 +94,25 @@ class WorkJourney {
         assignments.map((e) => e.id).toSet().length != assignments.length) {
       throw const FormatException('Invalid assignments');
     }
+    if (scheduleState != null &&
+            !const {
+              'available',
+              'tomorrow',
+              'closed',
+              'done',
+            }.contains(scheduleState) ||
+        total != null && total! < assignments.length ||
+        upcoming != null &&
+            (upcoming!.ordinal != assignments.length + 1 ||
+                assignments.any((a) => !a.complete) ||
+                !const {'tomorrow', 'closed'}.contains(scheduleState))) {
+      throw const FormatException('Invalid workday schedule');
+    }
   }
   final List<WorkAssignment> assignments;
+  final WorkUpcoming? upcoming;
+  final int? total;
+  final String? scheduleState;
   WorkAssignment? get current =>
       assignments.where((e) => !e.complete).firstOrNull;
   WorkAssignment? find(String id) =>
@@ -52,12 +121,17 @@ class WorkJourney {
 }
 
 class WorkdayException implements Exception {
-  const WorkdayException(this.code);
+  const WorkdayException(this.code, {this.feedback, this.journey});
   final String code;
+  final String? feedback;
+  final WorkJourney? journey;
   String get message => switch (code) {
     'CHECK_EVIDENCE' =>
       'Check the source again. Those details don’t support this update.',
-    'CHECK_DECISION' => 'Take another look at the figures.',
+    'CHECK_DECISION' => feedback ?? 'Take another look at the figures.',
+    'WORK_TOMORROW' =>
+      'Today’s assignment is done. Your next workday opens soon.',
+    'WORK_CLOSED' => 'The desk is closed today. Come back on the next workday.',
     'WORK_CHANGED' =>
       'Your work changed on another screen. We’ve refreshed it.',
     'WORK_LOCKED' => 'File the earlier assignment first.',
@@ -135,11 +209,25 @@ class WorkdayRepository {
     if (_closed) throw const WorkdayException('SESSION_CHANGED');
     if (response.statusCode != 200) {
       String code = 'WORK_UNAVAILABLE';
+      String? feedback;
+      WorkJourney? journey;
       try {
-        code =
-            (jsonDecode(utf8.decode(bytes)) as Map)['code'] as String? ?? code;
+        final error = jsonDecode(utf8.decode(bytes)) as Map;
+        code = error['code'] as String? ?? code;
+        if (response.statusCode == 400 &&
+            const {'CHECK_EVIDENCE', 'CHECK_DECISION'}.contains(code)) {
+          final note = error['feedback'];
+          if (note is String && note.isNotEmpty && note.length <= 1600) {
+            feedback = note;
+          }
+          if (error['journey'] is Map) {
+            journey = WorkJourney.fromJson(
+              Map<String, dynamic>.from(error['journey'] as Map),
+            );
+          }
+        }
       } catch (_) {}
-      throw WorkdayException(code);
+      throw WorkdayException(code, feedback: feedback, journey: journey);
     }
     return WorkJourney.fromJson(
       Map<String, dynamic>.from(
@@ -200,7 +288,15 @@ class WorkdayController extends ChangeNotifier {
     try {
       _accept(await repository.save(latest, answer, draft: draft));
     } on WorkdayException catch (e) {
-      if (e.code == 'WORK_CHANGED') _accept(await repository.read());
+      if (e.journey != null) {
+        _accept(e.journey!);
+      } else if (const {
+        'WORK_CHANGED',
+        'WORK_TOMORROW',
+        'WORK_CLOSED',
+      }.contains(e.code)) {
+        _accept(await repository.read());
+      }
       rethrow;
     }
   });

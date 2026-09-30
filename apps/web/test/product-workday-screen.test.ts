@@ -15,11 +15,11 @@ const initial: WorkdayAssignment = {id: 'morning-brief', ordinal: 1, title: 'The
   decision: {kind: 'number', prompt: 'What was Aster’s 2025 profit?', hint: 'Subtract 2025 costs from 2025 sales.', choices: [], unit: '$'},
   file: {prompt: 'File your update', count: 2, parts: [{id: 'fact-1', text: 'Sales rose from $1,000 to $1,500.'},
     {id: 'fact-2', text: 'Profit fell from $400 to $200.'}, {id: 'fact-3', text: 'Higher sales prove profit increased.'}]},
-  revision: 0, step: 0, answers: {}, draft: '', completedAt: null, artifact: null, feedback: null, contextNote: null};
+  revision: 0, step: 0, answers: {}, draft: '', completedAt: null, artifact: null, feedback: null, contextNote: null, misses: 0, decisionNote: null, trims: null};
 function atStep(step: 0 | 1 | 2 | 3, draft = ''): WorkdayAssignment {
   return {...initial, revision: step, step, draft,
     answers: {...(step > 0 ? {'0': {ids: ['before', 'after']}} : {}), ...(step > 1 ? {'1': {value: '200'}} : {}), ...(step > 2 ? {'2': {ids: ['fact-1', 'fact-2']}} : {})},
-    ...(step === 3 ? {completedAt: '2026-09-24T12:00:00Z', artifact: `Sales rose. Profit fell.${draft ? `\n${draft}` : ''}`, feedback: 'You found the part the headline missed.'} : {})};
+    ...(step === 3 ? {completedAt: '2026-09-24T12:00:00Z', artifact: `Sales rose. Profit fell.${draft ? `\n${draft}` : ''}`, feedback: 'You found the part the headline missed.', trims: 20} : {})};
 }
 function deferred<T>() {let resolve!: (value: T) => void; const promise = new Promise<T>(done => {resolve = done;}); return {promise, resolve};}
 async function harness(overrides: Partial<WorkdayScreenProps> = {}) {
@@ -75,6 +75,8 @@ test('whole source cards pin and unpin, exact count gates submission, and no sta
 test('a number decision is submitted unchanged and hints and sources never submit answers', async () => {
   const h = await harness({assignment: atStep(1)});
   try {
+    assert.equal(h.button('Hint?'), undefined);
+    await h.render({assignment: {...atStep(1), misses: 1}});
     await h.click('Hint?'); assert.match(h.text(), /Subtract 2025 costs/); assert.equal(h.calls.submits.length, 0);
     await h.click('Aster · annual update+'); assert.ok(h.dom.window.document.querySelector('.workday-source-reading'));
     await h.input('input', '200'); await h.click('Send your decision');

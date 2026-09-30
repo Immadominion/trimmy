@@ -38,7 +38,12 @@ export function registerWorkdayRoutes(app: FastifyInstance, adapters?: WorkdayAd
     try {
       const account = await adapters.authenticate(request);
       if(!account) return reply.code(401).send({code:'ACCOUNT_REQUIRED'});
-      return {journey: input ? await adapters.save(account.userId,input) : await adapters.read(account.userId)};
+      const journey = input ? await adapters.save(account.userId,input) : await adapters.read(account.userId);
+      // A wrong answer is recorded, not rolled back; it still answers 400 with the code installed apps know.
+      const {miss, ...rest} = journey as {miss?: {code?: unknown; step?: unknown; feedback?: unknown}};
+      if(miss) return reply.code(400).send({code: miss.code==='CHECK_DECISION'?'CHECK_DECISION':'CHECK_EVIDENCE',
+        step: typeof miss.step==='number'?miss.step:null, feedback: typeof miss.feedback==='string'?miss.feedback:null, journey: rest});
+      return {journey};
     } catch(error) {
       if(error instanceof GuestSessionError) {
         const rate = error.code==='GUEST_SESSION_RATE_LIMITED';
@@ -46,7 +51,7 @@ export function registerWorkdayRoutes(app: FastifyInstance, adapters?: WorkdayAd
         return reply.code(rate?429:error.code.includes('UNAVAILABLE')?503:401).send({code:error.code});
       }
       const code = error instanceof Error ? error.message : '';
-      const status = ['WORK_CHANGED','WORK_LOCKED'].includes(code)?409:
+      const status = ['WORK_CHANGED','WORK_LOCKED','WORK_TOMORROW','WORK_CLOSED'].includes(code)?409:
         ['INVALID_WORK','CHECK_EVIDENCE','CHECK_DECISION'].includes(code)?400:code==='ACCOUNT_REQUIRED'?401:503;
       return reply.code(status).send({code:status===503?'WORK_UNAVAILABLE':code});
     }

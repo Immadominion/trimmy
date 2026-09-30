@@ -13,6 +13,7 @@ export const CHECKS = {
   api: [['npm', ['run', 'check']]],
   database: [
     ['bash', ['infra/tests/run-postgres.sh']],
+    ['bash', ['infra/tests/run-workdays-postgres.sh']],
     ['npm', ['run', 'test:mobile-sync']],
     ['npm', ['run', 'test:migration-db']],
     ['npm', ['run', 'test:deployment']],
