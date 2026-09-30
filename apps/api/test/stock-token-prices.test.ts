@@ -37,15 +37,24 @@ describe('trusted token prices', () => {
     const nflx = parseTokenPrice(NFLXX, now);
     assert.equal(nflx?.multiplier, 10);
     // Illiquid: only the issuer price, times ten shares per whole token.
-    assert.deepEqual(orderReferencePrices(nflx), [695.5]);
-    assert.deepEqual(orderReferencePrices(parseTokenPrice(SKHY, now)), [182.85, 182.7417]);
+    assert.deepEqual(orderReferencePrices(nflx, 10), [695.5]);
+    assert.deepEqual(orderReferencePrices(nflx, 2), [139.1], 'on-chain multiplier wins over the feed');
+    assert.deepEqual(orderReferencePrices(nflx, NaN), []);
+    assert.deepEqual(orderReferencePrices(parseTokenPrice(SKHY, now), 1), [182.7417]);
     // Before a multiplier change takes effect, the old one applies.
     assert.equal(parseTokenPrice({...NFLXX, scaledUiConfig: {...NFLXX.scaledUiConfig, newMultiplierEffectiveAt: '2026-10-01T00:00:00Z'}}, now)?.multiplier, 1);
-    assert.deepEqual(orderReferencePrices(parseTokenPrice({...NFLXX, scaledUiConfig: {multiplier: 'x'}}, now)), []);
+    assert.deepEqual(orderReferencePrices(parseTokenPrice({...NFLXX, scaledUiConfig: {multiplier: 'x'}}, now), 10), [695.5]);
+  });
+
+  it('uses one valuation policy when issuer and deep market disagree', () => {
+    const p=parse({...SKHY, usdPrice:200, stockData:{...SKHY.stockData,price:100}});
+    assert.deepEqual(orderReferencePrices(p,1),[200]);
+    const base={buying:false,inputRaw:'100000000',outputRaw:'100000000',decimals:8,transferFeeBps:0,swapFeeBps:0};
+    assert.equal(orderPriceAcceptable({...base,referencesUsd:orderReferencePrices(p,1)}),false);
   });
 
   it('refuses a PYPLx buy at sixty times the share price', () => {
-    const references = orderReferencePrices(parseTokenPrice(PYPLX, now));
+    const references = orderReferencePrices(parseTokenPrice(PYPLX, now), 1.0040286411936261);
     // $100 for 0.03 PYPLx, about $3,337 a share: the illiquid market price no longer excuses it.
     const order = {buying: true, inputRaw: '100000000', outputRaw: '3000000', decimals: 8, transferFeeBps: 0, swapFeeBps: 10,
       priceImpactPct: '0'} as const;
@@ -69,6 +78,7 @@ describe('trusted token prices', () => {
     fail = true;
     clock += 60_000;
     assert.equal((await prices.read([mint])).size, 1, 'the last read serves briefly');
+    assert.equal((await prices.readForOrder([mint])).size, 0, 'failed refresh cannot authorize trading from stale holdings data');
     clock += 5 * 60_000;
     assert.equal((await prices.read([mint])).size, 0, 'then nothing');
   });

@@ -695,7 +695,8 @@ describe('composed review', () => {
     assert.match(intent.reviewDigestSha256, /^[0-9a-f]{64}$/);
     assert.equal(intent.evidence.semanticsSha256, evidence.semantics.provenance.digestSha256);
     assert.equal(intent.evidence.simulationSha256, evidence.simulation.provenance.digestSha256);
-    assert.equal(intent.evidence.lastValidBlockHeight, '1150');
+    assert.equal(intent.evidence.lastValidBlockHeight, '1152');
+    assert.equal(evidence.lifetime.lifetime.providerLastValidBlockHeight, '1150', 'original provider assertion stays in evidence');
     // The validity window never outlives the draft's own cutoff.
     const expires = Date.parse(intent.expiresAt);
     assert.ok(expires <= Date.parse(base.draft.summary.notAfter));

@@ -44,13 +44,22 @@ describe('order market price', () => {
     assert.equal(orderPriceAcceptable({...base, referencesUsd: [20]}), true);
     assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9000000', referencesUsd: [10]}), false);
     assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9800000', referencesUsd: [10]}), true);
-    // Close to any trusted price is enough: the issuer's, or a liquid market's.
-    assert.equal(orderPriceAcceptable({...base, referencesUsd: [9.5, 10]}), true);
+    // The caller must choose one reference; a second, easier price cannot excuse the order.
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [9.5, 10]}), false);
   });
-  it('falls back to Jupiter price impact without a trusted price', () => {
-    assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: '0.01'}), true);
+  it('checks the worst fill after destination fees, including integer rounding', () => {
+    // A quote for one token is fair, but a transaction that guarantees only 0.9 is not.
+    assert.equal(orderPriceAcceptable({...base, outputRaw: '90000000', referencesUsd: [10]}), false);
+    // This minimum passes gross, but fails when a 1% destination fee is deducted.
+    assert.equal(orderPriceAcceptable({...base, outputRaw: '97900000', referencesUsd: [10]}), true);
+    assert.equal(orderPriceAcceptable({...base, outputRaw: '97900000', outputTransferFeeBps: 100, referencesUsd: [10]}), false);
+    assert.equal(orderPriceAcceptable({...base, buying: false, inputRaw: '100000000', outputRaw: '9700000', outputTransferFeeBps: 100, referencesUsd: [10]}), false);
+    assert.equal(orderPriceAcceptable({...base, outputRaw: '1', outputTransferFeeBps: 1, referencesUsd: [10]}), false);
+  });
+  it('refuses orders without an independent price, regardless of reported impact', () => {
+    assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: '0.01'}), false);
     assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: '0.2'}), false);
-    assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: undefined}), false);
+    for(const impact of [undefined,null,'',false,-1,'-0.01','NaN',0,'0']) assert.equal(orderPriceAcceptable({...base, referencesUsd: [], priceImpactPct: impact}), false);
     assert.equal(orderPriceAcceptable({...base, referencesUsd: [NaN, 0], priceImpactPct: '0.2'}), false);
     assert.equal(orderPriceAcceptable({...base, outputRaw: '0', referencesUsd: [10]}), false);
   });

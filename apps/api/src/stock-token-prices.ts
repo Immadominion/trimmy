@@ -89,17 +89,15 @@ export function holdingPrice(price: TokenPrice | null | undefined): HoldingPrice
   return null;
 }
 
-/**
- * Prices to judge an order against, per whole token in raw units (what a quote's
- * amounts measure): the issuer's price and, when the token is liquid, its market.
- * Empty when neither can be trusted.
- */
-export function orderReferencePrices(price: TokenPrice | null | undefined): number[] {
-  if (!price || price.multiplier === null) return [];
-  const references: number[] = [];
-  if (price.referenceUsd !== null) references.push(price.referenceUsd * price.multiplier);
-  if (price.marketUsd !== null && price.liquidityUsd >= LIQUID_MARKET_USD) references.push(price.marketUsd * price.multiplier);
-  return references;
+/** Select one reference using the holdings valuation policy: deep market,
+ * issuer, then liquid market. Never choose whichever lets the quote pass.
+ * The multiplier must come from the reviewed on-chain mint, not this feed. */
+export function orderReferencePrices(price: TokenPrice | null | undefined, onChainMultiplier: number): number[] {
+  if (!Number.isFinite(onChainMultiplier) || onChainMultiplier<=0) return [];
+  const selected=holdingPrice(price);
+  if (!selected) return [];
+  const reference=selected.usdPerShare*onChainMultiplier;
+  return Number.isFinite(reference) && reference>0 ? [reference] : [];
 }
 
 /** Cached reads of Jupiter's price data for stock token mints. `read` never throws. */
@@ -122,11 +120,20 @@ export class JupiterTokenPrices {
   }
 
   async read(mints: readonly string[]): Promise<ReadonlyMap<string, TokenPrice>> {
+    return this.#read(mints, MAX_CACHED_MS);
+  }
+
+  /** Orders cannot use the stale-on-error grace period intended for holdings. */
+  async readForOrder(mints: readonly string[]): Promise<ReadonlyMap<string, TokenPrice>> {
+    return this.#read(mints, Math.min(this.#ttlMs, 30_000));
+  }
+
+  async #read(mints: readonly string[], maxAgeMs: number): Promise<ReadonlyMap<string, TokenPrice>> {
     const ids = [...new Set(mints)].filter(mint => STOCK_MINT_PATTERN.test(mint));
     const now = this.#now();
     const stale = ids.filter(mint => {
       const cached = this.#cache.get(mint);
-      return !cached || now - cached.at >= this.#ttlMs;
+      return !cached || now - cached.at >= Math.min(this.#ttlMs,maxAgeMs);
     });
     const parts: string[][] = [];
     for (let index = 0; index < stale.length; index += MAX_IDS) parts.push(stale.slice(index, index + MAX_IDS));
@@ -135,7 +142,7 @@ export class JupiterTokenPrices {
     for (const mint of ids) {
       const cached = this.#cache.get(mint);
       // After a failed refresh the last read serves for a few minutes, never longer.
-      if (cached?.price && this.#now() - cached.at < MAX_CACHED_MS) prices.set(mint, cached.price);
+      if (cached?.price && this.#now() - cached.at >= 0 && this.#now() - cached.at < maxAgeMs) prices.set(mint, cached.price);
     }
     return prices;
   }
