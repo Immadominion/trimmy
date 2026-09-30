@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import UserNotifications
+import firebase_messaging
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -11,6 +12,10 @@ import UserNotifications
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     UNUserNotificationCenter.current().delegate = self
+    // UIScene registers plugins after launch. Configure the notification
+    // delegate early; FlutterFire preserves this FlutterAppDelegate and forwards
+    // remote messages through it, alongside our local career reminders.
+    FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

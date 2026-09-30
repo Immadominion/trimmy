@@ -4,14 +4,17 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'trade_push.dart';
 
-/// No token is requested before explicit consent. iOS remains unavailable until
-/// its APNs credentials and signed entitlement have been validated.
+/// No token is requested before explicit consent. The server advertises which
+/// platforms have completed provider setup and delivery validation.
 class FirebaseTradePushDevice implements TradePushDevice {
   @override
-  String? get platform =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
-      ? 'android'
-      : null;
+  String? get platform => kIsWeb
+      ? null
+      : switch (defaultTargetPlatform) {
+          TargetPlatform.android => 'android',
+          TargetPlatform.iOS => 'ios',
+          _ => null,
+        };
   bool _ready = false;
   bool _disposed = false;
   VoidCallback? _onToken;
@@ -50,9 +53,41 @@ class FirebaseTradePushDevice implements TradePushDevice {
         settings.authorizationStatus != AuthorizationStatus.provisional) {
       return null;
     }
-    // Auto-init stays off: registration and rotation are managed by this owner.
-    return FirebaseMessaging.instance.getToken().timeout(
-      const Duration(seconds: 10),
+    if (_disposed) return null;
+    try {
+      if (platform == 'ios') {
+        // FlutterFire only registers with APNs while auto-init is enabled.
+        // This path runs after account consent and OS permission, never at boot.
+        await FirebaseMessaging.instance.setAutoInitEnabled(true);
+        await _waitForAppleToken().timeout(const Duration(seconds: 10));
+      }
+      if (_disposed) return null;
+      final token = await FirebaseMessaging.instance.getToken().timeout(
+        const Duration(seconds: 10),
+      );
+      if (token == null || token.isEmpty) {
+        throw const FormatException(
+          'Couldn’t connect notifications. Please try again.',
+        );
+      }
+      return token;
+    } catch (_) {
+      // Failed enrollment must not leave automatic registration enabled.
+      if (platform == 'ios') {
+        await FirebaseMessaging.instance.setAutoInitEnabled(false);
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _waitForAppleToken() async {
+    for (var attempt = 0; attempt < 20 && !_disposed; attempt++) {
+      final token = await FirebaseMessaging.instance.getAPNSToken();
+      if (token != null && token.isNotEmpty) return;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    throw const FormatException(
+      'Couldn’t connect notifications. Please try again.',
     );
   }
 

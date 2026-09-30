@@ -30,10 +30,13 @@ key.properties
 **/account-config.json
 **/*.pem
 **/*.p12
+**/*.p8
 **/*.mobileprovision
 **/service-account*.json
 **/google-services.json
 **/GoogleService-Info.plist
+# Public Firebase application identifiers, not an APNs or service-account key.
+!apps/mobile/ios/Runner/GoogleService-Info.plist
 
 # Local research, source artwork, recordings and verification captures.
 # Runtime assets belong under each app's assets/public directory.
