@@ -358,3 +358,30 @@ test('a fill needs a positive spend and delivery by the wallet itself',()=>{
  assert.equal(orderFill({preTokenBalances:[row(a,wallet,'x')],postTokenBalances:[]},wallet,a,b),null);
  assert.equal(orderFill(null,wallet,a,b),null);
 });
+
+
+test('pending orders do not expire at a provider cutoff while the blockhash remains valid',async()=>{
+ for(const [value,slot] of [[true,502],[false,502],[undefined,502],['false',502],[false,500],[false,undefined]] as const) {
+  const f=fixture();let resolutions=0,historyReads=0;
+  const pending={...f.order,status:'pending' as const,signature:'2'.repeat(88),
+   review:{...f.order.review,evidence:{...f.order.review.evidence,observationSlot:'501'}}};
+  const store={read:async()=>pending,resolve:async(_u:string,_id:string,status:string)=>{resolutions++;return {...pending,status};}} as unknown as LiveOrderStore;
+  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:async(_url,init)=>{
+   const {method,params}=JSON.parse(String(init?.body));
+   let result:unknown;
+   if(method==='getGenesisHash')result='5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
+   else if(method==='getBlockHeight')result=501;
+   else if(method==='getSignatureStatuses'){historyReads++;result={value:[null]};}
+   else if(method==='isBlockhashValid'){
+    assert.equal(typeof params[0],'string');assert.deepEqual(params[1],{commitment:'finalized',minContextSlot:501});
+    result={value,context:{slot}};
+   }else throw Error('unexpected RPC');
+   return Response.json({jsonrpc:'2.0',id:1,result});
+  }});
+  const valid=typeof value==='boolean' && typeof slot==='number' && slot>=501;
+  if(!valid)await assert.rejects(service.status('user','test'),{code:'LIVE_UNAVAILABLE'});
+  else assert.equal((await service.status('user','test'))?.status,value?'pending':'expired');
+  assert.equal(resolutions,valid && value===false?1:0);
+  assert.equal(historyReads,valid && value===false?2:1,'expiry requires a fresh history lookup after invalidity');
+ }
+});

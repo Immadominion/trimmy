@@ -1,5 +1,5 @@
 import {createPublicKey, randomUUID, verify} from 'node:crypto';
-import {address, getAddressEncoder, getBase58Decoder, getTransactionDecoder, getTransactionEncoder} from '@solana/kit';
+import {address, getAddressEncoder, getBase58Decoder, getTransactionDecoder, getTransactionEncoder, getCompiledTransactionMessageDecoder} from '@solana/kit';
 import type {Pool} from 'pg';
 import type {FastifyInstance, FastifyRequest, FastifyReply} from 'fastify';
 import type {ExistingPracticeAccountAuthentication} from './practice-session-routes.js';
@@ -195,11 +195,13 @@ export class LiveStockOrders {
  private headers(){return {'accept':'application/json',...(this.options.apiKey?{'x-api-key':this.options.apiKey}:{})};}
  /** Trusted prices per token (stock-token-prices.ts), cached briefly. */
  readonly #prices:JupiterTokenPrices;
- /** Refuses an order priced far worse than the issuer's price or a liquid market (stock-order-price.ts). */
- async #checkMarketPrice(stock:StockTradingAsset,buying:boolean,inputRaw:string,outputRaw:string,feeBps:number,payload:any):Promise<void> {
-  const price=(await this.#prices.read([stock.mint])).get(stock.mint);
-  if(!orderPriceAcceptable({buying,inputRaw,outputRaw,decimals:stock.decimals,transferFeeBps:stock.transferFeeBps,swapFeeBps:feeBps,
-   referencesUsd:orderReferencePrices(price),priceImpactPct:payload?.priceImpactPct}))fail('PRICE_OFF_MARKET');
+ /** Price protection uses reviewed transaction terms and on-chain share units. */
+ async #checkMarketPrice(stock:StockTradingAsset,intent:ReviewedStockOrderIntent,outputFeeBps:number):Promise<void> {
+  const price=(await this.#prices.readForOrder([stock.mint])).get(stock.mint);
+  const referencesUsd=orderReferencePrices(price,Number(intent.terms.stockUiMultiplier));
+  if(!referencesUsd.length)fail('LIVE_UNAVAILABLE');
+  if(!orderPriceAcceptable({buying:intent.terms.side==='buy',inputRaw:intent.terms.inputAmountRaw,outputRaw:intent.terms.minimumOutputAmountRaw,outputTransferFeeBps:outputFeeBps,
+   decimals:stock.decimals,transferFeeBps:stock.transferFeeBps,swapFeeBps:intent.terms.platformFeeBps,referencesUsd}))fail('PRICE_OFF_MARKET');
  }
  private async chain() {
   if(await this.rpc('getGenesisHash')!==STOCK_DRAFT_MAINNET_GENESIS)fail('WRONG_NETWORK');
@@ -284,7 +286,6 @@ export class LiveStockOrders {
    // independently decodes instructions, resolves accounts and simulates it.
    const quote=parseEstimate({...payload,transaction:null,taker:null},pair,started,received,slippageBps);
    if(quote.swapFee.basisPoints>100)fail('FEE_TOO_HIGH');
-   await this.#checkMarketPrice(stock,buying,input.amountRaw,quote.output.estimatedAmountRaw,quote.swapFee.basisPoints,payload);
    const expected:StockEstimate={...quote,...input,executionEnabled:false,eligibility:'unverified',amountUnits:'raw_token_units'};
    const draft=bindStockOrderDraft(payload,{authenticatedUserId:user,verifiedTaker:wallet,expected,requestStartedAt:new Date(received).toISOString(),chainObservation:observation,validityAuthority:{now:this.#now,readChainObservation:()=>this.chain()}});
    const binding={authenticatedUserId:user,verifiedTaker:wallet,requestId:draft.summary.requestId,transactionMessageHash:draft.summary.transactionMessageHash,bindingHash:draft.summary.bindingHash};
@@ -295,6 +296,7 @@ export class LiveStockOrders {
    });
    if(BigInt(reviewed.intent.terms.totalLamportsUpperBound)>10000000n)fail('FEE_TOO_HIGH');
    if(!transferFeeWithinDisclosure(input.side,reviewed.evidence.reconciliation.accountState.outputMint,stock.transferFeeBps))fail('FEE_TOO_HIGH');
+   await this.#checkMarketPrice(stock,reviewed.intent,reviewed.evidence.reconciliation.accountState.outputMint.transferFeeMaxBasisPoints??0);
    return await this.options.store.create(user,randomUUID(),wallet,reviewed.intent,await copyStockDraftBytesForReview(draft,binding),acceptance);
   }finally{this.#inFlight.delete(user);}
  }
@@ -349,12 +351,28 @@ export class LiveStockOrders {
    // A confirmed-height cutoff alone can race a fork. Require finalized height
    // past expiry, then a fresh history lookup before declaring no execution.
    const finalized=await this.rpc('getBlockHeight',[{commitment:'finalized'}]);
-   if(Number.isSafeInteger(finalized) && BigInt(finalized)>BigInt(order.review.evidence.lastValidBlockHeight) && BigInt(chain.blockHeight)>BigInt(order.review.evidence.lastValidBlockHeight)) {
+   if(Number.isSafeInteger(finalized) && BigInt(finalized)>BigInt(order.review.evidence.lastValidBlockHeight) && BigInt(chain.blockHeight)>BigInt(order.review.evidence.lastValidBlockHeight) && await this.#blockhashExpired(order)) {
     const again=await this.rpc('getSignatureStatuses',[[order.signature],{searchTransactionHistory:true}]);
     if(again?.value?.length===1 && again.value[0]===null)return this.#alertSettled(order,await this.options.store.resolve(user,order.id,'expired'));
    }
   }
   return order;
+ }
+ /** Also protects older stored reviews that used the provider's height alone.
+  * An unknown/malformed RPC answer cannot release the pending-order lock. */
+ async #blockhashExpired(order:LiveOrder):Promise<boolean> {
+  let hash:string;
+  try {
+   const tx=getTransactionDecoder().decode(Buffer.from(order.unsignedTransaction,'base64'));
+   const message=getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
+   hash=String(message.lifetimeToken);
+   address(hash);
+  }catch{return fail('LIVE_UNAVAILABLE');}
+  const floor=Number(order.review.evidence.observationSlot);
+  if(!Number.isSafeInteger(floor) || floor<1)fail('LIVE_UNAVAILABLE');
+  const result=await this.rpc('isBlockhashValid',[hash,{commitment:'finalized',minContextSlot:floor}]);
+  if(typeof result?.value!=='boolean' || !Number.isSafeInteger(result?.context?.slot) || result.context.slot<floor)fail('LIVE_UNAVAILABLE');
+  return result.value===false;
  }
  /** The confirmed transaction that carries the user's signature for this RFQ order.
   * Solana indexes a transaction by its first signature (the market maker's), so
@@ -394,7 +412,7 @@ export class LiveStockOrders {
   const chain=await this.chain();
   const finalized=await this.rpc('getBlockHeight',[{commitment:'finalized'}]);
   const bound=BigInt(order.review.evidence.lastValidBlockHeight);
-  if(Number.isSafeInteger(finalized) && BigInt(finalized)>bound && BigInt(chain.blockHeight)>bound && await this.rfqTransaction(order)===null) {
+  if(Number.isSafeInteger(finalized) && BigInt(finalized)>bound && BigInt(chain.blockHeight)>bound && await this.#blockhashExpired(order) && await this.rfqTransaction(order)===null) {
    return this.#alertSettled(order,await this.options.store.resolve(user,order.id,'expired'));
   }
   return order;

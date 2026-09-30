@@ -164,7 +164,13 @@ export async function reviewStockOrder(draft: StockOrderDraft, binding: StockDra
     simulationSha256: simulation.provenance.digestSha256,
     observationSlot: semantics.observationSlot,
     simulationSlot: simulation.simulationSlot,
-    lastValidBlockHeight: lifetime.lifetime.providerLastValidBlockHeight,
+    // The provider's height is an admission bound, not proof of expiry. A
+    // blockhash valid at our finalized observation can survive 151 more blocks.
+    lastValidBlockHeight: (
+      BigInt(lifetime.lifetime.providerLastValidBlockHeight) > BigInt(lifetime.lifetime.secondObservedBlockHeight) + 151n
+        ? BigInt(lifetime.lifetime.providerLastValidBlockHeight)
+        : BigInt(lifetime.lifetime.secondObservedBlockHeight) + 151n
+    ).toString(),
   });
   const terms = Object.freeze({
     side: summary.side, inputMint: summary.input.mint, outputMint: summary.output.mint,
