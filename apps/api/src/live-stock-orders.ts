@@ -458,7 +458,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    // quote can stop meeting its floor before simulation. Neither is an outage
    // or permission to skip review: decline this candidate with a useful retry.
    const unavailableRoute=['SEMANTICS_PROGRAM_UNSUPPORTED','SEMANTICS_INSTRUCTION_UNSUPPORTED',
-    'RECONCILIATION_PROGRAM_UNEXPECTED','RECONCILIATION_UNEXPECTED_MOVEMENT','SIMULATION_EFFECTS_MISMATCH'];
+    'RECONCILIATION_PROGRAM_UNEXPECTED','RECONCILIATION_UNEXPECTED_MOVEMENT','RECONCILIATION_FEE_ACCOUNT_MISMATCH','SIMULATION_EFFECTS_MISMATCH'];
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;

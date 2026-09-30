@@ -28,6 +28,7 @@ export type StockOrderReconciliationErrorCode =
   | 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED'
   | 'RECONCILIATION_SLIPPAGE_EXCEEDED'
   | 'RECONCILIATION_FEE_CAP_EXCEEDED'
+  | 'RECONCILIATION_FEE_ACCOUNT_MISMATCH'
   | 'RECONCILIATION_TAKER_STATE_INVALID'
   | 'RECONCILIATION_SOURCE_ACCOUNT_STATE_INVALID'
   | 'RECONCILIATION_SOURCE_BALANCE_INSUFFICIENT'
@@ -63,7 +64,7 @@ export interface ReconciledStockOrderTerms {
   readonly reconciledAt: string;
   readonly swap: Readonly<{
     readonly instructionIndex: number;
-    readonly variant: 'route' | 'shared_accounts_route' | 'route_v2' | 'rfq_fill';
+    readonly variant: 'route_v2' | 'rfq_fill';
     readonly taker: string;
     readonly sourceTokenAccount: string;
     readonly destinationTokenAccount: string;
@@ -466,15 +467,11 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
     check('swap destination account', route.userDestinationTokenAccount === candidate.takerOutputAssociatedAccount,
       route.userDestinationTokenAccount, candidate.takerOutputAssociatedAccount, 'RECONCILIATION_DESTINATION_ACCOUNT_MISMATCH');
     check('swap destination mint', route.destinationMint === candidate.outputMint, route.destinationMint, candidate.outputMint, 'RECONCILIATION_MINT_MISMATCH');
-    if (route.sourceMint !== null) {
-      check('swap source mint', route.sourceMint === candidate.inputMint, String(route.sourceMint), candidate.inputMint, 'RECONCILIATION_MINT_MISMATCH');
-    }
-    const inputProgramAddress = candidate.inputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+    check('swap source mint', route.sourceMint === candidate.inputMint, route.sourceMint, candidate.inputMint, 'RECONCILIATION_MINT_MISMATCH');
+    const inputProgramAddress = programAddressFor(candidate.inputTokenProgram);
     check('swap token program', route.tokenProgram === inputProgramAddress, route.tokenProgram, inputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
-    if (route.kind === 'route_v2') {
-      const outputProgramAddress = candidate.outputTokenProgram === 'token' ? 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' : 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
-      check('swap destination token program', route.destinationTokenProgram === outputProgramAddress, String(route.destinationTokenProgram), outputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
-    }
+    const outputProgramAddress = programAddressFor(candidate.outputTokenProgram);
+    check('swap destination token program', route.destinationTokenProgram === outputProgramAddress, route.destinationTokenProgram, outputProgramAddress, 'RECONCILIATION_TOKEN_PROGRAM_MISMATCH');
     const inputAmount = parseAmount(route.inAmount, 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
     check('input amount', inputAmount === candidateInput, inputAmount.toString(), candidateInput.toString(), 'RECONCILIATION_INPUT_AMOUNT_MISMATCH');
     const quotedOut = parseAmount(route.quotedOutAmount, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
@@ -485,7 +482,27 @@ export function reconcileStockOrderTerms(input: StockOrderReconciliationInput): 
     check('quoted minimum consistency', minimumOut >= quotedMinimum, minimumOut.toString(), `>= ${quotedMinimum}`, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED');
     check('platform fee cap', route.platformFeeBps <= summary.approvalPolicy.maximumFeeBasisPoints,
       String(route.platformFeeBps), `<= ${summary.approvalPolicy.maximumFeeBasisPoints}`, 'RECONCILIATION_FEE_CAP_EXCEEDED');
-    if (route.platformFeeBps > 0 && route.platformFeeAccount === null) return fail('RECONCILIATION_FEE_CAP_EXCEEDED');
+    if (route.platformFeeBps > 0) {
+      // Pin the fee recipient to what the order states: an initialized token account
+      // for the stated fee mint (the order's input or output), under that mint's token
+      // program and never one of the taker's accounts. Its owner is Jupiter's to
+      // choose and is recorded in the check; the program pays it at most the capped
+      // fee above, in that mint.
+      const feeAccount = route.platformFeeAccount;
+      const feeMint = summary.swapFee.mint;
+      const feeProgram = feeMint === candidate.inputMint ? candidate.inputTokenProgram
+        : feeMint === candidate.outputMint ? candidate.outputTokenProgram : null;
+      const state = feeAccount === null ? undefined : accounts.get(feeAccount)?.state;
+      const takerAccounts = [taker, candidate.takerInputAssociatedAccount, candidate.takerOutputAssociatedAccount,
+        candidate.takerWrappedSolAssociatedAccount];
+      check('platform fee account', feeAccount !== null && !takerAccounts.includes(feeAccount) && feeProgram !== null &&
+        state !== undefined && state.kind === 'token_account' && state.state === 'initialized' && state.mint === feeMint &&
+        state.tokenProgram === feeProgram && state.owner !== taker,
+      `${String(feeAccount)} ${state?.kind === 'token_account' ? `${state.mint} owned by ${state.owner}` : String(state?.kind)}`,
+      `initialized ${feeMint} account, not the taker's`, 'RECONCILIATION_FEE_ACCOUNT_MISMATCH');
+    } else if (route.platformFeeAccount !== null) {
+      return fail('RECONCILIATION_FEE_ACCOUNT_MISMATCH');
+    }
     terms = {instructionIndex: swap.instructionIndex, variant: route.kind, sourceTokenAccount: route.userSourceTokenAccount,
       destinationTokenAccount: route.userDestinationTokenAccount, tokenProgram: route.tokenProgram, inputAmount,
       quotedOut, slippageBps: route.slippageBps, minimumOut, platformFeeBps: route.platformFeeBps,
