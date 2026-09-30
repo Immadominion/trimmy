@@ -1,3 +1,5 @@
+import {postgresPush, type PushStore} from './push-notifications.js';
+import {postgresOrderRecovery, type OrderRecoveryStore} from './order-recovery-worker.js';
 import {PostgresLiveOrderStore} from './live-stock-orders.js';
 import {PostgresLiveTradeHistory} from './live-trade-history.js';
 import {postgresDailyDesk} from './daily-desk-routes.js';
@@ -151,6 +153,8 @@ export interface PracticeRuntime {
   readonly paperTradingRepository?: PostgresPaperTradingRepository;
   readonly guestSessionRepository?: PostgresGuestSessionRepository;
   readonly liveOrderStore?: PostgresLiveOrderStore;
+  readonly pushStore?: PushStore;
+  readonly orderRecoveryStore?: OrderRecoveryStore;
   readonly close: () => Promise<void>;
 }
 
@@ -190,6 +194,8 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
     paperTradingRepository: new PostgresPaperTradingRepository(pool),
     guestSessionRepository,
     liveOrderStore: new PostgresLiveOrderStore(pool),
+    pushStore: postgresPush(pool),
+    orderRecoveryStore: postgresOrderRecovery(pool),
     options: {
       liveTradeHistory: {authenticate, repository: new PostgresLiveTradeHistory(pool)},
       browserOrigins: config.browserOrigins,

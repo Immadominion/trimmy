@@ -66,6 +66,7 @@ export const MIGRATION_DIGESTS = Object.freeze({
   '0032_live_stock_order_history': '183b08902d4c31ebfc2c2a45fbcbd7f9442309b26b346a58406a973418c0136b',
   '0033_live_stock_order_fills': '69659226ecc146ffe67c50c9a53685afa2b4f02b9fc00b95c6ec8553dad5ba07',
   '0034_live_order_confirmation_slot': '7591d3f4b44938fbbfe1d85e080e87163283d0129cae209d9f5c0d08ffe51179',
+  '0035_trade_push_notifications': '63fa9934e9114f449cc7dcba09c067d60cda19a66269f4aa6ae150def3248446',
 });
 
 /** One fixed lock so two deploys cannot migrate the same database at once. */

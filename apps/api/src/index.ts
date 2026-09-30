@@ -1,3 +1,5 @@
+import {FcmPushSender, readPushConfig, TradePushWorker} from './push-notifications.js';
+import {OrderRecoveryWorker} from './order-recovery-worker.js';
 import {LiveStockOrders} from './live-stock-orders.js';
 import {OndoMarketStatusReader} from './ondo-market-status.js';
 import {StockMarketStates, StockMintPauseReader} from './stock-market-state.js';
@@ -143,8 +145,13 @@ void legacyInvitations;
 void legacyAccountClosure;
 // Optional native HTTPS; both certificate and key files are required together.
 const tls = readTlsListenerConfig(process.env);
+const pushConfig = readPushConfig(process.env);
+const push = pushConfig && practice.pushStore && practice.authenticate
+  ? {store: practice.pushStore, authenticate: practice.authenticate, platforms: ['android'] as const} : undefined;
+if (pushConfig && !push) throw new Error('Push requires the account database.');
 const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions, ...(alerts ? {alerts} : {}),
   ...(onramp ? {onramp} : {}),
+  ...(push ? {push} : {}),
   relationshipSafetyEnabled,
   ...(publicHolders ? {publicHolders} : {}),
   ...(liveStocks ? {liveStocks} : {}),
@@ -163,7 +170,16 @@ const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions, ...
   ...(walletPossession ? {walletPossession} : {}),
   ...(stockHistory ? {stockHistory} : {}), ...(raydiumStockQuotes ? {raydiumStockQuotes} : {}),
   ...(preStocks ? {preStocks} : {}), ...(paperTrading ? {paperTrading} : {})});
-app.addHook('onClose', practice.close);
+const pushWorker = push && pushConfig ? new TradePushWorker(push.store, new FcmPushSender(pushConfig),
+  () => app.log.warn('Trade notification delivery will retry.')) : undefined;
+const recoveryWorker = liveStocks && practice.orderRecoveryStore
+  ? new OrderRecoveryWorker(practice.orderRecoveryStore, liveStocks.service,
+    () => app.log.warn('Pending trade recovery will retry.')) : undefined;
+app.addHook('onReady', async () => { pushWorker?.start(); recoveryWorker?.start(); });
+app.addHook('onClose', async () => {
+  await Promise.all([pushWorker?.stop(), recoveryWorker?.stop()]);
+  await practice.close();
+});
 try {
   await app.listen({port: Number(rawPort), host: process.env['HOST'] ?? '127.0.0.1'});
 } catch {
