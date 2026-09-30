@@ -136,7 +136,7 @@ const _privacy = <(String, String)>[
   ('h2', 'Reminders'),
   (
     'p',
-    'Career reminders are scheduled on your device with your permission. You can change the reminder preference in Trimmy or disable notifications in device settings. Saved social notification preferences do not mean that social or transaction push delivery is available in this build.',
+    'Career reminders are scheduled on your device with your permission. You can change the reminder preference in Trimmy or disable notifications in device settings. Trade updates are optional on supported devices. If enabled, we store a device notification token and use Firebase Cloud Messaging to send a short update when a real order finishes. Amounts and balances are not included. You can turn trade updates off in Settings. Social and price alerts are not available yet.',
   ),
   ('h2', 'Services and technical records'),
   (

@@ -209,11 +209,17 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
   Widget _notificationsSection(BuildContext context) {
     final rows = <Widget>[];
     for (final group in SettingsNotificationGroup.values) {
+      if (!widget.state.notifications.entries.any(
+        (e) => e.key.group == group && e.value.available,
+      )) {
+        continue;
+      }
       rows.add(_SettingsSubheading(group.label));
       for (final kind in SettingsNotificationKind.values.where(
         (kind) => kind.group == group,
       )) {
         final value = widget.state.notification(kind);
+        if (!value.available) continue;
         final enabled =
             value.available &&
             !value.updating &&
@@ -234,26 +240,27 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
     }
 
     final quietHours = widget.state.quietHours;
-    rows.add(const _SettingsSubheading('Quiet hours'));
-    rows.add(
-      _SettingsSwitchRow(
-        key: const ValueKey('settings-quiet-hours'),
-        title: 'Quiet hours',
-        subtitle: quietHours.available
-            ? quietHours.timeLabel
-            : 'Not available yet.',
-        value: quietHours.enabled,
-        busy: quietHours.updating,
-        onChanged:
-            quietHours.available &&
-                !quietHours.updating &&
-                widget.onQuietHoursChanged != null
-            ? widget.onQuietHoursChanged
-            : null,
-        trailingAction: quietHours.available ? widget.onEditQuietHours : null,
-      ),
-    );
-
+    if (quietHours.available) {
+      rows.add(const _SettingsSubheading('Quiet hours'));
+      rows.add(
+        _SettingsSwitchRow(
+          key: const ValueKey('settings-quiet-hours'),
+          title: 'Quiet hours',
+          subtitle: quietHours.available
+              ? quietHours.timeLabel
+              : 'Not available yet.',
+          value: quietHours.enabled,
+          busy: quietHours.updating,
+          onChanged:
+              quietHours.available &&
+                  !quietHours.updating &&
+                  widget.onQuietHoursChanged != null
+              ? widget.onQuietHoursChanged
+              : null,
+          trailingAction: quietHours.available ? widget.onEditQuietHours : null,
+        ),
+      );
+    }
     return _SettingsSection(title: 'Notifications', children: rows);
   }
 

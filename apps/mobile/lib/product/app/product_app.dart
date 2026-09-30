@@ -1,3 +1,5 @@
+import '../notifications/trade_push.dart';
+import '../notifications/firebase_trade_push.dart';
 import '../money/money_mode.dart';
 import '../money/holding_prices.dart';
 import '../money/send_money_flow.dart';
@@ -256,7 +258,10 @@ class _ProductExperienceState extends State<ProductExperience>
     return company.withVariant(asset.mint);
   }
 
+  TradePushController? _tradePush;
+
   void _realPortfolioChanged() {
+    _tradePush?.bind();
     if (!mounted) return;
     _portfolioViewRevision.value++;
     unawaited(_resolveHoldingCompanies());
@@ -395,6 +400,36 @@ class _ProductExperienceState extends State<ProductExperience>
     _careerDayContext.addListener(_careerDayContextChanged);
     _reasonPrivacy.addListener(_reasonPrivacyChanged);
     widget.account?.addListener(_realPortfolioChanged);
+    final pushOrigin = PracticeAccountConfig.fromEnvironment().apiUri;
+    if (pushOrigin != null) {
+      _tradePush = TradePushController(
+        preferences: widget.preferences,
+        origin: pushOrigin,
+        identity: () {
+          final account = widget.account;
+          final id = account?.accountId;
+          if (account == null ||
+              account.phase != AccountPhase.active ||
+              id == null) {
+            return null;
+          }
+          return PushIdentity(
+            id,
+            () async => (await account.freshAccessToken()).token,
+          );
+        },
+        device: FirebaseTradePushDevice(),
+        onOpen: () {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _signedIn) _openHistory(forceReal: true);
+          });
+        },
+        onForeground: () {
+          if (mounted) unawaited(_refreshRealPortfolio());
+        },
+      )..bind();
+    }
+
     unawaited(_refreshLiveCapabilities());
     ProductNotificationPermission.setOnOpenCareer(() {
       unawaited(_consumeReminderCareer());
@@ -410,6 +445,7 @@ class _ProductExperienceState extends State<ProductExperience>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     _syncReminder();
+    unawaited(_tradePush?.refresh());
     unawaited(_consumeReminderCareer());
     if (_dailyDesk != null) unawaited(_dailyDesk!.refresh());
     _expirePortfolioValuation();
@@ -550,6 +586,7 @@ class _ProductExperienceState extends State<ProductExperience>
     if (oldWidget.account != widget.account) {
       oldWidget.account?.removeListener(_realPortfolioChanged);
       widget.account?.addListener(_realPortfolioChanged);
+      _tradePush?.bind();
     }
     _syncPaperRepositories();
   }
@@ -1278,6 +1315,7 @@ class _ProductExperienceState extends State<ProductExperience>
     WidgetsBinding.instance.removeObserver(this);
     widget.account?.removeListener(_realPortfolioChanged);
     ProductNotificationPermission.setOnOpenCareer(null);
+    _tradePush?.dispose();
     _careerDateTimer?.cancel();
     _portfolioValuationTimer?.cancel();
     _market?.removeListener(_marketChanged);
@@ -2733,8 +2771,8 @@ class _ProductExperienceState extends State<ProductExperience>
     }
   }
 
-  void _openHistory() {
-    if (_realMoney) {
+  void _openHistory({bool forceReal = false}) {
+    if (_realMoney || forceReal) {
       final account = widget.account;
       final origin = PracticeAccountConfig.fromEnvironment().apiUri;
       if (!_signedIn || account == null) {
@@ -2900,10 +2938,17 @@ class _ProductExperienceState extends State<ProductExperience>
         builder: (_) => ListenableBuilder(
           listenable: Listenable.merge([
             ReviewFeedback.shared,
+            ?_tradePush,
             widget.session,
             if (widget.account != null) widget.account!,
           ]),
           builder: (context, _) => ProductSettingsScreen(
+            onNotificationChanged: (kind, value) async {
+              if (kind != SettingsNotificationKind.tradesAndReceipts) return;
+              await _tradePush?.setEnabled(value);
+              final error = _tradePush?.error;
+              if (mounted && error != null) _message(error);
+            },
             onSoundChanged: (value) =>
                 unawaited(ReviewFeedback.shared.setSound(value)),
             onHapticsChanged: (value) =>
@@ -2979,7 +3024,13 @@ class _ProductExperienceState extends State<ProductExperience>
         handle: profile.handle == null ? '' : '@${profile.handle}',
         persona: profile.persona?.label ?? '',
       ),
-      notifications: const {},
+      notifications: {
+        if (_tradePush?.available == true || _tradePush?.enabled == true)
+          SettingsNotificationKind.tradesAndReceipts: SettingsNotificationValue(
+            enabled: _tradePush!.enabled,
+            updating: _tradePush!.busy,
+          ),
+      },
       quietHours: const SettingsQuietHours(
         enabled: false,
         startLabel: '10:00 PM',
@@ -3021,6 +3072,7 @@ class _ProductExperienceState extends State<ProductExperience>
     _entryAccountGateOpen = true;
     _skipIntroAfterAuth = false;
     await widget.preferences.remove(guestChoiceKey);
+    await _tradePush?.beforeSignOut();
     await widget.account?.signOut();
     if (!mounted) return;
     final navigator = Navigator.maybeOf(context);

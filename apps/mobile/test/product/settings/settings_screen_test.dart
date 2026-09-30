@@ -78,13 +78,12 @@ void main() {
       expect(changedKind, SettingsNotificationKind.wallStreetOpen);
       expect(changedValue, isFalse);
 
-      await _show(tester, 'Price alerts');
-      changedKind = null;
-      changedValue = null;
-      await tester.tap(find.byKey(const ValueKey('notification-priceAlerts')));
-      expect(changedKind, isNull);
-      expect(changedValue, isNull);
-      expect(find.text('Not available yet.'), findsWidgets);
+      expect(
+        find.byKey(const ValueKey('notification-priceAlerts')),
+        findsNothing,
+      );
+      expect(find.text('Price alerts'), findsNothing);
+      expect(find.text('Not available yet.'), findsNothing);
     },
   );
 

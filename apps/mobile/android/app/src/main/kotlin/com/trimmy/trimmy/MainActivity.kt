@@ -1,5 +1,7 @@
 package com.trimmy.trimmy
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
@@ -21,6 +23,9 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel("trimmy_trade_updates", "Trade updates", NotificationManager.IMPORTANCE_DEFAULT),
+        )
         if (intent?.getBooleanExtra(ReminderSchedule.OPEN_CAREER, false) == true) {
             ReminderSchedule.recordOpen(this)
             intent.removeExtra(ReminderSchedule.OPEN_CAREER)

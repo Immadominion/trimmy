@@ -56,8 +56,8 @@ enum SettingsNotificationKind {
     SettingsNotificationGroup.social,
   ),
   tradesAndReceipts(
-    'Trades and receipts',
-    'Confirmed trades, deposits and withdrawals.',
+    'Trade updates',
+    'When a real-money order finishes.',
     SettingsNotificationGroup.account,
   ),
   trimmyNews(
