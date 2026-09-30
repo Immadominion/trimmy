@@ -76,6 +76,15 @@ final class ProductSession extends ChangeNotifier {
   ProductProfileFailure? get remoteFailure => _remoteFailure;
   GuestSessionFailure? get remoteGuestFailure => _remoteGuestFailure;
   bool get hasRemoteSnapshot => _remoteSnapshot != null;
+
+  /// Used only to present the first welcome before networking finishes. A
+  /// returning desk must still recover its own authenticated server state.
+  bool get hasSavedLaunchState =>
+      _preferences.containsKey(_profileKey) ||
+      _preferences.getBool(_introductionExitedKey) == true ||
+      _preferences.getBool(_firstTradeKey) == true ||
+      _preferences.getKeys().any((key) => key.startsWith(_remoteCachePrefix));
+
   String? get remotePrincipalKey => _remotePrincipalKey;
 
   bool remoteBoundTo(String principalKey) =>

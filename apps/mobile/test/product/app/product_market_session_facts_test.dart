@@ -11,13 +11,22 @@ import '../../stock_facts_models_test.dart' as facts_fixtures;
 import '../../support/stock_research_fixtures.dart';
 
 final class _Discovery implements StockResearchClient {
+  _Discovery({this.failures = 0, this.errorCode = 'STOCK_NETWORK_ERROR'});
+  int failures;
+  final String errorCode;
+  int calls = 0;
   @override
   Future<StockSearchPage> search(
     String query, {
     int limit = 10,
     StockResearchCancellation? cancellation,
-  }) async =>
-      StockSearchPage.fromJson(stockSearchFixture(query: query, limit: limit));
+  }) async {
+    calls++;
+    if (failures-- > 0) throw StockResearchException(errorCode);
+    return StockSearchPage.fromJson(
+      stockSearchFixture(query: query, limit: limit),
+    );
+  }
 
   @override
   Future<StockVariantsPage> variants(
@@ -92,9 +101,13 @@ final class _HeldTimer implements Timer {
   MarketFactsController facts,
   ProductMarketSession session,
 })
-_runtime(_Facts repository, {MarketCatalogGateway? catalog}) {
+_runtime(
+  _Facts repository, {
+  MarketCatalogGateway? catalog,
+  _Discovery? discovery,
+}) {
   final research = StockResearchController.withClients(
-    researchClient: _Discovery(),
+    researchClient: discovery ?? _Discovery(),
     historyClient: _UnusedHistory(),
     raydiumClient: _UnusedRaydium(),
     clock: () => DateTime.parse('2026-09-14T18:00:02.000Z'),
@@ -109,6 +122,63 @@ _runtime(_Facts repository, {MarketCatalogGateway? catalog}) {
 }
 
 void main() {
+  for (final code in [
+    'STOCK_NETWORK_ERROR',
+    'STOCK_TIMEOUT',
+    'STOCK_PROVIDER_UNAVAILABLE',
+  ]) {
+    test(
+      'starter picks recover from one $code without a manual retry',
+      () async {
+        final discovery = _Discovery(failures: 1, errorCode: code);
+        final runtime = _runtime(_Facts(), discovery: discovery);
+        addTearDown(runtime.session.dispose);
+        addTearDown(runtime.facts.dispose);
+        addTearDown(runtime.research.dispose);
+        await runtime.session.loadStarterPicks();
+        expect(discovery.calls, 2);
+        expect(runtime.session.starterStatus, MarketPageStatus.ready);
+        expect(runtime.session.starterCompanies.single.assetId, 'apple');
+      },
+    );
+  }
+
+  test('starter retry stops after two failed reads', () async {
+    final discovery = _Discovery(failures: 5);
+    final runtime = _runtime(_Facts(), discovery: discovery);
+    addTearDown(runtime.session.dispose);
+    addTearDown(runtime.facts.dispose);
+    addTearDown(runtime.research.dispose);
+    await runtime.session.loadStarterPicks();
+    expect(discovery.calls, 2);
+    expect(runtime.session.starterStatus, MarketPageStatus.offline);
+  });
+
+  test('starter retry respects an offline runtime', () async {
+    final discovery = _Discovery(failures: 1);
+    final runtime = _runtime(_Facts(), discovery: discovery);
+    addTearDown(runtime.session.dispose);
+    addTearDown(runtime.facts.dispose);
+    addTearDown(runtime.research.dispose);
+    final loading = runtime.session.loadStarterPicks();
+    await Future<void>.delayed(Duration.zero);
+    runtime.research.setNetworkAvailable(false);
+    await loading;
+    expect(discovery.calls, 1);
+    expect(runtime.session.starterStatus, MarketPageStatus.offline);
+  });
+
+  test('starter picks do not hammer a rate-limited provider', () async {
+    final discovery = _Discovery(failures: 2, errorCode: 'STOCK_RATE_LIMITED');
+    final runtime = _runtime(_Facts(), discovery: discovery);
+    addTearDown(runtime.session.dispose);
+    addTearDown(runtime.facts.dispose);
+    addTearDown(runtime.research.dispose);
+    await runtime.session.loadStarterPicks();
+    expect(discovery.calls, 1);
+    expect(runtime.session.starterStatus, MarketPageStatus.error);
+  });
+
   test(
     'held company refreshes a missing image without losing discovery offline',
     () async {

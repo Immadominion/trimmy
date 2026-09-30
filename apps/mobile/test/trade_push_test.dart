@@ -85,6 +85,48 @@ void main() {
     controller.bind();
     await controller.refresh();
   });
+  test(
+    'restoring consent waits for identity and retains the existing SDK token',
+    () async {
+      await preferences.setBool('trimmy.tradePush.v1.owner', true);
+      final restoredDevice = Device();
+      var ready = false;
+      final restored = TradePushController(
+        preferences: preferences,
+        origin: Uri.parse('https://api.example'),
+        identity: () =>
+            ready ? PushIdentity('owner', () async => 'token') : null,
+        identityReady: () => ready,
+        device: restoredDevice,
+        onOpen: () {},
+        onForeground: () {},
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode(
+              request.method == 'GET'
+                  ? {
+                      'tradePush': true,
+                      'platforms': ['android'],
+                    }
+                  : {'enabled': true},
+            ),
+            200,
+          ),
+        ),
+      );
+      addTearDown(restored.dispose);
+      restored.bind();
+      await restored.refresh();
+      expect(restoredDevice.disabled, 0);
+      ready = true;
+      restored.bind();
+      await restored.refresh();
+      expect(restored.enabled, true);
+      expect(restoredDevice.disabled, 0);
+      expect(restoredDevice.prompts, 0);
+    },
+  );
+
   tearDown(() => controller.dispose());
   test(
     'default is off, only explicit opt-in requests permission and persists consent',

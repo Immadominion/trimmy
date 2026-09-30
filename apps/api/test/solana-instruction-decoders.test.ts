@@ -238,33 +238,17 @@ describe('associated token program', () => {
 });
 
 describe('jupiter v6 swap', () => {
-  it('decodes route with its optional accounts absent', () => {
-    const decoded = decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, routeAccounts(),
-      jupiterData({shared: false, steps: 2})));
-    assert.deepEqual(decoded, {
-      program: 'jupiter_v6', kind: 'route', tokenProgram: KNOWN_PROGRAMS.token, programAuthority: null,
-      userTransferAuthority: taker, userSourceTokenAccount: source, userDestinationTokenAccount: destination,
-      programSourceTokenAccount: null, programDestinationTokenAccount: null, sourceMint: null,
-      destinationMint: outputMint, platformFeeAccount: null, token2022Program: null, eventAuthority,
-      routeAccounts: [poolAccount], inAmount: 10_000_000n, quotedOutAmount: 2_972_350n, slippageBps: 50,
-      platformFeeBps: 0, routePlanStepCount: 2,
-    });
-    assert.ok(Object.isFrozen(decoded) && Object.isFrozen(decoded.program === 'jupiter_v6' ? decoded.routeAccounts : {}));
-  });
-
-  it('decodes shared accounts route with a platform fee account present', () => {
-    const decoded = decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6,
-      sharedAccounts({9: feeAccount, 10: KNOWN_PROGRAMS.token2022}),
-      jupiterData({shared: true, steps: 3, inAmount: 250n, quotedOut: 900n, slippageBps: 100, feeBps: 10})));
-    assert.deepEqual(decoded, {
-      program: 'jupiter_v6', kind: 'shared_accounts_route', tokenProgram: KNOWN_PROGRAMS.token,
-      programAuthority, userTransferAuthority: taker, userSourceTokenAccount: source,
-      userDestinationTokenAccount: destination, programSourceTokenAccount: key(20),
-      programDestinationTokenAccount: key(21), sourceMint: mint, destinationMint: outputMint,
-      platformFeeAccount: feeAccount, token2022Program: KNOWN_PROGRAMS.token2022, eventAuthority,
-      routeAccounts: [poolAccount], inAmount: 250n, quotedOutAmount: 900n, slippageBps: 100, platformFeeBps: 10,
-      routePlanStepCount: 3,
-    });
+  it('refuses route and shared accounts route, whose amounts follow a variable-length plan', () => {
+    // A plan the old decoder skipped over, then benign amounts appended as the
+    // "tail": the program reads the real amounts from the front and ignores the rest.
+    const decoy = [...u64(10_000_000n), ...u64(2_972_350n), 50, 0, 0];
+    for (const [accounts, shared] of [[routeAccounts(), false], [sharedAccounts({9: feeAccount}), true]] as const) {
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, accounts,
+        jupiterData({shared, steps: 2}))), errorIs('UNSUPPORTED_INSTRUCTION'));
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, accounts,
+        bytes([...jupiterData({shared, inAmount: 1n, quotedOut: 1n, slippageBps: 10_000, feeBps: 255}), ...decoy]))),
+      errorIs('UNSUPPORTED_INSTRUCTION'));
+    }
   });
 
   it('rejects every other jupiter entry point', () => {
@@ -275,25 +259,9 @@ describe('jupiter v6 swap', () => {
     }
   });
 
-  it('rejects malformed route data and account layouts', () => {
+  it('rejects data too short to name an entry point', () => {
     assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, routeAccounts(), bytes([1, 2, 3]))),
       errorIs('INSTRUCTION_INVALID'));
-    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, routeAccounts(),
-      bytes([...discriminator('route'), ...u32(1)]))), errorIs('INSTRUCTION_INVALID'));
-    for (const options of [{steps: 0, planBytes: []}, {steps: 65}, {inAmount: 0n}, {quotedOut: 0n}, {slippageBps: 10_001}]) {
-      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, routeAccounts(),
-        jupiterData({shared: false, ...options}))), errorIs('INSTRUCTION_INVALID'), Object.keys(options).join());
-    }
-    // The program slot must be the Jupiter program itself.
-    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, routeAccounts({8: poolAccount}),
-      jupiterData({shared: false}))), errorIs('INSTRUCTION_INVALID'));
-    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, routeAccounts().slice(0, 8),
-      jupiterData({shared: false}))), errorIs('INSTRUCTION_INVALID'));
-    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, sharedAccounts().slice(0, 12),
-      jupiterData({shared: true}))), errorIs('INSTRUCTION_INVALID'));
-    // An off-curve authority cannot hold a wallet signature.
-    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6,
-      routeAccounts({1: KNOWN_PROGRAMS.system}), jupiterData({shared: false}))), errorIs('INSTRUCTION_INVALID'));
   });
 });
 
@@ -363,6 +331,15 @@ describe('Jupiter route_v2', () => {
     }
     const positiveFee = Buffer.from(data); positiveFee.writeUInt16LE(1, 28);
     assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, list, positiveFee)), errorIs('UNSUPPORTED_INSTRUCTION'));
+    // An off-curve authority cannot hold a wallet signature; a fee needs a real recipient.
+    const offCurve = [...list]; offCurve[0] = KNOWN_PROGRAMS.system;
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, offCurve, data)), errorIs('INSTRUCTION_INVALID'));
+    const feeToProgram = [...list]; feeToProgram[10] = KNOWN_PROGRAMS.jupiterV6;
+    assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, feeToProgram, data)), errorIs('INSTRUCTION_INVALID'));
+    for (const options of [{at: 8, value: 0n}, {at: 16, value: 0n}]) {
+      const zero = Buffer.from(data); zero.writeBigUInt64LE(options.value, options.at);
+      assert.throws(() => decodeInstruction(instruction(KNOWN_PROGRAMS.jupiterV6, list, zero)), errorIs('INSTRUCTION_INVALID'));
+    }
   });
   it('preserves the widened fee value and handles no platform fee without consuming a route account', () => {
     const largeFee = Buffer.from(data); largeFee.writeUInt16LE(300, 26);

@@ -64,15 +64,17 @@ function u64(value: bigint): number[] {
 function anchor(name: string): number[] {
   return [...createHash('sha256').update(`global:${name}`).digest().subarray(0, 8)];
 }
-function routeData(options: {inAmount?: bigint; quotedOut?: bigint; slippageBps?: number; feeBps?: number;
-  name?: string} = {}): Uint8Array {
+/** Jupiter route_v2: amounts, slippage, fee and positive-slippage fee, then a one-step plan. */
+function routeData(options: {inAmount?: bigint; quotedOut?: bigint; slippageBps?: number; feeBps?: number} = {}): Uint8Array {
+  const slippage = options.slippageBps ?? SLIPPAGE_BPS, fee = options.feeBps ?? 0;
   return Uint8Array.from([
-    ...anchor(options.name ?? 'route'), ...u32(1), 0, 0, 0, 0, 0,
-    ...u64(options.inAmount ?? INPUT_RAW), ...u64(options.quotedOut ?? QUOTED_OUT),
-    (options.slippageBps ?? SLIPPAGE_BPS) & 0xff, ((options.slippageBps ?? SLIPPAGE_BPS) >> 8) & 0xff,
-    options.feeBps ?? 0,
+    ...anchor('route_v2'), ...u64(options.inAmount ?? INPUT_RAW), ...u64(options.quotedOut ?? QUOTED_OUT),
+    slippage & 0xff, (slippage >> 8) & 0xff, fee & 0xff, (fee >> 8) & 0xff, 0, 0, ...u32(1), 0, 16, 39, 0, 1,
   ]);
 }
+/** route_v2 accounts: authority, source, destination, both mints, both token programs, the
+ * unused alternate destination and program slots (Jupiter itself), the event authority, the pool. */
+const ROUTE_ACCOUNTS = (destination = 2) => [0, 1, destination, 9, 10, 7, 12, 6, 11, 6];
 
 /**
  * A realistic unsigned v0 Jupiter swap: compute budget limit and price, an
@@ -97,7 +99,7 @@ const COMPUTE_LIMIT = 420_000;
 // A liquidity pool account owned by some other program decodes as unclassified state.
 const POOL_PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
 
-function swapMessage(overrides: {instructions?: CompiledTransactionMessage['instructions']} = {}):
+function swapMessage(overrides: {instructions?: CompiledTransactionMessage['instructions']; staticAccounts?: readonly Address[]} = {}):
 CompiledTransactionMessage & {lifetimeToken: string} {
   const instructions = overrides.instructions ?? [
     {programAddressIndex: 4, accountIndices: [], data: Uint8Array.from(
@@ -106,12 +108,13 @@ CompiledTransactionMessage & {lifetimeToken: string} {
       getSetComputeUnitPriceInstructionDataEncoder().encode({microLamports: 1_000n}))},
     {programAddressIndex: 5, accountIndices: [0, 2, 0, 10, 8, 12], data: Uint8Array.from(
       getCreateAssociatedTokenIdempotentInstructionDataEncoder().encode({}))},
-    {programAddressIndex: 6, accountIndices: [7, 0, 1, 2, 6, 10, 6, 11, 6, 3], data: routeData()},
+    {programAddressIndex: 6, accountIndices: [...ROUTE_ACCOUNTS(), 3], data: routeData()},
   ];
+  const staticAccounts = overrides.staticAccounts ?? STATIC_ACCOUNTS;
   return {
     version: 0,
-    header: {numSignerAccounts: 1, numReadonlySignerAccounts: 0, numReadonlyNonSignerAccounts: 9},
-    staticAccounts: [...STATIC_ACCOUNTS],
+    header: {numSignerAccounts: 1, numReadonlySignerAccounts: 0, numReadonlyNonSignerAccounts: staticAccounts.length - 4},
+    staticAccounts: [...staticAccounts],
     lifetimeToken: getAddressDecoder().decode(new Uint8Array(32).fill(9)),
     instructions, addressTableLookups: [],
   } as unknown as CompiledTransactionMessage & {lifetimeToken: string};
@@ -311,7 +314,8 @@ function prepared(overrides: {message?: CompiledTransactionMessage & {lifetimeTo
   const draft = bindStockOrderDraft(payload({}, overrides.message ?? swapMessage()), context(clock));
   const bound = binding(draft);
   const structure = inspectStockDraftStructure(draft, bound);
-  return {clock, draft, binding: bound, structure, resolved: resolvedAccounts(structure)};
+  return {clock, draft, binding: bound, structure,
+    resolved: resolvedAccounts(structure, (overrides.message?.staticAccounts ?? STATIC_ACCOUNTS) as readonly Address[])};
 }
 
 const semanticsReader = (fetch: typeof globalThis.fetch, clock: {now: number}) =>
@@ -412,7 +416,7 @@ describe('gate 6: terms reconciliation', () => {
     const {base, semantics} = await semanticsFor();
     const report = reconcileStockOrderTerms({summary: base.draft.summary, semantics, now: base.clock.now});
     assert.equal(report.kind, 'stock_order_terms_reconciliation');
-    assert.equal(report.swap.variant, 'route');
+    assert.equal(report.swap.variant, 'route_v2');
     assert.equal(report.swap.taker, taker);
     assert.equal(report.swap.inputAmountRaw, INPUT_RAW.toString());
     assert.equal(report.swap.minimumOutputAmountRaw, MINIMUM_OUT.toString());
@@ -482,7 +486,7 @@ describe('gate 6: terms reconciliation', () => {
 
     // The route pays a destination account that is not the taker's own.
     const stranger = prepared({message: swapMessage({instructions: [
-      {programAddressIndex: 6, accountIndices: [7, 0, 1, 3, 6, 10, 6, 11, 6], data: routeData()},
+      {programAddressIndex: 6, accountIndices: [...ROUTE_ACCOUNTS(3), 3], data: routeData()},
     ]})});
     const strangerSemantics = await semanticsFor(stranger);
     assert.throws(() => reconcileStockOrderTerms({summary: stranger.draft.summary,
@@ -498,8 +502,10 @@ describe('gate 6: terms reconciliation', () => {
       [{inAmount: 9_000_000n}, 'RECONCILIATION_INPUT_AMOUNT_MISMATCH'],
       [{quotedOut: 100n}, 'RECONCILIATION_OUTPUT_FLOOR_VIOLATED'],
     ] as const) {
+      // A fee names its recipient first among the remaining accounts.
+      const accounts = 'feeBps' in changes ? [...ROUTE_ACCOUNTS(), 3, 3] : [...ROUTE_ACCOUNTS(), 3];
       const base = prepared({message: swapMessage({instructions: [
-        {programAddressIndex: 6, accountIndices: [7, 0, 1, 2, 6, 10, 6, 11, 6], data: routeData(changes)},
+        {programAddressIndex: 6, accountIndices: accounts, data: routeData(changes)},
       ]})});
       const semantics = await semanticsFor(base);
       assert.throws(() => reconcileStockOrderTerms({summary: base.draft.summary, semantics: semantics.semantics,
@@ -509,7 +515,7 @@ describe('gate 6: terms reconciliation', () => {
     // A top-level token transfer beside the swap is never admitted.
     const withTransfer = prepared({message: swapMessage({instructions: [
       {programAddressIndex: 7, accountIndices: [1, 3, 0], data: Uint8Array.from([3, ...u64(1n)])},
-      {programAddressIndex: 6, accountIndices: [7, 0, 1, 2, 6, 10, 6, 11, 6], data: routeData()},
+      {programAddressIndex: 6, accountIndices: [...ROUTE_ACCOUNTS(), 3], data: routeData()},
     ]})});
     const semantics = await semanticsFor(withTransfer);
     assert.throws(() => reconcileStockOrderTerms({summary: withTransfer.draft.summary,
@@ -529,8 +535,8 @@ describe('gate 6: terms reconciliation', () => {
       error.code === 'RECONCILIATION_SWAP_INSTRUCTION_MISSING');
 
     const two = prepared({message: swapMessage({instructions: [
-      {programAddressIndex: 6, accountIndices: [7, 0, 1, 2, 6, 10, 6, 11, 6], data: routeData()},
-      {programAddressIndex: 6, accountIndices: [7, 0, 1, 2, 6, 10, 6, 11, 6], data: routeData()},
+      {programAddressIndex: 6, accountIndices: [...ROUTE_ACCOUNTS(), 3], data: routeData()},
+      {programAddressIndex: 6, accountIndices: [...ROUTE_ACCOUNTS(), 3], data: routeData()},
     ]})});
     const twoSemantics = await semanticsFor(two);
     assert.throws(() => reconcileStockOrderTerms({summary: two.draft.summary, semantics: twoSemantics.semantics,
@@ -542,6 +548,32 @@ describe('gate 6: terms reconciliation', () => {
     assert.throws(() => reconcileStockOrderTerms({summary: base.draft.summary, semantics: semantics.semantics,
       now: Date.parse(base.draft.summary.notAfter)}),
     (error: unknown) => error instanceof StockOrderReconciliationError && error.code === 'RECONCILIATION_EXPIRED');
+  });
+
+  it('pins a platform fee to an initialized account for the stated fee mint that is not the taker\'s', async () => {
+    const feeAccount = key('jupiter-fee');
+    const withFee = (index: number) => prepared({message: swapMessage({staticAccounts: [...STATIC_ACCOUNTS, feeAccount],
+      instructions: [{programAddressIndex: 6, accountIndices: [...ROUTE_ACCOUNTS(), index, 3], data: routeData({feeBps: 10})}]})});
+    const usdcAccount = (owner: Address, mint: Address = usdcMint) => rpcAccount(Uint8Array.from(getLegacyTokenEncoder().encode({
+      mint, owner, amount: 7n, delegate: null, state: LegacyAccountState.Initialized, isNative: null,
+      delegatedAmount: 0n, closeAuthority: null,
+    })), KNOWN_PROGRAMS.token, 2_039_280);
+    const run = async (index: number, fee: unknown) => {
+      const {base, semantics} = await semanticsFor(withFee(index), semanticsFetch({values: accountValues({[feeAccount]: fee})}));
+      return () => reconcileStockOrderTerms({summary: base.draft.summary, semantics, now: base.clock.now});
+    };
+    const report = (await run(13, usdcAccount(key('jupiter-fee-owner'))))();
+    assert.equal(report.swap.platformFeeBps, 10);
+    assert.equal(report.swap.platformFeeAccount, feeAccount);
+    assert.ok(report.checks.some(check => check.name === 'platform fee account'));
+    assert.ok(report.reviewFlags.includes('platform_fee_account_present'));
+    const mismatch = (error: unknown) => error instanceof StockOrderReconciliationError &&
+      error.code === 'RECONCILIATION_FEE_ACCOUNT_MISMATCH';
+    // Another mint, no account at all, an account the taker owns, or the taker's own source.
+    for (const [index, fee] of [[13, usdcAccount(key('jupiter-fee-owner'), aaplxMint)], [13, null],
+      [13, usdcAccount(taker)], [1, usdcAccount(key('jupiter-fee-owner'))]] as const) {
+      assert.throws(await run(index, fee), mismatch, String(index));
+    }
   });
 });
 

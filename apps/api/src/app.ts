@@ -185,7 +185,9 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     },
     bodyLimit: 16_384,
     requestTimeout: 10_000,
-    connectionTimeout: 10_000,
+    // Provider stages already have bounded deadlines. A quote plus account
+    // resolution and simulation can legitimately exceed ten seconds.
+    connectionTimeout: 60_000,
     keepAliveTimeout: 5_000,
     trustProxy: false,
     logController: new LogController({ disableRequestLogging: true }),

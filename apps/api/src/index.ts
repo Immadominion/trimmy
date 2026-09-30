@@ -1,4 +1,4 @@
-import {FcmPushSender, readPushConfig, TradePushWorker} from './push-notifications.js';
+import {FcmPushSender, readPushConfig, readPushPlatforms, TradePushWorker} from './push-notifications.js';
 import {OrderRecoveryWorker} from './order-recovery-worker.js';
 import {LiveStockOrders} from './live-stock-orders.js';
 import {OndoMarketStatusReader} from './ondo-market-status.js';
@@ -147,7 +147,7 @@ void legacyAccountClosure;
 const tls = readTlsListenerConfig(process.env);
 const pushConfig = readPushConfig(process.env);
 const push = pushConfig && practice.pushStore && practice.authenticate
-  ? {store: practice.pushStore, authenticate: practice.authenticate, platforms: ['android'] as const} : undefined;
+  ? {store: practice.pushStore, authenticate: practice.authenticate, platforms: readPushPlatforms(process.env)} : undefined;
 if (pushConfig && !push) throw new Error('Push requires the account database.');
 const app = buildApp({logLevel: rawLogLevel as LogLevel, ...practiceOptions, ...(alerts ? {alerts} : {}),
   ...(onramp ? {onramp} : {}),

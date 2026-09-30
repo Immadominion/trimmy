@@ -175,6 +175,21 @@ final class ProductMarketSession extends ChangeNotifier {
     try {
       await controller.search('a', limit: 20);
       if (_disposed) return;
+      final first = controller.discoveryState.search;
+      if ((first.phase == StockResearchReadPhase.error ||
+              first.phase == StockResearchReadPhase.offline) &&
+          const {
+            'STOCK_TIMEOUT',
+            'STOCK_NETWORK_ERROR',
+            'STOCK_PROVIDER_UNAVAILABLE',
+          }.contains(first.errorCode)) {
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        if (_disposed) return;
+        if (controller.state.phase == StockResearchRuntimePhase.active) {
+          await controller.search('a', limit: 20);
+        }
+      }
+      if (_disposed) return;
       final state = controller.discoveryState.search;
       final page = state.data;
       if (page == null ||

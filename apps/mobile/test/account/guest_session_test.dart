@@ -73,6 +73,43 @@ GuestSessionCredential _credential({
 
 void main() {
   test(
+    'first launch retries lost issuance with the same durable proof',
+    () async {
+      final store = _Store();
+      final bodies = <String>[];
+      final controller = GuestSessionController(
+        store: store,
+        now: () => _now,
+        newIssuanceRequestId: () => _issuanceId,
+        newIssuanceReplaySecret: () => _replaySecret,
+        client: HttpGuestSessionClient(
+          baseUri: Uri.parse('https://api.trimmy.test'),
+          newId: () => _claimId,
+          client: MockClient((request) async {
+            bodies.add(request.body);
+            if (bodies.length == 1) throw http.ClientException('lost response');
+            return _json({
+              'schemaVersion': 1,
+              'requestId': _issuanceId,
+              'guestId': _guestId,
+              'token': _token,
+              'expiresAt': _now.add(const Duration(days: 30)).toIso8601String(),
+              'hardExpiresAt': _now
+                  .add(const Duration(days: 90))
+                  .toIso8601String(),
+            }, status: 201);
+          }),
+        ),
+      );
+      expect((await controller.ensureActive()).guestId, _guestId);
+      expect(bodies, hasLength(2));
+      expect(bodies.first, bodies.last);
+      expect(store.issuanceWrites, 1);
+      expect(store.writes, 1);
+    },
+  );
+
+  test(
     'secure storage atomically replaces the pending issuance record',
     () async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -154,15 +191,14 @@ void main() {
       final store = _Store();
       final requestIds = <String>[];
       final replaySecrets = <String>[];
-      var replyLost = true;
+      var lostReplies = 2;
 
       HttpGuestSessionClient client() => HttpGuestSessionClient(
         client: MockClient((request) async {
           final body = jsonDecode(request.body) as Map<String, dynamic>;
           requestIds.add(body['requestId'] as String);
           replaySecrets.add(body['replaySecret'] as String);
-          if (replyLost) {
-            replyLost = false;
+          if (lostReplies-- > 0) {
             throw http.ClientException('response lost after commit');
           }
           return _json({
@@ -213,8 +249,8 @@ void main() {
         (await restarted.paperAuthorization()).headerValue,
         'Guest $_token',
       );
-      expect(requestIds, [_issuanceId, _issuanceId]);
-      expect(replaySecrets, [_replaySecret, _replaySecret]);
+      expect(requestIds, [_issuanceId, _issuanceId, _issuanceId]);
+      expect(replaySecrets, [_replaySecret, _replaySecret, _replaySecret]);
       expect(store.issuanceWrites, 1);
       expect(store.issuanceRequest, isNull);
       expect(store.value?.guestId, _guestId);

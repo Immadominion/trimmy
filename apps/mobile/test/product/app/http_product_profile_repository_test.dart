@@ -19,6 +19,46 @@ const _profile = OnboardingProfile(
 
 void main() {
   test(
+    'transient profile read retries once with fresh authorization',
+    () async {
+      var calls = 0;
+      var authorizations = 0;
+      final repository = HttpProductProfileRepository(
+        transport: MockClient((request) async {
+          calls++;
+          expect(request.headers['authorization'], 'Guest tg1_read-$calls');
+          if (calls == 1) throw http.ClientException('connection interrupted');
+          return _json({'schemaVersion': 2, 'profile': null});
+        }),
+        baseUri: Uri.parse('https://api.trimmy.test'),
+        authorizationProvider: () async =>
+            GuestPaperAuthorization('tg1_read-${++authorizations}'),
+      );
+      expect(await repository.read(), isNull);
+      expect(calls, 2);
+      expect(authorizations, 2);
+    },
+  );
+
+  test('profile authorization failures are not retried', () async {
+    var calls = 0;
+    final repository = HttpProductProfileRepository(
+      transport: MockClient((_) async {
+        calls++;
+        return _json({'code': 'ACCOUNT_REQUIRED'}, status: 401);
+      }),
+      baseUri: Uri.parse('https://api.trimmy.test'),
+      authorizationProvider: () async =>
+          const GuestPaperAuthorization('tg1_read'),
+    );
+    await expectLater(
+      repository.read(),
+      throwsA(isA<ProductProfileException>()),
+    );
+    expect(calls, 1);
+  });
+
+  test(
     'reads a guest profile without retaining or changing its authority',
     () async {
       final client = MockClient((request) async {

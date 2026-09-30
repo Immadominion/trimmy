@@ -59,6 +59,16 @@ export function registerPushRoutes(app:FastifyInstance,adapters?:PushAdapters) {
  });
 }
 
+/** Keep iOS opt-in at deployment until device delivery has been verified. */
+export function readPushPlatforms(env:Readonly<Record<string,string|undefined>>):readonly ('android'|'ios')[] {
+ const raw=env['TRIMMY_PUSH_PLATFORMS'];
+ if(raw===undefined)return ['android'];
+ if(raw==='')return [];
+ const platforms=raw.split(',').map(value=>value.trim());
+ if(new Set(platforms).size!==platforms.length || platforms.some(value=>value!=='android' && value!=='ios'))throw Error('Push platform configuration is invalid.');
+ return platforms as ('android'|'ios')[];
+}
+
 interface ServiceAccount {project_id:string;client_email:string;private_key:string}
 export function readPushConfig(env:Readonly<Record<string,string|undefined>>):ServiceAccount|null {
  const raw=env['TRIMMY_PUSH_SERVICE_ACCOUNT_JSON'];if(!raw)return null;
@@ -98,7 +108,7 @@ export class FcmPushSender {
    const result=await this.#json(`https://fcm.googleapis.com/v1/projects/${this.account.project_id}/messages:send`,{
     method:'POST',headers:{authorization:`Bearer ${await this.#bearer()}`,'content-type':'application/json'},
     body:JSON.stringify({validate_only:validateOnly,message:{token,
-     notification:{title:'Trimmy',body:'Your trade has an update. Open Trimmy to see it.'},
+     notification:{title:'Trimmy',body:job.status==='confirmed'?'Your trade is confirmed. Open Trimmy for details.':job.status==='failed'?'Your trade did not complete. Open Trimmy for details.':'Your trade expired. Open Trimmy for details.'},
      data:{kind:'trade_update',accountId:job.userId,orderId:job.orderId,notificationId:job.id},
      android:{ttl:'86400s',collapse_key:'trade_updates',notification:{tag:job.id,channel_id:'trimmy_trade_updates',icon:'ic_stat_trimmy'}},
      apns:{headers:{'apns-collapse-id':job.id,'apns-expiration':String(Math.floor(this.now()/1000)+86400)},payload:{aps:{sound:'default'}}},
@@ -108,6 +118,7 @@ export class FcmPushSender {
    if(result.status===401)this.#access=null;
    const details=result.body?.error?.details;
    if(Array.isArray(details) && details.some(d=>d?.['@type']==='type.googleapis.com/google.firebase.fcm.v1.FcmError' && d.errorCode==='UNREGISTERED'))return 'invalid_token';
+   if(result.status===400 || result.status===403 || result.status===404)return 'drop';
    return 'retry';
   }catch{return 'retry';}
  }
@@ -127,7 +138,7 @@ export class TradePushWorker {
    const token=await this.store.target(job.id,worker);
    const outcome=token ? await this.sender.send(job,token) : 'drop';
    await this.store.finish(job.id,worker,outcome);
-   if(outcome==='retry')this.onError();
+   if(outcome==='retry' || (token && outcome==='drop'))this.onError();
   }
  }
  async stop(){this.#stopped=true;if(this.#timer)clearTimeout(this.#timer);await this.#active;}
