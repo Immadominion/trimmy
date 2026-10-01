@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/shell/product_shell.dart';
+import 'package:trimmy/product/shell/product_tab_top.dart';
 
 void main() {
   testWidgets('four destinations switch one persistent app shell', (
@@ -34,6 +35,61 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('product-tab-market')));
     await tester.pumpAndSettle();
     expect(find.text('Count 1'), findsOneWidget);
+  });
+
+  testWidgets('tapping the open tab again scrolls only that tab to the start', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: const ProductShell(
+          desk: _LongPage(label: 'desk'),
+          market: _OwnScrollPage(label: 'market'),
+          floor: _LongPage(label: 'floor'),
+          profile: _LongPage(label: 'profile'),
+        ),
+      ),
+    );
+    double offset(String label) => tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byKey(ValueKey('list-$label'), skipOffstage: false),
+            matching: find.byType(Scrollable, skipOffstage: false),
+            matchRoot: true,
+          ),
+        )
+        .position
+        .pixels;
+    Future<void> tab(String name) async {
+      await tester.tap(find.byKey(ValueKey('product-tab-$name')));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> scroll(String label) async {
+      await tester.drag(
+        find.byKey(ValueKey('list-$label')),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await scroll('desk');
+    await tab('floor');
+    await scroll('floor');
+    // Switching tabs keeps each tab where it was.
+    await tab('desk');
+    expect(offset('desk'), greaterThan(0));
+    await tab('desk');
+    expect(offset('desk'), 0);
+    expect(offset('floor'), greaterThan(0));
+
+    // A page with its own scroll controller hears it too.
+    await tab('market');
+    await scroll('market');
+    await tab('market');
+    expect(offset('market'), 0);
+    expect(offset('floor'), greaterThan(0));
   });
 
   testWidgets('tab names fit a narrow phone in every language', (tester) async {
@@ -121,5 +177,47 @@ class _CounterPageState extends State<_CounterPage> {
         ),
       ],
     ),
+  );
+}
+
+class _LongPage extends StatelessWidget {
+  const _LongPage({required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) => ListView(
+    key: ValueKey('list-$label'),
+    children: [
+      for (var i = 0; i < 60; i++)
+        SizedBox(height: 60, child: Text('$label $i')),
+    ],
+  );
+}
+
+class _OwnScrollPage extends StatefulWidget {
+  const _OwnScrollPage({required this.label});
+  final String label;
+  @override
+  State<_OwnScrollPage> createState() => _OwnScrollPageState();
+}
+
+class _OwnScrollPageState extends State<_OwnScrollPage>
+    with ProductTabTopListener {
+  final _scroll = ScrollController();
+  @override
+  void onTabTop() => productScrollTo(context, _scroll, 0);
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    key: ValueKey('list-${widget.label}'),
+    controller: _scroll,
+    children: [
+      for (var i = 0; i < 60; i++)
+        SizedBox(height: 60, child: Text('${widget.label} $i')),
+    ],
   );
 }

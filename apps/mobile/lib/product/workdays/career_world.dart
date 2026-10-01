@@ -7,6 +7,7 @@ import '../../ui_review/review_feedback.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../design/product_theme.dart';
 import '../design/product_success_mark.dart';
+import '../shell/product_tab_top.dart';
 import 'workdays.dart';
 
 const careerScenery = [
@@ -79,7 +80,7 @@ class CareerWorld extends StatefulWidget {
   State<CareerWorld> createState() => _CareerWorldState();
 }
 
-class _CareerWorldState extends State<CareerWorld> {
+class _CareerWorldState extends State<CareerWorld> with ProductTabTopListener {
   final _scroll = ScrollController();
   bool _positioned = false;
   @override
@@ -92,6 +93,28 @@ class _CareerWorldState extends State<CareerWorld> {
   void dispose() {
     _scroll.dispose();
     super.dispose();
+  }
+
+  double _rowHeight() =>
+      300.0 +
+      (MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0) - 1) * 80;
+
+  /// Where the map opens: the current day, else the next one.
+  double _home(WorkJourney journey) => math.max(
+    0,
+    ((journey.current?.ordinal ??
+                    journey.upcoming?.ordinal ??
+                    journey.assignments.length) -
+                1) *
+            _rowHeight() -
+        24,
+  );
+
+  /// The Career tab tapped again goes back to today, not the top.
+  @override
+  void onTabTop() {
+    final journey = widget.controller.journey;
+    if (journey != null) productScrollTo(context, _scroll, _home(journey));
   }
 
   void _open(WorkAssignment? assignment, WorkUpcoming? upcoming) {
@@ -183,24 +206,11 @@ class _CareerWorldState extends State<CareerWorld> {
           ),
         );
       }
-      final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
-      final rowHeight = 300.0 + (scale - 1) * 80;
+      final rowHeight = _rowHeight();
       if (!_positioned) {
         _positioned = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _scroll.hasClients) {
-            _scroll.jumpTo(
-              math.max(
-                0,
-                ((journey.current?.ordinal ??
-                                journey.upcoming?.ordinal ??
-                                journey.assignments.length) -
-                            1) *
-                        rowHeight -
-                    24,
-              ),
-            );
-          }
+          if (mounted && _scroll.hasClients) _scroll.jumpTo(_home(journey));
         });
       }
       return RefreshIndicator(

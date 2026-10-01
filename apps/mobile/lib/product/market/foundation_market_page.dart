@@ -11,6 +11,7 @@ import 'market_craft.dart';
 import 'market_models.dart';
 import 'market_research_gateway.dart';
 import 'market_search_page.dart';
+import '../shell/product_tab_top.dart';
 
 enum MarketPageStatus { loading, ready, offline, error }
 
@@ -65,7 +66,8 @@ class FoundationMarketPage extends StatefulWidget {
   State<FoundationMarketPage> createState() => _FoundationMarketPageState();
 }
 
-class _FoundationMarketPageState extends State<FoundationMarketPage> {
+class _FoundationMarketPageState extends State<FoundationMarketPage>
+    with ProductTabTopListener {
   late MarketList _list;
   MarketSort _sort = MarketSort.featured;
   final Map<String, MarketCompany> _resolved = {};
@@ -131,6 +133,9 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
       widget.following?.addListener(_followingChanged);
     }
   }
+
+  @override
+  void onTabTop() => productScrollTo(context, _scroll, 0);
 
   @override
   void dispose() {

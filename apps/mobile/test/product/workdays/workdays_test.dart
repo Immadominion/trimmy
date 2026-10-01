@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:trimmy/product/shell/product_tab_top.dart';
 import 'package:trimmy/account/guest_session.dart';
 import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/product_theme.dart';
@@ -535,6 +536,33 @@ void main() {
     expect(find.text('Coming later'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+    c.dispose();
+  });
+
+  testWidgets('the Career tab tapped again goes back to today', (tester) async {
+    final c = controller((_) => response(fixture()))
+      ..journey = WorkJourney.fromJson(fixture());
+    final tabTop = ValueNotifier(0);
+    await tester.pumpWidget(
+      app(
+        Scaffold(
+          body: ProductTabTop(
+            signal: tabTop,
+            child: CareerWorld(controller: c, onOpen: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final scroll = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    final today = scroll.position.pixels;
+    scroll.position.jumpTo(today + 3000);
+    await tester.pump();
+    tabTop.value++;
+    await tester.pumpAndSettle();
+    expect(scroll.position.pixels, today);
+    await tester.pumpWidget(const SizedBox.shrink());
+    tabTop.dispose();
     c.dispose();
   });
 }

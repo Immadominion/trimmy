@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
+import 'product_tab_top.dart';
 
 enum ProductTab { desk, market, floor, profile }
 
@@ -26,10 +27,18 @@ class ProductShell extends StatefulWidget {
   State<ProductShell> createState() => ProductShellState();
 }
 
+class _TabSignal extends ChangeNotifier {
+  void fire() => notifyListeners();
+}
+
 class ProductShellState extends State<ProductShell> {
   late var _tab = widget.initialTab;
   ProductTab? _playingIcon;
   Timer? _iconTimer;
+  // One scroll and one signal per tab, so going back to the start moves
+  // only the open tab.
+  final _scrolls = [for (final _ in ProductTab.values) ScrollController()];
+  final _tops = [for (final _ in ProductTab.values) _TabSignal()];
 
   @override
   void initState() {
@@ -40,6 +49,12 @@ class ProductShellState extends State<ProductShell> {
   @override
   void dispose() {
     _iconTimer?.cancel();
+    for (final scroll in _scrolls) {
+      scroll.dispose();
+    }
+    for (final top in _tops) {
+      top.dispose();
+    }
     super.dispose();
   }
 
@@ -62,6 +77,13 @@ class ProductShellState extends State<ProductShell> {
     widget.onTabChanged?.call(tab);
   }
 
+  /// A tap on a tab. The open tab again goes back to its start.
+  void _tapped(ProductTab tab) {
+    if (tab != _tab) return select(tab);
+    productScrollTo(context, _scrolls[tab.index], 0);
+    _tops[tab.index].fire();
+  }
+
   @override
   void didUpdateWidget(covariant ProductShell oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -75,27 +97,41 @@ class ProductShellState extends State<ProductShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [widget.desk, widget.market, widget.floor, widget.profile];
-    return Scaffold(
-      body: IndexedStack(
-        index: _tab.index,
-        children: [
-          for (var index = 0; index < pages.length; index++)
-            TickerMode(enabled: index == _tab.index, child: pages[index]),
-        ],
-      ),
-      bottomNavigationBar: ColoredBox(
-        color: ProductColor.paper,
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 73,
-            child: Row(
-              children: [
-                _destination(ProductTab.desk),
-                _destination(ProductTab.market),
-                _destination(ProductTab.floor),
-                _destination(ProductTab.profile),
-              ],
+    // The outer controller is the open tab's, so a tap on the iOS status
+    // bar scrolls that tab only.
+    return PrimaryScrollController(
+      controller: _scrolls[_tab.index],
+      child: Scaffold(
+        body: IndexedStack(
+          index: _tab.index,
+          children: [
+            for (var index = 0; index < pages.length; index++)
+              TickerMode(
+                enabled: index == _tab.index,
+                child: ProductTabTop(
+                  signal: _tops[index],
+                  child: PrimaryScrollController(
+                    controller: _scrolls[index],
+                    child: pages[index],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        bottomNavigationBar: ColoredBox(
+          color: ProductColor.paper,
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 73,
+              child: Row(
+                children: [
+                  _destination(ProductTab.desk),
+                  _destination(ProductTab.market),
+                  _destination(ProductTab.floor),
+                  _destination(ProductTab.profile),
+                ],
+              ),
             ),
           ),
         ),
@@ -144,7 +180,7 @@ class ProductShellState extends State<ProductShell> {
         label: label,
         child: InkWell(
           key: ValueKey('product-tab-${tab.name}'),
-          onTap: () => select(tab),
+          onTap: () => _tapped(tab),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
