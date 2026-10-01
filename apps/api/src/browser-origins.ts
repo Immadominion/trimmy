@@ -173,11 +173,16 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       request.raw.url?.split('?')[0] === route;
     const communityFollowRoute = route === '/v1/community/following/:socialId' &&
       /^\/v1\/community\/following\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
+    // Workdays take exactly one query: `?lang=` with a language the API serves.
+    const workdayLanguageRoute = route !== undefined &&
+      ['/v1/career/workdays', '/v1/career/workdays/step', '/v1/career/workdays/draft'].includes(route) &&
+      request.raw.url === `${route}?${(request.raw.url ?? '').split('?')[1] ?? ''}` &&
+      /^lang=(en|es|pt|fr)$/.test((request.raw.url ?? '').split('?')[1] ?? '');
     const blockRoute = route === '/v1/social/blocks/:socialId' &&
       /^\/v1\/social\/blocks\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
     const tradeStatusRoute = route === '/v1/trading/order/:id' &&
       /^\/v1\/trading\/order\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
-    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute && !tradeStatusRoute && !blockRoute) ||
+    if (!methods || (request.raw.url !== route && !queryRoute && !communityFollowRoute && !tradeStatusRoute && !blockRoute && !workdayLanguageRoute) ||
         (route === '/v1/trading/order/:id' && !tradeStatusRoute) || (route === '/v1/social/blocks/:socialId' && !blockRoute) ||
         typeof method !== 'string' || !methods.includes(method) ||
         headers === undefined || (headers.includes('x-trimmy-guest') && route !== '/v1/guest/claim') ||

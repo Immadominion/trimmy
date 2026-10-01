@@ -80,3 +80,19 @@ test('the routes take an optional language, refuse others, and pass a decimal co
   assert.deepEqual((inputs.at(-1) as any).answer, {value: '0.20'});
  } finally { await app.close(); }
 });
+
+test('a browser may ask for workdays in its language: the preflight allows ?lang=', async () => {
+  const origin = 'https://app.trimmy.example';
+  const app = buildApp({logger: false, browserOrigins: [origin]});
+  try {
+    for (const [url, method] of [['/v1/career/workdays?lang=fr', 'GET'], ['/v1/career/workdays/step?lang=es', 'POST'], ['/v1/career/workdays/draft?lang=pt', 'POST']] as const) {
+      const preflight = await app.inject({method: 'OPTIONS', url, headers: {origin, 'access-control-request-method': method, 'access-control-request-headers': 'authorization,content-type'}});
+      assert.equal(preflight.statusCode, 204, url);
+      assert.equal(preflight.headers['access-control-allow-origin'], origin, url);
+    }
+    for (const url of ['/v1/career/workdays?lang=de', '/v1/career/workdays?lang=fr&userId=x', '/v1/career/workdays?userId=x']) {
+      const preflight = await app.inject({method: 'OPTIONS', url, headers: {origin, 'access-control-request-method': 'GET', 'access-control-request-headers': 'authorization'}});
+      assert.equal(preflight.statusCode, 403, `${url} stays refused`);
+    }
+  } finally {await app.close();}
+});
