@@ -12,6 +12,7 @@ import {LOCALES, LOCALE_NAMES, browserLanguages, resolveLocale, type Locale} fro
 import type {MessageKey} from '../i18n/runtime';
 import * as fmt from '../i18n/format';
 import {useUsage} from './usage';
+import {useModalFocus} from './use-modal-focus';
 
 const loginIcons: Record<ProductLoginMethod, string> = {email: 'account-email-rounded.png', google: 'account-google-rounded.png', x: 'account-x-standalone-rounded.png'};
 
@@ -42,6 +43,7 @@ function Section({title, children}: {title: string; children: ReactNode}) {
 }
 function Modal({title, children, onClose}: {title: string; children: ReactNode; onClose: () => void}) {
   const id = useId(), panel = useRef<HTMLDivElement>(null), close = useRef(onClose); close.current = onClose;
+  useModalFocus(panel);
   useEffect(() => {
     // Focus moves once, when the dialog opens; later renders never pull it back. A choice group starts on its checked option.
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;

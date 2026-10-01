@@ -143,3 +143,5 @@
   .market-screen .stock-company { gap: 8px; }
   .market-screen .stock-company-text strong { font-size: 13px; }
 }
+/* Kept mounted under a company page. */
+.product-main .market-screen[hidden],.market-screen[hidden]{display:none}

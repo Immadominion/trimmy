@@ -13,6 +13,7 @@ import {walletAddress} from './wallet-controller.js';
 import {useT} from '../../i18n/react.js';
 import type {MessageKey} from '../../i18n/runtime.js';
 import {useBackCloses} from '../use-back-closes';
+import {useModalFocus} from '../use-modal-focus';
 
 /** The receive address as a QR code: square finder eyes, round modules, like mobile. */
 export function AddressQr({address}: {address: string}) {
@@ -38,6 +39,8 @@ export function AddressQr({address}: {address: string}) {
 }
 
 export function FundWalletSheet({onClose}: {onClose(): void}) {
+  const fundWalletSheetDialog = useRef<HTMLElement>(null);
+  useModalFocus(fundWalletSheetDialog);
   const money = useMoney();
   const tr = useT();
   const titleId = useId();
@@ -90,7 +93,7 @@ export function FundWalletSheet({onClose}: {onClose(): void}) {
   function signIn() {requestRealAfterSignIn(); onClose(); window.location.hash = 'sign-in';}
 
   return <div className="money-sheet-backdrop" onMouseDown={event => {if (event.target === event.currentTarget) onClose();}}>
-    <section className="money-sheet fund-wallet" role="dialog" aria-modal="true" aria-labelledby={titleId}
+    <section className="money-sheet fund-wallet" ref={fundWalletSheetDialog} role="dialog" aria-modal="true" aria-labelledby={titleId}
       onKeyDown={event => {if (event.key === 'Escape') {event.stopPropagation(); onClose();}}}>
       <header className="money-sheet-head"><h2 id={titleId}>{tr('money.fund.title')}</h2>
         <button ref={closeButton} className="money-close" aria-label={tr('money.close')} onClick={onClose}>×</button></header>

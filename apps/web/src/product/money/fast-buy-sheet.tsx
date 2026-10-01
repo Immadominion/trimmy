@@ -10,12 +10,15 @@ import {marketLabel} from './live-trading.js';
 import {useMoney} from './money-api.js';
 import {useT} from '../../i18n/react.js';
 import {useBackCloses} from '../use-back-closes';
+import {useModalFocus} from '../use-modal-focus';
 
 export interface FastBuyChoice {readonly assetId: string; readonly mint: string | null; readonly card?: StockCard}
 
 export function FastBuySheet({market, knownCards, onOpen, onClose}: {
   market: ProductMarketClient; knownCards: ReadonlyMap<string, StockCard>; onOpen(choice: FastBuyChoice): void; onClose(): void;
 }) {
+  const fastBuySheetDialog = useRef<HTMLElement>(null);
+  useModalFocus(fastBuySheetDialog);
   const money = useMoney();
   const tr = useT();
   const titleId = useId();
@@ -62,7 +65,7 @@ export function FastBuySheet({market, knownCards, onOpen, onClose}: {
     <span><strong>{card.name ?? card.assetId}</strong><small>${(card.symbol ?? '').replace(/^\$/, '')}</small></span><span aria-hidden="true">›</span></button></li>)}</ul>;
 
   return <div className="money-sheet-backdrop" onMouseDown={event => {if (event.target === event.currentTarget) onClose();}}>
-    <section className={`money-sheet fast-buy ${money.real ? 'real' : 'paper'}`} role="dialog" aria-modal="true" aria-labelledby={titleId}
+    <section className={`money-sheet fast-buy ${money.real ? 'real' : 'paper'}`} ref={fastBuySheetDialog} role="dialog" aria-modal="true" aria-labelledby={titleId}
       onKeyDown={event => {if (event.key === 'Escape') {event.stopPropagation(); onClose();}}}>
       <header className="money-sheet-head"><h2 id={titleId}>{tr('money.fastBuy.title')}</h2><p className={`money-badge ${money.real ? 'real' : 'paper'}`}>{money.real ? tr('money.realMoney') : tr('money.mode.paper')}</p>
         <button className="money-close" aria-label={tr('money.fastBuy.close')} onClick={onClose}>×</button></header>

@@ -12,6 +12,7 @@ import {useT, type Translator} from '../i18n/react';
 import type {MessageKey} from '../i18n/runtime';
 import * as fmt from '../i18n/format';
 import {rankName} from './career-milestones';
+import {useModalFocus} from './use-modal-focus';
 
 /* Mobile's company page Holders and Comments sections (public_holders.dart, stock_reasons_tab.dart). */
 
@@ -171,11 +172,13 @@ function CommentsPanel({assetId, mint, social}: {assetId: string; mint: string; 
   </div>;
 }
 function ReportDialog({reason, onCancel, onReport}: {reason: SharedReason; onCancel: () => void; onReport: (category: string) => Promise<void>}) {
+  const reportDialogDialog = useRef<HTMLDivElement>(null);
+  useModalFocus(reportDialogDialog);
   const tr = useT();
   const [category, setCategory] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const chosen = reportCategories.some(([id]) => id === category);
   return <div className="settings-modal-backdrop" onClick={event => {if (event.target === event.currentTarget && !busy) onCancel();}}>
-    <div className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="report-title">
+    <div className="settings-modal" ref={reportDialogDialog} role="dialog" aria-modal="true" aria-labelledby="report-title">
       <h2 id="report-title">{tr('market.report.title')}</h2>
       <p>{tr('market.report.body')}</p>
       <div className="setup-choices" role="radiogroup" aria-label={tr('market.report.reasons')}>{reportCategories.map(([id, key]) => <button key={id} className="setup-choice" role="radio" aria-checked={category === id} onClick={() => setCategory(id)}><span><strong>{tr(key)}</strong></span></button>)}</div>

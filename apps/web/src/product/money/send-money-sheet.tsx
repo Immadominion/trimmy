@@ -15,6 +15,7 @@ import {useT} from '../../i18n/react.js';
 import {t} from '../../i18n/runtime.js';
 import * as fmt from '../../i18n/format.js';
 import {useBackCloses} from '../use-back-closes';
+import {useModalFocus} from '../use-modal-focus';
 
 const ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 /**
@@ -66,6 +67,8 @@ const sol = (lamports: string) => `${fmt.number(rawDecimal(lamports, SOL_DECIMAL
 type Stage = 'details' | 'review' | 'sending' | 'done';
 
 export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (mint: string) => string | undefined}) {
+  const sendMoneySheetDialog = useRef<HTMLElement>(null);
+  useModalFocus(sendMoneySheetDialog);
   const money = useMoney();
   const tr = useT();
   const titleId = useId();
@@ -171,7 +174,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
 
   const close = () => {if (!busy) onClose();};
   return <div className="money-sheet-backdrop" onMouseDown={event => {if (event.target === event.currentTarget) close();}}>
-    <section className="money-sheet send-money" role="dialog" aria-modal="true" aria-labelledby={titleId}
+    <section className="money-sheet send-money" ref={sendMoneySheetDialog} role="dialog" aria-modal="true" aria-labelledby={titleId}
       onKeyDown={event => {if (event.key === 'Escape') {event.stopPropagation(); close();}}}>
       <header className="money-sheet-head"><h2 id={titleId}>{tr('money.send.title')}</h2>
         <button ref={closeButton} className="money-close" aria-label={tr('money.close')} disabled={busy} onClick={close}>×</button></header>
