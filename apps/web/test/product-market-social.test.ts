@@ -78,6 +78,9 @@ test('companies opened from search become Recently viewed until cleared', async 
   try {
     await h.app(); await search(h, 'tes');
     await h.click('Open Tesla'); await h.click('← Back to Market');
+    // Back returns to the search as it was; clearing it shows what was viewed.
+    assert.equal(h.dom.window.document.querySelector<HTMLInputElement>('#company-search')?.value, 'tes');
+    await search(h, '');
     assert.match(h.text(), /Recently viewed/);
     assert.ok([...h.dom.window.document.querySelectorAll('.market-recent strong')].some(node => node.textContent === 'Tesla'));
     await h.click('Clear'); assert.doesNotMatch(h.text(), /Recently viewed/);
@@ -143,4 +146,22 @@ test('sort and labels work for ETFs and commodities that have no listed-stock se
   assert.deepEqual(marketFigures(apple as never), {price: 250, change: 2}, 'a session price is never paired with a token change');
   assert.equal(categoryOf(sp500), 'etf'); assert.equal(categoryOf(gold), 'commodity'); assert.equal(categoryOf({}), null);
   assert.equal(categoryLabel('commodity'), 'Commodity'); assert.equal(categoryLabel('etf'), 'ETF'); assert.equal(categoryLabel(null), 'Stock');
+});
+
+test('Back from a company page returns to the same search, list and loaded rows', async () => {
+  const h = await harness({checkpoint: 'app', savedGuest: true, storage: chosenGuest()});
+  try {
+    await h.app(); await h.click('Market'); await h.flush(60);
+    await search(h, 'tes');
+    const field = () => h.dom.window.document.querySelector<HTMLInputElement>('#company-search')!;
+    assert.equal(field().value, 'tes');
+    const searches = h.api.calls.filter(call => call.path.includes('/stocks/search')).length;
+    await h.click('Open Tesla'); await h.flush(80);
+    assert.ok(h.dom.window.document.querySelector('.trade-mode'), 'the company page is open');
+    assert.equal(h.dom.window.document.querySelector('.market-screen')?.hasAttribute('hidden'), true, 'the Market waits underneath');
+    await h.click('← Back to Market'); await h.flush(60);
+    assert.equal(field().value, 'tes', 'the search is still there');
+    assert.ok(h.button('Open Tesla'), 'the same results are still there');
+    assert.equal(h.api.calls.filter(call => call.path.includes('/stocks/search')).length, searches, 'nothing was searched again');
+  } finally {await h.close();}
 });

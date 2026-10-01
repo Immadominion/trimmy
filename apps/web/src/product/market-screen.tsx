@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import type {ProductMarketClient, StockCard} from './market-client';
 import {CompanyLogo, Failure, Loading, change, errorCopy, usd} from './ui';
 import {FollowButton, MarketControls, RecentsStrip, availableSorts, followNoticeText, marketFigures, sortCards, useFollowedCards} from './market-social';
@@ -10,8 +10,10 @@ import {companyMarketNote, companyTradeable, discoveryRefs, tradeableCompanies, 
 /** Mobile's Following, sort and recents (market-social.tsx). Omitted, the Market is read-only browsing. */
 export interface MarketSocial {readonly following: FollowingState; readonly recents: SearchRecents; readonly onSignIn: () => void}
 /** Real mode marks what can be traded and adds a Tradeable list; Paper shows the Market without them. */
-export function MarketScreen({client, onSelect, social, real = false, capabilities = null}: {client: ProductMarketClient; onSelect: (card: StockCard) => void; social?: MarketSocial;
-  real?: boolean; capabilities?: TradingCapabilities | null}) {
+export function MarketScreen({client, onSelect, social, real = false, capabilities = null, active = true}: {client: ProductMarketClient; onSelect: (card: StockCard) => void; social?: MarketSocial;
+  real?: boolean; capabilities?: TradingCapabilities | null;
+  /** False while a company page is open over it: the Market stays as it was (search, list, sort, loaded rows, scroll). */
+  active?: boolean}) {
   const discovery = useRef(new Map<string, ReturnType<typeof discoveryRefs>>());
   const index = (pages: readonly {discovery: {results: readonly {assetId: string; variants: Parameters<typeof discoveryRefs>[0]}[]}}[]) => {
     for (const page of pages) for (const row of page.discovery.results) discovery.current.set(row.assetId, discoveryRefs(row.variants));
@@ -33,6 +35,14 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
   const [list, setList] = useState<MarketList>('all'), [sort, setSort] = useState<MarketSort>('featured');
   const [notice, setNotice] = useState<{notice: FollowNotice; signIn: boolean} | null>(null);
   const tr = useT();
+  // Hiding the list drops its scroll position; keep it for the return.
+  const scrolled = useRef(0);
+  useLayoutEffect(() => {
+    const element = results.current;
+    if (!element) return;
+    if (active) element.scrollTop = scrolled.current;
+    else scrolled.current = element.scrollTop;
+  }, [active]);
   useEffect(() => {if (list === 'tradeable' && !(real && capabilities?.enabled === true)) setList('all');}, [list, real, capabilities]);
   const followed = useFollowedCards(client, social?.following.assetIds ?? null, cards, Boolean(social) && list === 'following');
   // Nothing claims to be tradeable without a live capabilities read, or while trading is paused.
@@ -132,7 +142,7 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
     return () => {active = false; observer.disconnect();};
   }, [offset, busy, error, moreError, query, list, online, client]);
   const stale = freshness !== null && clock >= Date.parse(freshness.refreshAfter);
-  return <section className={`market-screen${social ? ' has-follow' : ''}`} aria-label={tr('market.screen.title')}>
+  return <section className={`market-screen${social ? ' has-follow' : ''}`} aria-label={tr('market.screen.title')} hidden={!active}>
     <header className="market-heading">
       <div className="page-intro"><h1>{tr('market.screen.title')}</h1>{(!online || stale) && <span className="market-status" role="status">{tr(!online ? 'market.screen.offline' : 'market.screen.updating')}</span>}</div>
       <div className="market-tools"><div className="market-search">
