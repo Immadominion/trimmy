@@ -108,11 +108,11 @@ test('a lost send reply recovers its persisted review, including after closing a
   await page.waitFor(()=>page.button('Review send')?.disabled===false,'recovery complete');
   await page.type('[data-testid="send-destination"]',FRIEND);await page.type('[data-testid="send-amount"]','5');
   await page.click('Review send');await page.waitFor(()=>!!page.button('Send now'),'review');await page.click('Send now');
-  await page.waitFor(()=>page.text().includes('Sending'),'recovered send');
+  await page.waitFor(()=>page.dom.window.document.querySelector('[data-testid="send-result"]')?.textContent === 'Sending','recovered send');
   assert.equal(broadcasts,1);assert.equal(page.privy.signs,1);
   assert.ok(page.calls.some(call=>call.path===`/v1/wallet/transfers/recovery?id=${id}`));
   await page.click('Close');await page.click('Reopen send');
-  await page.waitFor(()=>page.text().includes('Sending'),'restored send');
+  await page.waitFor(()=>page.dom.window.document.querySelector('[data-testid="send-result"]')?.textContent === 'Sending','restored send');
   assert.equal(broadcasts,1);assert.equal(page.privy.signs,1);
   assert.equal(page.button('Send now'),undefined);
  }finally{await page.close();}
