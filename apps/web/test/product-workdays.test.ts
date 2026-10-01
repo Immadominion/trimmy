@@ -221,3 +221,13 @@ test('workdays are read in the page language, and an API from before workday lan
     assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays'], 'English sends no language, as installed apps do');
   } finally {await setLocale('en');}
 });
+
+test('the desk story is read in the page language, like workdays', async () => {
+  const {setLocale} = await import('../src/i18n/runtime.js');
+  try {
+    await setLocale('es-419');
+    const h = setup(() => json({code: 'NOT_IN_THIS_TEST'}, 503));
+    await h.make().readDailyDesk().catch(() => undefined);
+    assert.ok(h.calls.some(call => call.path === '/v1/career/daily-desk?lang=es'), JSON.stringify(h.calls.map(call => call.path)));
+  } finally {await setLocale('en');}
+});
