@@ -54,6 +54,7 @@ export const MIGRATIONS = Object.freeze([
   '0036_weekday_workdays',
   '0037_durable_wallet_transfers',
   '0038_reminder_preferences',
+  '0039_product_events',
 ]);
 export const OWNER_ROLE = 'trimmy_runtime_owner';
 export const RUNTIME_ROLE = 'trimmy_practice_runtime';
@@ -771,6 +772,8 @@ export function runtimeGrants(role = RUNTIME_ROLE) {
   return [
     `GRANT USAGE ON SCHEMA trimmy TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.reminder_preference_get(uuid,uuid), trimmy.reminder_preference_put(uuid,uuid,uuid,bigint,text) TO ${role}`,
+    // Usage events: append-only recording, linking an install to its own account, and the 400-day clean-up.
+    `GRANT EXECUTE ON FUNCTION trimmy.product_events_record(jsonb), trimmy.product_install_link(uuid,uuid), trimmy.product_events_prune() TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.wallet_transfer_read(uuid,uuid), trimmy.wallet_transfer_create(uuid,uuid,jsonb), trimmy.wallet_transfer_begin(uuid,uuid,text), trimmy.wallet_transfer_resolve(uuid,uuid,text) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.runtime_schema_has(text), trimmy.push_device_set(uuid,uuid,text,text), trimmy.push_device_remove(uuid,uuid), trimmy.trade_push_claim(uuid,integer), trimmy.trade_push_target(uuid,uuid), trimmy.trade_push_finish(uuid,uuid,text), trimmy.live_order_recovery_claim(), trimmy.live_order_recovery_release(uuid) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.practice_account_exists() TO ${role}`,

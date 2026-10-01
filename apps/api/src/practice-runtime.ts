@@ -1,4 +1,5 @@
 import {postgresReminders, reminderAuthenticator} from './reminder-preferences.js';
+import {postgresProductEvents, productEventLinkAuthenticator} from './product-events.js';
 import {postgresPush, type PushStore} from './push-notifications.js';
 import {postgresOrderRecovery, type OrderRecoveryStore} from './order-recovery-worker.js';
 import {PostgresWalletTransferStore} from './wallet-transfer-store.js';
@@ -141,7 +142,7 @@ export interface PracticeRuntime {
   readonly appId?: string;
   readonly options: Pick<ApiOptions, 'practice' | 'practiceSessions' | 'guestSessions' | 'productProfile' | 'watchlist' |
     'workdays' | 'dailyDesk' | 'community' | 'career' | 'careerReasonSharing' | 'socialRelationships' | 'invitations' | 'accountClosure' |
-    'browserOrigins' | 'readiness' | 'following' | 'liveTradeHistory' | 'reminders'>;
+    'browserOrigins' | 'readiness' | 'following' | 'liveTradeHistory' | 'reminders' | 'events'>;
   readonly authenticate?: ReturnType<typeof createPracticeAuthenticator>;
   readonly authenticateContext?: ReturnType<typeof createPracticeAccountContextAuthenticator>;
   readonly invitationsRepository?: PostgresInvitationsRepository;
@@ -202,6 +203,7 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
     orderRecoveryStore: postgresOrderRecovery(pool),
     options: {
       reminders: {authenticate: reminderAuthenticator(authenticate, guestSessionRepository), store: postgresReminders(pool)},
+      events: {authenticate: productEventLinkAuthenticator(authenticate, guestSessionRepository), store: postgresProductEvents(pool)},
       liveTradeHistory: {authenticate, repository: new PostgresLiveTradeHistory(pool)},
       browserOrigins: config.browserOrigins,
       practiceSessions: sessions,
@@ -236,7 +238,7 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
       invitations: {repository: invitationsRepository, authenticate, newId: () => randomUUID()},
       accountClosure: {repository: accountClosureRepository, authenticate},
       // Readiness checks this pool only. Providers stay out of it by design.
-      readiness: new PostgresReadinessProbe(pool, {requiredVersion: '0038_reminder_preferences'}),
+      readiness: new PostgresReadinessProbe(pool, {requiredVersion: '0039_product_events'}),
     },
     close: () => pool.end(),
   };
