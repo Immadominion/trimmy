@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,7 +29,10 @@ Future<void> main() async {
   if (!kIsWeb &&
       view != null &&
       view.physicalSize.shortestSide / view.devicePixelRatio < 600) {
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // Not awaited: startup never waits on the platform to answer.
+    unawaited(
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+    );
   }
   final preferences = await SharedPreferences.getInstance();
   final feedback = ReviewFeedback.shared;
