@@ -1028,11 +1028,20 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         identity,
         Align(alignment: Alignment.centerLeft, child: switcher),
       ] else
-        Row(
-          children: [
-            Expanded(child: identity),
-            switcher,
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              Expanded(child: identity),
+              // A long label (French, Portuguese) wraps rather than
+              // squeezing the title.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * .45,
+                ),
+                child: switcher,
+              ),
+            ],
+          ),
         ),
       if (asset.market case final market?
           when !market.open || market.usSessions) ...[

@@ -207,51 +207,64 @@ class _WalletStackState extends State<WalletStack>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Flex(
-              direction: MediaQuery.textScalerOf(context).scale(14) > 20
-                  ? Axis.vertical
-                  : Axis.horizontal,
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Flexible(
-                  fit: MediaQuery.textScalerOf(context).scale(14) > 20
-                      ? FlexFit.loose
-                      : FlexFit.tight,
-                  child: Text(
-                    real
-                        ? widget.balanceLabel ?? l10n.walletCashBalance
-                        : switch (widget.paper.paperValueState) {
-                            DeskPaperValueState.complete =>
-                              l10n.walletAccountBalance,
-                            DeskPaperValueState.partial =>
-                              l10n.walletKnownValue,
-                            DeskPaperValueState.unavailable =>
-                              l10n.walletCashBalance,
-                          },
-                    style: type.bodyMedium?.copyWith(color: Colors.white),
-                  ),
-                ),
-                Semantics(
-                  button: true,
-                  label: real
-                      ? l10n.walletSwitchToPaper
-                      : l10n.walletSwitchToReal,
-                  child: TextButton.icon(
-                    key: real == widget.real
-                        ? const ValueKey('money-mode-switch')
-                        : null,
-                    onPressed: widget.onSwitch,
-                    icon: const Icon(Icons.swap_horiz_rounded, size: 20),
-                    label: Text(real ? l10n.modeReal : l10n.modePaper),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.white.withValues(alpha: .13),
-                      minimumSize: const Size(74, 44),
+            LayoutBuilder(
+              builder: (context, constraints) => Flex(
+                direction: MediaQuery.textScalerOf(context).scale(14) > 20
+                    ? Axis.vertical
+                    : Axis.horizontal,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    fit: MediaQuery.textScalerOf(context).scale(14) > 20
+                        ? FlexFit.loose
+                        : FlexFit.tight,
+                    child: _BalanceLabel(
+                      real
+                          ? widget.balanceLabel ?? l10n.walletCashBalance
+                          : switch (widget.paper.paperValueState) {
+                              DeskPaperValueState.complete =>
+                                l10n.walletAccountBalance,
+                              DeskPaperValueState.partial =>
+                                l10n.walletKnownValue,
+                              DeskPaperValueState.unavailable =>
+                                l10n.walletCashBalance,
+                            },
+                      oneLine: MediaQuery.textScalerOf(context).scale(14) <= 20,
+                      style: type.bodyMedium?.copyWith(color: Colors.white),
                     ),
                   ),
-                ),
-              ],
+                  Semantics(
+                    button: true,
+                    label: real
+                        ? l10n.walletSwitchToPaper
+                        : l10n.walletSwitchToReal,
+                    // A long mode name ("Entraînement") shrinks to one line
+                    // and leaves the balance label room beside it.
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * .5,
+                      ),
+                      child: TextButton.icon(
+                        key: real == widget.real
+                            ? const ValueKey('money-mode-switch')
+                            : null,
+                        onPressed: widget.onSwitch,
+                        icon: const Icon(Icons.swap_horiz_rounded, size: 20),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(real ? l10n.modeReal : l10n.modePaper),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white.withValues(alpha: .13),
+                          minimumSize: const Size(74, 44),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const Spacer(),
             FittedBox(
@@ -388,6 +401,24 @@ class CashAssetMarks extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// The label above the balance. Beside the mode button the card's height is
+/// fixed, so a longer label (French, Portuguese) shrinks to one line there
+/// instead of wrapping; with large text the card is taller and it wraps.
+class _BalanceLabel extends StatelessWidget {
+  const _BalanceLabel(this.text, {required this.oneLine, this.style});
+  final String text;
+  final bool oneLine;
+  final TextStyle? style;
+  @override
+  Widget build(BuildContext context) => oneLine
+      ? FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(text, maxLines: 1, softWrap: false, style: style),
+        )
+      : Text(text, style: style);
 }
 
 /// One line at any width: three actions share the row in Real mode.

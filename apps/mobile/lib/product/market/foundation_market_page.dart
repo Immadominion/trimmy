@@ -894,12 +894,25 @@ class MarketCompanyCard extends StatelessWidget {
                               price,
                             ],
                           )
-                        : Row(
-                            children: [
-                              Expanded(child: identity),
-                              const SizedBox(width: 10),
-                              price,
-                            ],
+                        : LayoutBuilder(
+                            builder: (context, constraints) => Row(
+                              children: [
+                                Expanded(child: identity),
+                                const SizedBox(width: 10),
+                                // A longer price ("US$ 1.234,56") shrinks to
+                                // fit instead of squeezing the name.
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: constraints.maxWidth * .45,
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: price,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                   ),
                 ),
