@@ -672,36 +672,51 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
     final picked = await showModalBottomSheet<MarketSort>(
       context: context,
       useSafeArea: true,
+      // Six options can outgrow a small phone's default sheet: it scrolls,
+      // and keeps clear of the home indicator.
+      isScrollControlled: true,
       backgroundColor: MarketPalette.paper,
       shape: marketSquircle(28),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              context.l10n.marketSortTitle,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 12),
-            for (final sort in sorts)
-              ListTile(
-                minTileHeight: 52,
-                shape: marketSquircle(16),
-                tileColor: sort == activeSort ? const Color(0xFFF1EBFF) : null,
-                trailing: sort == activeSort
-                    ? const Icon(
-                        Icons.check_rounded,
-                        color: MarketPalette.violet,
-                      )
-                    : null,
-                title: Text(sort.label(context.l10n)),
-                onTap: () => Navigator.pop(context, sort),
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .8,
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            18,
+            16,
+            28 + MediaQuery.viewPaddingOf(context).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.l10n.marketSortTitle,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
-          ],
+              const SizedBox(height: 12),
+              for (final sort in sorts)
+                ListTile(
+                  minTileHeight: 52,
+                  shape: marketSquircle(16),
+                  tileColor: sort == activeSort
+                      ? const Color(0xFFF1EBFF)
+                      : null,
+                  trailing: sort == activeSort
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: MarketPalette.violet,
+                        )
+                      : null,
+                  title: Text(sort.label(context.l10n)),
+                  onTap: () => Navigator.pop(context, sort),
+                ),
+            ],
+          ),
         ),
       ),
     );

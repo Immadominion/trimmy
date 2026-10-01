@@ -164,6 +164,27 @@ void main() {
     },
   );
 
+  testWidgets('the return key saves the reason', (tester) async {
+    final repository = FakePaperOrderRepository();
+    await _pumpFlow(
+      tester,
+      repository: repository,
+      mutationId: () => testReasonMutationId,
+      onSaved: (_) {},
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('paper-reason-note')),
+      'Demand looks durable.',
+    );
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('paper-reason-note')),
+    );
+    expect(field.textInputAction, TextInputAction.done);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(repository.reasons.single.note, 'Demand looks durable.');
+  });
+
   testWidgets('a retry reuses the same mutation and normalized reason', (
     tester,
   ) async {

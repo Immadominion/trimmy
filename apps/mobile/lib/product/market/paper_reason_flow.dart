@@ -280,6 +280,10 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
                 maxLength: 180,
                 minLines: 3,
                 maxLines: 5,
+                // One line of text that wraps: return saves, as the field's
+                // submit already meant to (a newline would be removed anyway).
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
                 textCapitalization: TextCapitalization.sentences,
                 inputFormatters: [
                   FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),

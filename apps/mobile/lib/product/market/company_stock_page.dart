@@ -1128,7 +1128,13 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
         ),
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
+          // Clear of the home indicator.
+          padding: EdgeInsets.fromLTRB(
+            12,
+            20,
+            12,
+            24 + MediaQuery.viewPaddingOf(sheet).bottom,
+          ),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
