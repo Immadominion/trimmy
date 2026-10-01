@@ -861,7 +861,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingNotificationsAsk =>
-      'Je te préviens à l’ouverture et à la fermeture de Wall Street. Ici, tu peux trader à toute heure.';
+      'Je te préviens à l’ouverture et à la fermeture de Wall Street. Ici, tu peux investir à toute heure.';
 
   @override
   String get onboardingNotificationsSoon => 'Les alertes sont presque prêtes.';
@@ -1552,7 +1552,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get stockVersionsTitle => 'Versions';
 
   @override
-  String get stockVersionNotTradeable => 'Non disponible à la négociation.';
+  String get stockVersionNotTradeable => 'Non négociable.';
 
   @override
   String get reasonWriteTitle => 'Écris ta raison';

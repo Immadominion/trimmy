@@ -1548,7 +1548,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stockVersionsTitle => 'Versões';
 
   @override
-  String get stockVersionNotTradeable => 'Indisponível para negociar.';
+  String get stockVersionNotTradeable => 'Indisponível para operar.';
 
   @override
   String get reasonWriteTitle => 'Escreva seu motivo';
@@ -2779,7 +2779,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveTradingReasonNotYet =>
-      'Ainda não está disponível para negociação no Trimmy.';
+      'Ainda não está disponível para operar no Trimmy.';
 
   @override
   String get liveTradingReasonIdentity =>
@@ -2827,7 +2827,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveTradingReasonUnavailable =>
-      'Não está disponível para negociação no Trimmy.';
+      'Não está disponível para operar no Trimmy.';
 
   @override
   String get liveTradingOtherIssuer => 'Outro emissor';
@@ -2968,7 +2968,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guestDeskExpiredMessage =>
-      'Seus registros de convidado estão guardados. Esta mesa não pode mais negociar nem ser salva em uma conta.';
+      'Seus registros de convidado estão guardados. Esta mesa não pode mais operar nem ser salva em uma conta.';
 
   @override
   String get guestDeskEndedMessage =>
@@ -3003,7 +3003,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guestDeskPreservedExpiredDetail =>
-      'Sua mesa de convidado expirada fica guardada à parte. Ela não pode mais negociar nem ser mesclada.';
+      'Sua mesa de convidado expirada fica guardada à parte. Ela não pode mais operar nem ser mesclada.';
 
   @override
   String get guestDeskPreservedDetail =>

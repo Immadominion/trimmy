@@ -52,7 +52,7 @@ Solana, and every language's own name in the language picker.
 | streak | Days in a row | streak | racha | sequência | série | |
 | intern | The starting job | intern | practicante | estagiário | stagiaire | |
 | ranks | Career levels 1 to 6 | Rookie, Analyst, Trader, Senior Trader, Partner, Legend | Novato, Analista, Trader, Trader sénior, Socio, Leyenda | Novato, Analista, Trader, Trader sênior, Sócio, Lenda | Recrue, Analyste, Trader, Trader senior, Associé, Légende | |
-| holdings | What you own | holdings | tus inversiones | seus investimentos | vos placements | |
+| holdings | What you own | holdings | tus inversiones | seus investimentos | tes placements | French uses "tu" throughout. |
 | tokenized stock | A token that tracks a stock | tokenized stock | acción tokenizada | ação tokenizada | action tokenisée | |
 | wallet | | wallet | billetera | carteira | portefeuille | |
 | deposit / add money | | add money | agregar dinero | adicionar dinheiro | ajouter de l'argent | |
@@ -61,3 +61,14 @@ Solana, and every language's own name in the language picker.
 | quote | A price estimate before an order | quote | cotización | cotação | cotation | |
 | reason | Why you bought | reason | motivo | motivo | raison | |
 | Wall Street | | Wall Street | Wall Street | Wall Street | Wall Street | Never translated. |
+| token | A tokenized stock or coin on Solana | token | token | token | token | French says "token" (masculine), not "jeton". |
+| trade (noun) | One buy or sale | trade | operación | operação | opération | |
+| trade (verb) | To buy or sell | trade | operar | operar | investir | French may say "passer des ordres"; "trader" only where "investir" reads wrong. A stock "trades": se negocia / é negociada / se négocie. |
+| send (noun) | One transfer to another wallet | send | envío | envio | envoi | |
+| recipient | The wallet a send goes to | recipient | destinatario | destinatário | destinataire | |
+| issuer | The firm that issues a token | issuer | emisor | emissor | émetteur | |
+| issuer terms | The terms a buyer accepts | issuer terms | términos del emisor | termos do emissor | conditions de l'émetteur | |
+| market maker | A firm that quotes prices | market maker | creador de mercado | formador de mercado | teneur de marché | |
+| network fee | Solana's fee, paid in SOL | network fee | comisión de red | taxa de rede | frais de réseau | |
+| swap fee | Trimmy's fee on a real order | swap fee | comisión de intercambio | taxa de swap | frais de swap | Native check: Portuguese and French crypto apps say "swap". |
+| reminder | The workday nudge | reminder | recordatorio | lembrete | rappel | |
