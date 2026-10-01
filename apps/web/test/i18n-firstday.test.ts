@@ -302,7 +302,8 @@ test('first-day amounts, counts and countdowns follow the reader’s region; Eng
   assert.equal(reward(1234), `Rookie · ${(1234).toLocaleString()} Trims total`);
   assert.equal(t('firstDay.review.expiresIn', {seconds: 12}), 'Quote expires in 12s');
   assert.equal(t('firstDay.signIn.code.resendIn', {seconds: 9}), 'Send again in 9s');
-  assert.equal(toPaperMicros('12,5'), null, 'English keeps the dot as its only decimal mark');
+  assert.equal(toPaperMicros('12,5'), '12500000', 'a comma keypad on an English page: twelve and a half, never 125');
+  assert.equal(toPaperMicros('1,000'), null, 'an English thousands comma is refused, not guessed');
   assert.equal(toPaperMicros('12.5'), '12500000');
 
   await setLocale('fr', {languages: ['fr-FR']});

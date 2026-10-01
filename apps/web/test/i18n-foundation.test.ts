@@ -104,8 +104,10 @@ test('English formatting is byte for byte the input, whatever the helper', async
   for (const value of ['$1,234.56', '-$0.25', '$1.2B', '$0.0001']) assert.equal(fmt.usd(value), value);
   assert.equal(fmt.percent('+1.23%'), '+1.23%');
   assert.equal(fmt.decimalInput('12.5'), '12.5');
-  for (const value of ['12,5', '1,000', ' 12.5 ', '1.234,5']) assert.equal(fmt.normalizeDecimalInput(value), value);
-  assert.equal(fmt.amountCharacters('1,2a.3'), '12.3');
+  for (const value of ['1,000', ' 12.5 ', '1.234,5', '1,2,5']) assert.equal(fmt.normalizeDecimalInput(value), value);
+  // A comma keypad (set by the phone's region) types `0,5` on an English page: a half, never 5.
+  for (const [typed, plain] of [['0,5', '0.5'], ['7,50', '7.50'], ['12,', '12.'], [',5', '.5']] as const) assert.equal(fmt.normalizeDecimalInput(typed), plain, typed);
+  assert.equal(fmt.amountCharacters('1,2a.3'), '1,2.3', 'a comma is kept so it is read or rejected, not dropped');
   assert.equal(fmt.count(1234, 'en-US').text, '1,234');
   assert.equal(fmt.count(1234, 'raw').text, '1234');
   assert.equal(fmt.count(1234).text, (1234).toLocaleString());

@@ -16,7 +16,7 @@
 .primary.danger{background:var(--red);box-shadow:0 3px 0 #8f3446}
 .primary.danger:hover:not(:disabled){background:#a3445a}
 .settings-modal-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(37,27,56,.28)}
-.settings-modal{width:min(440px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:26px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(37,27,56,.18)}
+.settings-modal{width:min(440px,100%);max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow:auto;background:#fff;border-radius:26px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(37,27,56,.18)}
 .settings-modal h2{font-family:Bricolage,Dejanire,sans-serif;font-size:25px;letter-spacing:-.6px;margin-bottom:12px}
 .settings-modal p{font-size:14px;color:#6f6380;line-height:1.55;margin:0 0 12px}
 .settings-modal .setup-choices{margin:14px 0}

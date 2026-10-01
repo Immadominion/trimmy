@@ -192,8 +192,11 @@ export function decimalInput(plain: string): string {
 
 /**
  * Turns a typed amount into the plain `1234.5` form the exact parsers read.
- * English text comes back unchanged, so English parsing behaves exactly as
- * before. Elsewhere both decimal marks are accepted:
+ * English keeps its exact reading of `.`. A phone set to a comma region
+ * offers only `,` on its decimal pad, even with the page in English, so an
+ * English amount with one comma that cannot be a thousands separator reads
+ * it as the decimal mark (`0,5` is a half); `1,000` stays as typed and is
+ * rejected, never guessed. Outside English both decimal marks are accepted:
  *
  * - one mark on its own is the decimal mark: `12,5` and `12.5` are both
  *   twelve and a half, and `1.250` is 1.25, never 1250 (a typed amount is
@@ -207,7 +210,10 @@ export function decimalInput(plain: string): string {
  * rejects it rather than guessing.
  */
 export function normalizeDecimalInput(typed: string): string {
-  if (formats().english) return typed;
+  if (formats().english) {
+    const comma = /^\s*([0-9]*),([0-9]*)\s*$/u.exec(typed);
+    return comma && comma[2]!.length !== 3 ? `${comma[1]}.${comma[2]}` : typed;
+  }
   const text = typed.trim().replace(/[\s  ]/gu, '');
   const commas = text.split(',').length - 1, dots = text.split('.').length - 1;
   if (!commas && !dots) return text;
@@ -227,9 +233,9 @@ export function normalizeDecimalInput(typed: string): string {
 }
 
 /**
- * Removes the characters an amount field must not hold, keeping the
- * locale's decimal mark as well as `.` (English keeps exactly `[^0-9.]`).
+ * Removes the characters an amount field must not hold. Both decimal marks
+ * stay in every language: dropping a comma would turn `0,5` into `05`.
  */
 export function amountCharacters(typed: string): string {
-  return formats().english ? typed.replace(/[^0-9.]/gu, '') : typed.replace(/[^0-9.,]/gu, '');
+  return typed.replace(/[^0-9.,]/gu, '');
 }

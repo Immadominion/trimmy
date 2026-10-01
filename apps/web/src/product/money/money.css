@@ -33,7 +33,7 @@
 
 /* Sheets */
 .money-sheet-backdrop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:#251b3857}
-.money-sheet{width:min(460px,100%);max-height:min(92vh,760px);overflow:auto;background:#fff;border-radius:28px;padding:22px 24px 26px;box-shadow:0 24px 60px #251b3833}
+.money-sheet{width:min(460px,100%);max-height:min(92vh,760px);max-height:min(92dvh,760px);overflow:auto;background:#fff;border-radius:28px;padding:22px 24px 26px;box-shadow:0 24px 60px #251b3833}
 .money-sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .money-sheet-head h2{flex:1;font-family:Bricolage,Dejanire,sans-serif;font-size:28px;letter-spacing:-.8px}
 .money-sheet-head .money-badge{margin:0}
@@ -130,7 +130,7 @@
 
 @media(max-width:700px){
   .money-sheet-backdrop{align-items:end;padding:0}
-  .money-sheet{width:100%;border-radius:28px 28px 0 0;max-height:92vh}
+  .money-sheet{width:100%;border-radius:28px 28px 0 0;max-height:92vh;max-height:92dvh}
   .desk-screen .balance-actions button{flex:1;justify-content:center}
   .history-detail{padding-left:16px}
 }
