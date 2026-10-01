@@ -710,14 +710,19 @@ export class PracticeClient {
   /**
    * A workday request in the page's language. An API from before workday
    * languages refuses `lang` while checking the request, before any work is
-   * read or saved, so the same request is sent again without it.
+   * read or saved, so the same request is sent again without it. In a browser
+   * that API's preflight refuses the query outright, which reads as a network
+   * failure: for a read (which always comes before any write), that is tried
+   * again without `lang` too.
    */
   async #workday<T>(route: string, method: 'GET' | 'POST', body: unknown, identity: PracticeIdentity, parse: (value: unknown) => T, signal?: AbortSignal): Promise<T> {
     const language = this.#workdayLanguageRefused ? undefined : WORKDAY_LANGUAGE[getLocale()];
     if (!language) return this.#request(route, method, body, identity, parse, signal);
     try {return await this.#request(`${route}?lang=${language}`, method, body, identity, parse, signal);}
     catch (error) {
-      if (!(error instanceof PracticeError) || error.code !== 'INVALID_REQUEST') throw error;
+      const refused = error instanceof PracticeError &&
+        (error.code === 'INVALID_REQUEST' || (method === 'GET' && error.code === 'PRACTICE_NETWORK_ERROR'));
+      if (!refused) throw error;
       const result = await this.#request(route, method, body, identity, parse, signal);
       this.#workdayLanguageRefused = true;
       return result;
