@@ -145,6 +145,41 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a paper search that cannot start offers a retry, not a spinner',
+    (tester) async {
+      final gateway = FakeMarketSearchGateway(
+        results: {
+          'apple': [testCompany()],
+        },
+      )..refuse = true;
+      addTearDown(gateway.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FastBuySheet(
+              gateway: gateway,
+              companies: const [],
+              orderBuilder: (company, back) => Text('Order ${company.name}'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('fast-buy-search')),
+        'apple',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(find.text('Search did not finish. Try again.'), findsOneWidget);
+      gateway.refuse = false;
+      await tester.tap(find.text('Retry').hitTestable().first);
+      await tester.pumpAndSettle();
+      expect(find.text('Apple'), findsWidgets);
+    },
+  );
+
   testWidgets('long lists build lazily', (tester) async {
     final rows = [
       for (var index = 0; index < 600; index++)

@@ -412,6 +412,37 @@ void main() {
     expect(recents.companies.single.assetId, 'apple');
   });
 
+  testWidgets(
+    'a search that cannot start offers a retry instead of loading forever',
+    (tester) async {
+      final gateway = FakeMarketSearchGateway(
+        results: {
+          'apple': [testCompany()],
+        },
+      )..refuse = true;
+      addTearDown(gateway.dispose);
+      await tester.pumpWidget(
+        app(
+          home: MarketSearchPage(
+            gateway: gateway,
+            recents: MarketRecentsController(),
+          ),
+        ),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('market-search-field')),
+        'apple',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(find.text('Search did not finish. Try again.'), findsOneWidget);
+      gateway.refuse = false;
+      await tester.tap(find.text('Try again').hitTestable().first);
+      await tester.pumpAndSettle();
+      expect(find.text('Apple'), findsWidgets);
+    },
+  );
+
   testWidgets('search shows its honest empty and recovery states', (
     tester,
   ) async {
