@@ -332,6 +332,8 @@ class _ProductExperienceState extends State<ProductExperience>
   final Set<String> _reasonedOrderIds = <String>{};
   bool _portfolioLoading = false;
   bool _paperOpening = false;
+  bool _settingsOpen = false;
+  bool _assetOpening = false;
   bool _portfolioRefreshQueued = false;
   bool _paperResetApplying = false;
   int _portfolioGeneration = 0;
@@ -2919,6 +2921,9 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   Future<void> _openAssetId(String id, {String? variantMint}) async {
+    // A second tap while the company is looked up does not open it twice.
+    if (_assetOpening) return;
+    _assetOpening = true;
     final generation = _portfolioGeneration;
     try {
       final company = _knownCompany(id) ?? await _market?.findCompany(id);
@@ -2931,12 +2936,16 @@ class _ProductExperienceState extends State<ProductExperience>
       final listed =
           variantMint != null &&
           company.asset.variants.any((v) => v.mint == variantMint);
+      // The page is opening: from inside it, other companies may open.
+      _assetOpening = false;
       await _openCompany(
         listed ? company.withVariant(variantMint) : company,
         variantMint: listed ? variantMint : null,
       );
     } catch (_) {
       if (mounted) _message(context.l10n.appStockCouldNotOpen);
+    } finally {
+      _assetOpening = false;
     }
   }
 
@@ -3084,24 +3093,24 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   Future<void> _openSettings() async {
-    final generation = _portfolioGeneration;
-    final account = widget.account;
-    final principalKey = _paperPrincipalKey;
-    final portfolio = account?.portfolioRepository;
+    // A second tap while Settings opens does not open it twice.
+    if (_settingsOpen || !mounted || widget.session.profile == null) return;
+    final portfolio = widget.account?.portfolioRepository;
+    // Settings opens at once; its wallet rows fill in when this refresh
+    // lands (the account forwards portfolio changes to the screen), and stay
+    // explicitly unavailable if it fails.
     if (_signedIn && portfolio != null) {
-      try {
-        await portfolio.refresh();
-      } catch (_) {
-        // The screen keeps wallet details explicitly unavailable.
-      }
+      unawaited(portfolio.refresh().catchError((Object _) {}));
     }
-    if (!mounted ||
-        generation != _portfolioGeneration ||
-        !identical(account, widget.account) ||
-        principalKey != _paperPrincipalKey ||
-        widget.session.profile == null) {
-      return;
+    _settingsOpen = true;
+    try {
+      await _pushSettings();
+    } finally {
+      _settingsOpen = false;
     }
+  }
+
+  Future<void> _pushSettings() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => ListenableBuilder(
