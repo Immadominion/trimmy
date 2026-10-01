@@ -215,7 +215,9 @@ class _FloorScreenState extends State<FloorScreen> {
 
   Widget _career(BuildContext context, {bool inSheet = false}) =>
       widget.career == null
-      ? widget.careerLoading
+      // Without a failure to retry, the first read is still on its way:
+      // saying Career couldn't load before it was asked would be wrong.
+      ? widget.careerLoading || widget.onRetryCareer == null
             ? const Center(
                 child: Padding(
                   padding: EdgeInsets.all(40),
@@ -226,12 +228,8 @@ class _FloorScreenState extends State<FloorScreen> {
                 title: context.l10n.floorCareerLoadFailed,
                 message: widget.careerMessage,
                 action: TextButton(
-                  onPressed: widget.onRetryCareer ?? widget.onOpenMarket,
-                  child: Text(
-                    widget.onRetryCareer == null
-                        ? context.l10n.floorBrowseStocks
-                        : context.l10n.commonRetry,
-                  ),
+                  onPressed: widget.onRetryCareer,
+                  child: Text(context.l10n.commonRetry),
                 ),
               )
       : _CareerRecord(

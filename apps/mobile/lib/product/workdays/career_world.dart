@@ -395,6 +395,14 @@ class _DayNode extends StatefulWidget {
 
 class _DayNodeState extends State<_DayNode>
     with SingleTickerProviderStateMixin {
+  /// Pressed: the tile sinks into its shadow, so a tap visibly lands.
+  bool _pressed = false;
+  void _press(bool value) {
+    if (value != _pressed) {
+      setState(() => _pressed = value);
+    }
+  }
+
   late final _motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1450),
@@ -449,9 +457,13 @@ class _DayNodeState extends State<_DayNode>
           : context.l10n.careerWorldDayComingLater(widget.number),
       child: GestureDetector(
         onTap: widget.onTap,
+        onTapDown: (_) => _press(true),
+        onTapUp: (_) => _press(false),
+        onTapCancel: () => _press(false),
         child: Container(
           width: 84,
           height: 84,
+          transform: Matrix4.translationValues(0, _pressed ? 4 : 0, 0),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: widget.done
@@ -467,7 +479,7 @@ class _DayNodeState extends State<_DayNode>
                     : widget.active
                     ? const Color(0xFF7160C1)
                     : const Color(0xFFE2DEEC),
-                offset: const Offset(0, 6),
+                offset: Offset(0, _pressed ? 2 : 6),
               ),
               if (widget.active)
                 const BoxShadow(

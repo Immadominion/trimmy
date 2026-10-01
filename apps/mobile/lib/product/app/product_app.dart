@@ -1708,7 +1708,9 @@ class _ProductExperienceState extends State<ProductExperience>
     final controller = _dailyDesk;
     if (controller?.journey?.find(assignmentId) == null) return;
     final generation = _portfolioGeneration;
-    final finished = await Navigator.of(context).push<bool>(
+    // A filed workday says "Back to the street": closing it returns to
+    // Career, as the button promises.
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => WorkdayScreen(
           assignmentId: assignmentId,
@@ -1720,9 +1722,6 @@ class _ProductExperienceState extends State<ProductExperience>
         ),
       ),
     );
-    if (finished == true && mounted && generation == _portfolioGeneration) {
-      _shellKey.currentState?.select(ProductTab.desk);
-    }
   }
 
   Widget _shell(OnboardingProfile profile) {
