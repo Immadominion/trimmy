@@ -69,6 +69,35 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  testWidgets('the tab bar holds at the largest accessibility text size', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    // iOS's largest accessibility size.
+    tester.platformDispatcher.textScaleFactorTestValue = 3.1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const ProductShell(
+          desk: SizedBox(),
+          market: SizedBox(),
+          floor: SizedBox(),
+          profile: SizedBox(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Desk'), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: 'no overflow in the bar');
+  });
 }
 
 class _CounterPage extends StatefulWidget {

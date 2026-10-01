@@ -21,6 +21,14 @@ Future<void> main() async {
       'Manrope',
     ], await rootBundle.loadString('assets/fonts/manrope/OFL.txt'));
   });
+  // Screens are laid out for a phone held upright: in landscape a 91% sheet
+  // plus the keyboard leaves almost no room. Tablets keep every orientation.
+  final view = WidgetsBinding.instance.platformDispatcher.views.firstOrNull;
+  if (!kIsWeb &&
+      view != null &&
+      view.physicalSize.shortestSide / view.devicePixelRatio < 600) {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  }
   final preferences = await SharedPreferences.getInstance();
   final feedback = ReviewFeedback.shared;
   await feedback.load();
