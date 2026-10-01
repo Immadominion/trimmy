@@ -238,7 +238,7 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
       invitations: {repository: invitationsRepository, authenticate, newId: () => randomUUID()},
       accountClosure: {repository: accountClosureRepository, authenticate},
       // Readiness checks this pool only. Providers stay out of it by design.
-      readiness: new PostgresReadinessProbe(pool, {requiredVersion: '0039_product_events'}),
+      readiness: new PostgresReadinessProbe(pool, {requiredVersion: '0040_push_language'}),
     },
     close: () => pool.end(),
   };
