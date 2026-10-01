@@ -45,6 +45,7 @@ import '../design/product_state_page.dart';
 import '../design/product_components.dart';
 import '../design/product_theme.dart';
 import '../design/product_feedback_scope.dart';
+import '../design/keyboard_dismissal.dart';
 import '../desk/desk_models.dart';
 import '../desk/desk_portfolio_projection.dart';
 import '../desk/desk_screen.dart';
@@ -129,7 +130,8 @@ class _TrimmyProductAppState extends State<TrimmyProductApp> {
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     localeListResolutionCallback: resolveAppLocale,
-    builder: (context, child) => ProductFeedbackScope(child: child!),
+    builder: (context, child) =>
+        ProductFeedbackScope(child: KeyboardDismissal(child: child!)),
     home: Stack(
       fit: StackFit.expand,
       children: [
