@@ -239,6 +239,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Price unavailable'**
   String get marketPriceUnavailable;
+
+  /// Settings row title and the title of the language picker sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// Language choice that follows the phone's own language setting. Shown as the Language row's value in Settings and as the first option in the language picker. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone language'**
+  String get settingsLanguagePhone;
+
+  /// Line under the 'Phone language' option in the language picker, explaining that the app follows the phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the language your phone is set to.'**
+  String get settingsLanguagePhoneDetail;
 }
 
 class _AppLocalizationsDelegate

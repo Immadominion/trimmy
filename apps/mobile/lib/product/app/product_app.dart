@@ -27,6 +27,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../account/account_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../account/account_data_models.dart' show WalletStockBalance;
 import '../../account/config.dart';
 import '../../account/guest_session.dart';
@@ -96,39 +97,56 @@ class _TrimmyProductAppState extends State<TrimmyProductApp> {
     widget.preferences,
   );
 
+  /// The language chosen in Settings. Follows the phone until someone picks.
+  late final _language = AppLocaleController(widget.preferences);
+
   @override
   void dispose() {
     _moneyMode.dispose();
     _session.dispose();
+    _language.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => MoneyModeScope(
-    controller: _moneyMode,
-    child: MaterialApp(
-      title: 'Trimmy',
-      debugShowCheckedModeBanner: false,
-      theme: productTheme(),
-      builder: (context, child) => ProductFeedbackScope(child: child!),
-      home: Stack(
-        fit: StackFit.expand,
-        children: [
-          ProductExperience(
-            preferences: widget.preferences,
-            session: _session,
-            account: widget.account,
-            accountConfigurationFailed: widget.accountConfigurationFailed,
-            stockFactsRepository: widget.stockFactsRepository,
-            holdStartupPresentation:
-                widget.showStartupSplash && !_startupFinished,
-          ),
-          if (widget.showStartupSplash && !_startupFinished)
-            ReviewColdLaunchPage(
-              onContinue: () => setState(() => _startupFinished = true),
-            ),
-        ],
+  Widget build(BuildContext context) => AppLocaleScope(
+    controller: _language,
+    child: MoneyModeScope(
+      controller: _moneyMode,
+      child: ListenableBuilder(
+        listenable: _language,
+        builder: (context, _) => _app(),
       ),
+    ),
+  );
+
+  Widget _app() => MaterialApp(
+    title: 'Trimmy',
+    debugShowCheckedModeBanner: false,
+    theme: productTheme(),
+    // Null follows the phone; a choice in Settings rebuilds the app at once.
+    locale: _language.locale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localeListResolutionCallback: resolveAppLocale,
+    builder: (context, child) => ProductFeedbackScope(child: child!),
+    home: Stack(
+      fit: StackFit.expand,
+      children: [
+        ProductExperience(
+          preferences: widget.preferences,
+          session: _session,
+          account: widget.account,
+          accountConfigurationFailed: widget.accountConfigurationFailed,
+          stockFactsRepository: widget.stockFactsRepository,
+          holdStartupPresentation:
+              widget.showStartupSplash && !_startupFinished,
+        ),
+        if (widget.showStartupSplash && !_startupFinished)
+          ReviewColdLaunchPage(
+            onContinue: () => setState(() => _startupFinished = true),
+          ),
+      ],
     ),
   );
 }
@@ -3164,7 +3182,6 @@ class _ProductExperienceState extends State<ProductExperience>
         hapticsEnabled: ReviewFeedback.shared.haptics,
         animationsEnabled: !reduceMotion,
         systemReduceMotionEnabled: reduceMotion,
-        languageLabel: 'English',
       ),
       paper: SettingsPaperState(
         limit: paperLimit ?? 10000,

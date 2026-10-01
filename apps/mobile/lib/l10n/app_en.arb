@@ -115,5 +115,17 @@
   "marketPriceUnavailable": "Price unavailable",
   "@marketPriceUnavailable": {
     "description": "Shown in place of a stock's price when no price could be read."
+  },
+  "settingsLanguage": "Language",
+  "@settingsLanguage": {
+    "description": "Settings row title and the title of the language picker sheet."
+  },
+  "settingsLanguagePhone": "Phone language",
+  "@settingsLanguagePhone": {
+    "description": "Language choice that follows the phone's own language setting. Shown as the Language row's value in Settings and as the first option in the language picker. Keep short."
+  },
+  "settingsLanguagePhoneDetail": "Uses the language your phone is set to.",
+  "@settingsLanguagePhoneDetail": {
+    "description": "Line under the 'Phone language' option in the language picker, explaining that the app follows the phone."
   }
 }

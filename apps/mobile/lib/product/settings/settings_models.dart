@@ -139,14 +139,12 @@ class SettingsAppearanceState {
     required this.hapticsEnabled,
     required this.animationsEnabled,
     required this.systemReduceMotionEnabled,
-    required this.languageLabel,
   });
 
   final bool soundEnabled;
   final bool hapticsEnabled;
   final bool animationsEnabled;
   final bool systemReduceMotionEnabled;
-  final String languageLabel;
 }
 
 @immutable

@@ -325,7 +325,6 @@ ProductSettingsState _state({
     hapticsEnabled: true,
     animationsEnabled: true,
     systemReduceMotionEnabled: false,
-    languageLabel: 'English',
   ),
   paper: SettingsPaperState(limit: 10000, resetAvailable: resetAvailable),
   money: const SettingsMoneyState(

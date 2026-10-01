@@ -23,5 +23,8 @@
   "formatCompactMillion": "{value} M",
   "formatCompactBillion": "{value} mil M",
   "formatCompactTrillion": "{value} B",
-  "marketPriceUnavailable": "Precio no disponible"
+  "marketPriceUnavailable": "Precio no disponible",
+  "settingsLanguage": "Idioma",
+  "settingsLanguagePhone": "Idioma del teléfono",
+  "settingsLanguagePhoneDetail": "Usa el idioma que tiene tu teléfono."
 }

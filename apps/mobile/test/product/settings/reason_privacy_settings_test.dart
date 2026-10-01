@@ -304,7 +304,6 @@ Widget _settings(ReasonPrivacyController? controller) => MaterialApp(
         hapticsEnabled: false,
         animationsEnabled: true,
         systemReduceMotionEnabled: false,
-        languageLabel: 'English',
       ),
       paper: const SettingsPaperState(limit: 10000),
       money: const SettingsMoneyState(

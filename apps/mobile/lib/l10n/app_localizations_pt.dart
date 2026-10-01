@@ -84,4 +84,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get marketPriceUnavailable => 'Preço indisponível';
+
+  @override
+  String get settingsLanguage => 'Idioma';
+
+  @override
+  String get settingsLanguagePhone => 'Idioma do celular';
+
+  @override
+  String get settingsLanguagePhoneDetail =>
+      'Usa o idioma configurado no seu celular.';
 }

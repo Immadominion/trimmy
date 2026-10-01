@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../l10n/l10n.dart';
 import '../money/money_mode.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import '../design/product_components.dart';
 import '../design/product_motion_icon.dart';
 import '../design/product_notice.dart';
 import '../design/product_theme.dart';
+import 'language_settings.dart';
 import 'reason_privacy_settings.dart';
 import 'settings_models.dart';
 
@@ -26,7 +29,6 @@ class ProductSettingsScreen extends StatefulWidget {
     this.onSoundChanged,
     this.onHapticsChanged,
     this.onAnimationsChanged,
-    this.onLanguage,
     this.onResetPaper,
     this.onMoney,
     this.onReminderPreferences,
@@ -61,7 +63,6 @@ class ProductSettingsScreen extends StatefulWidget {
   final ValueChanged<bool>? onSoundChanged;
   final ValueChanged<bool>? onHapticsChanged;
   final ValueChanged<bool>? onAnimationsChanged;
-  final VoidCallback? onLanguage;
   final SettingsPaperReset? onResetPaper;
   final VoidCallback? onMoney;
   final VoidCallback? onReminderPreferences;
@@ -305,13 +306,24 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
               ? 'On. Follows your phone setting.'
               : 'Off. Follows your phone setting.',
         ),
-        _SettingsRow(
-          icon: Icons.language_rounded,
-          title: 'Language',
-          subtitle: appearance.languageLabel,
-          onTap: widget.onLanguage,
-        ),
+        _languageRow(context),
       ],
+    );
+  }
+
+  Widget _languageRow(BuildContext context) {
+    final languages = AppLocaleScope.maybeOf(context);
+    return _SettingsRow(
+      key: const ValueKey('settings-language'),
+      icon: Icons.language_rounded,
+      title: context.l10n.settingsLanguage,
+      subtitle: languageChoiceLabel(
+        context,
+        languages?.language ?? AppLanguage.phone,
+      ),
+      onTap: languages == null
+          ? null
+          : () => unawaited(showLanguagePicker(context, languages)),
     );
   }
 
