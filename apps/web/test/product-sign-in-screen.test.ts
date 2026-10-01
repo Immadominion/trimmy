@@ -66,6 +66,27 @@ test('email and code inputs send their entered values through the auth context a
   } finally {await h.close();}
 });
 
+test('an error about the last try goes once the entry changes and returns on the next try', async () => {
+  const h = await harness();
+  const alert = () => h.dom.window.document.querySelector('.sign-in-error[role="alert"]');
+  try {
+    await h.click('Continue with email'); await h.input('sign-in-email', 'person@example');
+    // A bad address is refused without going busy.
+    await h.click('Continue with email'); await h.render({phase: 'error', errorCode: 'PRODUCT_EMAIL_INVALID'});
+    assert.ok(alert());
+    await h.input('sign-in-email', 'person@exampl');
+    assert.equal(alert(), null);
+    await h.click('Continue with email'); assert.deepEqual(h.calls.send, ['person@example', 'person@exampl']);
+    assert.ok(alert(), 'The same refusal shows again on the next try');
+    await h.render({phase: 'code-sent', email: 'person@example.com', errorCode: 'PRODUCT_EMAIL_CODE_INVALID'});
+    assert.ok(alert());
+    await h.input('sign-in-code', '12');
+    assert.equal(alert(), null);
+    await h.input('sign-in-code', '123456'); await h.click('Continue');
+    assert.ok(alert());
+  } finally {await h.close();}
+});
+
 test('pending authentication blocks close, Escape and all provider actions', async () => {
   const h = await harness({phase: 'authenticating', busy: true});
   try {
