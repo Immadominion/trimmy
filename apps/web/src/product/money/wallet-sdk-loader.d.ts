@@ -18,8 +18,8 @@ export interface EmbeddedSolanaSnapshot {
   refreshUser(): Promise<{readonly subject: string | null; readonly wallets: readonly EmbeddedSolanaWalletRef[] | null}>;
   /** Creates the one embedded Solana wallet. Fails if the user already has one. */
   createWallet(): Promise<string>;
-  /** Signs exactly these transaction bytes with the named embedded wallet, without Privy's own modal. */
-  signTransaction(address: string, transaction: Uint8Array): Promise<Uint8Array>;
+  /** Signs exactly these transaction bytes with the named embedded wallet, with an additional wallet confirmation for direct sends. */
+  signTransaction(address: string, transaction: Uint8Array, options?: {confirm: boolean}): Promise<Uint8Array>;
 }
 export interface ProductWalletSdkPort {useEmbeddedSolana(): EmbeddedSolanaSnapshot}
 

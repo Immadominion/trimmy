@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,18 @@ import '../../support/account_data_fixtures.dart' as fixtures;
 
 const _friend = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 const _ondoMint = 'GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd';
+final _policyFixtures =
+    jsonDecode(
+          File(
+            '../../tool/testing/fixtures/client-send-policy.json',
+          ).readAsStringSync(),
+        )
+        as List;
+String _wire(String name) =>
+    _policyFixtures.firstWhere(
+          (item) => item['name'] == name,
+        )['envelope']['unsignedTransaction']
+        as String;
 final _origin = Uri.parse('https://trimmy.example');
 
 class _Reader implements AccountPortfolioReader {
@@ -137,7 +150,13 @@ Map<String, Object?> _review({
         .add(const Duration(minutes: 1))
         .toIso8601String(),
   },
-  'unsignedTransaction': 'AQ${'A' * 200}',
+  'unsignedTransaction': _wire(
+    mint == null
+        ? 'sol'
+        : mint == _ondoMint
+        ? 'stock'
+        : 'usdc',
+  ),
   'reviewToken': 'payload.mac',
 };
 
@@ -302,6 +321,24 @@ void main() {
       findsOneWidget,
     );
     expect(requests, hasLength(1));
+  });
+
+  testWidgets('hidden extra transfer is rejected before the wallet signs', (
+    tester,
+  ) async {
+    final requests = await mount(
+      tester,
+      (_) async => _reply({
+        ..._review(),
+        'unsignedTransaction': _wire('usdc/extra-sol'),
+      }),
+    );
+    await fill(tester, _friend, '5');
+    await tester.tap(find.byKey(const ValueKey('send-confirm')));
+    await pump(tester);
+    expect(find.textContaining('doesn’t match your review'), findsOneWidget);
+    expect(account.signatures, 0);
+    expect(requests.length, 1);
   });
 
   test('Max keeps SOL for fees and lists only what can be sent', () async {

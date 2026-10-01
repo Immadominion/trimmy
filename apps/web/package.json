@@ -13,6 +13,7 @@
   "dependencies": {
     "@privy-io/react-auth": "3.42.0",
     "@solana-program/memo": "0.10.0",
+    "@solana/addresses": "5.5.1",
     "@trimmy/domain": "*",
     "qrcode": "1.5.4",
     "react": "19.3.0",

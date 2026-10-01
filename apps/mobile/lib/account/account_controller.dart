@@ -1,3 +1,4 @@
+import 'reviewed_transaction.dart';
 import 'wallet_trade_signer.dart';
 import 'onramp_wallet_signer.dart';
 import 'dart:async';
@@ -254,6 +255,7 @@ class AccountController extends ChangeNotifier {
         !DateTime.now().toUtc().isBefore(expiresAt)) {
       throw const WalletTradeException('ACCOUNT_CHANGED');
     }
+    final plan = ReviewedTransaction.parse(transaction, wallet);
     await freshAccessToken();
     if (!_portfolioIdentityCurrent(subject, account, generation)) {
       throw const WalletTradeException('ACCOUNT_CHANGED');
@@ -265,6 +267,7 @@ class AccountController extends ChangeNotifier {
           transaction: transaction,
         )
         .timeout(const Duration(seconds: 45));
+    await plan.verifySigned(signed, wallet);
     if (!_portfolioIdentityCurrent(subject, account, generation) ||
         !DateTime.now().toUtc().isBefore(expiresAt)) {
       throw const WalletTradeException('QUOTE_EXPIRED');

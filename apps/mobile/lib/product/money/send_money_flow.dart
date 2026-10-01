@@ -11,6 +11,7 @@ import '../../account/account_amounts.dart';
 import '../../account/account_controller.dart';
 import '../../account/account_data_models.dart';
 import '../../account/wallet_trade_signer.dart';
+import '../../account/send_transaction_policy.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../design/product_components.dart';
 import '../design/product_notice.dart';
@@ -52,6 +53,8 @@ class SendFailure implements Exception {
     'INVALID_SIGNATURE' => 'This review expired. Review it again.',
     'TRANSFER_NOT_SENT' ||
     'TRANSFER_PENDING' => 'Check your previous send before starting another.',
+    'INVALID_TRANSACTION' || 'SIGNATURE_MISMATCH' =>
+      'This transaction doesn’t match your review. Nothing was sent.',
     'TRANSFER_STORAGE' => 'Allow device storage to keep your send recoverable.',
     'TRANSFER_BUSY' => 'One moment, then try again.',
     'ACCOUNT_REQUIRED' ||
@@ -579,6 +582,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       if (review.assetId != asset.id ||
           review.destination != to ||
           review.amountRaw != amountRaw ||
+          review.decimals != asset.decimals ||
           review.from != _ownAddress) {
         throw const SendFailure('TRANSFER_UNAVAILABLE');
       }
@@ -608,6 +612,18 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       _error = null;
     });
     try {
+      await checkSendTransaction(
+        transaction: review.unsignedTransaction,
+        from: review.from,
+        destination: review.destination,
+        assetId: review.assetId,
+        decimals: review.decimals,
+        amountRaw: review.amountRaw,
+        receivedRaw: review.receivedRaw,
+        createsAccount: review.createsAccount,
+        networkFeeLamports: review.networkFeeLamports,
+        accountRentLamports: review.accountRentLamports,
+      );
       final signed = await widget.account.signReviewedStockTransaction(
         wallet: review.from,
         transaction: review.unsignedTransaction,
@@ -626,6 +642,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       setState(
         () => _error = SendFailure(switch (failure.code) {
           'SIGNING_CANCELLED' => 'SIGNING_CANCELLED',
+          'INVALID_TRANSACTION' || 'SIGNATURE_MISMATCH' => failure.code,
           'QUOTE_EXPIRED' => 'REVIEW_EXPIRED',
           _ => 'ACCOUNT_REQUIRED',
         }).message,

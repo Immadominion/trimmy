@@ -1,3 +1,4 @@
+import {checkSendTransaction} from './send-transaction-policy.js';
 /**
  * Own money for the signed-in account: the account-scoped Paper/Real mode, the
  * embedded Solana wallet and its holdings, trading capabilities, live order
@@ -144,10 +145,12 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     transfers: setup ? {
       preview: input => setup.transfers.preview(input),
       send: async review => {
+        try {await checkSendTransaction(review);}
+        catch {throw new TransferError('INVALID_TRANSACTION');}
         let signed: string;
         // The same checks as an order: this account's wallet fills only its own slot of the reviewed message.
         try {signed = await setup.wallet.signReviewedTransaction({wallet: review.from, transaction: review.unsignedTransaction,
-          expiresAt: review.expiresAt, route: 'aggregator'});}
+          expiresAt: review.expiresAt, route: 'aggregator', purpose: 'send'});}
         catch (error) {throw new TransferError(error instanceof Error && 'code' in error ? String(error.code) : 'SIGNING_CANCELLED');}
         return setup.transfers.execute(review, signed);
       },

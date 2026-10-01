@@ -34,6 +34,8 @@ export function transferMessage(code: string): string {
     case 'SIMULATION_FAILED': case 'SIMULATION_MISMATCH': return 'This send didn’t pass its check. Nothing was sent.';
     case 'REVIEW_EXPIRED': case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': case 'QUOTE_EXPIRED': return 'This review expired. Review it again.';
     case 'TRANSFER_NOT_SENT': case 'TRANSFER_PENDING': return 'Check your previous send before starting another.';
+    case 'INVALID_TRANSACTION': return 'This transaction doesn’t match your review. Nothing was signed.';
+    case 'SIGNATURE_MISMATCH': return 'Your wallet returned a different transaction. Nothing was sent.';
     case 'TRANSFER_STORAGE': return 'Allow device storage to keep your send recoverable.';
     case 'TRANSFER_BUSY': return 'One moment, then try again.';
     case 'ACCOUNT_REQUIRED': case 'WALLET_REQUIRED': case 'ACCOUNT_CHANGED': case 'WALLET_CHANGED': return 'Sign in again to use your wallet.';

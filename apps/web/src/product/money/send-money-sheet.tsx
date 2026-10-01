@@ -123,7 +123,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
     try {
       const next = await money.transfers.preview({asset: asset.id, destination, amountRaw: raw});
       // The review must be the send that was asked for, from this wallet.
-      if (next.assetId !== asset.id || next.destination !== destination || next.amountRaw !== raw || next.from !== holdings?.walletAddress) {
+      if (next.assetId !== asset.id || next.destination !== destination || next.amountRaw !== raw || next.decimals !== asset.decimals || next.from !== holdings?.walletAddress) {
         throw new TransferError('TRANSFER_UNAVAILABLE');
       }
       if (active.current) {setReview(next); setStage('review');}
@@ -143,7 +143,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
     } catch (error) {
       if (!active.current) return;
       const code = error instanceof TransferError ? error.code : error instanceof Error && 'code' in error ? String(error.code) : '';
-      if(!['SIGNING_CANCELLED','SIGNING_TIMEOUT','TRANSFER_STORAGE','ACCOUNT_REQUIRED','WALLET_CHANGED','WALLET_BUSY'].includes(code)) {await recover();return;}
+      if(!['INVALID_TRANSACTION','SIGNATURE_MISMATCH','SIGNING_CANCELLED','SIGNING_TIMEOUT','TRANSFER_STORAGE','ACCOUNT_REQUIRED','WALLET_CHANGED','WALLET_BUSY'].includes(code)) {await recover();return;}
       setMessage(transferMessage(code));
       if (['REVIEW_EXPIRED', 'INVALID_REVIEW', 'INVALID_SIGNATURE', 'QUOTE_EXPIRED'].includes(code)) {setReview(null); setStage('details');}
     } finally {if (active.current) setBusy(false);}

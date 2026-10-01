@@ -9,6 +9,9 @@ import {moneyPage} from './support/money-dom.js';
 import {apiVerifier} from './support/money-harness.js';
 import {ACCOUNT_ID, holdingsJson, message, stockHolding, unsigned} from './support/money-fixtures.js';
 
+const fixtureModule = new URL('../../../tool/testing/client-send-fixtures.mjs', import.meta.url).href;
+const {buildSendReview} = await import(fixtureModule);
+
 const FRIEND = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 const USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64');
@@ -23,7 +26,7 @@ function review(from: string, overrides: Record<string, unknown> = {}) {
 test('Send reviews on the server, signs once with the embedded wallet, sends and confirms', async () => {
   const page = await moneyPage();
   const verify = await apiVerifier();
-  const unsignedWire = base64(unsigned(message([page.user.address], {version: 0}), 1));
+  const unsignedWire = (await buildSendReview({wallet: page.user.address})).unsignedTransaction;
   page.server.reply = call => {
     if (call.path === '/v1/wallet/transfers/preview') return Response.json({...review(page.user.address), unsignedTransaction: unsignedWire});
     if (call.path === '/v1/wallet/transfers/execute') {
@@ -90,10 +93,11 @@ test('assets ready to send, stock tokens in shares, and SOL Max keeps a reserve'
 test('a lost send reply recovers its persisted review, including after closing and reopening',async()=>{
  const page=await moneyPage();let broadcasts=0;
  const id='77777777-7777-4777-8777-777777777777',signature='5'.repeat(88);
- const saved={...review(page.user.address),status:'pending',signature};
+ const valid = {...review(page.user.address), unsignedTransaction:(await buildSendReview({wallet:page.user.address})).unsignedTransaction};
+ const saved={...valid,status:'pending',signature};
  page.server.reply=call=>{
   if(call.path.startsWith('/v1/wallet/transfers/recovery'))return Response.json({transfer:broadcasts?saved:null});
-  if(call.path==='/v1/wallet/transfers/preview')return Response.json(review(page.user.address));
+  if(call.path==='/v1/wallet/transfers/preview')return Response.json(valid);
   if(call.path==='/v1/wallet/transfers/execute'){broadcasts++;throw Error('reply lost after submission');}
   if(call.path.startsWith('/v1/wallet/transfers/status'))return Response.json({status:'pending',slot:null});
   return undefined;
@@ -175,5 +179,24 @@ test('wallet refreshes do not restart the pending send observation window', asyn
     assert.equal(watches, 1);
     assert.match(page.text(), /Still confirming/);
     assert.match(page.text(), /Don’t send it again/);
+  } finally {await page.close();}
+});
+
+
+test('a send with hidden extra outflow is refused before the SDK can sign', async () => {
+  const page = await moneyPage();
+  const changed = await buildSendReview({wallet: page.user.address, mutation: 'extra-sol'});
+  const response = {...review(page.user.address), unsignedTransaction: changed.unsignedTransaction};
+  page.server.reply = call => call.path === '/v1/wallet/transfers/preview' ? Response.json(response) : undefined;
+  function Open() {const money = useMoney(); useEffect(() => money.openSend(), []); return null;}
+  try {
+    await page.render(createElement(Open));
+    await page.waitFor(() => page.button('Review send')?.disabled === false, 'send ready');
+    await page.type('[data-testid="send-destination"]', FRIEND); await page.type('[data-testid="send-amount"]', '5');
+    await page.click('Review send'); await page.waitFor(() => !!page.button('Send now'), 'review');
+    await page.click('Send now');
+    assert.match(page.text(), /doesn’t match your review/);
+    assert.equal(page.privy.signs, 0);
+    assert.equal(page.calls.some(call => call.path.endsWith('/execute')), false);
   } finally {await page.close();}
 });

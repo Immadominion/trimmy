@@ -1,8 +1,7 @@
 // The installed Privy React SDK (3.42.0) ships broken transitive declarations,
 // so this interop edge stays in JS behind wallet-sdk-loader.d.ts, as for the
 // auth and recovery adapters. It reads no key or token and signs only the
-// bytes a caller passes, with Privy's own confirmation modal turned off: the
-// app's review screen is the person's explicit confirmation.
+// bytes a caller passes. Direct sends also show Privy's wallet confirmation.
 const ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 /** Only Privy embedded Solana wallets; external or Ethereum wallets never count. */
@@ -49,11 +48,11 @@ export function createProductWalletSdk(sdk, solana) {
           if (typeof address !== 'string' || !ADDRESS.test(address)) throw new Error('PRODUCT_WALLET_CREATE_INVALID');
           return address;
         },
-        async signTransaction(address, transaction) {
+        async signTransaction(address, transaction, options) {
           const wallet = embedded.find(candidate => candidate.address === address);
           if (!wallet || !(transaction instanceof Uint8Array)) throw new Error('PRODUCT_WALLET_UNAVAILABLE');
           const result = await signer.signTransaction({transaction, wallet, chain: 'solana:mainnet',
-            options: {uiOptions: {showWalletUIs: false}}});
+            options: {uiOptions: {showWalletUIs: options?.confirm === true}}});
           if (!(result?.signedTransaction instanceof Uint8Array)) throw new Error('PRODUCT_WALLET_SIGNATURE_INVALID');
           return result.signedTransaction;
         },
