@@ -146,16 +146,27 @@ class WorkdayException implements Exception {
 }
 
 class WorkdayRepository {
-  WorkdayRepository(this.origin, this.authorization, {http.Client? client})
-    : _client = client ?? http.Client() {
+  WorkdayRepository(
+    this.origin,
+    this.authorization, {
+    http.Client? client,
+    this.language,
+  }) : _client = client ?? http.Client() {
     if (origin.scheme != 'https' || origin.userInfo.isNotEmpty) {
       throw ArgumentError('HTTPS required');
     }
   }
   final Uri origin;
   final Future<PaperAuthorization> Function() authorization;
+
+  /// The workday text language to ask for: es, pt or fr, or null for English
+  /// (which sends nothing, as installed apps always have).
+  final String? Function()? language;
   final http.Client _client;
   bool _closed = false;
+
+  /// Set once an API from before workday languages has refused `lang`.
+  bool _languageRefused = false;
   void close() {
     _closed = true;
     _client.close();
@@ -179,16 +190,41 @@ class WorkdayRepository {
         'revision': assignment.revision,
         'draft': draft,
       });
+
+  /// A workday request in the reader's language. An API from before workday
+  /// languages refuses `lang` while checking the request, before any work is
+  /// read or saved, so the same request is sent again without it; once that
+  /// succeeds this repository stops asking.
   Future<WorkJourney> _request(
     String path, [
     Map<String, dynamic>? body,
   ]) async {
+    final lang = _languageRefused ? null : language?.call();
+    if (lang == null) return _send(path, body, null);
+    try {
+      return await _send(path, body, lang);
+    } on WorkdayException catch (error) {
+      if (error.code != 'INVALID_REQUEST') rethrow;
+      final journey = await _send(path, body, null);
+      _languageRefused = true;
+      return journey;
+    }
+  }
+
+  Future<WorkJourney> _send(
+    String path,
+    Map<String, dynamic>? body,
+    String? lang,
+  ) async {
     final auth = await authorization();
     if (_closed) throw const WorkdayException('SESSION_CHANGED');
+    final target = origin.resolve('/v1/career/workdays$path');
     final request =
         http.Request(
             body == null ? 'GET' : 'POST',
-            origin.resolve('/v1/career/workdays$path'),
+            lang == null
+                ? target
+                : target.replace(queryParameters: {'lang': lang}),
           )
           ..followRedirects = false
           ..headers.addAll({
@@ -218,7 +254,13 @@ class WorkdayRepository {
       WorkJourney? journey;
       try {
         final error = jsonDecode(utf8.decode(bytes)) as Map;
-        code = error['code'] as String? ?? code;
+        final nested = error['error'];
+        code =
+            error['code'] as String? ??
+            (nested is Map && response.statusCode == 400
+                ? nested['code'] as String?
+                : null) ??
+            code;
         if (response.statusCode == 400 &&
             const {'CHECK_EVIDENCE', 'CHECK_DECISION'}.contains(code)) {
           final note = error['feedback'];

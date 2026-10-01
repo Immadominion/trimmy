@@ -167,6 +167,71 @@ void main() {
     },
   );
 
+  test(
+    'workdays are read in the app language, and an API without languages is asked again in English',
+    () async {
+      final data = fixture();
+      WorkdayRepository repository(
+        String? language,
+        FutureOr<http.Response> Function(http.Request) fn,
+        List<Uri> urls,
+      ) => WorkdayRepository(
+        Uri.parse('https://trimmy.test'),
+        () async => const GuestPaperAuthorization('test'),
+        client: MockClient((request) async {
+          urls.add(request.url);
+          return await fn(request);
+        }),
+        language: () => language,
+      );
+      String shown(Uri url) =>
+          url.hasQuery ? '${url.path}?${url.query}' : url.path;
+
+      var urls = <Uri>[];
+      await repository('fr', (_) => response(data), urls).read();
+      expect(urls.map(shown), ['/v1/career/workdays?lang=fr']);
+
+      // The API before workday languages refuses the parameter while
+      // checking the request, before reading or saving anything.
+      urls = <Uri>[];
+      final old = repository(
+        'pt',
+        (request) => request.url.hasQuery
+            ? http.Response(
+                '{"error":{"code":"INVALID_REQUEST","message":"Request parameters are invalid."}}',
+                400,
+              )
+            : response(data),
+        urls,
+      );
+      await old.read();
+      await old.read();
+      expect(urls.map(shown), [
+        '/v1/career/workdays?lang=pt',
+        '/v1/career/workdays',
+        '/v1/career/workdays',
+      ]);
+
+      // Any other failure is the answer; nothing is sent twice.
+      urls = <Uri>[];
+      await expectLater(
+        repository(
+          'es',
+          (_) => http.Response('{"code":"WORK_UNAVAILABLE"}', 503),
+          urls,
+        ).read(),
+        throwsA(isA<WorkdayException>()),
+      );
+      expect(urls.map(shown), ['/v1/career/workdays?lang=es']);
+
+      urls = <Uri>[];
+      await repository(null, (_) => response(data), urls).read();
+      expect(urls.map(shown), [
+        '/v1/career/workdays',
+      ], reason: 'English sends no language, as installed apps do');
+    },
+  );
+
   test('a conflicting draft refreshes before an explicit retry', () async {
     final revisions = <int>[];
     var reads = 0;

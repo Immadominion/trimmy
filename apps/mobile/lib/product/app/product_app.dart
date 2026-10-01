@@ -595,6 +595,18 @@ class _ProductExperienceState extends State<ProductExperience>
     if (ProductNotificationPermission.useLanguage(context.l10n)) {
       _applyReminder();
     }
+    // Workday text comes in the app's language: a change reads it again.
+    final workdayLanguage = _workdayLanguageFor(
+      Localizations.maybeLocaleOf(context),
+    );
+    final desk = _dailyDesk;
+    if (_workdayLanguageSeen &&
+        workdayLanguage != _workdayLanguage &&
+        desk != null) {
+      scheduleMicrotask(desk.refresh);
+    }
+    _workdayLanguage = workdayLanguage;
+    _workdayLanguageSeen = true;
     if (_market == null) {
       final controller = StockResearchScope.of(
         context,
@@ -1653,6 +1665,19 @@ class _ProductExperienceState extends State<ProductExperience>
     await Future.wait<void>([_career.refresh(), _retryPaperDesk()]);
   }
 
+  String? _workdayLanguage;
+  bool _workdayLanguageSeen = false;
+
+  /// The workday language the API serves for an app language; English
+  /// (and anything else) asks for none.
+  static String? _workdayLanguageFor(Locale? locale) =>
+      switch (locale?.languageCode) {
+        'es' => 'es',
+        'pt' => 'pt',
+        'fr' => 'fr',
+        _ => null,
+      };
+
   void _ensureDailyDesk() {
     final account = widget.account;
     if (_dailyDesk != null ||
@@ -1664,7 +1689,11 @@ class _ProductExperienceState extends State<ProductExperience>
     final api = PracticeAccountConfig.fromEnvironment().apiUri;
     if (api == null) return;
     final controller = WorkdayController(
-      WorkdayRepository(api, account.paperAuthorization),
+      WorkdayRepository(
+        api,
+        account.paperAuthorization,
+        language: () => _workdayLanguage,
+      ),
     );
     _dailyDesk = controller;
     controller.addListener(_syncReminder);
