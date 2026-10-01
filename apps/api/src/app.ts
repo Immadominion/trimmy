@@ -1,4 +1,5 @@
 import {registerReminderRoutes, REMINDER_PREFERENCES_ROUTE, type ReminderAdapters} from './reminder-preferences.js';
+import {PRODUCT_EVENTS_ROUTE, PRODUCT_INSTALL_LINK_ROUTE, registerProductEventRoutes, type ProductEventAdapters} from './product-events.js';
 import {registerPushRoutes, type PushAdapters} from './push-notifications.js';
 import {liveStockExecutionEnabled,registerLiveStockRoutes} from './live-stock-orders.js';
 import {registerLiveTradeHistoryRoute} from './live-trade-history.js';
@@ -89,6 +90,8 @@ import type {RelationshipSafetyReadiness} from './relationship-safety-config.js'
 
 export interface ApiOptions {
   readonly reminders?: ReminderAdapters;
+  /** First-party usage events; no third party receives them. */
+  readonly events?: ProductEventAdapters;
   readonly push?: PushAdapters;
   readonly onramp?: OnrampAdapters;
   readonly logger?: boolean;
@@ -251,6 +254,8 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     const onrampWrite = request.method === 'POST' && ['/v1/funding/wallet', '/v1/funding/verify', '/v1/funding/orders', '/v1/funding/status'].includes(request.routeOptions.url ?? '');
     const workdayWrite = request.method === 'POST' && ['/v1/career/workdays/step','/v1/career/workdays/draft'].includes(request.routeOptions.url ?? '');
     const reminderWrite = request.method === 'PUT' && request.routeOptions.url === REMINDER_PREFERENCES_ROUTE;
+    // Usage events record how the app is used. They cannot reach a wallet, an order or any account state.
+    const eventsWrite = request.method === 'POST' && [PRODUCT_EVENTS_ROUTE, PRODUCT_INSTALL_LINK_ROUTE].includes(request.routeOptions.url ?? '');
     const pushWrite = ['PUT','DELETE'].includes(request.method) && request.routeOptions.url === '/v1/notifications/devices/:installationId';
     const communityWrite = request.method === 'PUT' && request.routeOptions.url === '/v1/community/following/:socialId';
     const careerWrite = (request.method === 'POST' &&
@@ -268,7 +273,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
       (request.method === 'PUT' && request.routeOptions.url === SOCIAL_BLOCK_ROUTE);
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !practiceWrite && !practiceSession && !watchlistWrite &&
         !followingWrite && !walletPossessionWrite && !invitationWrite && !closureWrite && !paperWrite && !guestWrite &&
-        !pushWrite && !reminderWrite && !onrampWrite && !liveWrite && !workdayWrite && !dailyDeskWrite && !communityWrite && !productProfileWrite && !careerWrite && !careerReasonSharingWrite && !socialRelationshipWrite) {
+        !pushWrite && !reminderWrite && !eventsWrite && !onrampWrite && !liveWrite && !workdayWrite && !dailyDeskWrite && !communityWrite && !productProfileWrite && !careerWrite && !careerReasonSharingWrite && !socialRelationshipWrite) {
       return reply.code(503).send(safeError('FINANCIAL_OPERATIONS_DISABLED', 'Live operations are unavailable in this foundation build.', request.id));
     }
   });
@@ -359,6 +364,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
 
   registerPushRoutes(app, options.push);
   registerReminderRoutes(app, options.reminders);
+  registerProductEventRoutes(app, options.events);
   registerPracticeRoutes(app, options.practice);
   registerPracticeSessionRoute(app, options.practiceSessions);
   registerGuestSessionRoutes(app, options.guestSessions);
