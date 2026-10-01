@@ -55,6 +55,8 @@ import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros
 import {useT, type Translator} from '../i18n/react';
 import type {MessageKey} from '../i18n/runtime';
 import * as fmt from '../i18n/format';
+import {onboardingStep, startupStage, UsageProvider, useUsageObserver} from './usage';
+import type {ProductEvents} from './product-events';
 
 type Page = 'desk' | 'market' | 'career' | 'profile' | 'start' | 'welcome' | 'sign-in' | 'daily' | 'work' | 'history' | 'settings' | 'community' | 'updates';
 
@@ -96,15 +98,17 @@ export interface ProductAppProps {
   readonly moneyStorage?: MoneyStorage | null;
   /** Client for the social, settings and Career action routes. Defaults to the API origin. */
   readonly productApi?: ProductApiClient;
+  /** Usage events (see usage.tsx). The production entry passes one; none records nothing. */
+  readonly usage?: ProductEvents | null;
 }
 export function ProductApp(props: ProductAppProps) {
   const apiBase = props.apiBase === undefined ? productApiBase() : props.apiBase;
   const storage = useMemo(() => props.storage ?? browserStorage(), [props.storage]);
   const client = useMemo(() => props.practiceClient ?? (apiBase ? new PracticeClient({baseUrl: apiBase}) : null), [apiBase, props.practiceClient]);
   const connect = useMemo(() => props.connectAccount ?? (client ? createProductAccountConnector({client, storage}) : async () => {throw new Error('Sign-in unavailable');}), [client, storage, props.connectAccount]);
-  return <ProductAuthProvider apiBase={apiBase} connectAccount={connect} {...(props.authConfig ? {config: props.authConfig} : {})} {...(props.authSdk ? {sdk: props.authSdk} : {})}>
+  return <UsageProvider value={props.usage ?? null}><ProductAuthProvider apiBase={apiBase} connectAccount={connect} {...(props.authConfig ? {config: props.authConfig} : {})} {...(props.authSdk ? {sdk: props.authSdk} : {})}>
     <IdentityWorkspace {...props} apiBase={apiBase} storage={storage} {...(client ? {practiceClient: client} : {})}/>
-  </ProductAuthProvider>;
+  </ProductAuthProvider></UsageProvider>;
 }
 function IdentityWorkspace(props: ProductAppProps) {
   const auth = useProductAuth();
@@ -496,6 +500,16 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const firstDay = !journeyScreen && !recoveryScreen && !signIn && (route.page === 'start' || route.page === 'welcome' || (route.page === 'desk' && !hasGuest && !busy));
 
   const onboarding = firstDay || signIn || journeyScreen || recoveryScreen;
+  useUsageObserver({
+    page: onboarding ? 'onboarding' : route.page,
+    step: onboardingStep({journey: journeyScreen && !journey.preservedNotice ? journey.view.kind : null, intro: firstDay ? introStep : null,
+      home: !onboarding && route.page === 'desk' && hasGuest}),
+    workday: route.page === 'work' && assignment ? {ordinal: assignment.ordinal, resumed: assignment.step > 0 || assignment.draft !== ''} : null,
+    waiting: workdays.journey?.schedule?.state ?? null,
+    fastBuy, addMoney: money.fundWalletOpen, send: money.sendOpen, real: money.real,
+    failed: startupStage(error),
+    desk: session && hasGuest ? {key: accountAccess?.accountId ?? session.guest?.guestId ?? 'desk', authorization: () => session.authorizationHeader()} : null,
+  });
   // Mirrors the render order below: recovery, then the journey, then sign-in, then the first day.
   const doodle: DoodleScene | null = !onboarding ? null : recoveryScreen ? 'preserved'
     : journeyScreen ? (journey.preservedNotice ? 'preserved' : journey.view.kind === 'gate' ? 'account' : journey.view.kind === 'celebration' ? 'order'

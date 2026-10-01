@@ -11,6 +11,7 @@ import {useLanguageChoice, useT, type Translator} from '../i18n/react';
 import {LOCALES, LOCALE_NAMES, browserLanguages, resolveLocale, type Locale} from '../i18n/locales';
 import type {MessageKey} from '../i18n/runtime';
 import * as fmt from '../i18n/format';
+import {useUsage} from './usage';
 
 const loginIcons: Record<ProductLoginMethod, string> = {email: 'account-email-rounded.png', google: 'account-google-rounded.png', x: 'account-x-standalone-rounded.png'};
 
@@ -134,6 +135,8 @@ function resetFailure(error: unknown): MessageKey {
 /** Mobile's Settings in the web frame. Rows the browser cannot support say so plainly. */
 export function SettingsScreen(props: SettingsScreenProps) {
   const tr = useT();
+  const usage = useUsage();
+  const [sharing, setSharing] = useState(() => usage.recorder?.enabled ?? false);
   const language = useLanguageChoice();
   const [view, setView] = useState<'list' | 'reminders'>('list');
   const [dialog, setDialog] = useState<null | 'privacy' | 'reset' | 'reset-done' | 'close' | 'language'>(null);
@@ -165,6 +168,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     setDialog(null); setLanguageNote(null);
     try {
       const result = await language.choose(choice);
+      usage.track({name: 'language_set', props: {language: choice ?? 'browser'}});
       if (!mounted.current) return;
       setLanguageNote(choice !== null && result.locale !== choice ? {kind: 'failed', locale: choice} : result.saved ? null : {kind: 'not-saved'});
     } catch {if (mounted.current && choice !== null) setLanguageNote({kind: 'failed', locale: choice});}
@@ -195,6 +199,9 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <input className="web-profile-switch" type="checkbox" role="switch" aria-label={tr('profile.settings.animations')} checked={props.motion && !reducedMotion} disabled={reducedMotion} onChange={event => props.onMotion(event.target.checked)}/></Row>
         <Row title={tr('profile.settings.reduceMotion')} subtitle={tr(reducedMotion ? 'profile.settings.reduceMotionOn' : 'profile.settings.reduceMotionOff')}/>
         <Row icon="settings-haptics.png" title={tr('profile.settings.haptics')} subtitle={tr('profile.settings.hapticsHint')}/>
+        {usage.recorder && <Row title={tr('profile.settings.usage')} subtitle={tr('profile.settings.usageHint')}>
+          <input className="web-profile-switch" type="checkbox" role="switch" aria-label={tr('profile.settings.usage')} checked={sharing}
+            onChange={event => {usage.recorder?.setEnabled(event.target.checked); setSharing(event.target.checked);}}/></Row>}
         <Row title={tr('profile.language.title')} subtitle={languageSubtitle}>
           <button className="text-button" aria-label={tr('profile.language.change')} onClick={() => setDialog('language')}>{tr('profile.settings.change')}</button></Row>
       </Section>

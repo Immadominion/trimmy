@@ -246,7 +246,8 @@ export function server(options: {checkpoint?: LaunchCheckpoint | null; traded?: 
 }
 
 export async function harness(options: {checkpoint?: LaunchCheckpoint | null; traded?: boolean; account?: boolean; savedGuest?: boolean;
-  expireSavedGuest?: boolean; hash?: string; storage?: MemoryStorage; reply?: Reply; authEnabled?: boolean} = {}) {
+  expireSavedGuest?: boolean; hash?: string; storage?: MemoryStorage; reply?: Reply; authEnabled?: boolean;
+  usage?: import('../../src/product/product-events.js').ProductEvents} = {}) {
   const dom = new JSDOM('<!doctype html><div id="root"></div>', {url: `https://trimmy.example/${options.hash ?? ''}`, pretendToBeVisual: true});
   const saved = new Map<string, PropertyDescriptor | undefined>();
   const expose = (name: string, value: unknown) => {saved.set(name, Object.getOwnPropertyDescriptor(globalThis, name)); Object.defineProperty(globalThis, name, {configurable: true, writable: true, value});};
@@ -279,7 +280,7 @@ export async function harness(options: {checkpoint?: LaunchCheckpoint | null; tr
   const flush = async (ms = 25) => {await act(async () => {await delay(ms);});};
   const app = async () => {
     await act(async () => {root.render(createElement(ProductApp, {apiBase: '/api', practiceClient: practice, marketClient: market, storage, productApi,
-      authConfig: {kind: 'disabled'}, ...(options.account ? {accountAccess: account} : {})}));});
+      authConfig: {kind: 'disabled'}, ...(options.account ? {accountAccess: account} : {}), ...(options.usage ? {usage: options.usage} : {})}));});
     await flush();
   };
   const reload = async () => {await act(async () => {root.render(createElement('div', null, 'Reloading'));}); await flush(); await app();};

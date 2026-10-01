@@ -8,6 +8,7 @@ import {useT} from '../i18n/react';
 import type {MessageKey} from '../i18n/runtime';
 import * as fmt from '../i18n/format';
 import {rankName} from './career-milestones';
+import {useUsage} from './usage';
 
 /**
  * Back and Escape run each screen's named action, as mobile's PopScope does.
@@ -94,6 +95,7 @@ export interface ReminderPageProps {
 /** Mobile's "A little nudge?" page with an honest browser delivery: a calendar event. */
 export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar = downloadReminderCalendar, onClose}: ReminderPageProps) {
   const tr = useT();
+  const usage = useUsage();
   const [selected, setSelected] = useState<ReminderChoice | null>(saved?.choice ?? null);
   const [confirmed, setConfirmed] = useState<ReminderChoice | null>(null);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState<MessageKey | null>(null), [error, setError] = useState<MessageKey | null>(null);
@@ -110,6 +112,8 @@ export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar 
     if (!choice) return;
     if (!skip && confirmed === choice) {await onDone(); return;}
     await onSave(choice);
+    // A browser has no reminder permission to ask: the calendar file is the reminder.
+    usage.track({name: 'reminder_choice', props: {frequency: choice, permission: 'not_asked'}});
     if (choice === 'off') {await onDone(); return;}
     // A browser tab cannot wake itself; keep the choice and offer the calendar.
     if (mounted.current) {setConfirmed(choice); setMessage('firstDay.reminders.saved');}

@@ -6,6 +6,7 @@ import {CompanyLogo, Loading, SalArt, art, errorCopy, micros, shares, toPaperMic
 import {FirstOrderCelebration} from './first-day-followup';
 import {useT} from '../i18n/react';
 import * as fmt from '../i18n/format';
+import {onboardingStep, useUsage} from './usage';
 
 type Phase = 'welcome' | 'note' | 'practice' | 'review' | 'receipt';
 /** A null symbol shows the "Stock token" fallback, written at render time in the page's language. */
@@ -45,6 +46,7 @@ function markHistory(phase: Phase, push: boolean): void {
 /** First-day practice uses the same persisted guest, preview and receipt boundary as the desk. */
 export function FirstDay(props: FirstDayProps) {
   const {market, session, portfolio, career} = props;
+  const usage = useUsage();
   const [phase, setPhase] = useState<Phase>(() => props.initialStep === 'practice' && !session.hasIdentity ? 'note' : props.initialStep);
   const [choices, setChoices] = useState<readonly Company[]>([]);
   const [selected, setSelected] = useState<Company | null>(null);
@@ -168,7 +170,7 @@ export function FirstDay(props: FirstDayProps) {
     career={career} loading={false} onRetry={() => {}} onContinue={() => callbacks.current.onReceiptContinue(receipt.id)}/>;
   return <section className={`first-day first-day-${phase}`} data-motion={props.motion} aria-label={tr('firstDay.screen.label')}>
     {phase !== 'welcome' && <button className="intro-close" aria-label={tr('firstDay.skip')} disabled={busy}
-      onClick={() => void exit(false)}>×</button>}
+      onClick={() => {const step = onboardingStep({journey: null, intro: phase, home: false}); if (step) usage.track({name: 'onboarding_skip', props: {step}}); void exit(false);}}>×</button>}
     {phase === 'welcome' && <div className="intro-welcome"><div className="intro-art"><SalArt motion={props.motion}/></div><div className="intro-copy">
       <p className="intro-eyebrow">{tr('firstDay.welcome.eyebrow')}</p><h1 ref={heading} tabIndex={-1}>{tr('firstDay.welcome.title')}</h1>
       <p>{tr.rich('firstDay.welcome.lede')}</p><div className="intro-actions"><button className="primary" onClick={() => go('note')}>{tr('firstDay.welcome.start')}</button>

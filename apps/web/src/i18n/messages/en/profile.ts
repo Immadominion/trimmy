@@ -105,6 +105,9 @@ export default {
   'profile.settings.reduceMotionOff': 'Off. Follows your device setting.',
   'profile.settings.haptics': 'Haptics',
   'profile.settings.hapticsHint': 'Not available in a browser.',
+  /** First-party usage events (counts only); turning it off forgets anything unsent. */
+  'profile.settings.usage': 'Share usage data',
+  'profile.settings.usageHint': 'Counts of which screens open and which steps finish, to make Trimmy better. No names, amounts or messages.',
   /** Section about practice (“paper”) money. */
   'profile.settings.paperSection': 'Paper',
   'profile.settings.paperLimit': 'Paper limit',

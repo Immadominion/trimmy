@@ -82,6 +82,8 @@ const messages: Translation<typeof en> = {
   'profile.settings.reduceMotionOff': 'Desactivado. Sigue el ajuste de tu dispositivo.',
   'profile.settings.haptics': 'Vibración',
   'profile.settings.hapticsHint': 'No disponible en un navegador.',
+  'profile.settings.usage': 'Compartir datos de uso',
+  'profile.settings.usageHint': 'Conteos de qué pantallas se abren y qué pasos se completan, para mejorar Trimmy. Sin nombres, montos ni mensajes.',
   'profile.settings.paperSection': 'Práctica',
   'profile.settings.paperLimit': 'Límite de práctica',
   'profile.settings.paperLimitUnavailable': 'No disponible por ahora.',

@@ -141,6 +141,15 @@ export class PracticeSession {
   get isAccount(): boolean {return this.#account !== null;}
   get hasSavedGuest(): boolean {return !this.isAccount && this.#saved !== null && this.#saved.claim?.status !== 'claimed';}
   get hasSavedIdentity(): boolean {return this.isAccount || this.hasSavedGuest;}
+  /** This desk's Authorization header for its own routes (linking usage events), or null without one. */
+  async authorizationHeader(): Promise<string | null> {
+    if (this.#account) {
+      const token = await this.#account.freshAccessToken();
+      return typeof token === 'string' && /^[A-Za-z0-9._~-]{1,16384}$/u.test(token) ? `Bearer ${token}` : null;
+    }
+    const guest = this.guest;
+    return guest ? `Guest ${guest.token}` : null;
+  }
   get hasIdentity(): boolean {return !this.#closed && !this.#account?.signal.aborted && (this.isAccount || this.guest !== null);}
   get guest(): GuestCredential | null {return this.#saved?.claim?.status === 'claimed' ? null : this.#saved?.guest ?? null;}
   get pendingCommit(): PendingPaperCommit | null {return this.#saved?.pendingCommit ?? null;}

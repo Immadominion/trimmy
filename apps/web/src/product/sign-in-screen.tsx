@@ -3,6 +3,7 @@ import {useProductAuth, type ProductLoginMethod} from './product-auth';
 import {SalArt, art} from './ui';
 import {useT, type Translator} from '../i18n/react';
 import type {MessageKey} from '../i18n/runtime';
+import {useUsage} from './usage';
 
 /** Google and X are names and never translated; "email" is a word and is. Each method has its own whole sentence. */
 const methods: Record<ProductLoginMethod, {name: string | null; icon: string; continueWith: MessageKey}> = {
@@ -34,6 +35,7 @@ export function SignInScreen({motion, hasDesk, onBack, onAccount, entryGate = fa
 }) {
   const auth = useProductAuth();
   const tr = useT();
+  const usage = useUsage();
   const [emailEntry, setEmailEntry] = useState(false), [email, setEmail] = useState(''), [code, setCode] = useState('');
   const [guestBusy, setGuestBusy] = useState(false), [guestError, setGuestError] = useState(false);
   const [resendAt, setResendAt] = useState(0), [clock, setClock] = useState(Date.now);
@@ -52,12 +54,13 @@ export function SignInScreen({motion, hasDesk, onBack, onAccount, entryGate = fa
   }
   async function guest() {
     if (auth.busy || guestBusy || !onGuest) return;
+    if (entryGate) usage.track({name: 'gate_choice', props: {choice: 'guest'}});
     setGuestBusy(true); setGuestError(false);
     try {await onGuest();} catch {setGuestError(true);} finally {setGuestBusy(false);}
   }
   useEffect(() => {const previous = () => {if (!entryGate) window.history.replaceState(null, '', '#sign-in'); void back();}; window.addEventListener('popstate', previous); return () => window.removeEventListener('popstate', previous);});
   useEffect(() => {const escape = (event: KeyboardEvent) => {if (event.key === 'Escape') {event.preventDefault(); void back();}}; window.addEventListener('keydown', escape); return () => window.removeEventListener('keydown', escape);});
-  function choose(method: ProductLoginMethod) {if (auth.busy) return; if (method === 'email') setEmailEntry(true); else void auth.loginWithProvider(method);}
+  function choose(method: ProductLoginMethod) {if (auth.busy) return; if (entryGate) usage.track({name: 'gate_choice', props: {choice: method}}); if (method === 'email') setEmailEntry(true); else void auth.loginWithProvider(method);}
   async function send() {setResendAt(Date.now() + 30000); await auth.sendEmailCode(email);}
   const preferred = auth.lastSuccessfulMethod ?? 'email';
   const message = auth.phase === 'account-choice' ? null : authError(auth.errorCode, tr);

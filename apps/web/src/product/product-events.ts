@@ -125,14 +125,17 @@ export class ProductEvents {
     if (!enabled) {this.#queue = []; this.#remove(QUEUE_KEY); this.#remove(ONCE_KEY); this.#linkedTo = null;}
   }
 
-  /** Ties this browser to the desk now using it, once per desk per page load. */
-  async link(deskKey: string): Promise<void> {
-    if (!this.#enabled || this.#linkedTo === deskKey || !this.#options.authorization) return;
-    const authorization = await this.#options.authorization();
-    if (!authorization) return;
+  /**
+   * Ties this browser to the desk now using it, once per desk per page load.
+   * `authorization` gives that desk's header when it differs from the default.
+   */
+  async link(deskKey: string, authorization = this.#options.authorization): Promise<void> {
+    if (!this.#enabled || this.#linkedTo === deskKey || !authorization) return;
+    const header = await authorization().catch(() => null);
+    if (!header) return;
     try {
       const response = await this.#fetch(`${this.#options.apiBase}/v1/events/link`, {method: 'POST', credentials: 'omit', cache: 'no-store',
-        headers: {'Content-Type': 'application/json', Accept: 'application/json', Authorization: authorization},
+        headers: {'Content-Type': 'application/json', Accept: 'application/json', Authorization: header},
         body: JSON.stringify({schemaVersion: 1, installId: this.installId})});
       if (response.status === 204) this.#linkedTo = deskKey;
     } catch { /* Linking is retried on the next desk change or page load. */ }
