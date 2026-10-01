@@ -4759,4 +4759,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String liveOrderQuoteExpiresIn(int seconds) {
     return 'A cotação expira em $seconds s';
   }
+
+  @override
+  String get fundShowFullAddress => 'Ver endereço completo';
 }

@@ -4630,4 +4630,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String liveOrderQuoteExpiresIn(int seconds) {
     return 'Quote expires in ${seconds}s';
   }
+
+  @override
+  String get fundShowFullAddress => 'Show full address';
 }

@@ -201,4 +201,22 @@ void main() {
       await clean(tester);
     },
   );
+
+  testWidgets('the full deposit address can be shown and selected', (
+    tester,
+  ) async {
+    await mount(tester);
+    expect(find.byKey(const ValueKey('deposit-address-full')), findsNothing);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('show-deposit-address')),
+    );
+    await tester.tap(find.byKey(const ValueKey('show-deposit-address')));
+    await tester.pump();
+    final full = tester.widget<SelectableText>(
+      find.byKey(const ValueKey('deposit-address-full')),
+    );
+    expect(full.data, hasLength(greaterThanOrEqualTo(32)));
+    expect(full.data!.contains('…'), isFalse);
+    await clean(tester);
+  });
 }

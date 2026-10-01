@@ -27,6 +27,9 @@ class _FundWalletSheetState extends State<FundWalletSheet>
   /// Creating the wallet failed; the message is built in the app language.
   bool _setupFailed = false;
   bool _card = false;
+
+  /// The whole deposit address, to check every character before sending.
+  bool _fullAddress = false;
   bool _checked = false, _refreshFailed = false;
   Timer? _poll, _copyTimer;
   @override
@@ -284,14 +287,30 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                   style: type.titleLarge,
                 ),
                 const SizedBox(height: 5),
-                Semantics(
-                  label: address,
-                  child: Text(
-                    shortenAddress(address),
+                if (_fullAddress)
+                  SelectableText(
+                    address,
+                    key: const ValueKey('deposit-address-full'),
                     textAlign: TextAlign.center,
-                    style: type.bodyMedium,
+                    style: type.bodyMedium?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  )
+                else ...[
+                  Semantics(
+                    label: address,
+                    child: Text(
+                      shortenAddress(address),
+                      textAlign: TextAlign.center,
+                      style: type.bodyMedium,
+                    ),
                   ),
-                ),
+                  TextButton(
+                    key: const ValueKey('show-deposit-address'),
+                    onPressed: () => setState(() => _fullAddress = true),
+                    child: Text(l10n.fundShowFullAddress),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Text(
                   l10n.fundSendOnlyWarning,

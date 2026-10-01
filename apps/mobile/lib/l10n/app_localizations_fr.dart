@@ -4760,4 +4760,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String liveOrderQuoteExpiresIn(int seconds) {
     return 'La cotation expire dans $seconds s';
   }
+
+  @override
+  String get fundShowFullAddress => 'Afficher l’adresse complète';
 }

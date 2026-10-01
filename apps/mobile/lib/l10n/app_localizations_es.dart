@@ -4771,4 +4771,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String liveOrderQuoteExpiresIn(int seconds) {
     return 'La cotización vence en $seconds s';
   }
+
+  @override
+  String get fundShowFullAddress => 'Ver dirección completa';
 }

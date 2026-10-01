@@ -7647,6 +7647,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Quote expires in {seconds}s'**
   String liveOrderQuoteExpiresIn(int seconds);
+
+  /// Button under the shortened deposit address that shows the whole address, so the player can check every character before sending money to it.
+  ///
+  /// In en, this message translates to:
+  /// **'Show full address'**
+  String get fundShowFullAddress;
 }
 
 class _AppLocalizationsDelegate

@@ -1255,5 +1255,6 @@
   "signInResendIn": "Renvoyer dans {seconds} s",
   "appCloseAccountClosing": "Fermeture de ton compte…",
   "appCloseAccountFailed": "Ton compte n’a pas été fermé. Réessaie.",
-  "liveOrderQuoteExpiresIn": "La cotation expire dans {seconds} s"
+  "liveOrderQuoteExpiresIn": "La cotation expire dans {seconds} s",
+  "fundShowFullAddress": "Afficher l’adresse complète"
 }
