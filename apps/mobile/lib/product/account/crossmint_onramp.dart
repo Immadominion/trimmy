@@ -475,7 +475,10 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
           child: TextField(
             key: const ValueKey('onramp-amount'),
             controller: _amount,
-            onChanged: (_) => _creationId = null,
+            onChanged: (_) {
+              _creationId = null;
+              if (_error != null) setState(() => _error = null);
+            },
             enabled: !_busy,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
@@ -514,6 +517,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
                         : () => setState(() {
                             _amount.text = amount;
                             _creationId = null;
+                            _error = null;
                           }),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -527,6 +531,9 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
         const SizedBox(height: 18),
         TextField(
           key: const ValueKey('onramp-email'),
+          onChanged: (_) {
+            if (_error != null) setState(() => _error = null);
+          },
           controller: _email,
           enabled: !_busy && _walletToken == null && _challenge == null,
           keyboardType: TextInputType.emailAddress,

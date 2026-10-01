@@ -454,15 +454,16 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                     scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
                     // The iOS number pad has no return key: a complete code
                     // signs in by itself.
-                    onChanged: codeStep
-                        ? (value) {
-                            if (!waiting &&
-                                normalizePracticeEmailCode(value)?.length ==
-                                    6) {
-                              unawaited(_verifyCode());
-                            }
-                          }
-                        : null,
+                    onChanged: (value) {
+                      // An error about the last try goes as soon as the
+                      // entry changes.
+                      if (_error != null) setState(() => _error = null);
+                      if (codeStep &&
+                          !waiting &&
+                          normalizePracticeEmailCode(value)?.length == 6) {
+                        unawaited(_verifyCode());
+                      }
+                    },
                     style: const TextStyle(
                       fontFamily: 'Dejanire Sans',
                       color: _ink,
