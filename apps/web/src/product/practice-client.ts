@@ -708,7 +708,7 @@ export class PracticeClient {
     return this.#request('/v1/career/summary', 'GET', undefined, guest, careerSummary, signal);
   }
   /**
-   * A workday request in the page's language. An API from before workday
+   * A workday or desk story request in the page's language. An API from before workday
    * languages refuses `lang` while checking the request, before any work is
    * read or saved, so the same request is sent again without it. In a browser
    * that API's preflight refuses the query outright, which reads as a network
@@ -744,11 +744,11 @@ export class PracticeClient {
     }, signal);
   }
   readDailyDesk(identity: PracticeIdentity, signal?: AbortSignal): Promise<DailyDeskShift> {
-    return this.#request('/v1/career/daily-desk', 'GET', undefined, identity, value => parseDailyDeskShift(record(value)['shift']), signal);
+    return this.#workday('/v1/career/daily-desk', 'GET', undefined, identity, value => parseDailyDeskShift(record(value)['shift']), signal);
   }
   completeDailyDesk(identity: PracticeIdentity, request: DailyDeskCompletion, signal?: AbortSignal): Promise<DailyDeskShift> {
     const body = parseDailyDeskCompletion(request);
-    return this.#request('/v1/career/daily-desk/complete', 'POST', body, identity, value => {
+    return this.#workday('/v1/career/daily-desk/complete', 'POST', body, identity, value => {
       const shift = parseDailyDeskShift(record(value)['shift']); assertDailyDeskCompletion(body, shift); return shift;
     }, signal);
   }

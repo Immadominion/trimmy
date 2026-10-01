@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {CareerActivityWeek, DailyDeskShift} from './practice-client';
 import type {PracticeSession} from './practice-session';
+import {useLocale} from '../i18n/react';
 
 export function useProgress(session: PracticeSession | null, enabled: boolean, page: string, onCompleted: () => Promise<void>, dailyEnabled = true) {
   const [shift, setShift] = useState<DailyDeskShift | null>(null);
@@ -11,6 +12,8 @@ export function useProgress(session: PracticeSession | null, enabled: boolean, p
   const [weekError, setWeekError] = useState<unknown>(null);
   const epoch = useRef(0), active = useRef(false), writing = useRef(false);
   const request = useRef<AbortController | null>(null);
+  // The desk story comes in the page's language, so a language change reads it again.
+  const locale = useLocale();
   const refresh = useCallback(async () => {
     if (!session || !enabled || !active.current || writing.current) return;
     const turn = ++epoch.current;
@@ -35,7 +38,7 @@ export function useProgress(session: PracticeSession | null, enabled: boolean, p
     const timer = window.setInterval(resume, 30000);
     window.addEventListener('focus', resume); window.addEventListener('online', resume); document.addEventListener('visibilitychange', resume);
     return () => {clearInterval(timer); window.removeEventListener('focus', resume); window.removeEventListener('online', resume); document.removeEventListener('visibilitychange', resume);};
-  }, [enabled, page, refresh]);
+  }, [enabled, page, refresh, locale]);
   const submit = async (choice: string | null) => {
     if (!session || !enabled || writing.current || (!choice && !session.pendingDailyDesk) || (choice && !shift)) return false;
     writing.current = true; setWorking(true); setError(null); ++epoch.current; request.current?.abort(); setLoading(false);
