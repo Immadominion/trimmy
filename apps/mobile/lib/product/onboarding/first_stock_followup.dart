@@ -524,8 +524,8 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: SetupChoiceCard(
-                          title: preference.label,
-                          caption: preference.caption,
+                          title: preference.label(l10n),
+                          caption: preference.caption(l10n),
                           selected: _selected == preference,
                           onTap: _busy
                               ? null

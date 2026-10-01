@@ -7173,6 +7173,450 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Review what happens to your records and wallet.'**
   String get settingsCloseAccountDetail;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the server rejects the address or the amount as invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the address and the amount.'**
+  String get sendErrorCheckInput;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the typed address is the person's own wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'That’s your own wallet. Enter another address.'**
+  String get sendErrorSelf;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the address belongs to a token account or a program rather than a person's wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'That address isn’t a wallet. It may be a token account or a program. Ask for the wallet address instead.'**
+  String get sendErrorNotWallet;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the receiving wallet is frozen for this token by its issuer.
+  ///
+  /// In en, this message translates to:
+  /// **'That wallet can’t receive this token right now.'**
+  String get sendErrorDestinationFrozen;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when Trimmy does not support sending this token.
+  ///
+  /// In en, this message translates to:
+  /// **'This token can’t be sent from Trimmy.'**
+  String get sendErrorAssetUnsupported;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the token's own transfer rules prevent Trimmy from sending it.
+  ///
+  /// In en, this message translates to:
+  /// **'This token has transfer rules Trimmy can’t send with.'**
+  String get sendErrorNotTransferable;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the firm that issues the token has paused all transfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Its issuer has paused transfers for now.'**
+  String get sendErrorAssetPaused;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the issuer froze this token in the person's own wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'This token is frozen in your wallet. Contact its issuer.'**
+  String get sendErrorAssetFrozen;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the amount is more than what the wallet can send.
+  ///
+  /// In en, this message translates to:
+  /// **'You don’t have that much ready to send.'**
+  String get sendErrorInsufficient;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the wallet needs more SOL (Solana's coin, never translated) to pay the network fee.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a little SOL to cover the network fee.'**
+  String get sendErrorAddSol;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when sending SOL would leave a tiny remainder the network does not allow. {amount} is the smallest SOL to keep, already formatted.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave at least {amount} SOL, or send all of it.'**
+  String sendErrorLeaveSol(String amount);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when sending SOL to a brand new wallet below the minimum it needs to exist. {amount} is that minimum, already formatted.
+  ///
+  /// In en, this message translates to:
+  /// **'A new wallet needs at least {amount} SOL to open.'**
+  String sendErrorTooSmall(String amount);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the server's safety simulation of the send failed, so nothing was sent. "Send" is a noun here: one transfer.
+  ///
+  /// In en, this message translates to:
+  /// **'This send didn’t pass its check. Nothing was sent.'**
+  String get sendErrorCheckFailed;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the reviewed send is too old to sign; the person reviews it again.
+  ///
+  /// In en, this message translates to:
+  /// **'This review expired. Review it again.'**
+  String get sendErrorReviewExpired;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when an earlier send is still unresolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your previous send before starting another.'**
+  String get sendErrorPrevious;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the transaction to sign differs from what the person reviewed, so it was not signed.
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction doesn’t match your review. Nothing was sent.'**
+  String get sendErrorMismatch;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the app could not save the send on the phone, which it needs to recover the send after a crash.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow device storage to keep your send recoverable.'**
+  String get sendErrorStorage;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when another send request is still being handled.
+  ///
+  /// In en, this message translates to:
+  /// **'One moment, then try again.'**
+  String get sendErrorBusy;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the person closed the wallet's signing prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing was cancelled. Nothing was sent.'**
+  String get sendErrorCancelled;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when Trimmy has paused all sends.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending is paused right now. Try again later.'**
+  String get sendErrorPaused;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice for any other error, usually a connection problem.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending couldn’t connect. Try again.'**
+  String get sendErrorGeneric;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the app could not read the status of the person's last send. A "Check previous send" button sits above.
+  ///
+  /// In en, this message translates to:
+  /// **'Your previous send couldn’t be checked. Try checking again.'**
+  String get sendRecoveryFailed;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the recipient field does not hold a valid Solana address. Solana is never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a Solana wallet address.'**
+  String get sendEnterAddress;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the amount field is empty or not a valid number.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount.'**
+  String get sendEnterAmount;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the typed amount is more than the wallet holds. {amount} is the available amount with its symbol, already formatted.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {amount} ready to send.'**
+  String sendHaveReady(String amount);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), top bar title. Verb: send money. Keep very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get sendTitle;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), button that checks the status of the last send again after a failed check. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Check previous send'**
+  String get sendCheckPrevious;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), title when the wallet holds nothing that can be sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to send yet'**
+  String get sendNothingTitle;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under "Nothing to send yet".
+  ///
+  /// In en, this message translates to:
+  /// **'Add money or buy a stock first. Anything in your wallet can be sent from here.'**
+  String get sendNothingBody;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), main heading above the form. Solana is never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to a Solana wallet'**
+  String get sendHeading;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), warning under the heading. "Sends" is a noun: transfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Only send to a Solana address. Sends can’t be undone.'**
+  String get sendWarning;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the dropdown that picks USDC, SOL or a stock token.
+  ///
+  /// In en, this message translates to:
+  /// **'What to send'**
+  String get sendWhatLabel;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), name of USDC in the dropdown. USDC is a US dollar token; keep "(USDC)".
+  ///
+  /// In en, this message translates to:
+  /// **'US dollars (USDC)'**
+  String get sendAssetUsdc;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the field for the receiving wallet's address.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient’s wallet address'**
+  String get sendRecipientLabel;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), tooltip and screen reader label of the button that pastes an address from the clipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get sendPaste;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the amount field when sending a stock token (counted in shares).
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get sendSharesLabel;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the amount field when sending USDC or SOL. {symbol} is USDC or SOL, never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount ({symbol})'**
+  String sendAmountLabel(String symbol);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), helper line under the amount field: everything the wallet can send of the chosen asset. {amount} is the amount with its symbol, already formatted.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} ready to send'**
+  String sendReadyToSend(String amount);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), note under the amount when sending SOL: the Max button leaves a little SOL behind for fees. {amount} is that SOL amount, already formatted.
+  ///
+  /// In en, this message translates to:
+  /// **'Max keeps {amount} SOL so you can still pay network fees.'**
+  String sendMaxKeepsSol(String amount);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), main button that asks the server to check the send before signing. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Review send'**
+  String get sendReview;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), heading of the review step before signing.
+  ///
+  /// In en, this message translates to:
+  /// **'Review your send'**
+  String get sendReviewTitle;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: the amount leaving the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'You send'**
+  String get sendYouSend;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: what arrives after the token issuer takes its fee. "They" is the recipient.
+  ///
+  /// In en, this message translates to:
+  /// **'They receive, after the issuer fee'**
+  String get sendTheyReceive;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: the Solana network fee, paid in SOL.
+  ///
+  /// In en, this message translates to:
+  /// **'Network fee'**
+  String get sendNetworkFee;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: a one-time SOL cost to open the recipient's account for this token. {symbol} is the token symbol, never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens their {symbol} account (once)'**
+  String sendOpensAccount(String symbol);
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review step: label above the full recipient address.
+  ///
+  /// In en, this message translates to:
+  /// **'To this Solana wallet'**
+  String get sendToWallet;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review step: warning under the recipient address.
+  ///
+  /// In en, this message translates to:
+  /// **'Check every character. Sends can’t be undone, and Trimmy can’t get money back from a wrong address.'**
+  String get sendCheckEvery;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), main button on the review step that signs and sends. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Send now'**
+  String get sendNow;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), button on the review step that goes back to change the send. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get sendEdit;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the send is confirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get sendResultSent;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title while the send waits for the network.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get sendResultSending;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the network rejected the send.
+  ///
+  /// In en, this message translates to:
+  /// **'It didn’t go through'**
+  String get sendResultFailed;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the send expired before it was confirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Send expired'**
+  String get sendResultExpired;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the app stopped waiting but the send is not confirmed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Still confirming'**
+  String get sendResultChecking;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under "Sent".
+  ///
+  /// In en, this message translates to:
+  /// **'It’s confirmed on Solana.'**
+  String get sendBodySent;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under "Sending".
+  ///
+  /// In en, this message translates to:
+  /// **'This usually takes a few seconds.'**
+  String get sendBodySending;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under "It didn't go through".
+  ///
+  /// In en, this message translates to:
+  /// **'Solana refused it. Only the network fee was spent.'**
+  String get sendBodyFailed;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under "Send expired".
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction expired without confirmation. You can review a new send.'**
+  String get sendBodyExpired;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under "Still confirming".
+  ///
+  /// In en, this message translates to:
+  /// **'We’re still checking this send. Don’t send it again.'**
+  String get sendBodyChecking;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), link that opens the transaction on Solscan, a Solana explorer website (name never translated).
+  ///
+  /// In en, this message translates to:
+  /// **'View on Solscan'**
+  String get sendViewSolscan;
+
+  /// Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when tapping Done could not clear the saved send on the phone.
+  ///
+  /// In en, this message translates to:
+  /// **'This send is saved. Try closing it again.'**
+  String get sendCloseFailed;
+
+  /// Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Title of the card for a reminder every weekday. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'On workdays'**
+  String get reminderDailyLabel;
+
+  /// Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Caption under "On workdays": the reminder comes at about 7 in the evening, only when an assignment is waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Around 7 PM, when work is waiting.'**
+  String get reminderDailyCaption;
+
+  /// Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Title of the card for a reminder on Monday, Wednesday and Friday. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'A few times a week'**
+  String get reminderOccasionalLabel;
+
+  /// Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Caption under "A few times a week": Monday, Wednesday and Friday at about 7 in the evening.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon, Wed and Fri, around 7 PM.'**
+  String get reminderOccasionalCaption;
+
+  /// Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Title of the card for no reminders at all. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it quiet'**
+  String get reminderOffLabel;
+
+  /// Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Caption under "Keep it quiet", in the player's voice: they will open the app without being reminded.
+  ///
+  /// In en, this message translates to:
+  /// **'I’ll come back on my own.'**
+  String get reminderOffCaption;
+
+  /// Workday reminder notification, shown by the phone outside the app at about 7 PM local time. Title of the notification. "Desk" is the home tab (Escritorio / Mesa / Bureau). Keep under 40 characters.
+  ///
+  /// In en, this message translates to:
+  /// **'Your desk is waiting'**
+  String get reminderNotificationTitle;
+
+  /// Workday reminder notification, shown by the phone outside the app at about 7 PM local time. Text of the notification when no workday title is known. An assignment is a task inside a workday.
+  ///
+  /// In en, this message translates to:
+  /// **'Your next assignment is waiting at your desk.'**
+  String get reminderNotificationBody;
+
+  /// Workday reminder notification, shown by the phone outside the app at about 7 PM local time. Text of the notification naming the waiting workday. {day} is the workday number; {title} is the workday's title, written by the server (it may stay in English).
+  ///
+  /// In en, this message translates to:
+  /// **'Day {day}: {title}'**
+  String reminderNotificationDay(int day, String title);
+
+  /// Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone blocks notifications for Trimmy, so trade updates cannot turn on.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off in device settings.'**
+  String get pushErrorNotificationsOff;
+
+  /// Settings, trade update alerts (push notifications when a real-money order finishes). Message when turning trade updates on or off failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t update notifications. Try again.'**
+  String get pushErrorUpdate;
+
+  /// Settings, trade update alerts (push notifications when a real-money order finishes). Message when trade updates could not be turned off because the phone is offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t turn off alerts. Try again when you’re online.'**
+  String get pushErrorTurnOff;
+
+  /// Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone could not register for notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t connect notifications. Please try again.'**
+  String get pushErrorConnect;
 }
 
 class _AppLocalizationsDelegate

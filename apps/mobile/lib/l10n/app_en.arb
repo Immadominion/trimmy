@@ -5897,5 +5897,353 @@
   "settingsCloseAccountDetail": "Review what happens to your records and wallet.",
   "@settingsCloseAccountDetail": {
     "description": "Line under \"Close account\" in Settings."
+  },
+  "sendErrorCheckInput": "Check the address and the amount.",
+  "@sendErrorCheckInput": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the server rejects the address or the amount as invalid."
+  },
+  "sendErrorSelf": "That’s your own wallet. Enter another address.",
+  "@sendErrorSelf": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the typed address is the person's own wallet."
+  },
+  "sendErrorNotWallet": "That address isn’t a wallet. It may be a token account or a program. Ask for the wallet address instead.",
+  "@sendErrorNotWallet": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the address belongs to a token account or a program rather than a person's wallet."
+  },
+  "sendErrorDestinationFrozen": "That wallet can’t receive this token right now.",
+  "@sendErrorDestinationFrozen": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the receiving wallet is frozen for this token by its issuer."
+  },
+  "sendErrorAssetUnsupported": "This token can’t be sent from Trimmy.",
+  "@sendErrorAssetUnsupported": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when Trimmy does not support sending this token."
+  },
+  "sendErrorNotTransferable": "This token has transfer rules Trimmy can’t send with.",
+  "@sendErrorNotTransferable": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the token's own transfer rules prevent Trimmy from sending it."
+  },
+  "sendErrorAssetPaused": "Its issuer has paused transfers for now.",
+  "@sendErrorAssetPaused": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the firm that issues the token has paused all transfers."
+  },
+  "sendErrorAssetFrozen": "This token is frozen in your wallet. Contact its issuer.",
+  "@sendErrorAssetFrozen": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the issuer froze this token in the person's own wallet."
+  },
+  "sendErrorInsufficient": "You don’t have that much ready to send.",
+  "@sendErrorInsufficient": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the amount is more than what the wallet can send."
+  },
+  "sendErrorAddSol": "Add a little SOL to cover the network fee.",
+  "@sendErrorAddSol": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the wallet needs more SOL (Solana's coin, never translated) to pay the network fee."
+  },
+  "sendErrorLeaveSol": "Leave at least {amount} SOL, or send all of it.",
+  "@sendErrorLeaveSol": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when sending SOL would leave a tiny remainder the network does not allow. {amount} is the smallest SOL to keep, already formatted.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "0.001"
+      }
+    }
+  },
+  "sendErrorTooSmall": "A new wallet needs at least {amount} SOL to open.",
+  "@sendErrorTooSmall": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when sending SOL to a brand new wallet below the minimum it needs to exist. {amount} is that minimum, already formatted.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "0.001"
+      }
+    }
+  },
+  "sendErrorCheckFailed": "This send didn’t pass its check. Nothing was sent.",
+  "@sendErrorCheckFailed": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the server's safety simulation of the send failed, so nothing was sent. \"Send\" is a noun here: one transfer."
+  },
+  "sendErrorReviewExpired": "This review expired. Review it again.",
+  "@sendErrorReviewExpired": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the reviewed send is too old to sign; the person reviews it again."
+  },
+  "sendErrorPrevious": "Check your previous send before starting another.",
+  "@sendErrorPrevious": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when an earlier send is still unresolved."
+  },
+  "sendErrorMismatch": "This transaction doesn’t match your review. Nothing was sent.",
+  "@sendErrorMismatch": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the transaction to sign differs from what the person reviewed, so it was not signed."
+  },
+  "sendErrorStorage": "Allow device storage to keep your send recoverable.",
+  "@sendErrorStorage": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the app could not save the send on the phone, which it needs to recover the send after a crash."
+  },
+  "sendErrorBusy": "One moment, then try again.",
+  "@sendErrorBusy": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when another send request is still being handled."
+  },
+  "sendErrorCancelled": "Signing was cancelled. Nothing was sent.",
+  "@sendErrorCancelled": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the person closed the wallet's signing prompt."
+  },
+  "sendErrorPaused": "Sending is paused right now. Try again later.",
+  "@sendErrorPaused": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when Trimmy has paused all sends."
+  },
+  "sendErrorGeneric": "Sending couldn’t connect. Try again.",
+  "@sendErrorGeneric": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice for any other error, usually a connection problem."
+  },
+  "sendRecoveryFailed": "Your previous send couldn’t be checked. Try checking again.",
+  "@sendRecoveryFailed": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the app could not read the status of the person's last send. A \"Check previous send\" button sits above."
+  },
+  "sendEnterAddress": "Enter a Solana wallet address.",
+  "@sendEnterAddress": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the recipient field does not hold a valid Solana address. Solana is never translated."
+  },
+  "sendEnterAmount": "Enter an amount.",
+  "@sendEnterAmount": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the amount field is empty or not a valid number."
+  },
+  "sendHaveReady": "You have {amount} ready to send.",
+  "@sendHaveReady": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when the typed amount is more than the wallet holds. {amount} is the available amount with its symbol, already formatted.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "12.5 USDC"
+      }
+    }
+  },
+  "sendTitle": "Send",
+  "@sendTitle": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), top bar title. Verb: send money. Keep very short."
+  },
+  "sendCheckPrevious": "Check previous send",
+  "@sendCheckPrevious": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), button that checks the status of the last send again after a failed check. Keep short."
+  },
+  "sendNothingTitle": "Nothing to send yet",
+  "@sendNothingTitle": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), title when the wallet holds nothing that can be sent."
+  },
+  "sendNothingBody": "Add money or buy a stock first. Anything in your wallet can be sent from here.",
+  "@sendNothingBody": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under \"Nothing to send yet\"."
+  },
+  "sendHeading": "Send to a Solana wallet",
+  "@sendHeading": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), main heading above the form. Solana is never translated."
+  },
+  "sendWarning": "Only send to a Solana address. Sends can’t be undone.",
+  "@sendWarning": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), warning under the heading. \"Sends\" is a noun: transfers."
+  },
+  "sendWhatLabel": "What to send",
+  "@sendWhatLabel": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the dropdown that picks USDC, SOL or a stock token."
+  },
+  "sendAssetUsdc": "US dollars (USDC)",
+  "@sendAssetUsdc": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), name of USDC in the dropdown. USDC is a US dollar token; keep \"(USDC)\"."
+  },
+  "sendRecipientLabel": "Recipient’s wallet address",
+  "@sendRecipientLabel": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the field for the receiving wallet's address."
+  },
+  "sendPaste": "Paste",
+  "@sendPaste": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), tooltip and screen reader label of the button that pastes an address from the clipboard."
+  },
+  "sendSharesLabel": "Shares",
+  "@sendSharesLabel": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the amount field when sending a stock token (counted in shares)."
+  },
+  "sendAmountLabel": "Amount ({symbol})",
+  "@sendAmountLabel": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), label of the amount field when sending USDC or SOL. {symbol} is USDC or SOL, never translated.",
+    "placeholders": {
+      "symbol": {
+        "type": "String",
+        "example": "USDC"
+      }
+    }
+  },
+  "sendReadyToSend": "{amount} ready to send",
+  "@sendReadyToSend": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), helper line under the amount field: everything the wallet can send of the chosen asset. {amount} is the amount with its symbol, already formatted.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "12.5 USDC"
+      }
+    }
+  },
+  "sendMaxKeepsSol": "Max keeps {amount} SOL so you can still pay network fees.",
+  "@sendMaxKeepsSol": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), note under the amount when sending SOL: the Max button leaves a little SOL behind for fees. {amount} is that SOL amount, already formatted.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "0.001"
+      }
+    }
+  },
+  "sendReview": "Review send",
+  "@sendReview": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), main button that asks the server to check the send before signing. Keep short."
+  },
+  "sendReviewTitle": "Review your send",
+  "@sendReviewTitle": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), heading of the review step before signing."
+  },
+  "sendYouSend": "You send",
+  "@sendYouSend": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: the amount leaving the wallet."
+  },
+  "sendTheyReceive": "They receive, after the issuer fee",
+  "@sendTheyReceive": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: what arrives after the token issuer takes its fee. \"They\" is the recipient."
+  },
+  "sendNetworkFee": "Network fee",
+  "@sendNetworkFee": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: the Solana network fee, paid in SOL."
+  },
+  "sendOpensAccount": "Opens their {symbol} account (once)",
+  "@sendOpensAccount": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review row label: a one-time SOL cost to open the recipient's account for this token. {symbol} is the token symbol, never translated.",
+    "placeholders": {
+      "symbol": {
+        "type": "String",
+        "example": "USDC"
+      }
+    }
+  },
+  "sendToWallet": "To this Solana wallet",
+  "@sendToWallet": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review step: label above the full recipient address."
+  },
+  "sendCheckEvery": "Check every character. Sends can’t be undone, and Trimmy can’t get money back from a wrong address.",
+  "@sendCheckEvery": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), review step: warning under the recipient address."
+  },
+  "sendNow": "Send now",
+  "@sendNow": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), main button on the review step that signs and sends. Keep short."
+  },
+  "sendEdit": "Edit",
+  "@sendEdit": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), button on the review step that goes back to change the send. Keep short."
+  },
+  "sendResultSent": "Sent",
+  "@sendResultSent": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the send is confirmed."
+  },
+  "sendResultSending": "Sending",
+  "@sendResultSending": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title while the send waits for the network."
+  },
+  "sendResultFailed": "It didn’t go through",
+  "@sendResultFailed": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the network rejected the send."
+  },
+  "sendResultExpired": "Send expired",
+  "@sendResultExpired": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the send expired before it was confirmed."
+  },
+  "sendResultChecking": "Still confirming",
+  "@sendResultChecking": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), result title when the app stopped waiting but the send is not confirmed yet."
+  },
+  "sendBodySent": "It’s confirmed on Solana.",
+  "@sendBodySent": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under \"Sent\"."
+  },
+  "sendBodySending": "This usually takes a few seconds.",
+  "@sendBodySending": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under \"Sending\"."
+  },
+  "sendBodyFailed": "Solana refused it. Only the network fee was spent.",
+  "@sendBodyFailed": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under \"It didn't go through\"."
+  },
+  "sendBodyExpired": "This transaction expired without confirmation. You can review a new send.",
+  "@sendBodyExpired": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under \"Send expired\"."
+  },
+  "sendBodyChecking": "We’re still checking this send. Don’t send it again.",
+  "@sendBodyChecking": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), text under \"Still confirming\"."
+  },
+  "sendViewSolscan": "View on Solscan",
+  "@sendViewSolscan": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), link that opens the transaction on Solscan, a Solana explorer website (name never translated)."
+  },
+  "sendCloseFailed": "This send is saved. Try closing it again.",
+  "@sendCloseFailed": {
+    "description": "Send screen (Real mode, sends USDC, SOL or a stock token from the person's wallet to another Solana wallet), notice when tapping Done could not clear the saved send on the phone."
+  },
+  "reminderDailyLabel": "On workdays",
+  "@reminderDailyLabel": {
+    "description": "Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Title of the card for a reminder every weekday. Keep short."
+  },
+  "reminderDailyCaption": "Around 7 PM, when work is waiting.",
+  "@reminderDailyCaption": {
+    "description": "Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Caption under \"On workdays\": the reminder comes at about 7 in the evening, only when an assignment is waiting."
+  },
+  "reminderOccasionalLabel": "A few times a week",
+  "@reminderOccasionalLabel": {
+    "description": "Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Title of the card for a reminder on Monday, Wednesday and Friday. Keep short."
+  },
+  "reminderOccasionalCaption": "Mon, Wed and Fri, around 7 PM.",
+  "@reminderOccasionalCaption": {
+    "description": "Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Caption under \"A few times a week\": Monday, Wednesday and Friday at about 7 in the evening."
+  },
+  "reminderOffLabel": "Keep it quiet",
+  "@reminderOffLabel": {
+    "description": "Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Title of the card for no reminders at all. Keep short."
+  },
+  "reminderOffCaption": "I’ll come back on my own.",
+  "@reminderOffCaption": {
+    "description": "Reminder frequency choice (onboarding and Settings > Reminders): one of three cards. Caption under \"Keep it quiet\", in the player's voice: they will open the app without being reminded."
+  },
+  "reminderNotificationTitle": "Your desk is waiting",
+  "@reminderNotificationTitle": {
+    "description": "Workday reminder notification, shown by the phone outside the app at about 7 PM local time. Title of the notification. \"Desk\" is the home tab (Escritorio / Mesa / Bureau). Keep under 40 characters."
+  },
+  "reminderNotificationBody": "Your next assignment is waiting at your desk.",
+  "@reminderNotificationBody": {
+    "description": "Workday reminder notification, shown by the phone outside the app at about 7 PM local time. Text of the notification when no workday title is known. An assignment is a task inside a workday."
+  },
+  "reminderNotificationDay": "Day {day}: {title}",
+  "@reminderNotificationDay": {
+    "description": "Workday reminder notification, shown by the phone outside the app at about 7 PM local time. Text of the notification naming the waiting workday. {day} is the workday number; {title} is the workday's title, written by the server (it may stay in English).",
+    "placeholders": {
+      "day": {
+        "type": "int",
+        "example": "3"
+      },
+      "title": {
+        "type": "String",
+        "example": "Read the room"
+      }
+    }
+  },
+  "pushErrorNotificationsOff": "Notifications are off in device settings.",
+  "@pushErrorNotificationsOff": {
+    "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone blocks notifications for Trimmy, so trade updates cannot turn on."
+  },
+  "pushErrorUpdate": "Couldn’t update notifications. Try again.",
+  "@pushErrorUpdate": {
+    "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when turning trade updates on or off failed."
+  },
+  "pushErrorTurnOff": "Couldn’t turn off alerts. Try again when you’re online.",
+  "@pushErrorTurnOff": {
+    "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when trade updates could not be turned off because the phone is offline."
+  },
+  "pushErrorConnect": "Couldn’t connect notifications. Please try again.",
+  "@pushErrorConnect": {
+    "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone could not register for notifications."
   }
 }

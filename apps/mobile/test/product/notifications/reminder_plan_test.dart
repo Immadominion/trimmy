@@ -1,4 +1,8 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
+import 'package:trimmy/product/notifications/notification_permission.dart';
+import 'package:trimmy/product/notifications/reminder_preferences.dart';
 import 'package:trimmy/product/notifications/reminder_plan.dart';
 import 'package:trimmy/product/workdays/workdays.dart';
 
@@ -97,5 +101,51 @@ void main() {
       ),
     )!;
     expect(plan.at, DateTime(2026, 10, 5, 19));
+  });
+
+  test('a reminder is written in the language it is planned in', () {
+    final now = DateTime(2026, 10, 1, 9);
+    final english = ReminderPlan.next('daily', now: now)!;
+    expect(english.title, 'Your desk is waiting');
+    expect(english.body, 'Your next assignment is waiting at your desk.');
+    final french = lookupAppLocalizations(const Locale('fr'));
+    final plan = ReminderPlan.next(
+      'daily',
+      now: now,
+      journey: journey(),
+      l10n: french,
+    )!;
+    expect(plan.title, 'Ton bureau t’attend');
+    // The workday's own title is the server's and stays as written.
+    expect(plan.body, 'Jour 1\u00a0: Read the business');
+    final brazil = lookupAppLocalizations(const Locale('pt'));
+    expect(
+      ReminderPlan.next('occasional', now: now, l10n: brazil)!.body,
+      'Sua próxima tarefa está te esperando na sua mesa.',
+    );
+  });
+
+  test('reminder choices read in the reader\'s language', () {
+    final spanish = lookupAppLocalizations(const Locale('es'));
+    expect(ReminderPreference.daily.label(englishLocalizations), 'On workdays');
+    expect(ReminderPreference.off.label(spanish), 'Sin recordatorios');
+    expect(
+      ReminderPreference.occasional.caption(spanish),
+      'Lunes, miércoles y viernes, alrededor de las 7 p. m.',
+    );
+  });
+
+  test('the app language is used once it changes, and only then', () {
+    final french = lookupAppLocalizations(const Locale('fr'));
+    expect(
+      ProductNotificationPermission.useLanguage(englishLocalizations),
+      isFalse,
+    );
+    expect(ProductNotificationPermission.useLanguage(french), isTrue);
+    expect(ProductNotificationPermission.useLanguage(french), isFalse);
+    expect(
+      ProductNotificationPermission.useLanguage(englishLocalizations),
+      isTrue,
+    );
   });
 }

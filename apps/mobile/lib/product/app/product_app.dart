@@ -590,6 +590,11 @@ class _ProductExperienceState extends State<ProductExperience>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Reminders are planned ahead in the app's language. A language change
+    // rewrites the one already scheduled.
+    if (ProductNotificationPermission.useLanguage(context.l10n)) {
+      _applyReminder();
+    }
     if (_market == null) {
       final controller = StockResearchScope.of(
         context,
@@ -3075,7 +3080,9 @@ class _ProductExperienceState extends State<ProductExperience>
               if (kind != SettingsNotificationKind.tradesAndReceipts) return;
               await _tradePush?.setEnabled(value);
               final error = _tradePush?.error;
-              if (mounted && error != null) _message(error);
+              if (mounted && error != null) {
+                _message(error.message(this.context.l10n));
+              }
             },
             onSoundChanged: (value) =>
                 unawaited(ReviewFeedback.shared.setSound(value)),

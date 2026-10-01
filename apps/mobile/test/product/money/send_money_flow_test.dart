@@ -14,6 +14,7 @@ import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/money/real_holdings.dart';
 import 'package:trimmy/product/money/send_money_flow.dart';
 import '../../support/account_data_fixtures.dart' as fixtures;
+import '../../support/l10n_harness.dart';
 
 const _friend = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 const _ondoMint = 'GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd';
@@ -184,26 +185,27 @@ void main() {
     Future<http.Response> Function(http.Request) handler, {
     String? asset,
     bool handleRecovery = false,
+    Locale? locale,
   }) async {
     final requests = <http.Request>[];
+    final flow = SendMoneyFlow(
+      account: account,
+      origin: _origin,
+      initialAsset: asset,
+      pollInterval: const Duration(milliseconds: 10),
+      httpClient: MockClient((request) {
+        if (!handleRecovery && request.url.path.endsWith('/recovery')) {
+          return Future.value(_reply({'transfer': null}));
+        }
+        requests.add(request);
+        return handler(request);
+      }),
+      onBack: () {},
+    );
     await tester.pumpWidget(
-      MaterialApp(
-        theme: productTheme(),
-        home: SendMoneyFlow(
-          account: account,
-          origin: _origin,
-          initialAsset: asset,
-          pollInterval: const Duration(milliseconds: 10),
-          httpClient: MockClient((request) {
-            if (!handleRecovery && request.url.path.endsWith('/recovery')) {
-              return Future.value(_reply({'transfer': null}));
-            }
-            requests.add(request);
-            return handler(request);
-          }),
-          onBack: () {},
-        ),
-      ),
+      locale == null
+          ? MaterialApp(theme: productTheme(), home: flow)
+          : localizedTestApp(locale: locale, home: flow),
     );
     await pump(tester);
     return requests;
@@ -252,6 +254,30 @@ void main() {
       expect(account.refreshes, greaterThan(0));
     },
   );
+
+  testWidgets('a French send takes a comma decimal and reads in French', (
+    tester,
+  ) async {
+    final requests = await mount(tester, (request) async {
+      if (request.url.path.endsWith('/preview')) {
+        return _reply(_review(amountRaw: '2500000', received: '2500000'));
+      }
+      return _reply({'status': 'pending'});
+    }, locale: const Locale('fr'));
+    expect(find.text('Envoyer vers un portefeuille Solana'), findsOneWidget);
+    await fill(tester, fixtures.wallet, '5');
+    expect(
+      find.text('C’est ton propre portefeuille. Saisis une autre adresse.'),
+      findsOneWidget,
+    );
+    await fill(tester, _friend, '2,5');
+    expect(jsonDecode(requests.single.body)['amountRaw'], '2500000');
+    expect(find.text('Vérifie ton envoi'), findsOneWidget);
+    expect(find.text('2,5 USDC'), findsOneWidget);
+    expect(find.text('Frais de réseau'), findsOneWidget);
+    expect(find.text('Envoyer maintenant'), findsOneWidget);
+    expect(account.signatures, 0);
+  });
 
   testWidgets('never shows a review for a different send than was asked', (
     tester,

@@ -4481,4 +4481,274 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get settingsCloseAccountDetail =>
       'Revisa qué pasa con tus registros y tu billetera.';
+
+  @override
+  String get sendErrorCheckInput => 'Revisa la dirección y el monto.';
+
+  @override
+  String get sendErrorSelf =>
+      'Esa es tu propia billetera. Ingresa otra dirección.';
+
+  @override
+  String get sendErrorNotWallet =>
+      'Esa dirección no es una billetera. Puede ser una cuenta de token o un programa. Pide la dirección de la billetera.';
+
+  @override
+  String get sendErrorDestinationFrozen =>
+      'Esa billetera no puede recibir este token ahora.';
+
+  @override
+  String get sendErrorAssetUnsupported =>
+      'Este token no se puede enviar desde Trimmy.';
+
+  @override
+  String get sendErrorNotTransferable =>
+      'Este token tiene reglas de transferencia con las que Trimmy no puede enviarlo.';
+
+  @override
+  String get sendErrorAssetPaused =>
+      'Su emisor pausó las transferencias por ahora.';
+
+  @override
+  String get sendErrorAssetFrozen =>
+      'Este token está congelado en tu billetera. Contacta a su emisor.';
+
+  @override
+  String get sendErrorInsufficient => 'No tienes tanto para enviar.';
+
+  @override
+  String get sendErrorAddSol =>
+      'Agrega un poco de SOL para cubrir la comisión de red.';
+
+  @override
+  String sendErrorLeaveSol(String amount) {
+    return 'Deja al menos $amount SOL o envíalo todo.';
+  }
+
+  @override
+  String sendErrorTooSmall(String amount) {
+    return 'Una billetera nueva necesita al menos $amount SOL para abrirse.';
+  }
+
+  @override
+  String get sendErrorCheckFailed =>
+      'Este envío no pasó la verificación. No se envió nada.';
+
+  @override
+  String get sendErrorReviewExpired =>
+      'Esta revisión venció. Revísalo de nuevo.';
+
+  @override
+  String get sendErrorPrevious =>
+      'Revisa tu envío anterior antes de empezar otro.';
+
+  @override
+  String get sendErrorMismatch =>
+      'Esta transacción no coincide con lo que revisaste. No se envió nada.';
+
+  @override
+  String get sendErrorStorage =>
+      'Permite el almacenamiento del dispositivo para poder recuperar tu envío.';
+
+  @override
+  String get sendErrorBusy => 'Espera un momento y vuelve a intentarlo.';
+
+  @override
+  String get sendErrorCancelled => 'Se canceló la firma. No se envió nada.';
+
+  @override
+  String get sendErrorPaused =>
+      'Los envíos están en pausa ahora. Intenta más tarde.';
+
+  @override
+  String get sendErrorGeneric =>
+      'No se pudo conectar para enviar. Intenta de nuevo.';
+
+  @override
+  String get sendRecoveryFailed =>
+      'No se pudo revisar tu envío anterior. Intenta revisarlo de nuevo.';
+
+  @override
+  String get sendEnterAddress =>
+      'Ingresa una dirección de billetera de Solana.';
+
+  @override
+  String get sendEnterAmount => 'Ingresa un monto.';
+
+  @override
+  String sendHaveReady(String amount) {
+    return 'Tienes $amount para enviar.';
+  }
+
+  @override
+  String get sendTitle => 'Enviar';
+
+  @override
+  String get sendCheckPrevious => 'Revisar envío anterior';
+
+  @override
+  String get sendNothingTitle => 'Aún no hay nada para enviar';
+
+  @override
+  String get sendNothingBody =>
+      'Primero agrega dinero o compra una acción. Desde aquí puedes enviar todo lo que tengas en tu billetera.';
+
+  @override
+  String get sendHeading => 'Enviar a una billetera de Solana';
+
+  @override
+  String get sendWarning =>
+      'Envía solo a una dirección de Solana. Los envíos no se pueden deshacer.';
+
+  @override
+  String get sendWhatLabel => 'Qué enviar';
+
+  @override
+  String get sendAssetUsdc => 'Dólares estadounidenses (USDC)';
+
+  @override
+  String get sendRecipientLabel => 'Dirección de la billetera de destino';
+
+  @override
+  String get sendPaste => 'Pegar';
+
+  @override
+  String get sendSharesLabel => 'Acciones';
+
+  @override
+  String sendAmountLabel(String symbol) {
+    return 'Monto ($symbol)';
+  }
+
+  @override
+  String sendReadyToSend(String amount) {
+    return 'Disponible para enviar: $amount';
+  }
+
+  @override
+  String sendMaxKeepsSol(String amount) {
+    return 'El máximo deja $amount SOL para que puedas seguir pagando las comisiones de red.';
+  }
+
+  @override
+  String get sendReview => 'Revisar envío';
+
+  @override
+  String get sendReviewTitle => 'Revisa tu envío';
+
+  @override
+  String get sendYouSend => 'Envías';
+
+  @override
+  String get sendTheyReceive =>
+      'El destinatario recibe, después de la comisión del emisor';
+
+  @override
+  String get sendNetworkFee => 'Comisión de red';
+
+  @override
+  String sendOpensAccount(String symbol) {
+    return 'Abre su cuenta de $symbol (una sola vez)';
+  }
+
+  @override
+  String get sendToWallet => 'A esta billetera de Solana';
+
+  @override
+  String get sendCheckEvery =>
+      'Revisa cada carácter. Los envíos no se pueden deshacer y Trimmy no puede recuperar dinero enviado a una dirección equivocada.';
+
+  @override
+  String get sendNow => 'Enviar ahora';
+
+  @override
+  String get sendEdit => 'Editar';
+
+  @override
+  String get sendResultSent => 'Enviado';
+
+  @override
+  String get sendResultSending => 'Enviando';
+
+  @override
+  String get sendResultFailed => 'No se completó';
+
+  @override
+  String get sendResultExpired => 'El envío venció';
+
+  @override
+  String get sendResultChecking => 'Aún confirmando';
+
+  @override
+  String get sendBodySent => 'Está confirmado en Solana.';
+
+  @override
+  String get sendBodySending => 'Esto suele tardar unos segundos.';
+
+  @override
+  String get sendBodyFailed =>
+      'Solana lo rechazó. Solo se cobró la comisión de red.';
+
+  @override
+  String get sendBodyExpired =>
+      'Esta transacción venció sin confirmarse. Puedes revisar un nuevo envío.';
+
+  @override
+  String get sendBodyChecking =>
+      'Todavía estamos revisando este envío. No lo envíes de nuevo.';
+
+  @override
+  String get sendViewSolscan => 'Ver en Solscan';
+
+  @override
+  String get sendCloseFailed =>
+      'Este envío está guardado. Intenta cerrarlo de nuevo.';
+
+  @override
+  String get reminderDailyLabel => 'En días hábiles';
+
+  @override
+  String get reminderDailyCaption =>
+      'Alrededor de las 7 p. m., cuando hay trabajo pendiente.';
+
+  @override
+  String get reminderOccasionalLabel => 'Algunas veces por semana';
+
+  @override
+  String get reminderOccasionalCaption =>
+      'Lunes, miércoles y viernes, alrededor de las 7 p. m.';
+
+  @override
+  String get reminderOffLabel => 'Sin recordatorios';
+
+  @override
+  String get reminderOffCaption => 'Vuelvo por mi cuenta.';
+
+  @override
+  String get reminderNotificationTitle => 'Tu escritorio te espera';
+
+  @override
+  String get reminderNotificationBody =>
+      'Tu próxima tarea te espera en tu escritorio.';
+
+  @override
+  String reminderNotificationDay(int day, String title) {
+    return 'Día $day: $title';
+  }
+
+  @override
+  String get pushErrorNotificationsOff =>
+      'Las notificaciones están desactivadas en la configuración del dispositivo.';
+
+  @override
+  String get pushErrorUpdate =>
+      'No se pudieron actualizar las notificaciones. Intenta de nuevo.';
+
+  @override
+  String get pushErrorTurnOff =>
+      'No se pudieron desactivar las alertas. Intenta de nuevo cuando tengas conexión.';
+
+  @override
+  String get pushErrorConnect =>
+      'No se pudieron conectar las notificaciones. Intenta de nuevo.';
 }

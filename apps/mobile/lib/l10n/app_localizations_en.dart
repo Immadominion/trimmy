@@ -4353,4 +4353,262 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsCloseAccountDetail =>
       'Review what happens to your records and wallet.';
+
+  @override
+  String get sendErrorCheckInput => 'Check the address and the amount.';
+
+  @override
+  String get sendErrorSelf => 'That’s your own wallet. Enter another address.';
+
+  @override
+  String get sendErrorNotWallet =>
+      'That address isn’t a wallet. It may be a token account or a program. Ask for the wallet address instead.';
+
+  @override
+  String get sendErrorDestinationFrozen =>
+      'That wallet can’t receive this token right now.';
+
+  @override
+  String get sendErrorAssetUnsupported =>
+      'This token can’t be sent from Trimmy.';
+
+  @override
+  String get sendErrorNotTransferable =>
+      'This token has transfer rules Trimmy can’t send with.';
+
+  @override
+  String get sendErrorAssetPaused => 'Its issuer has paused transfers for now.';
+
+  @override
+  String get sendErrorAssetFrozen =>
+      'This token is frozen in your wallet. Contact its issuer.';
+
+  @override
+  String get sendErrorInsufficient => 'You don’t have that much ready to send.';
+
+  @override
+  String get sendErrorAddSol => 'Add a little SOL to cover the network fee.';
+
+  @override
+  String sendErrorLeaveSol(String amount) {
+    return 'Leave at least $amount SOL, or send all of it.';
+  }
+
+  @override
+  String sendErrorTooSmall(String amount) {
+    return 'A new wallet needs at least $amount SOL to open.';
+  }
+
+  @override
+  String get sendErrorCheckFailed =>
+      'This send didn’t pass its check. Nothing was sent.';
+
+  @override
+  String get sendErrorReviewExpired => 'This review expired. Review it again.';
+
+  @override
+  String get sendErrorPrevious =>
+      'Check your previous send before starting another.';
+
+  @override
+  String get sendErrorMismatch =>
+      'This transaction doesn’t match your review. Nothing was sent.';
+
+  @override
+  String get sendErrorStorage =>
+      'Allow device storage to keep your send recoverable.';
+
+  @override
+  String get sendErrorBusy => 'One moment, then try again.';
+
+  @override
+  String get sendErrorCancelled => 'Signing was cancelled. Nothing was sent.';
+
+  @override
+  String get sendErrorPaused => 'Sending is paused right now. Try again later.';
+
+  @override
+  String get sendErrorGeneric => 'Sending couldn’t connect. Try again.';
+
+  @override
+  String get sendRecoveryFailed =>
+      'Your previous send couldn’t be checked. Try checking again.';
+
+  @override
+  String get sendEnterAddress => 'Enter a Solana wallet address.';
+
+  @override
+  String get sendEnterAmount => 'Enter an amount.';
+
+  @override
+  String sendHaveReady(String amount) {
+    return 'You have $amount ready to send.';
+  }
+
+  @override
+  String get sendTitle => 'Send';
+
+  @override
+  String get sendCheckPrevious => 'Check previous send';
+
+  @override
+  String get sendNothingTitle => 'Nothing to send yet';
+
+  @override
+  String get sendNothingBody =>
+      'Add money or buy a stock first. Anything in your wallet can be sent from here.';
+
+  @override
+  String get sendHeading => 'Send to a Solana wallet';
+
+  @override
+  String get sendWarning =>
+      'Only send to a Solana address. Sends can’t be undone.';
+
+  @override
+  String get sendWhatLabel => 'What to send';
+
+  @override
+  String get sendAssetUsdc => 'US dollars (USDC)';
+
+  @override
+  String get sendRecipientLabel => 'Recipient’s wallet address';
+
+  @override
+  String get sendPaste => 'Paste';
+
+  @override
+  String get sendSharesLabel => 'Shares';
+
+  @override
+  String sendAmountLabel(String symbol) {
+    return 'Amount ($symbol)';
+  }
+
+  @override
+  String sendReadyToSend(String amount) {
+    return '$amount ready to send';
+  }
+
+  @override
+  String sendMaxKeepsSol(String amount) {
+    return 'Max keeps $amount SOL so you can still pay network fees.';
+  }
+
+  @override
+  String get sendReview => 'Review send';
+
+  @override
+  String get sendReviewTitle => 'Review your send';
+
+  @override
+  String get sendYouSend => 'You send';
+
+  @override
+  String get sendTheyReceive => 'They receive, after the issuer fee';
+
+  @override
+  String get sendNetworkFee => 'Network fee';
+
+  @override
+  String sendOpensAccount(String symbol) {
+    return 'Opens their $symbol account (once)';
+  }
+
+  @override
+  String get sendToWallet => 'To this Solana wallet';
+
+  @override
+  String get sendCheckEvery =>
+      'Check every character. Sends can’t be undone, and Trimmy can’t get money back from a wrong address.';
+
+  @override
+  String get sendNow => 'Send now';
+
+  @override
+  String get sendEdit => 'Edit';
+
+  @override
+  String get sendResultSent => 'Sent';
+
+  @override
+  String get sendResultSending => 'Sending';
+
+  @override
+  String get sendResultFailed => 'It didn’t go through';
+
+  @override
+  String get sendResultExpired => 'Send expired';
+
+  @override
+  String get sendResultChecking => 'Still confirming';
+
+  @override
+  String get sendBodySent => 'It’s confirmed on Solana.';
+
+  @override
+  String get sendBodySending => 'This usually takes a few seconds.';
+
+  @override
+  String get sendBodyFailed =>
+      'Solana refused it. Only the network fee was spent.';
+
+  @override
+  String get sendBodyExpired =>
+      'This transaction expired without confirmation. You can review a new send.';
+
+  @override
+  String get sendBodyChecking =>
+      'We’re still checking this send. Don’t send it again.';
+
+  @override
+  String get sendViewSolscan => 'View on Solscan';
+
+  @override
+  String get sendCloseFailed => 'This send is saved. Try closing it again.';
+
+  @override
+  String get reminderDailyLabel => 'On workdays';
+
+  @override
+  String get reminderDailyCaption => 'Around 7 PM, when work is waiting.';
+
+  @override
+  String get reminderOccasionalLabel => 'A few times a week';
+
+  @override
+  String get reminderOccasionalCaption => 'Mon, Wed and Fri, around 7 PM.';
+
+  @override
+  String get reminderOffLabel => 'Keep it quiet';
+
+  @override
+  String get reminderOffCaption => 'I’ll come back on my own.';
+
+  @override
+  String get reminderNotificationTitle => 'Your desk is waiting';
+
+  @override
+  String get reminderNotificationBody =>
+      'Your next assignment is waiting at your desk.';
+
+  @override
+  String reminderNotificationDay(int day, String title) {
+    return 'Day $day: $title';
+  }
+
+  @override
+  String get pushErrorNotificationsOff =>
+      'Notifications are off in device settings.';
+
+  @override
+  String get pushErrorUpdate => 'Couldn’t update notifications. Try again.';
+
+  @override
+  String get pushErrorTurnOff =>
+      'Couldn’t turn off alerts. Try again when you’re online.';
+
+  @override
+  String get pushErrorConnect =>
+      'Couldn’t connect notifications. Please try again.';
 }

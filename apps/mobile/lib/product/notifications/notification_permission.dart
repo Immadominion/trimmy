@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/l10n.dart';
 import '../onboarding/onboarding_models.dart';
 import '../workdays/workdays.dart';
 import 'reminder_plan.dart';
@@ -8,6 +9,19 @@ import 'reminder_plan.dart';
 abstract final class ProductNotificationPermission {
   static const _channel = MethodChannel('com.trimmy.trimmy/notifications');
   static Future<void> _scheduleQueue = Future.value();
+
+  /// The language reminders are written in: the app's, set by the app as its
+  /// language resolves. Reminders are planned ahead, outside any screen, so
+  /// they keep the copy the app last showed. English until the app sets it.
+  static AppLocalizations _copy = englishLocalizations;
+
+  /// Uses [l10n] for reminders planned from now on. True when the language
+  /// changed, so the caller can rewrite a reminder already scheduled.
+  static bool useLanguage(AppLocalizations l10n) {
+    if (l10n.localeName == _copy.localeName) return false;
+    _copy = l10n;
+    return true;
+  }
 
   static bool get _supported =>
       !kIsWeb &&
@@ -46,6 +60,7 @@ abstract final class ProductNotificationPermission {
       preference,
       now: now ?? DateTime.now(),
       journey: journey,
+      l10n: _copy,
     );
     final result = _scheduleQueue.then((_) async {
       if (!_supported) return preference == 'off';
@@ -53,6 +68,7 @@ abstract final class ProductNotificationPermission {
         return await _channel.invokeMethod<bool>('setReminder', {
               'preference': preference,
               'at': plan?.at.millisecondsSinceEpoch,
+              'title': plan?.title,
               'body': plan?.body,
             }) ??
             false;
