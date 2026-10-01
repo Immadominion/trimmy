@@ -679,6 +679,42 @@ test('a late background Market refresh cannot discard a page loaded by More or r
   } finally {pending.resolve(json({})); await h.close();}
 });
 
+test('Market prefetches near the viewport, serializes requests and retries pagination without clearing stocks', async () => {
+  const pending = deferred<Response>(); let attempts = 0;
+  const h = await harness({reply: call => {
+    if (!call.path.endsWith('/catalog')) return undefined;
+    const offset = Number(call.url.searchParams.get('offset'));
+    if (offset === 40 && ++attempts === 1) return pending.promise;
+    return json({discovery: h.f.discovery, cards: [h.f.card], offset, total: 61,
+      nextOffset: offset === 0 ? 40 : null});
+  }});
+  const callbacks = new Set<(entries: {isIntersecting:boolean}[]) => void>();
+  Object.defineProperty(h.dom.window, 'IntersectionObserver', {configurable: true, value: class {
+    constructor(readonly callback: (entries: {isIntersecting:boolean}[]) => void, options: {rootMargin:string;root:HTMLElement}) {
+      assert.equal(options.rootMargin, '0px 0px 500px 0px');
+      assert.equal(options.root.className, 'market-results', 'prefetch against the actual scrolling list');
+    }
+    observe() {callbacks.add(this.callback);}
+    disconnect() {callbacks.delete(this.callback);}
+  }});
+  const approach = async () => {await act(async () => {
+    for (const callback of [...callbacks]) {callback([{isIntersecting:true}]); callback([{isIntersecting:true}]);}
+  }); await h.flush();};
+  try {
+    await h.render(createElement(MarketScreen, {client: h.market, onSelect() {}}));
+    assert.ok(h.button('Open Apple')); assert.equal(h.button('More companies'), undefined);
+    assert.equal(attempts, 0);
+    await approach(); assert.equal(attempts, 1);
+    pending.resolve(json({code:'STOCK_PROVIDER_UNAVAILABLE'}, 503)); await h.flush();
+    assert.ok(h.button('Open Apple')); assert.ok(h.button('Try again'));
+    await approach(); assert.equal(attempts, 1, 'failed pages wait for an explicit retry');
+    await h.click('Try again');
+    assert.ok(h.button('Open Apple')); assert.equal(h.button('Try again'), undefined);
+    assert.deepEqual(h.calls.filter(call => call.path.endsWith('/catalog')).map(call => Number(call.url.searchParams.get('offset'))), [0, 40, 40]);
+    assert.equal(callbacks.size, 0, 'the final page stops observing');
+  } finally {pending.resolve(json({})); await h.close();}
+});
+
 test('a confirmed receipt masks old balances until a server portfolio reaches its revision', async () => {
   const delayedPortfolio = deferred<Response>(); let phase: 'before' | 'pending' | 'caught-up' = 'before';
   const h = await harness({reply: call => {

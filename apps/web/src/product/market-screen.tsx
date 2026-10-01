@@ -19,6 +19,8 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
   const [cards, setCards] = useState<readonly StockCard[]>([]);
   const [offset, setOffset] = useState<number | null>(null);
   const [busy, setBusy] = useState(true);
+  const [moreError, setMoreError] = useState<unknown>(null);
+  const sentinel = useRef<HTMLDivElement>(null), results = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<unknown>(null);
   const [revision, setRevision] = useState(0);
   const [freshness, setFreshness] = useState<{observedAt: string; refreshAfter: string} | null>(null);
@@ -52,7 +54,7 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
   useEffect(() => {
     const turn = ++generation.current;
     const controller = new AbortController(); moreController.current?.abort(); loadedOffsets.current = [0];
-    setBusy(true); setError(null); setCards([]); setOffset(null); setFreshness(null);
+    setBusy(true); setError(null); setMoreError(null); setCards([]); setOffset(null); setFreshness(null);
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
@@ -102,7 +104,7 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
     if (offset === null || busy || moreController.current) return;
     const turn = generation.current, start = offset;
     const controller = new AbortController(); moreController.current = controller;
-    setBusy(true); setError(null);
+    setBusy(true); setMoreError(null);
     try {
       const page = await client.catalog(start, {signal: controller.signal});
       if (turn === generation.current && !controller.signal.aborted) {
@@ -114,9 +116,19 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
           refreshAfter: prior && Date.parse(prior.refreshAfter) < Date.parse(page.discovery.refreshAfter) ? prior.refreshAfter : page.discovery.refreshAfter}));
         setClock(Date.now());
       }
-    } catch (reason) {if (!controller.signal.aborted && turn === generation.current) setError(reason);}
+    } catch (reason) {if (!controller.signal.aborted && turn === generation.current) setMoreError(reason);}
     finally {if (moreController.current === controller) moreController.current = null; if (!controller.signal.aborted && turn === generation.current) setBusy(false);}
   }
+  useEffect(() => {
+    if (!sentinel.current || typeof window.IntersectionObserver !== 'function' ||
+        offset === null || busy || error || moreError || query || list !== 'all' || !online) return;
+    let active = true;
+    const observer = new window.IntersectionObserver(entries => {
+      if (active && entries.some(entry => entry.isIntersecting) && document.visibilityState !== 'hidden') void more();
+    }, {root: results.current, rootMargin: '0px 0px 500px 0px'});
+    observer.observe(sentinel.current);
+    return () => {active = false; observer.disconnect();};
+  }, [offset, busy, error, moreError, query, list, online, client]);
   const stale = freshness !== null && clock >= Date.parse(freshness.refreshAfter);
   return <section className={`market-screen${social ? ' has-follow' : ''}`} aria-label="Market">
     <header className="market-heading">
@@ -132,7 +144,7 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
     {social && !query && list === 'all' && <RecentsStrip recents={social.recents} onOpen={company => onSelect({assetId: company.assetId, name: company.name, symbol: company.symbol,
       imageUrl: company.imageUrl, stock: null, primaryVariant: null})}/>}
     <div className="stock-list-head" aria-hidden="true"><span>Company</span><span>Stock price</span><span>24h change</span><span/></div>
-    <div className="market-results" role="region" aria-label="Companies" tabIndex={0}>
+    <div ref={results} className="market-results" role="region" aria-label="Companies" tabIndex={0}>
       {error !== null && <Failure title="Market is taking a moment." message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}
       {rows.length > 0 && <div className="stock-list">{rows.map(card => <div key={card.assetId} className={social ? 'stock-row-shell' : 'stock-row-plain'}><button className="stock-row" onClick={() => choose(card)} aria-label={`Open ${card.name ?? card.assetId}`} aria-describedby={`market-price-${card.assetId} market-change-${card.assetId}`}>
         <span className="stock-company"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl}/><span className="stock-company-text"><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? 'Stock'}{tradeable(card) ? <span className="market-tradeable" data-testid={`market-tradeable-${card.assetId}`}>Tradeable</span>
@@ -143,7 +155,11 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
       {busy && <Loading>Finding companies…</Loading>}
       {marks && list === 'tradeable' && !rows.length && !busy && <div className="empty-page"><h2>No tradeable stocks here yet.</h2><p>Try searching for a company.</p></div>}
       {!busy && !error && !cards.length && list === 'all' && <div className="empty-page"><h2>No companies found.</h2><p>Try a company name or stock symbol.</p><button className="text-button" onClick={() => setQuery('')}>Browse the market</button></div>}
-      {offset !== null && !query && !busy && list === 'all' && <button className="secondary load-more" onClick={() => void more()}>More companies</button>}
+      {offset !== null && !query && list === 'all' && <div ref={sentinel} style={{minHeight: 1}}>
+        {moreError !== null && <p role="status">Couldn’t load more stocks. Your list is still here.</p>}
+        {!busy && (moreError !== null || typeof window.IntersectionObserver !== 'function') &&
+          <button className="secondary load-more" onClick={() => void more()}>{moreError ? 'Try again' : 'More companies'}</button>}
+      </div>}
     </div>
   </section>;
 }
