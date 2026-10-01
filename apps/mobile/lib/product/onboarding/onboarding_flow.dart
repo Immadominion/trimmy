@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/l10n.dart';
 import '../../ui_review/welcome_review_screen.dart';
 import '../design/product_components.dart';
 import '../design/product_theme.dart';
@@ -12,6 +13,9 @@ import 'onboarding_models.dart';
 
 /// The complete pre-trade onboarding. Storage and navigation stay with its host.
 typedef CompleteOnboarding = FutureOr<void> Function(OnboardingResult result);
+
+/// Why finishing onboarding failed. Worded where it is shown.
+enum _FinishError { notSaved, requestFailed }
 
 class TrimmyOnboarding extends StatefulWidget {
   const TrimmyOnboarding({
@@ -36,7 +40,7 @@ class _TrimmyOnboardingState extends State<TrimmyOnboarding> {
   late final bool _ownsController;
   late final TextEditingController _handleController;
   bool _finishing = false;
-  String? _finishError;
+  _FinishError? _finishError;
 
   @override
   void initState() {
@@ -85,7 +89,7 @@ class _TrimmyOnboardingState extends State<TrimmyOnboarding> {
       if (!mounted) return;
       setState(() {
         _finishing = false;
-        _finishError = 'Your setup was not saved. Try again.';
+        _finishError = _FinishError.notSaved;
       });
     }
   }
@@ -116,7 +120,7 @@ class _TrimmyOnboardingState extends State<TrimmyOnboarding> {
       if (!mounted) return;
       setState(() {
         _finishing = false;
-        _finishError = 'The phone did not open the request. Try again.';
+        _finishError = _FinishError.requestFailed;
       });
     }
   }
@@ -166,7 +170,12 @@ class _TrimmyOnboardingState extends State<TrimmyOnboarding> {
     OnboardingStage.notifications => _NotificationScreen(
       available: widget.requestNotificationPermission != null,
       busy: _finishing,
-      error: _finishError,
+      error: switch (_finishError) {
+        null => null,
+        _FinishError.notSaved => context.l10n.onboardingSetupNotSaved,
+        _FinishError.requestFailed =>
+          context.l10n.onboardingPermissionRequestFailed,
+      },
       onAllow: _requestNotifications,
       onNotNow: () =>
           unawaited(_finish(OnboardingNotificationStatus.notRequested)),
@@ -206,12 +215,9 @@ class _SalHelloScreen extends StatelessWidget {
       const SizedBox(height: 20),
       const Center(child: SalPortrait(size: 178)),
       const SizedBox(height: 22),
-      const _SpeechBubble(
-        text: 'Five quick questions, then your first paper trade.',
-        large: true,
-      ),
+      _SpeechBubble(text: context.l10n.onboardingSalHello, large: true),
       const SizedBox(height: 34),
-      ProductButton(label: 'Continue', onPressed: onContinue),
+      ProductButton(label: context.l10n.commonContinue, onPressed: onContinue),
     ],
   );
 }
@@ -234,110 +240,114 @@ class _QuestionScreen extends StatelessWidget {
       children: [
         _ProgressHeader(index: index, progress: controller.progress),
         const SizedBox(height: 26),
-        _SalQuestion(question: _questionFor(controller.stage)),
+        _SalQuestion(question: _questionFor(context.l10n, controller.stage)),
         const SizedBox(height: 24),
         ..._answerWidgets(context),
         const SizedBox(height: 26),
         ProductButton(
           key: const Key('onboarding-primary'),
-          label: 'Continue',
+          label: context.l10n.commonContinue,
           onPressed: controller.canContinue ? onContinue : null,
         ),
       ],
     );
   }
 
-  String _questionFor(OnboardingStage stage) => switch (stage) {
-    OnboardingStage.goal => 'Why are you here?',
-    OnboardingStage.knowledge => 'How much do you know about trading?',
-    OnboardingStage.persona => 'Pick your trader.',
-    OnboardingStage.dailyGoal => 'Pick your daily goal.',
-    OnboardingStage.handle => 'What should the floor call you?',
-    _ => '',
-  };
-
-  List<Widget> _answerWidgets(BuildContext context) =>
-      switch (controller.stage) {
-        OnboardingStage.goal => [
-          for (final value in OnboardingGoal.values.where(
-            (value) => value != OnboardingGoal.friends,
-          )) ...[
-            _ChoiceCard(
-              key: ValueKey('goal-${value.name}'),
-              label: value.label,
-              description: value.description,
-              selected: controller.goal == value,
-              onPressed: () => controller.selectGoal(value),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ],
-        OnboardingStage.knowledge => [
-          for (var i = 0; i < TradingKnowledge.values.length; i++) ...[
-            _ChoiceCard(
-              key: ValueKey('knowledge-${TradingKnowledge.values[i].name}'),
-              label: TradingKnowledge.values[i].label,
-              leading: _ScaleNumber(i + 1),
-              selected: controller.knowledge == TradingKnowledge.values[i],
-              onPressed: () =>
-                  controller.selectKnowledge(TradingKnowledge.values[i]),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ],
-        OnboardingStage.persona => [
-          for (final value in TraderPersona.values) ...[
-            _ChoiceCard(
-              key: ValueKey('persona-${value.name}'),
-              label: value.label,
-              description: value.description,
-              leading: PersonaPortrait(value),
-              selected: controller.persona == value,
-              onPressed: () => controller.selectPersona(value),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ],
-        OnboardingStage.dailyGoal => [
-          for (final value in OnboardingDailyGoal.values) ...[
-            _ChoiceCard(
-              key: ValueKey('daily-${value.name}'),
-              label: value.label,
-              description: value.description,
-              selected: controller.dailyGoal == value,
-              onPressed: () => controller.selectDailyGoal(value),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ],
-        OnboardingStage.handle => [
-          TextField(
-            key: const Key('onboarding-handle'),
-            controller: handleController,
-            autofocus: false,
-            maxLength: 18,
-            textInputAction: TextInputAction.done,
-            autocorrect: false,
-            enableSuggestions: false,
-            keyboardType: TextInputType.text,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_@]')),
-            ],
-            decoration: InputDecoration(
-              labelText: 'Handle',
-              hintText: 'marketmira',
-              prefixText: '@',
-              helperText: '3 to 18 characters',
-              errorText: controller.handleError,
-            ),
-            onChanged: controller.setHandle,
-            onSubmitted: (_) {
-              if (controller.canContinue) onContinue();
-            },
-          ),
-        ],
-        _ => const [],
+  String _questionFor(AppLocalizations l10n, OnboardingStage stage) =>
+      switch (stage) {
+        OnboardingStage.goal => l10n.onboardingQuestionGoal,
+        OnboardingStage.knowledge => l10n.onboardingQuestionKnowledge,
+        OnboardingStage.persona => l10n.onboardingQuestionPersona,
+        OnboardingStage.dailyGoal => l10n.onboardingQuestionDailyGoal,
+        OnboardingStage.handle => l10n.onboardingQuestionHandle,
+        _ => '',
       };
+
+  List<Widget> _answerWidgets(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (controller.stage) {
+      OnboardingStage.goal => [
+        for (final value in OnboardingGoal.values.where(
+          (value) => value != OnboardingGoal.friends,
+        )) ...[
+          _ChoiceCard(
+            key: ValueKey('goal-${value.name}'),
+            label: value.label(l10n),
+            description: value.description(l10n),
+            selected: controller.goal == value,
+            onPressed: () => controller.selectGoal(value),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+      OnboardingStage.knowledge => [
+        for (var i = 0; i < TradingKnowledge.values.length; i++) ...[
+          _ChoiceCard(
+            key: ValueKey('knowledge-${TradingKnowledge.values[i].name}'),
+            label: TradingKnowledge.values[i].label(l10n),
+            leading: _ScaleNumber(i + 1),
+            selected: controller.knowledge == TradingKnowledge.values[i],
+            onPressed: () =>
+                controller.selectKnowledge(TradingKnowledge.values[i]),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+      OnboardingStage.persona => [
+        for (final value in TraderPersona.values) ...[
+          _ChoiceCard(
+            key: ValueKey('persona-${value.name}'),
+            label: value.label(l10n),
+            description: value.description(l10n),
+            leading: PersonaPortrait(value),
+            selected: controller.persona == value,
+            onPressed: () => controller.selectPersona(value),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+      OnboardingStage.dailyGoal => [
+        for (final value in OnboardingDailyGoal.values) ...[
+          _ChoiceCard(
+            key: ValueKey('daily-${value.name}'),
+            label: value.label(l10n),
+            description: value.description(l10n),
+            selected: controller.dailyGoal == value,
+            onPressed: () => controller.selectDailyGoal(value),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+      OnboardingStage.handle => [
+        TextField(
+          key: const Key('onboarding-handle'),
+          controller: handleController,
+          autofocus: false,
+          maxLength: 18,
+          textInputAction: TextInputAction.done,
+          autocorrect: false,
+          enableSuggestions: false,
+          keyboardType: TextInputType.text,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_@]')),
+          ],
+          decoration: InputDecoration(
+            labelText: l10n.onboardingHandleLabel,
+            // A sample handle, not a word: it reads the same everywhere.
+            hintText: 'marketmira',
+            prefixText: '@',
+            helperText: l10n.onboardingHandleHelper,
+            errorText: controller.handleError(l10n),
+          ),
+          onChanged: controller.setHandle,
+          onSubmitted: (_) {
+            if (controller.canContinue) onContinue();
+          },
+        ),
+      ],
+      _ => const [],
+    };
+  }
 }
 
 class _ProgressHeader extends StatelessWidget {
@@ -351,8 +361,8 @@ class _ProgressHeader extends StatelessWidget {
     children: [
       Expanded(
         child: Semantics(
-          label: 'Onboarding progress',
-          value: '${(progress * 100).round()} percent',
+          label: context.l10n.onboardingProgressLabel,
+          value: context.l10n.onboardingProgressValue((progress * 100).round()),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
@@ -365,7 +375,10 @@ class _ProgressHeader extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 14),
-      Text('${index + 1} of 5', style: Theme.of(context).textTheme.labelLarge),
+      Text(
+        context.l10n.onboardingProgressStep(index + 1, 5),
+        style: Theme.of(context).textTheme.labelLarge,
+      ),
     ],
   );
 }
@@ -394,7 +407,7 @@ class _SpeechBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Sal says: $text',
+    label: context.l10n.onboardingSalSays(text),
     child: ExcludeSemantics(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -565,21 +578,23 @@ class _NotificationScreen extends StatelessWidget {
       const SizedBox(height: 26),
       _SalQuestion(
         question: available
-            ? "I'll ring you when Wall Street opens and closes. Trading here stays open."
-            : 'Alerts are almost ready.',
+            ? context.l10n.onboardingNotificationsAsk
+            : context.l10n.onboardingNotificationsSoon,
       ),
       const SizedBox(height: 22),
       if (available) ...[const PermissionPreview(), const SizedBox(height: 18)],
       Text(
-        available ? 'Your phone asks next.' : 'Keep setting up your desk.',
+        available
+            ? context.l10n.onboardingNotificationsPhoneAsks
+            : context.l10n.onboardingNotificationsKeepSettingUp,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleLarge,
       ),
       const SizedBox(height: 6),
       Text(
         available
-            ? 'You can change alerts any time in Settings.'
-            : 'Alerts will appear here after delivery is connected.',
+            ? context.l10n.onboardingNotificationsChangeLater
+            : context.l10n.onboardingNotificationsLater,
         textAlign: TextAlign.center,
         style: Theme.of(
           context,
@@ -603,16 +618,16 @@ class _NotificationScreen extends StatelessWidget {
       ProductButton(
         key: const Key('onboarding-notifications-allow'),
         label: busy
-            ? 'Saving your setup'
+            ? context.l10n.onboardingNotificationsSaving
             : available
-            ? 'Turn on alerts'
-            : 'Continue',
+            ? context.l10n.onboardingNotificationsTurnOn
+            : context.l10n.commonContinue,
         onPressed: busy ? null : onAllow,
       ),
       if (available) ...[
         const SizedBox(height: 14),
         ProductButton(
-          label: 'Not now',
+          label: context.l10n.commonNotNow,
           onPressed: busy ? null : onNotNow,
           secondary: true,
         ),
@@ -621,7 +636,7 @@ class _NotificationScreen extends StatelessWidget {
         const SizedBox(height: 8),
         TextButton(
           onPressed: busy ? null : onReview,
-          child: const Text('Review my answers'),
+          child: Text(context.l10n.onboardingReviewAnswers),
         ),
       ],
     ],
@@ -638,7 +653,7 @@ class _CompletedScreen extends StatelessWidget {
       const Center(child: TrimmyMark()),
       const SizedBox(height: 24),
       Text(
-        'Opening the market',
+        context.l10n.onboardingOpeningMarket,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineLarge,
       ),

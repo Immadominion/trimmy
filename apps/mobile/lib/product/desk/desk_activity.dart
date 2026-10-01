@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../market/paper_portfolio.dart';
 import '../design/product_theme.dart';
 import '../design/product_motion_icon.dart';
 import '../community/community.dart';
+import 'desk_screen.dart' show deskSharesLabel;
 
 class DeskActivity extends StatelessWidget {
   const DeskActivity({
@@ -20,20 +22,22 @@ class DeskActivity extends StatelessWidget {
   final bool preview;
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final sorted = [...orders]
       ..sort((a, b) => b.committedAt.compareTo(a.committedAt));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Your activity',
+          l10n.deskActivityTitle,
           style: Theme.of(context).textTheme.headlineMedium,
         ),
         const SizedBox(height: 10),
         if (sorted.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 18),
-            child: Text('Your first trade starts the story.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Text(l10n.deskActivityEmpty),
           ),
         for (final order in preview ? sorted.take(3) : sorted)
           ListTile(
@@ -54,12 +58,14 @@ class DeskActivity extends StatelessWidget {
               ),
             ),
             title: Text(
-              '${order.action == 'buy' ? 'Bought' : 'Sold'} ${order.symbol}',
+              order.action == 'buy'
+                  ? l10n.deskActivityBought(order.symbol)
+                  : l10n.deskActivitySold(order.symbol),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            subtitle: Text('${order.quantity} shares'),
+            subtitle: Text(deskSharesLabel(l10n, formats, order.quantity)),
             trailing: Text(
-              '${order.committedAt.toLocal().day}/${order.committedAt.toLocal().month}',
+              formats.numericDayMonth(order.committedAt.toLocal()),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             onTap: () => onOpenAsset(order.assetId),
@@ -70,11 +76,11 @@ class DeskActivity extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Community',
+                  l10n.deskCommunityTitle,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              TextButton(onPressed: onCommunity, child: const Text('Open')),
+              TextButton(onPressed: onCommunity, child: Text(l10n.commonOpen)),
             ],
           ),
           if (community != null)
@@ -83,7 +89,7 @@ class DeskActivity extends StatelessWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const ProductMotionIcon(file: 'career-comments.png'),
-              title: const Text('See what traders are saying'),
+              title: Text(l10n.deskCommunityPrompt),
               onTap: onCommunity,
             ),
         ],
@@ -114,6 +120,7 @@ class _CommunityPreviewState extends State<_CommunityPreview> {
   Widget build(BuildContext context) => FutureBuilder<CommunityPageData>(
     future: _read,
     builder: (context, snapshot) {
+      final l10n = context.l10n;
       final posts = snapshot.data?.posts ?? const <CommunityPost>[];
       if (posts.isEmpty) {
         return ListTile(
@@ -121,12 +128,12 @@ class _CommunityPreviewState extends State<_CommunityPreview> {
           leading: const ProductMotionIcon(file: 'career-comments.png'),
           title: Text(
             snapshot.hasError
-                ? 'Community couldn’t load'
+                ? l10n.deskCommunityLoadFailed
                 : snapshot.connectionState == ConnectionState.waiting
-                ? 'Opening community…'
-                : 'Start a conversation',
+                ? l10n.deskCommunityOpening
+                : l10n.deskCommunityStart,
           ),
-          subtitle: const Text('Public comments from other traders.'),
+          subtitle: Text(l10n.deskCommunitySubtitle),
           onTap: widget.onOpen,
         );
       }
@@ -137,7 +144,12 @@ class _CommunityPreviewState extends State<_CommunityPreview> {
               contentPadding: EdgeInsets.zero,
               leading: const ProductMotionIcon(file: 'career-comments.png'),
               title: Text(
-                '${post.handle.isEmpty ? 'A trader' : '@${post.handle}'} on \$${post.symbol}',
+                post.handle.isEmpty
+                    ? l10n.deskCommunityPostByTrader('\$${post.symbol}')
+                    : l10n.deskCommunityPostByHandle(
+                        post.handle,
+                        '\$${post.symbol}',
+                      ),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               subtitle: Text(

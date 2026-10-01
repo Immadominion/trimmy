@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/cast_portrait.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 
@@ -32,7 +33,10 @@ void main() {
         find.byKey(ValueKey('cast-portrait-${member.name}')),
         findsOneWidget,
       );
-      expect(find.bySemanticsLabel(member.semanticName), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(member.semanticName(englishLocalizations)),
+        findsOneWidget,
+      );
     }
     expect(tester.takeException(), isNull);
   });

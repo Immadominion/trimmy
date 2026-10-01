@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trimmy/account/guest_session.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/app/product_profile_repository.dart';
 import 'package:trimmy/product/app/product_session.dart';
 import 'package:trimmy/product/onboarding/onboarding.dart';
@@ -862,7 +863,11 @@ void main() {
       expect(restored.launchStep, ProductLaunchStep.dayOne);
       expect(restored.remoteFailure, ProductProfileFailure.offline);
       expect(restored.remoteProfileUsable, isTrue);
-      expect(restored.loadIssue, contains('offline'));
+      expect(restored.loadIssue, ProductSessionIssue.readOffline);
+      expect(
+        restored.loadIssue!.message(englishLocalizations),
+        contains('offline'),
+      );
     },
   );
 

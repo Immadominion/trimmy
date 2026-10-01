@@ -1,13 +1,15 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
+
 /// A soft, glossy seal, with the rounded volume of the Trimmy mark.
 class ProductSuccessMark extends StatelessWidget {
   const ProductSuccessMark({super.key, this.size = 36});
   final double size;
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Completed',
+    label: context.l10n.designCompleted,
     image: true,
     child: SizedBox.square(
       dimension: size,

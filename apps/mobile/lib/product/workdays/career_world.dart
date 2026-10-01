@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_feedback.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../design/product_theme.dart';
@@ -118,12 +119,12 @@ class _CareerWorldState extends State<CareerWorld> {
                     child: Text(
                       assignment?.title ??
                           upcoming?.title ??
-                          'The next neighbourhood',
+                          context.l10n.careerWorldNextNeighbourhood,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Close',
+                    tooltip: context.l10n.commonClose,
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -132,15 +133,15 @@ class _CareerWorldState extends State<CareerWorld> {
               const SizedBox(height: 12),
               Text(
                 assignment?.brief ??
-                    upcoming?.opensLabel() ??
-                    'More assignments are on the way.',
+                    upcoming?.opensLabel(context.l10n, context.formats) ??
+                    context.l10n.careerWorldMoreOnTheWay,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               if (assignment != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 18),
                   child: Text(
-                    'Complete day ${assignment.ordinal - 1} to open this desk.',
+                    context.l10n.careerWorldLockedHint(assignment.ordinal - 1),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -155,6 +156,7 @@ class _CareerWorldState extends State<CareerWorld> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.controller,
     builder: (context, _) {
+      final l10n = context.l10n;
       final journey = widget.controller.journey;
       if (journey == null) {
         return Center(
@@ -167,13 +169,14 @@ class _CareerWorldState extends State<CareerWorld> {
                 const SizedBox(height: 16),
                 Text(
                   widget.controller.loading
-                      ? 'Opening your week…'
-                      : 'Your assignments couldn’t load.',
+                      ? l10n.careerWorldLoading
+                      : l10n.careerWorldLoadFailed,
+                  textAlign: TextAlign.center,
                 ),
                 if (!widget.controller.loading)
                   TextButton(
                     onPressed: widget.controller.refresh,
-                    child: const Text('Try again'),
+                    child: Text(l10n.commonTryAgain),
                   ),
               ],
             ),
@@ -249,8 +252,8 @@ class _CareerWorldState extends State<CareerWorld> {
                           child: Text(
                             assignment?.district ??
                                 (index == 20
-                                    ? 'Beyond the first month'
-                                    : 'The city keeps growing'),
+                                    ? l10n.careerWorldBeyondFirstMonth
+                                    : l10n.careerWorldCityGrowing),
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(color: ProductColor.muted),
                           ),
@@ -313,8 +316,8 @@ class _CareerWorldState extends State<CareerWorld> {
                                   if (active)
                                     Text(
                                       assignment.step == 0
-                                          ? 'START HERE'
-                                          : 'CONTINUE',
+                                          ? l10n.careerWorldStartHere
+                                          : l10n.careerWorldContinue,
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelSmall
@@ -326,7 +329,7 @@ class _CareerWorldState extends State<CareerWorld> {
                                   Text(
                                     assignment?.title ??
                                         upcoming?.title ??
-                                        'Coming later',
+                                        l10n.careerWorldComingLater,
                                     textAlign: TextAlign.center,
                                     style: Theme.of(context)
                                         .textTheme
@@ -339,16 +342,20 @@ class _CareerWorldState extends State<CareerWorld> {
                                   ),
                                   if (upcoming != null)
                                     Text(
-                                      upcoming.opensLabel(),
+                                      upcoming.opensLabel(
+                                        l10n,
+                                        context.formats,
+                                      ),
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
                                         color: ProductColor.muted,
                                         fontSize: 12,
                                       ),
                                     ),
                                   if (done)
-                                    const Text(
-                                      'Filed',
-                                      style: TextStyle(
+                                    Text(
+                                      l10n.careerWorldFiled,
+                                      style: const TextStyle(
                                         color: ProductColor.gain,
                                         fontSize: 12,
                                       ),
@@ -433,14 +440,13 @@ class _DayNodeState extends State<_DayNode>
     ),
     child: Semantics(
       button: true,
-      label:
-          'Day ${widget.number}, ${widget.done
-              ? 'filed'
-              : widget.active
-              ? 'current assignment'
-              : widget.released
-              ? 'locked'
-              : 'coming later'}',
+      label: widget.done
+          ? context.l10n.careerWorldDayFiled(widget.number)
+          : widget.active
+          ? context.l10n.careerWorldDayCurrent(widget.number)
+          : widget.released
+          ? context.l10n.careerWorldDayLocked(widget.number)
+          : context.l10n.careerWorldDayComingLater(widget.number),
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
@@ -585,7 +591,7 @@ class WorkdayEntry extends StatelessWidget {
         }
         return TextButton(
           onPressed: controller.refresh,
-          child: const Text('Reload your assignment'),
+          child: Text(context.l10n.workdayEntryReload),
         );
       }
       return Material(
@@ -610,7 +616,10 @@ class WorkdayEntry extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'DAY ${current.ordinal} · ${current.speaker.toUpperCase()}',
+                        context.l10n.workdayEntryEyebrow(
+                          current.ordinal,
+                          current.speaker.toUpperCase(),
+                        ),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: ProductColor.violet,
                         ),
@@ -623,8 +632,8 @@ class WorkdayEntry extends StatelessWidget {
                       const SizedBox(height: 5),
                       Text(
                         current.step == 0
-                            ? 'Your next assignment'
-                            : 'Continue your assignment',
+                            ? context.l10n.workdayEntryNext
+                            : context.l10n.workdayEntryContinue,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_feedback.dart';
 import '../design/product_theme.dart';
 import 'workdays.dart';
@@ -19,15 +20,21 @@ class WorkdayScreen extends StatefulWidget {
   State<WorkdayScreen> createState() => _WorkdayScreenState();
 }
 
+/// Where the optional note's autosave stands.
+enum _DraftStatus { none, saving, saved, failed }
+
 class _WorkdayScreenState extends State<WorkdayScreen> {
   late final String _id = widget.assignmentId;
   final _number = TextEditingController(), _note = TextEditingController();
   final _selected = <String>{};
-  String? _choice, _error;
+  String? _choice;
+
+  /// The current error, worded at display time so a language change applies.
+  String Function(AppLocalizations l10n)? _error;
   int _displayStep = -1;
   bool _busy = false, _hint = false, _sources = false, _canLeave = false;
   Timer? _draftTimer;
-  String _draftStatus = '';
+  _DraftStatus _draftStatus = _DraftStatus.none;
   WorkAssignment get _work => widget.controller.journey!.find(_id)!;
   @override
   void initState() {
@@ -52,7 +59,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
 
   void _draftChanged(String text) {
     _draftTimer?.cancel();
-    setState(() => _draftStatus = 'Saving…');
+    setState(() => _draftStatus = _DraftStatus.saving);
     _draftTimer = Timer(
       const Duration(milliseconds: 650),
       () => unawaited(_saveDraft()),
@@ -65,11 +72,11 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
     try {
       await widget.controller.draft(id, text);
       if (mounted && id == _id && _note.text == text) {
-        setState(() => _draftStatus = 'Saved');
+        setState(() => _draftStatus = _DraftStatus.saved);
       }
       return true;
     } catch (_) {
-      if (mounted) setState(() => _draftStatus = 'Not saved yet');
+      if (mounted) setState(() => _draftStatus = _DraftStatus.failed);
       return false;
     }
   }
@@ -86,16 +93,16 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
         final leave = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Leave this note?'),
-            content: const Text('Your latest edits haven’t saved yet.'),
+            title: Text(dialogContext.l10n.workdayLeaveTitle),
+            content: Text(dialogContext.l10n.workdayLeaveBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Keep writing'),
+                child: Text(dialogContext.l10n.workdayLeaveKeepWriting),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Leave without saving'),
+                child: Text(dialogContext.l10n.workdayLeaveWithoutSaving),
               ),
             ],
           ),
@@ -112,6 +119,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
 
   Future<void> _submit() async {
     final original = _work;
+    final formats = context.formats;
     _draftTimer?.cancel();
     FocusScope.of(context).unfocus();
     setState(() {
@@ -122,7 +130,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
       final answer = original.step == 1
           ? <String, dynamic>{
               'value': original.decision['kind'] == 'number'
-                  ? _number.text.trim()
+                  ? _typedNumber(formats, _number.text)
                   : _choice,
             }
           : <String, dynamic>{'ids': _selected.toList()};
@@ -146,7 +154,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
     } on WorkdayException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Couldn’t save yet. Try again.');
+      if (mounted) setState(() => _error = (l10n) => l10n.workdaySaveRetry);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -160,8 +168,26 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
     });
   }
 
+  /// The typed answer in the plain "-1234.5" form the server reads. English
+  /// text is sent exactly as typed (trimmed); a comma decimal mark becomes a
+  /// point. The sign is kept outside the locale normalizer.
+  static String _typedNumber(AppFormats formats, String typed) {
+    final text = typed.trim();
+    if (!text.startsWith('-')) return formats.normalizeDecimalInput(text);
+    return '-${formats.normalizeDecimalInput(text.substring(1))}';
+  }
+
+  String _draftLabel(AppLocalizations l10n) => switch (_draftStatus) {
+    _DraftStatus.none => '',
+    _DraftStatus.saving => l10n.commonSaving,
+    _DraftStatus.saved => l10n.workdayDraftSaved,
+    _DraftStatus.failed => l10n.workdayDraftNotSaved,
+  };
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final work = _work;
     if (_displayStep != work.step) {
       _displayStep = work.step;
@@ -187,11 +213,14 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           automaticallyImplyLeading: false,
-          title: Text('Day ${work.ordinal}', style: theme.titleMedium),
+          title: Text(
+            l10n.workdayDayTitle(work.ordinal),
+            style: theme.titleMedium,
+          ),
           actions: [
             IconButton(
               onPressed: _busy ? null : _leave,
-              tooltip: 'Save and close',
+              tooltip: l10n.workdaySaveAndClose,
               icon: const Icon(Icons.close_rounded),
             ),
           ],
@@ -237,7 +266,10 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text('Filed.', style: theme.headlineLarge),
+                        Text(
+                          l10n.workdayFiledTitle,
+                          style: theme.headlineLarge,
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           work.data['feedback'] as String? ?? '',
@@ -256,7 +288,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                '+${work.trims} Trims',
+                                l10n.workdayTrimsEarned(work.trims),
                                 style: theme.titleMedium?.copyWith(
                                   color: ProductColor.gain,
                                 ),
@@ -267,10 +299,13 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                         if (widget.controller.journey?.upcoming
                             case final next?) ...[
                           const SizedBox(height: 24),
-                          Text(next.opensLabel(), style: theme.titleMedium),
+                          Text(
+                            next.opensLabel(l10n, formats),
+                            style: theme.titleMedium,
+                          ),
                           const SizedBox(height: 6),
                           Text(
-                            'Day ${next.ordinal}: ${next.title}',
+                            l10n.workdayNextDay(next.ordinal, next.title),
                             style: theme.bodyLarge,
                           ),
                         ],
@@ -377,8 +412,12 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                                         signed: true,
                                       ),
                                   inputFormatters: [
+                                    // Digits, the locale's decimal mark(s)
+                                    // and a minus sign, as before.
                                     FilteringTextInputFormatter.allow(
-                                      RegExp(r'[0-9.\-]'),
+                                      RegExp(
+                                        '${formats.decimalInputCharacters.pattern}|-',
+                                      ),
                                     ),
                                     LengthLimitingTextInputFormatter(18),
                                   ],
@@ -388,12 +427,14 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                                   decoration: InputDecoration(
                                     border: InputBorder.none,
                                     hintText: '0',
-                                    prefixText: work.decision['unit'] == '\$'
-                                        ? '\$ '
-                                        : null,
-                                    suffixText: work.decision['unit'] == '%'
-                                        ? '%'
-                                        : null,
+                                    prefixText: _unitPrefix(
+                                      formats,
+                                      work.decision['unit'],
+                                    ),
+                                    suffixText: _unitSuffix(
+                                      formats,
+                                      work.decision['unit'],
+                                    ),
                                   ),
                                 ),
                               )
@@ -419,7 +460,11 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                             if (work.misses > 0 || _error != null)
                               TextButton(
                                 onPressed: () => setState(() => _hint = !_hint),
-                                child: Text(_hint ? 'Hide hint' : 'Hint?'),
+                                child: Text(
+                                  _hint
+                                      ? l10n.workdayHintHide
+                                      : l10n.workdayHintShow,
+                                ),
                               ),
                             if (_hint)
                               _surface(
@@ -431,14 +476,11 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                               ),
                           ] else ...[
                             Text(
-                              'Send the desk an update',
+                              l10n.workdayFileHeading,
                               style: theme.headlineMedium,
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              'Keep the two facts the source supports.',
-                              style: theme.bodyMedium,
-                            ),
+                            Text(l10n.workdayFileBody, style: theme.bodyMedium),
                             const SizedBox(height: 18),
                             for (final part in _orderedParts(work))
                               Padding(
@@ -457,18 +499,18 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                                 maxLines: 4,
                                 maxLength: 280,
                                 onChanged: _draftChanged,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   border: InputBorder.none,
-                                  hintText: 'Add a note (optional)',
+                                  hintText: l10n.workdayNoteHint,
                                   counterText: '',
                                 ),
                               ),
                             ),
-                            if (_draftStatus.isNotEmpty)
+                            if (_draftStatus != _DraftStatus.none)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
-                                  _draftStatus,
+                                  _draftLabel(l10n),
                                   style: theme.bodySmall,
                                 ),
                               ),
@@ -479,7 +521,7 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
                           child: Text(
-                            _error!,
+                            _error!(l10n),
                             style: theme.bodyLarge?.copyWith(
                               color: ProductColor.loss,
                             ),
@@ -508,14 +550,14 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                         : null,
                     child: Text(
                       _busy
-                          ? 'Saving…'
+                          ? l10n.commonSaving
                           : complete
-                          ? 'Back to the street'
+                          ? l10n.workdayButtonBack
                           : work.step == 0
-                          ? 'Check the evidence'
+                          ? l10n.workdayButtonCheckEvidence
                           : work.step == 1
-                          ? 'Send your decision'
-                          : 'File update',
+                          ? l10n.workdayButtonSendDecision
+                          : l10n.workdayButtonFile,
                     ),
                   ),
                 ),
@@ -525,6 +567,24 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
         ),
       ),
     );
+  }
+
+  /// A dollar decision shows the locale's dollar mark on its usual side
+  /// (English stays "\$ " in front). The unit itself comes from the server.
+  static String? _unitPrefix(AppFormats formats, Object? unit) {
+    if (unit == '\$') {
+      return formats.dollarFirst ? '${formats.dollarSymbol} ' : null;
+    }
+    if (unit == '%' && formats.percentFirst) return '%${formats.percentGap}';
+    return null;
+  }
+
+  static String? _unitSuffix(AppFormats formats, Object? unit) {
+    if (unit == '\$') {
+      return formats.dollarFirst ? null : ' ${formats.dollarSymbol}';
+    }
+    if (unit == '%' && !formats.percentFirst) return '${formats.percentGap}%';
+    return null;
   }
 
   List<Map> _orderedParts(WorkAssignment work) {
@@ -610,7 +670,9 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
     selected: selected,
     button: true,
     enabled: !_busy,
-    hint: selected ? 'Unpin detail' : 'Pin detail',
+    hint: selected
+        ? context.l10n.workdayUnpinDetail
+        : context.l10n.workdayPinDetail,
     child: AnimatedContainer(
       duration: productDuration(context, 160),
       curve: Curves.easeOutCubic,

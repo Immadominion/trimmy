@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_welcome_note.dart';
 import '../../ui_review/welcome_review_screen.dart';
 
@@ -29,21 +30,21 @@ class ProductIntroduction extends StatefulWidget {
 class _ProductIntroductionState extends State<ProductIntroduction> {
   late bool _showNote = widget.startAtNote;
   bool _busy = false;
-  String? _error;
+  bool _failed = false;
   int _welcomeAttempt = 0;
 
   Future<void> _finish(Future<void> Function() action) async {
     if (_busy) return;
     setState(() {
       _busy = true;
-      _error = null;
+      _failed = false;
     });
     try {
       await action();
     } catch (_) {
       if (mounted) {
         setState(() {
-          _error = 'Could not save that step. Try again.';
+          _failed = true;
           _welcomeAttempt++;
         });
       }
@@ -80,20 +81,20 @@ class _ProductIntroductionState extends State<ProductIntroduction> {
                 ),
         ),
         if (_busy)
-          const Positioned(
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: SafeArea(
               child: LinearProgressIndicator(
                 minHeight: 2,
-                color: Color(0xFF7867E8),
+                color: const Color(0xFF7867E8),
                 backgroundColor: Colors.white,
-                semanticsLabel: 'Saving your place',
+                semanticsLabel: context.l10n.onboardingIntroSaving,
               ),
             ),
           ),
-        if (_error != null)
+        if (_failed)
           Positioned(
             bottom: MediaQuery.paddingOf(context).bottom + 82,
             left: 24,
@@ -101,7 +102,7 @@ class _ProductIntroductionState extends State<ProductIntroduction> {
             child: Material(
               color: Colors.white,
               child: Text(
-                _error!,
+                context.l10n.onboardingIntroSaveError,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xFFB73549)),
               ),

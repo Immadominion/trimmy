@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import 'market_craft.dart';
 import '../design/product_empty_state.dart';
 import 'foundation_market_page.dart' show MarketSearchIcon;
@@ -26,7 +27,10 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
   final _query = TextEditingController();
   final _focus = FocusNode();
   Timer? _debounce;
-  String? _localMessage;
+
+  /// The last search failed before it finished. Shown in the reader's
+  /// language at build time.
+  bool _searchFailed = false;
   var _generation = 0;
 
   @override
@@ -66,7 +70,7 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
   void _onQueryChanged(String value) {
     _debounce?.cancel();
     final query = value.trim();
-    setState(() => _localMessage = null);
+    setState(() => _searchFailed = false);
     if (query.isEmpty) {
       widget.gateway.cancel();
       return;
@@ -80,7 +84,7 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
       await widget.gateway.search(query);
     } catch (_) {
       if (!mounted || generation != _generation) return;
-      setState(() => _localMessage = 'Search did not finish. Try again.');
+      setState(() => _searchFailed = true);
     }
   }
 
@@ -91,6 +95,7 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final query = _query.text.trim();
     final snapshot = widget.gateway.snapshot;
     final matching = snapshot.query.toLowerCase() == query.toLowerCase();
@@ -104,14 +109,14 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
         backgroundColor: MarketPalette.paper,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          tooltip: 'Back',
+          tooltip: l10n.commonBack,
           onPressed: () => Navigator.maybePop(context),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
         titleSpacing: 0,
-        title: const Text(
-          'Find a company',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        title: Text(
+          l10n.marketFindCompany,
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
       body: SafeArea(
@@ -130,7 +135,7 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
                 enableSuggestions: false,
                 maxLength: 80,
                 decoration: InputDecoration(
-                  hintText: 'Name or symbol',
+                  hintText: l10n.marketSearchHint,
                   counterText: '',
                   prefixIcon: const Padding(
                     padding: EdgeInsets.all(13),
@@ -139,7 +144,7 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
                   suffixIcon: query.isEmpty
                       ? null
                       : IconButton(
-                          tooltip: 'Clear search',
+                          tooltip: l10n.marketSearchClear,
                           onPressed: () {
                             _query.clear();
                             _onQueryChanged('');
@@ -189,9 +194,11 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
                         query: query,
                         searching: searching,
                         results: results,
-                        message:
-                            _localMessage ??
-                            (matching ? snapshot.message : null),
+                        message: _searchFailed
+                            ? l10n.marketSearchDidNotFinish
+                            : matching
+                            ? snapshot.noticeText(l10n)
+                            : null,
                         phase: matching
                             ? snapshot.phase
                             : MarketSearchPhase.loading,
@@ -215,31 +222,35 @@ class _Recents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final recents = controller.companies;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Recently viewed',
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+                l10n.marketRecentTitle,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
             if (recents.isNotEmpty)
               TextButton(
                 key: const ValueKey('market-clear-recents'),
                 onPressed: controller.clear,
-                child: const Text('Clear'),
+                child: Text(l10n.marketRecentClear),
               ),
           ],
         ),
         const SizedBox(height: 10),
         if (recents.isEmpty)
-          const ProductEmptyState(
-            title: 'Find your next company',
-            message: 'Your recent searches will appear here.',
+          ProductEmptyState(
+            title: l10n.marketRecentEmptyTitle,
+            message: l10n.marketRecentEmptyBody,
           )
         else
           for (final company in recents)
@@ -310,7 +321,7 @@ class _SearchResults extends StatelessWidget {
                       child: TextButton.icon(
                         onPressed: onRetry,
                         icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Try again'),
+                        label: Text(context.l10n.commonTryAgain),
                       ),
                     ),
                   ],
@@ -325,7 +336,7 @@ class _SearchResults extends StatelessWidget {
             child: MarketPanel(
               key: const ValueKey('market-search-empty'),
               child: Text(
-                'Nothing called “$query”. Try the symbol.',
+                context.l10n.marketSearchNoResults(query),
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -392,7 +403,7 @@ class _CompanyResult extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    shortPrice(company.priceUsd),
+                    shortPrice(company.priceUsd, context.formats),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontFeatures: [FontFeature.tabularFigures()],
@@ -415,7 +426,7 @@ class _LoadingResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Loading company',
+    label: context.l10n.marketSearchLoadingResult,
     child: ExcludeSemantics(
       child: Container(
         height: 78,

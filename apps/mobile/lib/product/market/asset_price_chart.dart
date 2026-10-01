@@ -1,6 +1,7 @@
 import '../../ui_review/review_feedback.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import 'stock_facts.dart';
 import 'market_craft.dart';
@@ -74,6 +75,8 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
   Widget build(BuildContext context) {
     final points = widget.points;
     if (points.length < 2) return const SizedBox.shrink();
+    final l10n = context.l10n;
+    final formats = context.formats;
     final selected = _selected == null ? null : points[_selected!];
     final visible = <String, AssetChartTrade>{
       for (final trade in widget.trades)
@@ -88,28 +91,40 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
         : ProductColor.loss;
     return Semantics(
       image: true,
-      label:
-          'Price chart. ${shortPrice(points.first.close)} to ${shortPrice(points.last.close)}. Hold to explore.',
+      label: l10n.chartPriceLabel(
+        shortPrice(points.first.close, formats),
+        shortPrice(points.last.close, formats),
+      ),
       child: Column(
         children: [
           SizedBox(
             height: 30,
+            // One line that shrinks rather than spill out of its 30 points
+            // when a translation or large text runs long.
             child: selected == null
                 ? _selectedTrade == null
                       ? null
-                      : Text(
-                          '${_selectedTrade!.buy ? 'Bought' : 'Sold'} ${_selectedTrade!.shares} · ${shortPrice(_selectedTrade!.price)} · ${_date(_selectedTrade!.at)}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _tradeSummary(_selectedTrade!, l10n, formats),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         )
-                : Text(
-                    '${shortPrice(selected.close)}   ${_date(selected.at)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${shortPrice(selected.close, formats)}   ${_date(selected.at, formats)}',
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
           ),
@@ -138,7 +153,7 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
                         ),
                       ),
                     ),
-                    ..._tradeMarkers(visible, box.maxWidth),
+                    ..._tradeMarkers(visible, box.maxWidth, l10n, formats),
                   ],
                 ),
               ),
@@ -149,7 +164,12 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
     );
   }
 
-  List<Widget> _tradeMarkers(List<AssetChartTrade> trades, double width) {
+  List<Widget> _tradeMarkers(
+    List<AssetChartTrade> trades,
+    double width,
+    AppLocalizations l10n,
+    AppFormats formats,
+  ) {
     final geometry = _ChartGeometry(widget.points, trades, Size(width, 214));
     // Co-located fills share one accessible hit target instead of overlapping.
     final groups = <List<AssetChartTrade>>[];
@@ -169,10 +189,7 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
             final trade = group.last;
             final mixed = group.any((t) => t.buy != trade.buy);
             final label = group
-                .map(
-                  (t) =>
-                      '${t.buy ? 'Bought' : 'Sold'} ${t.shares} shares at ${shortPrice(t.price)}, ${_date(t.at)}',
-                )
+                .map((t) => _tradeLabel(t, l10n, formats))
                 .join('. ');
             return Positioned(
               left: (geometry.x(trade.at) - 22).clamp(
@@ -216,11 +233,11 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
                                 ? '${mixed
                                       ? ''
                                       : trade.buy
-                                      ? 'B'
-                                      : 'S'}${group.length}'
+                                      ? l10n.chartTradeMarkerBuy
+                                      : l10n.chartTradeMarkerSell}${group.length}'
                                 : trade.buy
-                                ? 'B'
-                                : 'S',
+                                ? l10n.chartTradeMarkerBuy
+                                : l10n.chartTradeMarkerSell,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -241,23 +258,39 @@ class _AssetPriceChartState extends State<AssetPriceChart> {
     ];
   }
 
-  String _date(DateTime utc) {
+  /// "30 Sep · 14:05" in the phone's time zone, in [formats]' language.
+  String _date(DateTime utc, AppFormats formats) {
     final d = utc.toLocal();
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${d.day} ${months[d.month - 1]} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    return '${formats.dayMonth(d)} · ${formats.time24(d)}';
+  }
+
+  /// The line shown above the chart for a tapped trade marker.
+  String _tradeSummary(
+    AssetChartTrade trade,
+    AppLocalizations l10n,
+    AppFormats formats,
+  ) {
+    final shares = formats.number(trade.shares);
+    final price = shortPrice(trade.price, formats);
+    final date = _date(trade.at, formats);
+    return trade.buy
+        ? l10n.chartTradeBoughtSummary(shares, price, date)
+        : l10n.chartTradeSoldSummary(shares, price, date);
+  }
+
+  /// A trade marker's screen reader label and tooltip.
+  String _tradeLabel(
+    AssetChartTrade trade,
+    AppLocalizations l10n,
+    AppFormats formats,
+  ) {
+    final count = double.tryParse(trade.shares.replaceAll(',', '')) ?? 0;
+    final shares = formats.number(trade.shares);
+    final price = shortPrice(trade.price, formats);
+    final date = _date(trade.at, formats);
+    return trade.buy
+        ? l10n.chartTradeBoughtLabel(count, shares, price, date)
+        : l10n.chartTradeSoldLabel(count, shares, price, date);
   }
 }
 

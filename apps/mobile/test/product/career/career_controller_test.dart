@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/account/guest_session.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/career/career.dart';
 
 void main() {
@@ -57,7 +58,7 @@ void main() {
       expect(controller.summary?.trims.total, 20);
       expect(controller.failure, CareerFailure.offline);
       expect(controller.stale, isTrue);
-      expect(controller.message, contains('offline'));
+      expect(controller.message(englishLocalizations), contains('offline'));
     },
   );
 

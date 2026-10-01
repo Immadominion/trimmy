@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../career/career.dart';
 import '../career/career_activity_week.dart';
+import '../../l10n/l10n.dart';
 import '../market/market_craft.dart';
 import '../design/product_empty_state.dart';
 import '../design/product_motion_icon.dart';
@@ -123,12 +124,12 @@ class _FloorScreenState extends State<FloorScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Your progress',
+                      context.l10n.careerYourProgress,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Close progress',
+                    tooltip: context.l10n.floorCloseProgress,
                     onPressed: () => Navigator.of(sheetContext).pop(),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -161,7 +162,7 @@ class _FloorScreenState extends State<FloorScreen> {
                   sliver: SliverList.list(
                     children: [
                       Text(
-                        'Career',
+                        context.l10n.floorTitle,
                         style: Theme.of(context).textTheme.headlineLarge,
                       ),
                       const SizedBox(height: 22),
@@ -184,7 +185,7 @@ class _FloorScreenState extends State<FloorScreen> {
                       runSpacing: 6,
                       children: [
                         Text(
-                          'Career',
+                          context.l10n.floorTitle,
                           style: Theme.of(context).textTheme.headlineLarge,
                         ),
                         TextButton.icon(
@@ -197,7 +198,10 @@ class _FloorScreenState extends State<FloorScreen> {
                             file: 'nav-plumpy-career.png',
                             size: 23,
                           ),
-                          label: Text(widget.career?.rank.label ?? 'Progress'),
+                          label: Text(
+                            widget.career?.rank.id.label(context.l10n) ??
+                                context.l10n.floorProgressButton,
+                          ),
                         ),
                       ],
                     ),
@@ -219,12 +223,14 @@ class _FloorScreenState extends State<FloorScreen> {
                 ),
               )
             : ProductEmptyState(
-                title: 'Career couldn’t load',
+                title: context.l10n.floorCareerLoadFailed,
                 message: widget.careerMessage,
                 action: TextButton(
                   onPressed: widget.onRetryCareer ?? widget.onOpenMarket,
                   child: Text(
-                    widget.onRetryCareer == null ? 'Browse stocks' : 'Retry',
+                    widget.onRetryCareer == null
+                        ? context.l10n.floorBrowseStocks
+                        : context.l10n.commonRetry,
                   ),
                 ),
               )
@@ -338,113 +344,124 @@ class _RankCard extends StatelessWidget {
   final CareerActivityWeek? week;
   final VoidCallback? onRetryWeek;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-    decoration: ShapeDecoration(
-      color: const Color(0xFFE2DBF1),
-      shape: productSquircle(33),
-    ),
-    child: Material(
-      key: const ValueKey('career-rank-card'),
-      color: const Color(0xFFF7F5FC),
-      shape: productSquircle(30),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            career.rank.label,
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Tooltip(
-                            message:
-                                'Trims are career points. Earn them through activities to move up in rank.',
-                            triggerMode: TooltipTriggerMode.tap,
-                            margin: const EdgeInsets.symmetric(horizontal: 28),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            constraints: const BoxConstraints(maxWidth: 300),
-                            decoration: ShapeDecoration(
-                              color: const Color(0xFFEEE8F8),
-                              shape: productSquircle(18),
-                            ),
-                            textStyle: const TextStyle(
-                              fontFamily: 'Dejanire Sans',
-                              fontSize: 14,
-                              height: 1.4,
-                              color: ProductColor.ink,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    '${_count(career.trims.total)} Trims',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(color: MarketPalette.violet),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.info_outline_rounded,
-                                  size: 15,
-                                  color: MarketPalette.violet,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Career points',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ExcludeSemantics(
-                      child: Image.asset(
-                        career.rank.id == CareerRank.rookie
-                            ? 'assets/images/ui_review/rookie-briefcase-v1.png'
-                            : 'assets/images/ui_review/icons8/goal-goal-animated.png',
-                        width: 112,
-                        height: 112,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                _RankProgress(career: career, promotionReady: promotionReady),
-              ],
-            ),
-          ),
-          CareerStreakStrip(
-            career: career,
-            week: week,
-            onRetry: onRetryWeek,
-            embedded: true,
-          ),
-        ],
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFE2DBF1),
+        shape: productSquircle(33),
       ),
-    ),
-  );
+      child: Material(
+        key: const ValueKey('career-rank-card'),
+        color: const Color(0xFFF7F5FC),
+        shape: productSquircle(30),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              career.rank.id.label(l10n),
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            const SizedBox(height: 12),
+                            Tooltip(
+                              message: l10n.floorTrimsTooltip,
+                              triggerMode: TooltipTriggerMode.tap,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              constraints: const BoxConstraints(maxWidth: 300),
+                              decoration: ShapeDecoration(
+                                color: const Color(0xFFEEE8F8),
+                                shape: productSquircle(18),
+                              ),
+                              textStyle: const TextStyle(
+                                fontFamily: 'Dejanire Sans',
+                                fontSize: 14,
+                                height: 1.4,
+                                color: ProductColor.ink,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      l10n.careerTrimsCount(
+                                        career.trims.total,
+                                        context.formats.integer(
+                                          career.trims.total,
+                                        ),
+                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: MarketPalette.violet,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.info_outline_rounded,
+                                    size: 15,
+                                    color: MarketPalette.violet,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.careerPointsLabel,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ExcludeSemantics(
+                        child: Image.asset(
+                          career.rank.id == CareerRank.rookie
+                              ? 'assets/images/ui_review/rookie-briefcase-v1.png'
+                              : 'assets/images/ui_review/icons8/goal-goal-animated.png',
+                          width: 112,
+                          height: 112,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _RankProgress(career: career, promotionReady: promotionReady),
+                ],
+              ),
+            ),
+            CareerStreakStrip(
+              career: career,
+              week: week,
+              onRetry: onRetryWeek,
+              embedded: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _MissionPath extends StatelessWidget {
@@ -500,14 +517,17 @@ class _MissionPath extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Career milestones',
+                      context.l10n.floorMilestonesTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 3),
                     Text(
                       missions == null
-                          ? 'Your activities'
-                          : '$complete of ${missions.length} complete',
+                          ? context.l10n.floorMilestonesActivities
+                          : context.l10n.floorMilestonesComplete(
+                              context.formats.integer(complete),
+                              context.formats.integer(missions.length),
+                            ),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: ProductColor.muted,
                         fontWeight: FontWeight.w700,
@@ -524,7 +544,7 @@ class _MissionPath extends StatelessWidget {
           ],
           const SizedBox(height: 18),
           if (board != null && coherentBoard == null) ...[
-            const _MissionStatus(message: 'Updating your progress…'),
+            _MissionStatus(message: context.l10n.floorMilestonesUpdating),
             const SizedBox(height: 18),
           ],
           if (missions == null)
@@ -565,7 +585,10 @@ class _MissionStatus extends StatelessWidget {
             child: Text(message, style: Theme.of(context).textTheme.bodySmall),
           ),
           if (onRetry != null)
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(context.l10n.commonRetry),
+            ),
         ],
       ),
     ),
@@ -589,10 +612,14 @@ class _MissionUnavailable extends StatelessWidget {
           ),
         )
       : ProductEmptyState(
-          title: 'Activities couldn’t load',
+          title: context.l10n.floorActivitiesLoadFailed,
           action: TextButton(
             onPressed: onRetry ?? onOpenMarket,
-            child: Text(onRetry == null ? 'Browse stocks' : 'Retry'),
+            child: Text(
+              onRetry == null
+                  ? context.l10n.floorBrowseStocks
+                  : context.l10n.commonRetry,
+            ),
           ),
         );
 }
@@ -611,12 +638,13 @@ class _MissionNode extends StatelessWidget {
   final ValueChanged<CareerMission>? onOpen, onPromote;
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final complete = mission.status == CareerMissionStatus.complete;
     final ready = mission.status == CareerMissionStatus.ready;
     final active = ready || promotionAvailable;
     final title = mission.id == CareerMissionId.writeAReason
-        ? 'Comment on your trade'
-        : mission.title;
+        ? l10n.floorMissionCommentTitle
+        : mission.id.title(l10n);
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -671,10 +699,10 @@ class _MissionNode extends StatelessWidget {
                 children: [
                   Text(
                     complete
-                        ? 'Complete'
+                        ? l10n.floorMissionStatusComplete
                         : ready
-                        ? 'Ready'
-                        : 'Locked',
+                        ? l10n.floorMissionStatusReady
+                        : l10n.floorMissionStatusLocked,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: complete
                           ? const Color(0xFF258353)
@@ -689,7 +717,7 @@ class _MissionNode extends StatelessWidget {
                       !complete) ...[
                     const SizedBox(height: 5),
                     Text(
-                      'Keep a stock through a down day.',
+                      l10n.floorMissionHoldHint,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: ProductColor.muted,
                       ),
@@ -706,8 +734,8 @@ class _MissionNode extends StatelessWidget {
                       onPressed: () => onOpen!(mission),
                       child: Text(
                         mission.id == CareerMissionId.writeAReason
-                            ? 'Write a comment'
-                            : 'Find a stock',
+                            ? l10n.floorMissionWriteComment
+                            : l10n.floorMissionFindStock,
                       ),
                     ),
                   if (promotionAvailable && onPromote != null)
@@ -724,8 +752,10 @@ class _MissionNode extends StatelessWidget {
                           : () => onPromote!(mission),
                       child: Text(
                         promotionLoading
-                            ? 'Confirming…'
-                            : 'Become ${_rankLabel(mission.promotesToRank!)}',
+                            ? l10n.commonConfirming
+                            : l10n.floorMissionBecomeRank(
+                                mission.promotesToRank!.label(l10n),
+                              ),
                       ),
                     ),
                 ],
@@ -756,11 +786,18 @@ class _PromotionResult extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_rankLabel(receipt.toRank)} unlocked',
+                  context.l10n.floorPromotionUnlocked(
+                    receipt.toRank.label(context.l10n),
+                  ),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),
-                Text('+${receipt.trimsAwarded} Trims'),
+                Text(
+                  context.l10n.careerTrimsAwarded(
+                    receipt.trimsAwarded,
+                    context.formats.number('${receipt.trimsAwarded}'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -818,19 +855,28 @@ class _RankProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final next = career.nextRank;
     final span = next == null ? 1 : next.threshold - career.rank.threshold;
     final earned = career.trims.total - career.rank.threshold;
     final progress = next == null ? 1.0 : (earned / span).clamp(0.0, 1.0);
     final label = next == null
-        ? 'Highest rank reached'
+        ? l10n.floorRankHighestReached
         : next.promotionRequired
         ? promotionReady
-              ? 'Promotion ready for ${next.label}'
-              : 'Threshold reached. Finish the promotion mission'
-        : '${_count(next.trimsRemaining)} to ${next.label}';
+              ? l10n.floorRankPromotionReady(next.id.label(l10n))
+              : l10n.floorRankThresholdReached
+        : l10n.floorRankTrimsToNext(
+            next.trimsRemaining,
+            formats.integer(next.trimsRemaining),
+            next.id.label(l10n),
+          );
     return Semantics(
-      label: 'Rank progress ${(progress * 100).round()} percent. $label',
+      label: l10n.floorRankProgressSemantics(
+        formats.integer((progress * 100).round()),
+        label,
+      ),
       child: ExcludeSemantics(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,25 +908,6 @@ class _RankProgress extends StatelessWidget {
     );
   }
 }
-
-String _count(int value) {
-  final source = value.toString();
-  final buffer = StringBuffer();
-  for (var index = 0; index < source.length; index++) {
-    if (index > 0 && (source.length - index) % 3 == 0) buffer.write(',');
-    buffer.write(source[index]);
-  }
-  return buffer.toString();
-}
-
-String _rankLabel(CareerRank rank) => switch (rank) {
-  CareerRank.rookie => 'Rookie',
-  CareerRank.analyst => 'Analyst',
-  CareerRank.trader => 'Trader',
-  CareerRank.seniorTrader => 'Senior Trader',
-  CareerRank.partner => 'Partner',
-  CareerRank.legend => 'Legend',
-};
 
 /// Rounded alternating segments, clipped to the exact earned fraction.
 class _GoalBarPainter extends CustomPainter {

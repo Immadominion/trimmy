@@ -1193,48 +1193,34 @@ class _ProductExperienceState extends State<ProductExperience>
       !_paperResetApplying &&
       _portfolioFailure == null;
 
-  String get _paperDeskMessage {
+  String _paperDeskMessage(AppLocalizations l10n) {
     if (_portfolioLoading || _paperAccountPhase == AccountPhase.initializing) {
-      return 'Opening your paper desk.';
+      return l10n.appPaperDeskOpening;
     }
     return switch (_portfolioFailure) {
-      PaperOrderFailure.offline =>
-        'Your paper desk is offline. Check your connection and try again.',
-      PaperOrderFailure.timeout =>
-        'Your paper desk took too long to open. Try again.',
-      PaperOrderFailure.accountRequired =>
-        'Your paper desk needs a fresh session. Try again.',
-      _ => 'Your paper desk is unavailable. Try again.',
+      PaperOrderFailure.offline => l10n.appPaperDeskOffline,
+      PaperOrderFailure.timeout => l10n.appPaperDeskTimeout,
+      PaperOrderFailure.accountRequired => l10n.appPaperDeskSession,
+      _ => l10n.appPaperDeskUnavailable,
     };
   }
 
-  String? get _careerStatusMessage {
-    if (_career.stale) {
-      return 'Showing your last confirmed career record. Refresh to update it.';
-    }
-    return _career.failure == null ? null : _career.message;
+  String? _careerStatusMessage(AppLocalizations l10n) {
+    if (_career.stale) return l10n.appCareerStale;
+    return _career.failure == null ? null : _career.message(l10n);
   }
 
-  String? get _missionsStatusMessage {
-    if (_careerMissionMismatch) {
-      return 'Your career changed while missions were loading. Refresh to match them.';
-    }
-    if (_missions.stale) {
-      return 'Showing your last confirmed missions. Refresh to update them.';
-    }
+  String? _missionsStatusMessage(AppLocalizations l10n) {
+    if (_careerMissionMismatch) return l10n.appMissionsMismatch;
+    if (_missions.stale) return l10n.appMissionsStale;
     return switch (_missions.failure) {
-      CareerFailure.offline =>
-        'Your missions are offline. Check your connection and try again.',
-      CareerFailure.timeout =>
-        'Your missions took too long to open. Try again.',
-      CareerFailure.accountRequired =>
-        'Your missions need a fresh session. Try again.',
-      CareerFailure.rateLimited =>
-        'Your missions are refreshing too quickly. Try again shortly.',
-      CareerFailure.profileRequired =>
-        'Finish setting up your Trimmy profile, then try again.',
+      CareerFailure.offline => l10n.appMissionsOffline,
+      CareerFailure.timeout => l10n.appMissionsTimeout,
+      CareerFailure.accountRequired => l10n.appMissionsSession,
+      CareerFailure.rateLimited => l10n.appMissionsRateLimited,
+      CareerFailure.profileRequired => l10n.appMissionsProfileRequired,
       null => null,
-      _ => 'Your missions are unavailable. Try again.',
+      _ => l10n.appMissionsUnavailable,
     };
   }
 
@@ -1521,9 +1507,9 @@ class _ProductExperienceState extends State<ProductExperience>
           return _ProductProfileUnavailable(
             loading: loading,
             message: loading
-                ? 'Opening your Trimmy profile.'
-                : widget.session.loadIssue ??
-                      'Your Trimmy profile is unavailable. Try again.',
+                ? null
+                : widget.session.loadIssue?.message(context.l10n) ??
+                      context.l10n.appProfileUnavailable,
             onRetry: _retryProductProfile,
           );
         }
@@ -1549,8 +1535,8 @@ class _ProductExperienceState extends State<ProductExperience>
         return _ProductProfileUnavailable(
           loading: !_accountEntryFailed,
           message: _accountEntryFailed
-              ? 'Your account is connected. Try opening your desk again.'
-              : 'Opening your desk.',
+              ? context.l10n.appAccountEntryFailed
+              : null,
           onRetry: () async {
             setState(() => _accountEntryFailed = false);
           },
@@ -1589,7 +1575,7 @@ class _ProductExperienceState extends State<ProductExperience>
         });
       }
     } catch (_) {
-      if (mounted) _message('Couldn’t save your choice. Try again.');
+      if (mounted) _message(context.l10n.appGuestChoiceNotSaved);
     } finally {
       _acceptingGuest = false;
     }
@@ -1629,7 +1615,6 @@ class _ProductExperienceState extends State<ProductExperience>
     final shares = first?.displayQuantity ?? receipt?.filledShares;
     if (symbol == null || shares == null) {
       return _CareerUnavailable(
-        message: 'Opening your first stock.',
         loading: _career.loading,
         onRetry: _retryFirstPositionEvidence,
       );
@@ -1703,6 +1688,7 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   Widget _shell(OnboardingProfile profile) {
+    final l10n = context.l10n;
     _ensureDailyDesk();
     final realTotal = realTotalBalance(widget.account, _holdingPrice);
     if (_reminderCareerPending) {
@@ -1725,7 +1711,7 @@ class _ProductExperienceState extends State<ProductExperience>
       onTabChanged: _productTabChanged,
       desk: !_realMoney && _portfolio == null && _latestReceipt == null
           ? _PaperDeskUnavailable(
-              message: _paperDeskMessage,
+              message: _paperDeskMessage(l10n),
               loading:
                   _portfolioLoading ||
                   _paperAccountPhase == AccountPhase.initializing ||
@@ -1737,14 +1723,16 @@ class _ProductExperienceState extends State<ProductExperience>
               real: _realMoney,
               onSwitchMode: _switchMoneyMode,
               realBalance: realTotal?.total ?? realCashBalance(widget.account),
-              realBalanceLabel: realTotal == null ? null : 'Total balance',
+              realBalanceLabel: realTotal == null
+                  ? null
+                  : l10n.appRealBalanceLabel,
               realSolBalance: realSolBalance(widget.account),
               realBalanceNote:
                   widget.account?.portfolioState?.portfolioIsFresh != true
-                  ? 'Updating balance…'
+                  ? l10n.appRealBalanceUpdating
                   : realTotal == null
-                  ? 'USDC available'
-                  : '${realTotal.cash} cash · ${realTotal.stocks} in stocks',
+                  ? l10n.appRealBalanceUsdcAvailable
+                  : l10n.appRealBalanceSplit(realTotal.cash, realTotal.stocks),
               realHoldings: RealHoldings(
                 account: widget.account,
                 logoForAsset: (holding) =>
@@ -1768,11 +1756,11 @@ class _ProductExperienceState extends State<ProductExperience>
               statusMessage: _realMoney
                   ? null
                   : _portfolioFailure != null && _career.stale
-                  ? 'Showing your last confirmed paper desk and career record. Trading is paused until Trimmy reconnects.'
+                  ? l10n.appDeskStaleBoth
                   : _portfolioFailure != null
-                  ? 'Showing your last confirmed paper desk. Trading is paused until Trimmy reconnects.'
+                  ? l10n.appDeskStalePaper
                   : _career.stale
-                  ? 'Showing your last confirmed career record. Refresh to update it.'
+                  ? l10n.appCareerStale
                   : null,
               onRetry: _portfolioFailure == null && !_career.stale
                   ? null
@@ -1833,10 +1821,10 @@ class _ProductExperienceState extends State<ProductExperience>
         signedIn: _signedIn,
         career: _career.summary,
         careerLoading: _career.loading && !_career.hasConfirmedSummary,
-        careerMessage: _careerStatusMessage,
+        careerMessage: _careerStatusMessage(l10n),
         missions: _coherentMissionBoard,
         missionsLoading: _missions.loading && !_missions.hasConfirmedBoard,
-        missionsMessage: _missionsStatusMessage,
+        missionsMessage: _missionsStatusMessage(l10n),
         onRetryCareer: _career.failure == null ? null : _refreshCareer,
         onRetryMissions: _missions.failure == null && !_careerMissionMismatch
             ? null
@@ -1849,16 +1837,16 @@ class _ProductExperienceState extends State<ProductExperience>
         promotionLoading: _promotionPreparing || _missions.promoting,
         onPromote: _career.stale || _missions.stale ? null : _promoteCareer,
         onSignIn: _signedIn
-            ? () => _message('Your desk is already saved.')
+            ? () => _message(context.l10n.appDeskAlreadySaved)
             : _openSignIn,
         onOpenMarket: () => _shellKey.currentState?.select(ProductTab.market),
       ),
       profile: ProfileScreen(
         handle: profile.handle ?? '',
-        persona: profile.persona?.label ?? '',
+        persona: profile.persona?.label(l10n) ?? '',
         signedIn: _signedIn,
         career: _career.summary,
-        careerMessage: _careerStatusMessage,
+        careerMessage: _careerStatusMessage(l10n),
         onRetryCareer: () => unawaited(_career.refresh()),
         onSettings: _openSettings,
         onSignIn: _openSignIn,
@@ -1881,7 +1869,9 @@ class _ProductExperienceState extends State<ProductExperience>
       loading:
           _market?.starterStatus == MarketPageStatus.loading ||
           _portfolioLoading,
-      message: !_paperDeskReady ? _paperDeskMessage : _market?.starterMessage,
+      message: !_paperDeskReady
+          ? _paperDeskMessage(context.l10n)
+          : _market?.starterIssue?.message(context.l10n),
       onRetry: () async {
         await Future.wait<void>([
           if (_market != null) _market!.loadStarterPicks(),
@@ -1920,10 +1910,10 @@ class _ProductExperienceState extends State<ProductExperience>
       total: market.total,
       hasMore: market.hasMore,
       loadingMore: market.loadingMore,
-      loadMoreMessage: market.loadMoreMessage,
+      loadMoreMessage: market.loadMoreIssue?.message(context.l10n),
       onLoadMore: market.loadMore,
       status: market.status,
-      statusMessage: market.message,
+      statusMessage: market.issue?.message(context.l10n),
       onRetry: () async {
         await market.loadCatalog();
         await _retryPaperDesk();
@@ -1935,7 +1925,7 @@ class _ProductExperienceState extends State<ProductExperience>
       intro: firstTrade
           ? _FirstTradePrompt(
               ready: _paperDeskReady,
-              message: _paperDeskMessage,
+              message: _paperDeskMessage(context.l10n),
               onRetry: _retryPaperDesk,
             )
           : null,
@@ -2056,7 +2046,7 @@ class _ProductExperienceState extends State<ProductExperience>
     if (!mounted) return;
     if (!_realMoney &&
         (_httpOrders == null || _portfolio == null || _paperResetApplying)) {
-      _message('Your desk is reconnecting. Try again in a moment.');
+      _message(context.l10n.appDeskReconnecting);
       return;
     }
     final generation = _portfolioGeneration;
@@ -2158,6 +2148,7 @@ class _ProductExperienceState extends State<ProductExperience>
         listenable: Listenable.merge([_portfolioViewRevision, chosenMint]),
         builder: (context, _) {
           // Keep an already-open asset route aligned with mode changes made in Settings.
+          final l10n = context.l10n;
           final mode = MoneyModeScope.of(context);
           final real = _realMoney;
           final caps = _liveCapabilities;
@@ -2201,7 +2192,9 @@ class _ProductExperienceState extends State<ProductExperience>
             details: MarketStockDetails(
               company: selectedCompany,
               position: _realMoney ? null : position,
-              versions: company.asset.variants.map(_version).toList(),
+              versions: company.asset.variants
+                  .map((variant) => _version(variant, l10n))
+                  .toList(),
             ),
             orderRepository: _orders,
             clientOrderId: paperUuidV4,
@@ -2217,7 +2210,7 @@ class _ProductExperienceState extends State<ProductExperience>
                 : receipt?.positionShares ?? persisted?.quantity ?? '0',
             realPositionLabel: liveHolding == null
                 ? null
-                : '${liveGroupedDecimal(liveHolding.displayAmount ?? liveHolding.rawTokenUnits)} ${liveHolding.symbol}',
+                : '${context.formats.number(liveGroupedDecimal(liveHolding.displayAmount ?? liveHolding.rawTokenUnits))} ${liveHolding.symbol}',
             onRetryTrading: _realMoney && _liveCapabilitiesFailed
                 ? () => unawaited(_refreshLiveCapabilities())
                 : null,
@@ -2232,7 +2225,11 @@ class _ProductExperienceState extends State<ProductExperience>
                         marketNote: switch (option.asset?.market) {
                           final market?
                               when !market.open || market.usSessions =>
-                            market.label(DateTime.now()),
+                            market.label(
+                              DateTime.now(),
+                              context.l10n,
+                              context.formats,
+                            ),
                           _ => null,
                         },
                         marketOpen: option.asset?.marketOpen ?? true,
@@ -2248,7 +2245,7 @@ class _ProductExperienceState extends State<ProductExperience>
                     liveAsset == null
                 ? () async {
                     await mode.select(false);
-                    if (mounted) _message('Switched to Paper.');
+                    if (mounted) _message(this.context.l10n.appSwitchedToPaper);
                   }
                 : null,
             recentOrders: _realMoney
@@ -2288,19 +2285,19 @@ class _ProductExperienceState extends State<ProductExperience>
                 : _paperDeskReady,
             tradingMessage: real
                 ? _liveCapabilitiesFailed
-                      ? 'Trading could not connect.'
+                      ? l10n.appTradingCouldNotConnect
                       : caps == null
-                      ? 'Checking trading…'
+                      ? l10n.appTradingChecking
                       : !caps.enabled
-                      ? 'Trading is temporarily paused.'
+                      ? l10n.appTradingPaused
                       : liveAsset == null
                       ? options.length == 1
                             ? options.single.reason
-                            : 'Not tradeable with real money yet.'
+                            : l10n.appTradingNotTradeable
                       : null
                 : _paperDeskReady
                 ? null
-                : _paperDeskMessage,
+                : _paperDeskMessage(l10n),
           );
         },
       ),
@@ -2323,21 +2320,22 @@ class _ProductExperienceState extends State<ProductExperience>
     }
   }
 
-  MarketVersionInfo _version(StockVariant variant) => MarketVersionInfo(
-    symbol: variant.symbol ?? variant.label ?? variant.variantId,
-    issuer: variant.issuer ?? 'Issuer unavailable',
-    mint: variant.mint,
-    backingDisclosure: 'Backing details are not available in this market read.',
-    tradingHours: 'Trades on chain. Issuer hours are unavailable.',
-    status: variant.advisory == null
-        ? MarketVersionStatus.unknown
-        : switch (variant.advisory!.status) {
-            StockAdvisoryStatus.blocked => MarketVersionStatus.paused,
-            StockAdvisoryStatus.caution ||
-            StockAdvisoryStatus.compromised => MarketVersionStatus.risky,
-            StockAdvisoryStatus.unknown => MarketVersionStatus.unknown,
-          },
-  );
+  MarketVersionInfo _version(StockVariant variant, AppLocalizations l10n) =>
+      MarketVersionInfo(
+        symbol: variant.symbol ?? variant.label ?? variant.variantId,
+        issuer: variant.issuer ?? l10n.appVersionIssuerUnavailable,
+        mint: variant.mint,
+        backingDisclosure: l10n.appVersionBackingUnavailable,
+        tradingHours: l10n.appVersionTradingHoursUnavailable,
+        status: variant.advisory == null
+            ? MarketVersionStatus.unknown
+            : switch (variant.advisory!.status) {
+                StockAdvisoryStatus.blocked => MarketVersionStatus.paused,
+                StockAdvisoryStatus.caution ||
+                StockAdvisoryStatus.compromised => MarketVersionStatus.risky,
+                StockAdvisoryStatus.unknown => MarketVersionStatus.unknown,
+              },
+      );
 
   void _orderConfirmed(
     MarketCompany company,
@@ -2467,11 +2465,11 @@ class _ProductExperienceState extends State<ProductExperience>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'A simulator assignment',
+                  sheet.l10n.appRealMissionTitle,
                   style: Theme.of(sheet).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 12),
-                const Text('Complete this task on your training desk.'),
+                Text(sheet.l10n.appRealMissionBody),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: () async {
@@ -2479,7 +2477,7 @@ class _ProductExperienceState extends State<ProductExperience>
                     await MoneyModeScope.of(context)?.select(false);
                     if (mounted) _openCareerMission(mission);
                   },
-                  child: const Text('Open training desk'),
+                  child: Text(sheet.l10n.appRealMissionButton),
                 ),
               ],
             ),
@@ -2499,15 +2497,13 @@ class _ProductExperienceState extends State<ProductExperience>
     if (currentMission?.status != CareerMissionStatus.ready) return;
     if (mission.id == CareerMissionId.writeAReason) {
       if (_reasonedOrderIds.isNotEmpty) {
-        _message('Your saved reason is being checked. Refresh your Career.');
+        _message(context.l10n.appReasonBeingChecked);
         unawaited(_missions.refresh());
         return;
       }
       final portfolio = _portfolio;
       if (!_paperDeskReady || portfolio == null) {
-        _message(
-          'Your confirmed paper desk must be online before you can write this reason.',
-        );
+        _message(context.l10n.appReasonNeedsPaperDesk);
         unawaited(_retryPaperDesk());
         return;
       }
@@ -2520,9 +2516,7 @@ class _ProductExperienceState extends State<ProductExperience>
           _pendingBuyReasonTarget(portfolio);
       if (target == null) {
         _shellKey.currentState?.select(ProductTab.market);
-        _message(
-          'This mission needs a confirmed paper buy you still hold. Choose a stock when you are ready.',
-        );
+        _message(context.l10n.appReasonNeedsPaperBuy);
         return;
       }
       unawaited(_openPaperReason(target));
@@ -2567,7 +2561,7 @@ class _ProductExperienceState extends State<ProductExperience>
         repository == null ||
         _career.stale ||
         _missions.stale) {
-      _message('Refresh the Floor before claiming this promotion.');
+      _message(context.l10n.appPromotionRefreshFirst);
       _refreshCareer();
       return;
     }
@@ -2595,9 +2589,9 @@ class _ProductExperienceState extends State<ProductExperience>
             repository: repository,
           )) {
         if (mounted && mutationId == null) {
-          _message('Your promotion could not be prepared. Try again.');
+          _message(context.l10n.appPromotionNotPrepared);
         } else if (mounted && currentEligible == null) {
-          _message('Your career changed. Refresh the Floor and try again.');
+          _message(context.l10n.appPromotionCareerChanged);
         }
         return;
       }
@@ -2697,7 +2691,7 @@ class _ProductExperienceState extends State<ProductExperience>
     final principalKey = _paperPrincipalKey;
     final repository = _httpOrders;
     if (repository == null || principalKey == null || _reasonRoute != null) {
-      _message('Your paper desk is still opening. Try again.');
+      _message(context.l10n.appPaperDeskStillOpening);
       return;
     }
     var company = _knownCompany(target.assetId);
@@ -2752,7 +2746,7 @@ class _ProductExperienceState extends State<ProductExperience>
     try {
       await widget.session.markFirstTradeComplete();
     } catch (_) {
-      if (mounted) _message('The trade is safe, but this step was not saved.');
+      if (mounted) _message(context.l10n.appFirstTradeStepNotSaved);
     }
   }
 
@@ -2764,7 +2758,7 @@ class _ProductExperienceState extends State<ProductExperience>
     if (portfolio?.hasTraded != true && receipt == null) {
       return DeskSnapshot.newRookie(
         handle: profile.handle ?? '',
-        wallStreetLine: WallStreetClock.label(DateTime.now()),
+        wallStreetLine: WallStreetClock.label(DateTime.now(), context.l10n),
         rank: career?.rank.label,
         streak: career?.streak.days,
         trims: career?.trims.total,
@@ -2781,7 +2775,7 @@ class _ProductExperienceState extends State<ProductExperience>
       handle: profile.handle ?? '',
       paperValue: projection.paperValue,
       paperValueState: projection.valueState,
-      wallStreetLine: WallStreetClock.label(DateTime.now()),
+      wallStreetLine: WallStreetClock.label(DateTime.now(), context.l10n),
       rank: career?.rank.label,
       streak: career?.streak.days,
       trims: career?.trims.total,
@@ -2888,7 +2882,7 @@ class _ProductExperienceState extends State<ProductExperience>
       final company = _knownCompany(id) ?? await _market?.findCompany(id);
       if (!mounted || generation != _portfolioGeneration) return;
       if (company == null) {
-        _message('This stock couldn’t open. Try again.');
+        _message(context.l10n.appStockCouldNotOpen);
         return;
       }
       // A held token that discovery does not list still opens its company.
@@ -2900,7 +2894,7 @@ class _ProductExperienceState extends State<ProductExperience>
         variantMint: listed ? variantMint : null,
       );
     } catch (_) {
-      if (mounted) _message('This stock couldn’t open. Try again.');
+      if (mounted) _message(context.l10n.appStockCouldNotOpen);
     }
   }
 
@@ -2913,7 +2907,7 @@ class _ProductExperienceState extends State<ProductExperience>
         return;
       }
       if (origin == null) {
-        _message('History couldn’t connect. Try again.');
+        _message(context.l10n.appHistoryCouldNotConnect);
         return;
       }
       Navigator.of(context).push<void>(
@@ -2936,10 +2930,10 @@ class _ProductExperienceState extends State<ProductExperience>
     }
     Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => Scaffold(
+        builder: (pageContext) => Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
-            title: const Text('History'),
+            title: Text(pageContext.l10n.commonHistory),
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.transparent,
           ),
@@ -2977,7 +2971,7 @@ class _ProductExperienceState extends State<ProductExperience>
                         category: ReasonReportCategory.other,
                       );
                   if (mounted && !done) {
-                    _message('Report didn’t send. Try again.');
+                    _message(context.l10n.appReportNotSent);
                   }
                 },
           onBlock: widget.account?.relationshipsController == null
@@ -2990,7 +2984,7 @@ class _ProductExperienceState extends State<ProductExperience>
                         knownHandle: post.handle,
                       );
                   if (mounted && !done) {
-                    _message('Couldn’t block this trader. Try again.');
+                    _message(context.l10n.appBlockFailed);
                   }
                 },
         ),
@@ -3112,7 +3106,7 @@ class _ProductExperienceState extends State<ProductExperience>
             onHelp: () => _openInformation(ProductInformation.contact),
             onTerms: () => _openInformation(ProductInformation.terms),
             onPrivacy: () => _openInformation(ProductInformation.privacy),
-            state: _settingsState(),
+            state: _settingsState(context.l10n, context.formats),
             reasonPrivacy: _reasonPrivacy.bound ? _reasonPrivacy : null,
             onSignIn: _openSignIn,
             onSignOut: _signedIn
@@ -3120,7 +3114,7 @@ class _ProductExperienceState extends State<ProductExperience>
                 : null,
             onWalletCopy: (address) => unawaited(
               Clipboard.setData(ClipboardData(text: address)).then((_) {
-                if (mounted) _message('Wallet address copied.');
+                if (mounted) _message(this.context.l10n.appWalletAddressCopied);
               }),
             ),
             onWalletExport: _walletRecoveryUri == null
@@ -3151,7 +3145,10 @@ class _ProductExperienceState extends State<ProductExperience>
     );
   }
 
-  ProductSettingsState _settingsState() {
+  ProductSettingsState _settingsState(
+    AppLocalizations l10n,
+    AppFormats formats,
+  ) {
     final profile = widget.session.profile!;
     final paperLimit = int.tryParse(_career.summary?.rank.paperLimit ?? '');
     final wallet =
@@ -3162,7 +3159,7 @@ class _ProductExperienceState extends State<ProductExperience>
       account: SettingsAccountState(
         signedIn: _signedIn,
         handle: profile.handle == null ? '' : '@${profile.handle}',
-        persona: profile.persona?.label ?? '',
+        persona: profile.persona?.label(l10n) ?? '',
       ),
       notifications: {
         if (_tradePush?.available == true || _tradePush?.enabled == true)
@@ -3171,10 +3168,10 @@ class _ProductExperienceState extends State<ProductExperience>
             updating: _tradePush!.busy,
           ),
       },
-      quietHours: const SettingsQuietHours(
+      quietHours: SettingsQuietHours(
         enabled: false,
-        startLabel: '10:00 PM',
-        endLabel: '7:00 AM',
+        startLabel: formats.time12(DateTime(2000, 1, 1, 22)),
+        endLabel: formats.time12(DateTime(2000, 1, 1, 7)),
         available: false,
       ),
       appearance: SettingsAppearanceState(
@@ -3223,7 +3220,7 @@ class _ProductExperienceState extends State<ProductExperience>
     final close = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Close your account?'),
+        title: Text(dialogContext.l10n.appCloseAccountTitle),
         content: Text(
           widget
                       .account
@@ -3232,8 +3229,8 @@ class _ProductExperienceState extends State<ProductExperience>
                       ?.embeddedSolanaWallet
                       .isCandidate !=
                   true
-              ? 'You will lose access to the saved account. Records that must be kept stay protected.'
-              : 'Keep access to your wallet before closing your account. Closing will not move its funds. You will lose access to your saved desk.',
+              ? dialogContext.l10n.appCloseAccountBodyNoWallet
+              : dialogContext.l10n.appCloseAccountBodyWallet,
         ),
         actions: [
           if (_walletRecoveryUri != null)
@@ -3242,16 +3239,16 @@ class _ProductExperienceState extends State<ProductExperience>
                 Navigator.pop(dialogContext, false);
                 unawaited(_openWalletRecovery());
               },
-              child: const Text('Back up wallet'),
+              child: Text(dialogContext.l10n.appCloseAccountBackUpWallet),
             ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(dialogContext.l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: ProductColor.loss),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Close account'),
+            child: Text(dialogContext.l10n.appCloseAccountConfirm),
           ),
         ],
       ),
@@ -3285,7 +3282,7 @@ class _ProductExperienceState extends State<ProductExperience>
       // independently; only the expected public address leaves this app.
     }
     if (mounted && generation == _portfolioGeneration) {
-      _message('Couldn’t open wallet backup. Try again.');
+      _message(context.l10n.appWalletBackupFailed);
     }
   }
 
@@ -3323,7 +3320,7 @@ class _FirstTradePrompt extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                ready ? 'Pick a company. Your first trade is free.' : message,
+                ready ? context.l10n.appFirstTradePrompt : message,
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   height: 1.3,
@@ -3334,7 +3331,7 @@ class _FirstTradePrompt extends StatelessWidget {
                 TextButton(
                   key: const ValueKey('first-trade-paper-retry'),
                   onPressed: onRetry,
-                  child: const Text('Try again'),
+                  child: Text(context.l10n.commonTryAgain),
                 ),
               ],
             ],
@@ -3351,17 +3348,22 @@ class _ProductProfileUnavailable extends StatelessWidget {
     required this.loading,
     required this.onRetry,
   });
-  final String message;
+
+  /// Shown once loading has failed. Null while loading.
+  final String? message;
   final bool loading;
   final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) => ProductStatePage(
     artwork: TrimmyLiquidMark(size: 112, animate: loading),
-    title: loading ? 'Opening Trimmy' : 'Couldn’t open Trimmy',
+    title: loading
+        ? context.l10n.appOpeningTrimmy
+        : context.l10n.appCouldNotOpenTrimmy,
     message: loading ? null : message,
     actions: [
-      if (!loading) ProductButton(label: 'Try again', onPressed: onRetry),
+      if (!loading)
+        ProductButton(label: context.l10n.commonTryAgain, onPressed: onRetry),
     ],
   );
 }
@@ -3385,21 +3387,19 @@ class _PaperDeskUnavailable extends StatelessWidget {
             animatedFile: 'nav-plumpy-desk.gif',
             size: 96,
           ),
-    title: loading ? 'Opening your desk' : 'Couldn’t open your desk',
+    title: loading
+        ? context.l10n.appOpeningDesk
+        : context.l10n.appCouldNotOpenDesk,
     message: loading ? null : message,
     actions: [
-      if (!loading) ProductButton(label: 'Try again', onPressed: onRetry),
+      if (!loading)
+        ProductButton(label: context.l10n.commonTryAgain, onPressed: onRetry),
     ],
   );
 }
 
 class _CareerUnavailable extends StatelessWidget {
-  const _CareerUnavailable({
-    required this.message,
-    required this.loading,
-    required this.onRetry,
-  });
-  final String message;
+  const _CareerUnavailable({required this.loading, required this.onRetry});
   final bool loading;
   final Future<void> Function() onRetry;
 
@@ -3412,10 +3412,13 @@ class _CareerUnavailable extends StatelessWidget {
             animatedFile: 'goal-chart-animated.gif',
             size: 96,
           ),
-    title: loading ? 'Opening your trade' : 'Couldn’t load your trade',
-    message: loading ? null : 'Try again to see your confirmed order.',
+    title: loading
+        ? context.l10n.appOpeningTrade
+        : context.l10n.appCouldNotLoadTrade,
+    message: loading ? null : context.l10n.appCouldNotLoadTradeBody,
     actions: [
-      if (!loading) ProductButton(label: 'Try again', onPressed: onRetry),
+      if (!loading)
+        ProductButton(label: context.l10n.commonTryAgain, onPressed: onRetry),
     ],
   );
 }

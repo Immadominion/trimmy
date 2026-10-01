@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import 'paper_format.dart';
 import 'product_theme.dart';
 
@@ -173,7 +174,7 @@ class PaperMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'paper',
+    label: context.l10n.designPaperMark,
     image: true,
     child: ExcludeSemantics(
       child: CustomPaint(
@@ -258,9 +259,9 @@ class PaperAmount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final display = formatPaperForDisplay(amount);
+    final display = context.formats.number(formatPaperForDisplay(amount));
     return Semantics(
-      label: '$display paper',
+      label: context.l10n.designPaperAmount(display),
       child: ExcludeSemantics(
         child: Row(
           mainAxisSize: MainAxisSize.min,

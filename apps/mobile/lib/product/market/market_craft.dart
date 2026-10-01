@@ -67,7 +67,7 @@ class MarketPrimaryButton extends StatelessWidget {
     container: true,
     button: true,
     enabled: onPressed != null && !busy,
-    label: busy ? '$label in progress' : label,
+    label: busy ? context.l10n.commonInProgress(label) : label,
     onTap: onPressed != null && !busy ? onPressed : null,
     child: ExcludeSemantics(
       child: SizedBox(
@@ -104,7 +104,7 @@ class PaperMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'paper',
+    label: context.l10n.marketPaperMarkLabel,
     image: true,
     child: ExcludeSemantics(
       child: SizedBox.square(
@@ -129,12 +129,12 @@ class PaperAmount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final display = formatPaperForDisplay(amount);
+    final display = context.formats.number(formatPaperForDisplay(amount));
     final effective = style ?? Theme.of(context).textTheme.titleLarge;
     final markSize = math.max(20, (effective?.fontSize ?? 20) * .92).toDouble();
     return Semantics(
       container: true,
-      label: '$display paper',
+      label: context.l10n.marketPaperAmountLabel(display),
       child: ExcludeSemantics(
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -158,10 +158,11 @@ class DirectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final change = value;
     if (change == null || !change.isFinite) {
       return Text(
-        'Change unavailable',
+        l10n.marketChangeUnavailable,
         style: textStyle?.copyWith(color: MarketPalette.muted),
       );
     }
@@ -171,14 +172,16 @@ class DirectionLabel extends StatelessWidget {
         ? Icons.arrow_downward_rounded
         : Icons.remove_rounded;
     final color = change < 0 ? MarketPalette.loss : MarketPalette.pine;
-    final label = signedPercent(change);
+    final label = signedPercent(change, context.formats);
     return Semantics(
-      label:
-          '${change < 0
-              ? 'Down'
-              : change > 0
-              ? 'Up'
-              : 'Unchanged'} $label',
+      label: l10n.marketChangeSpoken(
+        change < 0
+            ? 'down'
+            : change > 0
+            ? 'up'
+            : 'unchanged',
+        label,
+      ),
       child: ExcludeSemantics(
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -238,7 +241,7 @@ class CompanyLogo extends StatelessWidget {
             errorBuilder: (_, _, _) => initial,
           );
     return Semantics(
-      label: '$name logo',
+      label: context.l10n.marketCompanyLogoLabel(name),
       image: true,
       child: Container(
         width: size,

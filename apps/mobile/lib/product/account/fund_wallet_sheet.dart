@@ -8,6 +8,7 @@ import '../../account/account_data_models.dart';
 import '../../account/account_portfolio.dart';
 import '../../account/wallet_setup.dart';
 import '../../account/config.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../../ui_review/review_animated_splash.dart';
 import 'crossmint_onramp.dart';
@@ -22,7 +23,9 @@ class FundWalletSheet extends StatefulWidget {
 class _FundWalletSheetState extends State<FundWalletSheet>
     with WidgetsBindingObserver {
   bool _busy = false, _copied = false, _foreground = true, _refreshing = false;
-  String? _message;
+
+  /// Creating the wallet failed; the message is built in the app language.
+  bool _setupFailed = false;
   bool _card = false;
   bool _checked = false, _refreshFailed = false;
   Timer? _poll, _copyTimer;
@@ -70,22 +73,20 @@ class _FundWalletSheetState extends State<FundWalletSheet>
   Future<void> _setup() async {
     setState(() {
       _busy = true;
-      _message = null;
+      _setupFailed = false;
     });
     try {
       final outcome = await widget.account.setUpWallet();
       if (!mounted) return;
       setState(
-        () => _message =
-            outcome == WalletSetupOutcome.ready ||
-                outcome == WalletSetupOutcome.awaitingServer
-            ? null
-            : 'Couldn’t create your wallet. Try again.',
+        () => _setupFailed =
+            outcome != WalletSetupOutcome.ready &&
+            outcome != WalletSetupOutcome.awaitingServer,
       );
       unawaited(_refresh());
     } catch (_) {
       if (mounted) {
-        setState(() => _message = 'Couldn’t create your wallet. Try again.');
+        setState(() => _setupFailed = true);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -109,14 +110,15 @@ class _FundWalletSheetState extends State<FundWalletSheet>
       final portfolio = widget.account.portfolioState;
       final wallet = portfolio?.context?.embeddedSolanaWallet;
       final address = wallet?.isCandidate == true ? wallet!.address : null;
+      final l10n = context.l10n;
       final walletIssue = wallet?.status == EmbeddedSolanaWalletStatus.ambiguous
-          ? 'We couldn’t confirm your wallet.'
+          ? l10n.fundWalletUnconfirmed
           : portfolio?.phase == AccountPortfolioPhase.offline
-          ? 'You’re offline. Reconnect to load your wallet.'
+          ? l10n.fundWalletOffline
           : _refreshFailed ||
                 (portfolio?.issue != null && !_refreshing) ||
                 (_checked && !_refreshing && wallet == null)
-          ? 'Couldn’t load your wallet.'
+          ? l10n.fundWalletLoadFailed
           : null;
       final type = Theme.of(context).textTheme;
       return SafeArea(
@@ -134,10 +136,13 @@ class _FundWalletSheetState extends State<FundWalletSheet>
               Row(
                 children: [
                   Expanded(
-                    child: Text('Add money', style: type.headlineMedium),
+                    child: Text(
+                      l10n.commonAddMoney,
+                      style: type.headlineMedium,
+                    ),
                   ),
                   IconButton(
-                    tooltip: 'Close',
+                    tooltip: l10n.commonClose,
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -159,7 +164,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                           child: GestureDetector(
                             onTap: () => setState(() {
                               _card = card;
-                              _message = null;
+                              _setupFailed = false;
                             }),
                             child: AnimatedContainer(
                               duration: productDuration(context, 200),
@@ -180,8 +185,10 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                                     : [],
                               ),
                               child: Text(
-                                card ? 'Cash' : 'Crypto',
+                                card ? l10n.fundTabCash : l10n.fundTabCrypto,
                                 textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: type.titleMedium,
                               ),
                             ),
@@ -200,7 +207,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'A wallet for your money',
+                    l10n.fundWalletMissingTitle,
                     textAlign: TextAlign.center,
                     style: type.titleLarge,
                   ),
@@ -209,7 +216,10 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                     onPressed: _busy || !widget.account.canSetUpWallet
                         ? null
                         : _setup,
-                    child: Text(_busy ? 'Creating…' : 'Create wallet'),
+                    child: Text(
+                      _busy ? l10n.fundCreatingWallet : l10n.fundCreateWallet,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ] else if (walletIssue != null) ...[
                   Text(
@@ -222,7 +232,9 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                   TextButton(
                     key: const ValueKey('fund-wallet-retry'),
                     onPressed: _refreshing ? null : _refresh,
-                    child: Text(_refreshing ? 'Checking…' : 'Try again'),
+                    child: Text(
+                      _refreshing ? l10n.commonChecking : l10n.commonTryAgain,
+                    ),
                   ),
                 ] else
                   const Center(child: TrimmyLiquidMark(size: 64)),
@@ -258,7 +270,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                           dataModuleShape: QrDataModuleShape.circle,
                           color: Color(0xFF225B48),
                         ),
-                        semanticsLabel: 'Solana deposit address $address',
+                        semanticsLabel: l10n.fundDepositQrLabel(address),
                       ),
                     ),
                   ),
@@ -280,7 +292,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Send only USDC or SOL to this account on the Solana network.',
+                  l10n.fundSendOnlyWarning,
                   textAlign: TextAlign.center,
                   style: type.bodySmall,
                 ),
@@ -292,13 +304,18 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                     _copied ? Icons.done_rounded : Icons.copy_rounded,
                     size: 18,
                   ),
-                  label: Text(_copied ? 'Copied' : 'Copy address'),
+                  label: Text(
+                    _copied ? l10n.fundAddressCopied : l10n.fundCopyAddress,
+                  ),
                 ),
               ],
-              if (_message != null)
+              if (_setupFailed)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text(_message!, style: type.bodyMedium),
+                  child: Text(
+                    l10n.fundCreateWalletFailed,
+                    style: type.bodyMedium,
+                  ),
                 ),
             ],
           ),

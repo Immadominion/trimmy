@@ -36,7 +36,7 @@ final class FactsSearchGateway extends ChangeNotifier
           return card == null ? enriched : applyCardFacts(enriched, card);
         }),
       ),
-      message: base.message,
+      notice: base.notice,
     );
   }
 

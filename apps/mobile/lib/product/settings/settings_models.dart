@@ -1,86 +1,94 @@
 import 'package:flutter/foundation.dart';
 
-enum SettingsSignInMethod {
-  email('Email'),
-  google('Google'),
-  x('X');
+import '../../l10n/l10n.dart';
 
-  const SettingsSignInMethod(this.label);
-  final String label;
+enum SettingsSignInMethod {
+  email,
+  google,
+  x;
+
+  /// The method's name in the Account section. Google and X are brand names
+  /// and stay as they are.
+  String label(AppLocalizations l10n) => switch (this) {
+    SettingsSignInMethod.email => l10n.settingsSignInMethodEmail,
+    SettingsSignInMethod.google => 'Google',
+    SettingsSignInMethod.x => 'X',
+  };
 }
 
 enum SettingsNotificationKind {
-  wallStreetOpen(
-    'Wall Street open',
-    'When Wall Street opens.',
-    SettingsNotificationGroup.market,
-  ),
-  wallStreetClose(
-    'Wall Street close',
-    'When Wall Street closes.',
-    SettingsNotificationGroup.market,
-  ),
-  stockEvents(
-    'Events on my stocks',
-    'Updates that affect stocks you hold.',
-    SettingsNotificationGroup.market,
-  ),
-  priceAlerts(
-    'Price alerts',
-    'Moves of 5% or 10% on followed stocks.',
-    SettingsNotificationGroup.market,
-  ),
-  streakReminder(
-    'Streak reminder',
-    'When your streak is at risk.',
-    SettingsNotificationGroup.career,
-  ),
-  missions(
-    'Missions',
-    'New missions and progress.',
-    SettingsNotificationGroup.career,
-  ),
-  promotions(
-    'Promotions',
-    'When you earn a new rank.',
-    SettingsNotificationGroup.career,
-  ),
-  league(
-    'League',
-    'League results and position changes.',
-    SettingsNotificationGroup.career,
-  ),
-  friends(
-    'Friends',
-    'Friends\' trades and reasons.',
-    SettingsNotificationGroup.social,
-  ),
-  tradesAndReceipts(
-    'Trade updates',
-    'When a real-money order finishes.',
-    SettingsNotificationGroup.account,
-  ),
-  trimmyNews(
-    'News from Trimmy',
-    'Product news and updates.',
-    SettingsNotificationGroup.account,
-  );
+  wallStreetOpen(SettingsNotificationGroup.market),
+  wallStreetClose(SettingsNotificationGroup.market),
+  stockEvents(SettingsNotificationGroup.market),
+  priceAlerts(SettingsNotificationGroup.market),
+  streakReminder(SettingsNotificationGroup.career),
+  missions(SettingsNotificationGroup.career),
+  promotions(SettingsNotificationGroup.career),
+  league(SettingsNotificationGroup.career),
+  friends(SettingsNotificationGroup.social),
+  tradesAndReceipts(SettingsNotificationGroup.account),
+  trimmyNews(SettingsNotificationGroup.account);
 
-  const SettingsNotificationKind(this.title, this.description, this.group);
+  const SettingsNotificationKind(this.group);
 
-  final String title;
-  final String description;
   final SettingsNotificationGroup group;
+
+  String title(AppLocalizations l10n) => switch (this) {
+    SettingsNotificationKind.wallStreetOpen => l10n.settingsNotificationOpen,
+    SettingsNotificationKind.wallStreetClose => l10n.settingsNotificationClose,
+    SettingsNotificationKind.stockEvents => l10n.settingsNotificationEvents,
+    SettingsNotificationKind.priceAlerts => l10n.settingsNotificationPrices,
+    SettingsNotificationKind.streakReminder => l10n.settingsNotificationStreak,
+    SettingsNotificationKind.missions => l10n.settingsNotificationMissions,
+    SettingsNotificationKind.promotions => l10n.settingsNotificationPromotions,
+    SettingsNotificationKind.league => l10n.settingsNotificationLeague,
+    SettingsNotificationKind.friends => l10n.settingsNotificationFriends,
+    SettingsNotificationKind.tradesAndReceipts =>
+      l10n.settingsNotificationTrades,
+    SettingsNotificationKind.trimmyNews => l10n.settingsNotificationNews,
+  };
+
+  String description(
+    AppLocalizations l10n,
+    AppFormats formats,
+  ) => switch (this) {
+    SettingsNotificationKind.wallStreetOpen =>
+      l10n.settingsNotificationOpenDetail,
+    SettingsNotificationKind.wallStreetClose =>
+      l10n.settingsNotificationCloseDetail,
+    SettingsNotificationKind.stockEvents =>
+      l10n.settingsNotificationEventsDetail,
+    SettingsNotificationKind.priceAlerts =>
+      l10n.settingsNotificationPricesDetail(
+        formats.percent('5'),
+        formats.percent('10'),
+      ),
+    SettingsNotificationKind.streakReminder =>
+      l10n.settingsNotificationStreakDetail,
+    SettingsNotificationKind.missions =>
+      l10n.settingsNotificationMissionsDetail,
+    SettingsNotificationKind.promotions =>
+      l10n.settingsNotificationPromotionsDetail,
+    SettingsNotificationKind.league => l10n.settingsNotificationLeagueDetail,
+    SettingsNotificationKind.friends => l10n.settingsNotificationFriendsDetail,
+    SettingsNotificationKind.tradesAndReceipts =>
+      l10n.settingsNotificationTradesDetail,
+    SettingsNotificationKind.trimmyNews => l10n.settingsNotificationNewsDetail,
+  };
 }
 
 enum SettingsNotificationGroup {
-  market('Market'),
-  career('Career'),
-  social('Social'),
-  account('Account');
+  market,
+  career,
+  social,
+  account;
 
-  const SettingsNotificationGroup(this.label);
-  final String label;
+  String label(AppLocalizations l10n) => switch (this) {
+    SettingsNotificationGroup.market => l10n.settingsNotificationGroupMarket,
+    SettingsNotificationGroup.career => l10n.settingsNotificationGroupCareer,
+    SettingsNotificationGroup.social => l10n.settingsNotificationGroupSocial,
+    SettingsNotificationGroup.account => l10n.settingsNotificationGroupAccount,
+  };
 }
 
 @immutable
@@ -112,7 +120,10 @@ class SettingsQuietHours {
   final bool available;
   final bool updating;
 
-  String get timeLabel => '$startLabel to $endLabel';
+  /// "10:00 PM to 7:00 AM". [startLabel] and [endLabel] arrive already
+  /// formatted for the reader.
+  String timeLabel(AppLocalizations l10n) =>
+      l10n.settingsQuietHoursRange(startLabel, endLabel);
 }
 
 @immutable
@@ -229,12 +240,15 @@ class SettingsWalletState {
 }
 
 enum SettingsVisibility {
-  friends('Friends'),
-  everyone('Everyone'),
-  nobody('Nobody');
+  friends,
+  everyone,
+  nobody;
 
-  const SettingsVisibility(this.label);
-  final String label;
+  String label(AppLocalizations l10n) => switch (this) {
+    SettingsVisibility.friends => l10n.settingsVisibilityFriends,
+    SettingsVisibility.everyone => l10n.settingsVisibilityEveryone,
+    SettingsVisibility.nobody => l10n.settingsVisibilityNobody,
+  };
 }
 
 /// Holdings visibility has no server contract yet. Reason visibility is

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../design/paper_format.dart';
 import '../design/product_theme.dart';
 import '../design/product_motion_icon.dart';
@@ -60,6 +61,8 @@ class DeskScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final scroll = CustomScrollView(
       key: const PageStorageKey('product-desk'),
       physics: const AlwaysScrollableScrollPhysics(),
@@ -72,13 +75,13 @@ class DeskScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Your desk',
+                      l10n.deskTitle,
                       style: Theme.of(context).textTheme.headlineLarge,
                     ),
                   ),
                   if (onInbox != null)
                     IconButton(
-                      tooltip: 'Updates',
+                      tooltip: l10n.deskUpdatesTooltip,
                       onPressed: onInbox,
                       icon: const ProductMotionIcon(
                         file: 'asset-bell.png',
@@ -86,7 +89,7 @@ class DeskScreen extends StatelessWidget {
                       ),
                     ),
                   Semantics(
-                    label: 'Open profile',
+                    label: l10n.deskOpenProfile,
                     button: true,
                     child: InkWell(
                       key: const ValueKey('desk-open-profile'),
@@ -103,8 +106,9 @@ class DeskScreen extends StatelessWidget {
                               )
                             : Image.asset(
                                 'assets/images/ui_review/persona-${persona!.id}-avatar-v1.png',
-                                semanticLabel:
-                                    '${persona!.label} profile picture',
+                                semanticLabel: l10n.deskPersonaPicture(
+                                  persona!.label(l10n),
+                                ),
                                 fit: BoxFit.contain,
                               ),
                       ),
@@ -132,7 +136,7 @@ class DeskScreen extends StatelessWidget {
                       if (onRetry != null)
                         TextButton(
                           onPressed: onRetry,
-                          child: const Text('Retry'),
+                          child: Text(l10n.commonRetry),
                         ),
                     ],
                   ),
@@ -152,7 +156,7 @@ class DeskScreen extends StatelessWidget {
                       _counter(
                         context,
                         '${snapshot.streak}',
-                        'day streak',
+                        l10n.deskStreakLabel(snapshot.streak!),
                         const ValueKey('desk-streak-count'),
                         true,
                       ),
@@ -178,7 +182,7 @@ class DeskScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Holdings',
+                      l10n.deskHoldingsTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
@@ -186,12 +190,12 @@ class DeskScreen extends StatelessWidget {
                     TextButton(
                       key: const ValueKey('real-trade-history'),
                       onPressed: onOpenPortfolio,
-                      child: const Text('History'),
+                      child: Text(l10n.commonHistory),
                     ),
                   if (!real && snapshot.holdings.isNotEmpty)
                     TextButton(
                       onPressed: onOpenMarket,
-                      child: const Text('Explore'),
+                      child: Text(l10n.deskExplore),
                     ),
                 ],
               ),
@@ -205,10 +209,12 @@ class DeskScreen extends StatelessWidget {
                   HoldingTile(
                     name: holding.name,
                     logoUrl: holding.logoUrl,
-                    quantity: '${holding.quantity} shares',
+                    quantity: deskSharesLabel(l10n, formats, holding.quantity),
                     value: holding.valuePaper == null
                         ? '—'
-                        : formatPaperForDisplay(holding.valuePaper!),
+                        : formats.number(
+                            formatPaperForDisplay(holding.valuePaper!),
+                          ),
                     changePercent: holding.changePercent,
                     onTap: onOpenHolding == null
                         ? null
@@ -218,8 +224,8 @@ class DeskScreen extends StatelessWidget {
                 const SizedBox(height: 14),
                 _actionRow(
                   context,
-                  'Pick your trader',
-                  'Make this desk yours.',
+                  l10n.deskPickTraderTitle,
+                  l10n.deskPickTraderSubtitle,
                   onChoosePersona!,
                   const ProductMotionIcon(file: 'nav-plumpy-profile.png'),
                 ),
@@ -228,8 +234,8 @@ class DeskScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 _actionRow(
                   context,
-                  'Save your desk',
-                  'Keep it on your other devices.',
+                  l10n.deskSaveTitle,
+                  l10n.deskSaveSubtitle,
                   onSignIn!,
                   const ProductMotionIcon(file: 'settings-lock.png'),
                   key: const ValueKey('desk-save-progress'),
@@ -293,14 +299,14 @@ class DeskScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    snapshot.rank ?? 'Your career',
+                    snapshot.rank ?? context.l10n.deskCareerFallback,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: ProductColor.violet),
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    snapshot.mission ?? 'See your next step',
+                    snapshot.mission ?? context.l10n.deskNextStepFallback,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ],
@@ -365,13 +371,16 @@ class DeskScreen extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('No stocks yet', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          context.l10n.deskEmptyTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 4),
-        const Text('Pick a company to begin.'),
+        Text(context.l10n.deskEmptyBody),
         TextButton(
           key: const ValueKey('desk-empty-open-market'),
           onPressed: onOpenMarket,
-          child: const Text('Explore stocks'),
+          child: Text(context.l10n.deskEmptyExplore),
         ),
       ],
     ),
@@ -410,3 +419,14 @@ class DeskScreen extends StatelessWidget {
     ),
   );
 }
+
+/// "2.5 shares" for a share count written the English way ("2.5", "1,250"),
+/// in [l10n]'s language. Shared by the Desk holdings and activity lists.
+String deskSharesLabel(
+  AppLocalizations l10n,
+  AppFormats formats,
+  String quantity,
+) => l10n.deskShareCount(
+  num.tryParse(quantity.replaceAll(',', '')) ?? 0,
+  formats.number(quantity),
+);

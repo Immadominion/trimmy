@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_feedback.dart';
 import '../design/product_notice.dart';
 import '../design/product_theme.dart';
@@ -77,7 +78,11 @@ class _FastBuySheetState extends State<FastBuySheet> {
   List<FastBuyAsset>? _tradeable;
   bool _loadingTradeable = false;
   bool _tradeableFailed = false;
-  String? _opening, _notice;
+  String? _opening;
+
+  /// A tapped stock could not open. The notice is written when shown, so it
+  /// follows the current language.
+  bool _openFailed = false;
 
   bool get _real => widget.loadTradeable != null;
 
@@ -140,11 +145,11 @@ class _FastBuySheetState extends State<FastBuySheet> {
     setState(() => _selected = company);
   }
 
-  void _showNotice(String message) {
+  void _showOpenFailed() {
     _noticeTimer?.cancel();
-    setState(() => _notice = message);
+    setState(() => _openFailed = true);
     _noticeTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) setState(() => _notice = null);
+      if (mounted) setState(() => _openFailed = false);
     });
   }
 
@@ -155,7 +160,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
     ReviewFeedback.shared.press(selection: true);
     setState(() {
       _opening = asset.mint;
-      _notice = null;
+      _openFailed = false;
     });
     MarketCompany? company;
     try {
@@ -168,7 +173,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
     if (company?.primaryVariant?.mint == asset.mint) {
       setState(() => _selected = company);
     } else {
-      _showNotice('This stock couldn’t open. Try again.');
+      _showOpenFailed();
     }
   }
 
@@ -180,6 +185,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
         () => setState(() => _selected = null),
       );
     }
+    final l10n = context.l10n;
     return Material(
       color: Colors.white,
       child: SafeArea(
@@ -193,12 +199,12 @@ class _FastBuySheetState extends State<FastBuySheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Fast buy',
+                      l10n.fastBuyTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Close fast buy',
+                    tooltip: l10n.fastBuyClose,
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -215,7 +221,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
                 onChanged: _search,
                 onSubmitted: _search,
                 decoration: InputDecoration(
-                  hintText: 'Search a name or ticker',
+                  hintText: l10n.fastBuySearchHint,
                   prefixIcon: const Padding(
                     padding: EdgeInsets.all(13),
                     child: ProductMotionIcon(
@@ -242,13 +248,13 @@ class _FastBuySheetState extends State<FastBuySheet> {
               ),
             ),
             Expanded(child: _real ? _tradeableList() : _paperList()),
-            if (_notice != null)
+            if (_openFailed)
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
                 child: ProductNotice(
                   key: const ValueKey('fast-buy-notice'),
-                  message: _notice!,
-                  onDismiss: () => setState(() => _notice = null),
+                  message: l10n.fastBuyOpenFailed,
+                  onDismiss: () => setState(() => _openFailed = false),
                 ),
               ),
           ],
@@ -265,7 +271,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
         children: [
           Text(text, textAlign: TextAlign.center),
           if (retry != null)
-            TextButton(onPressed: retry, child: const Text('Retry')),
+            TextButton(onPressed: retry, child: Text(context.l10n.commonRetry)),
         ],
       ),
     ),
@@ -276,7 +282,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
       return const Center(child: TrimmyLiquidMark(size: 52));
     }
     if (_tradeableFailed || _tradeable == null) {
-      return _message('Trading could not connect.', retry: _loadTradeable);
+      return _message(context.l10n.fastBuyConnectFailed, retry: _loadTradeable);
     }
     final query = _query.text.trim();
     final rows = query.isEmpty
@@ -285,8 +291,8 @@ class _FastBuySheetState extends State<FastBuySheet> {
     if (rows.isEmpty) {
       return _message(
         query.isEmpty
-            ? 'No stocks available to buy right now.'
-            : 'No tradeable stock matches that.',
+            ? context.l10n.fastBuyNoneAvailable
+            : context.l10n.fastBuyNoTradeableMatch,
       );
     }
     return ListView.builder(
@@ -348,11 +354,9 @@ class _FastBuySheetState extends State<FastBuySheet> {
     if (rows.isEmpty) {
       return _message(
         query.isEmpty
-            ? 'No stocks available to buy right now.'
-            : state.message ?? 'No matches yet.',
-        retry: state.message == null
-            ? null
-            : () => widget.gateway.search(query),
+            ? context.l10n.fastBuyNoneAvailable
+            : state.noticeText(context.l10n) ?? context.l10n.fastBuyNoMatches,
+        retry: state.notice == null ? null : () => widget.gateway.search(query),
       );
     }
     return ListView.builder(

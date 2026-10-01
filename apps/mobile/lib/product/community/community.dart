@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../design/product_motion_icon.dart';
 
@@ -134,12 +135,15 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
+/// What went wrong last, shown above the list in the reader's language.
+enum _CommunityError { load, save }
+
 class _CommunityScreenState extends State<CommunityScreen> {
   late String _scope = widget.initialScope;
   List<CommunityPost> _posts = [];
   Map<String, String>? _next;
   bool _loading = false;
-  String? _error;
+  _CommunityError? _error;
   int _generation = 0;
   final Set<String> _busy = {};
   @override
@@ -173,7 +177,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       });
     } catch (_) {
       if (mounted && generation == _generation) {
-        setState(() => _error = 'Couldn’t load activity. Try again.');
+        setState(() => _error = _CommunityError.load);
       }
     } finally {
       if (mounted && generation == _generation) {
@@ -194,7 +198,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       if (mounted) await _load();
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'That change didn’t save. Try again.');
+        setState(() => _error = _CommunityError.save);
       }
     } finally {
       _busy.remove(post.socialId);
@@ -203,200 +207,225 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
-    appBar: AppBar(
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
+    return Scaffold(
       backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      title: Text(_scope == 'notifications' ? 'Updates' : 'Community'),
-    ),
-    body: RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(22, 10, 22, 30),
-        children: [
-          if (_scope != 'notifications')
-            Wrap(
-              spacing: 12,
-              children: [
-                for (final scope in ['everyone', 'following'])
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _scope = scope;
-                      _posts = [];
-                      unawaited(_load());
-                    }),
-                    style: TextButton.styleFrom(
-                      backgroundColor: _scope == scope
-                          ? const Color(0xFFF1ECFC)
-                          : Colors.transparent,
-                    ),
-                    child: Text(scope == 'everyone' ? 'Everyone' : 'Following'),
-                  ),
-              ],
-            ),
-          if (_error != null)
-            Row(
-              children: [
-                Expanded(child: Text(_error!)),
-                TextButton(onPressed: _load, child: const Text('Retry')),
-              ],
-            ),
-          if (_loading && _posts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: TrimmyLiquidMark(size: 88)),
-            ),
-          if (!_loading && _posts.isEmpty && _error == null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 55),
-              child: Column(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          _scope == 'notifications'
+              ? l10n.communityUpdatesTitle
+              : l10n.communityTitle,
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(22, 10, 22, 30),
+          children: [
+            if (_scope != 'notifications')
+              Wrap(
+                spacing: 12,
                 children: [
-                  const ProductMotionIcon(
-                    file: 'career-comments.png',
-                    size: 54,
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    _scope == 'notifications'
-                        ? 'You’re all caught up'
-                        : _scope == 'following'
-                        ? 'Your people, here'
-                        : 'No shared comments yet',
-                    style: Theme.of(context).textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _scope == 'notifications'
-                        ? 'New comments from people you follow appear here.'
-                        : _scope == 'following'
-                        ? 'Follow a trader from Everyone.'
-                        : 'Public comments will appear here.',
-                    textAlign: TextAlign.center,
-                  ),
+                  for (final scope in ['everyone', 'following'])
+                    TextButton(
+                      onPressed: () => setState(() {
+                        _scope = scope;
+                        _posts = [];
+                        unawaited(_load());
+                      }),
+                      style: TextButton.styleFrom(
+                        backgroundColor: _scope == scope
+                            ? const Color(0xFFF1ECFC)
+                            : Colors.transparent,
+                      ),
+                      child: Text(
+                        scope == 'everyone'
+                            ? l10n.communityScopeEveryone
+                            : l10n.communityScopeFollowing,
+                      ),
+                    ),
                 ],
               ),
-            ),
-          for (final post in _posts)
-            Padding(
-              padding: const EdgeInsets.only(top: 14, bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.all(17),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFF8F6FC),
-                  shape: productSquircle(25),
-                ),
+            if (_error != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(switch (_error!) {
+                      _CommunityError.load => l10n.communityLoadFailed,
+                      _CommunityError.save => l10n.communitySaveFailed,
+                    }),
+                  ),
+                  TextButton(onPressed: _load, child: Text(l10n.commonRetry)),
+                ],
+              ),
+            if (_loading && _posts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: TrimmyLiquidMark(size: 88)),
+              ),
+            if (!_loading && _posts.isEmpty && _error == null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 55),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 38,
-                          height: 38,
-                          child: post.persona == null
-                              ? const ProductMotionIcon(
-                                  file: 'nav-plumpy-profile.png',
-                                )
-                              : Image.asset(
-                                  'assets/images/ui_review/persona-${post.persona}-avatar-v1.png',
-                                  errorBuilder: (_, _, _) =>
-                                      const ProductMotionIcon(
-                                        file: 'nav-plumpy-profile.png',
-                                      ),
-                                ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            post.handle.isEmpty ? 'Trader' : '@${post.handle}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        if (!post.isViewer)
-                          TextButton(
-                            onPressed: _busy.contains(post.socialId)
-                                ? null
-                                : () => _follow(post),
-                            child: Text(
-                              post.following ? 'Following' : '+ Follow',
-                            ),
-                          ),
-                        if (!post.isViewer &&
-                            (post.following ||
-                                widget.onReport != null ||
-                                widget.onBlock != null))
-                          PopupMenuButton<String>(
-                            tooltip: 'Comment options',
-                            onSelected: (value) async {
-                              if (value == 'notify') {
-                                await _follow(
-                                  post,
-                                  notify: !post.notifications,
-                                );
-                              }
-                              if (value == 'report' &&
-                                  widget.onReport != null) {
-                                await widget.onReport!(post);
-                                if (mounted) await _load();
-                              }
-                              if (value == 'block' && widget.onBlock != null) {
-                                await widget.onBlock!(post);
-                                if (mounted) await _load();
-                              }
-                            },
-                            itemBuilder: (_) => [
-                              if (post.following)
-                                PopupMenuItem(
-                                  value: 'notify',
-                                  child: Text(
-                                    post.notifications
-                                        ? 'Mute updates'
-                                        : 'Turn on updates',
-                                  ),
-                                ),
-                              if (!post.isViewer && widget.onReport != null)
-                                const PopupMenuItem(
-                                  value: 'report',
-                                  child: Text('Report'),
-                                ),
-                              if (!post.isViewer && widget.onBlock != null)
-                                const PopupMenuItem(
-                                  value: 'block',
-                                  child: Text('Block trader'),
-                                ),
-                            ],
-                          ),
-                      ],
+                    const ProductMotionIcon(
+                      file: 'career-comments.png',
+                      size: 54,
                     ),
-                    TextButton(
-                      onPressed: () => widget.onOpenAsset(post.assetId),
-                      child: Text('\$${post.symbol}'),
-                    ),
+                    const SizedBox(height: 18),
                     Text(
-                      post.note,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(height: 1.45),
+                      _scope == 'notifications'
+                          ? l10n.communityEmptyUpdatesTitle
+                          : _scope == 'following'
+                          ? l10n.communityEmptyFollowingTitle
+                          : l10n.communityEmptyEveryoneTitle,
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     Text(
-                      '${post.at.toLocal().day}/${post.at.toLocal().month} · ${post.at.toLocal().hour.toString().padLeft(2, '0')}:${post.at.toLocal().minute.toString().padLeft(2, '0')}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      _scope == 'notifications'
+                          ? l10n.communityEmptyUpdatesBody
+                          : _scope == 'following'
+                          ? l10n.communityEmptyFollowingBody
+                          : l10n.communityEmptyEveryoneBody,
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-            ),
-          if (_next != null)
-            TextButton(
-              onPressed: _loading ? null : () => _load(more: true),
-              child: const Text('Load more'),
-            ),
-        ],
+            for (final post in _posts)
+              Padding(
+                padding: const EdgeInsets.only(top: 14, bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(17),
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFF8F6FC),
+                    shape: productSquircle(25),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 38,
+                            height: 38,
+                            child: post.persona == null
+                                ? const ProductMotionIcon(
+                                    file: 'nav-plumpy-profile.png',
+                                  )
+                                : Image.asset(
+                                    'assets/images/ui_review/persona-${post.persona}-avatar-v1.png',
+                                    errorBuilder: (_, _, _) =>
+                                        const ProductMotionIcon(
+                                          file: 'nav-plumpy-profile.png',
+                                        ),
+                                  ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              post.handle.isEmpty
+                                  ? l10n.communityAnonymousTrader
+                                  : '@${post.handle}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          if (!post.isViewer)
+                            TextButton(
+                              onPressed: _busy.contains(post.socialId)
+                                  ? null
+                                  : () => _follow(post),
+                              child: Text(
+                                post.following
+                                    ? l10n.communityFollowingButton
+                                    : l10n.communityFollowButton,
+                              ),
+                            ),
+                          if (!post.isViewer &&
+                              (post.following ||
+                                  widget.onReport != null ||
+                                  widget.onBlock != null))
+                            PopupMenuButton<String>(
+                              tooltip: l10n.communityCommentOptions,
+                              onSelected: (value) async {
+                                if (value == 'notify') {
+                                  await _follow(
+                                    post,
+                                    notify: !post.notifications,
+                                  );
+                                }
+                                if (value == 'report' &&
+                                    widget.onReport != null) {
+                                  await widget.onReport!(post);
+                                  if (mounted) await _load();
+                                }
+                                if (value == 'block' &&
+                                    widget.onBlock != null) {
+                                  await widget.onBlock!(post);
+                                  if (mounted) await _load();
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                if (post.following)
+                                  PopupMenuItem(
+                                    value: 'notify',
+                                    child: Text(
+                                      post.notifications
+                                          ? l10n.communityMuteUpdates
+                                          : l10n.communityTurnOnUpdates,
+                                    ),
+                                  ),
+                                if (!post.isViewer && widget.onReport != null)
+                                  PopupMenuItem(
+                                    value: 'report',
+                                    child: Text(l10n.communityReport),
+                                  ),
+                                if (!post.isViewer && widget.onBlock != null)
+                                  PopupMenuItem(
+                                    value: 'block',
+                                    child: Text(l10n.communityBlockTrader),
+                                  ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: () => widget.onOpenAsset(post.assetId),
+                        child: Text('\$${post.symbol}'),
+                      ),
+                      Text(
+                        post.note,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyLarge?.copyWith(height: 1.45),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        l10n.communityPostTime(
+                          formats.numericDayMonth(post.at.toLocal()),
+                          formats.time24(post.at.toLocal()),
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (_next != null)
+              TextButton(
+                onPressed: _loading ? null : () => _load(more: true),
+                child: Text(l10n.communityLoadMore),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

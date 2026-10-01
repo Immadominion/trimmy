@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/l10n.dart';
 import 'career_repository.dart';
 
 const _maxSafeInteger = 9007199254740991;
@@ -11,14 +12,20 @@ const reasonPageMaximumLimit = 50;
 /// Who may read a person's saved trade reasons. The server stores all three
 /// values. Friends sharing publishes nothing until a friendship graph exists.
 enum ReasonVisibility {
-  nobody('nobody', 'Nobody'),
-  everyone('everyone', 'Everyone'),
-  friends('friends', 'Friends');
+  nobody('nobody'),
+  everyone('everyone'),
+  friends('friends');
 
-  const ReasonVisibility(this.wire, this.label);
+  const ReasonVisibility(this.wire);
 
   final String wire;
-  final String label;
+
+  /// The choice's name as Settings shows it, in the reader's language.
+  String label(AppLocalizations l10n) => switch (this) {
+    ReasonVisibility.nobody => l10n.reasonPrivacyNobody,
+    ReasonVisibility.everyone => l10n.reasonPrivacyEveryone,
+    ReasonVisibility.friends => l10n.reasonPrivacyFriends,
+  };
 }
 
 enum ReasonDeskCycle { current, historical }

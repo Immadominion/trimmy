@@ -1,6 +1,7 @@
 import '../../ui_review/review_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_notice.dart';
 import '../design/product_success_mark.dart';
 import '../design/paper_format.dart';
@@ -15,6 +16,13 @@ import 'market_models.dart';
 import 'paper_order_repository.dart';
 
 enum _OrderStep { amount, review, report }
+
+/// Copy produced when it is shown, so a notice follows a language change.
+typedef _Copy = String Function(AppLocalizations l10n);
+
+/// The grammatical count for an exact share decimal. Only picks a plural
+/// form; amounts themselves stay exact strings.
+num _shareCount(String shares) => num.tryParse(shares) ?? 0;
 
 class PaperOrderFlow extends StatefulWidget {
   const PaperOrderFlow({
@@ -70,10 +78,10 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
   PaperOrderReceipt? _receipt;
   PaperOrderReason? _pendingReason;
   PaperReasonReceipt? _reasonReceipt;
-  String? _notice;
+  _Copy? _notice;
   Timer? _noticeTimer;
-  String? get _message => _notice;
-  set _message(String? value) {
+  _Copy? get _message => _notice;
+  set _message(_Copy? value) {
     _noticeTimer?.cancel();
     _notice = value;
     if (value != null) {
@@ -85,7 +93,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
 
   Widget _messageView() => ProductNotice(
     key: const ValueKey('paper-order-message'),
-    message: _message!,
+    message: _message!(context.l10n),
     onDismiss: () => setState(() => _message = null),
   );
   bool _busy = false;
@@ -113,8 +121,6 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
     _reason.dispose();
     super.dispose();
   }
-
-  String get _verb => widget.side == PaperOrderSide.buy ? 'Buy' : 'Sell';
 
   void _key(String key) {
     if (_busy) return;
@@ -187,13 +193,23 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
     });
   }
 
-  String get _equivalent {
-    if (_price == null) return 'Conversion shown at review';
+  String _equivalent(AppLocalizations l10n, AppFormats formats) {
+    if (_price == null) return l10n.paperOrderConversionAtReview;
     if (_unit == PaperQuantityUnit.paper) {
-      return '≈ ${OrderAmountMath.sharesForCash(_trimDecimal(_input), _price!, selling: widget.side == PaperOrderSide.sell)} shares';
+      final shares = OrderAmountMath.sharesForCash(
+        _trimDecimal(_input),
+        _price!,
+        selling: widget.side == PaperOrderSide.sell,
+      );
+      return l10n.paperOrderEquivalentShares(
+        _shareCount(shares),
+        formats.number(shares),
+      );
     }
     final cash = OrderAmountMath.cashForShares(_trimDecimal(_input), _price!);
-    return '≈ ${formatPaperForDisplay(cash)} paper';
+    return l10n.paperOrderEquivalentPaper(
+      formats.number(formatPaperForDisplay(cash)),
+    );
   }
 
   static String _trimDecimal(String value) {
@@ -203,21 +219,27 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
         .replaceFirst(RegExp(r'\.$'), '');
   }
 
-  String _displayInput() {
+  /// The typed amount with the reader's grouping and decimal mark. The
+  /// typed value itself stays a plain decimal ("1234.5").
+  String _displayInput(AppFormats formats) {
     final parts = _input.split('.');
     final whole = parts.first;
     final grouped = StringBuffer();
     for (var index = 0; index < whole.length; index++) {
-      if (index > 0 && (whole.length - index) % 3 == 0) grouped.write(',');
+      if (index > 0 && (whole.length - index) % 3 == 0) {
+        grouped.write(formats.groupSeparator);
+      }
       grouped.write(whole[index]);
     }
-    return parts.length == 1 ? grouped.toString() : '$grouped.${parts[1]}';
+    return parts.length == 1
+        ? grouped.toString()
+        : '$grouped${formats.decimalSeparator}${parts[1]}';
   }
 
   Future<void> _requestQuote() async {
     final variant = widget.company.primaryVariant;
     if (variant == null) {
-      setState(() => _message = 'This company has no available version.');
+      setState(() => _message = (l10n) => l10n.paperOrderNoVersion);
       return;
     }
     late final PaperOrderIntent intent;
@@ -367,10 +389,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
       setState(() => _message = _reasonFailureMessage(error.failure));
       return;
     } catch (_) {
-      setState(
-        () =>
-            _message = 'Trade confirmed. Your reason was not saved. Try again.',
-      );
+      setState(() => _message = (l10n) => l10n.paperOrderReasonNotSaved);
       return;
     }
     setState(() {
@@ -406,61 +425,49 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
       if (!mounted) return;
       setState(() {
         _savingReason = false;
-        _message =
-            'The trade is done, but the reason was not saved. Try again.';
+        _message = (l10n) => l10n.paperOrderReasonNotSavedDone;
       });
     }
   }
 
-  String _reasonFailureMessage(CareerFailure failure) => switch (failure) {
-    CareerFailure.invalidInput => 'Use one line and 180 characters or fewer.',
-    CareerFailure.offline =>
-      'Trade confirmed. You are offline, so your reason was not saved. Try again.',
-    CareerFailure.timeout =>
-      'Trade confirmed. Saving the reason took too long. Try again.',
-    CareerFailure.accountRequired =>
-      'Trade confirmed. Your session needs to be refreshed before saving the reason.',
-    CareerFailure.profileRequired =>
-      'Trade confirmed. Finish setting up your profile before saving the reason.',
-    CareerFailure.orderNotFound =>
-      'Trade confirmed. This order was not found. Refresh your desk.',
-    CareerFailure.buyOrderRequired =>
-      'Reasons can be saved only after a confirmed paper buy.',
-    CareerFailure.positionRequired =>
-      'Trade confirmed. Hold this stock before saving a reason.',
-    CareerFailure.reasonExists =>
-      'This trade already has a saved reason. Refresh your career.',
-    CareerFailure.idempotencyConflict =>
-      'Trade confirmed. This retry could not be matched. Refresh your career.',
-    CareerFailure.rateLimited =>
-      'Trade confirmed. Reasons are busy right now. Try again shortly.',
-    CareerFailure.invalidResponse ||
-    CareerFailure.unavailable ||
-    CareerFailure.dayContextRevisionConflict ||
-    CareerFailure.timeZoneChangeTooSoon ||
-    CareerFailure.revisionExhausted ||
-    CareerFailure.rejected =>
-      'Trade confirmed. Your reason was not saved. Try again.',
-  };
+  static _Copy _reasonFailureMessage(CareerFailure failure) =>
+      (l10n) => switch (failure) {
+        CareerFailure.invalidInput => l10n.paperOrderReasonTooLong,
+        CareerFailure.offline => l10n.paperOrderReasonOffline,
+        CareerFailure.timeout => l10n.paperOrderReasonTimeout,
+        CareerFailure.accountRequired => l10n.paperOrderReasonSessionExpired,
+        CareerFailure.profileRequired => l10n.paperOrderReasonProfileRequired,
+        CareerFailure.orderNotFound => l10n.paperOrderReasonOrderNotFound,
+        CareerFailure.buyOrderRequired => l10n.paperOrderReasonBuyRequired,
+        CareerFailure.positionRequired => l10n.paperOrderReasonPositionRequired,
+        CareerFailure.reasonExists => l10n.paperOrderReasonExists,
+        CareerFailure.idempotencyConflict => l10n.paperOrderReasonRetryMismatch,
+        CareerFailure.rateLimited => l10n.paperOrderReasonBusy,
+        CareerFailure.invalidResponse ||
+        CareerFailure.unavailable ||
+        CareerFailure.dayContextRevisionConflict ||
+        CareerFailure.timeZoneChangeTooSoon ||
+        CareerFailure.revisionExhausted ||
+        CareerFailure.rejected => l10n.paperOrderReasonNotSaved,
+      };
 
-  String _failureMessage(PaperOrderFailure failure) => switch (failure) {
-    PaperOrderFailure.invalidAmount => 'Enter an amount above zero.',
-    PaperOrderFailure.insufficientPaper =>
-      'There is not enough paper for this order.',
-    PaperOrderFailure.insufficientShares =>
-      'There are not enough shares to sell.',
-    PaperOrderFailure.quoteExpired => 'That price expired. Check a new quote.',
-    PaperOrderFailure.priceChanged => 'The price moved. Check the new quote.',
-    PaperOrderFailure.offline =>
-      'You are offline. Check your connection and try again.',
-    PaperOrderFailure.timeout => 'That took too long. Try again.',
-    PaperOrderFailure.accountRequired =>
-      'Save your desk before placing this order.',
-    PaperOrderFailure.duplicate =>
-      'This order was already received. Refresh your desk.',
-    PaperOrderFailure.rejected => 'The order was not accepted.',
-    PaperOrderFailure.unavailable => 'The order did not go through. Try again.',
-  };
+  static _Copy _failureMessage(PaperOrderFailure failure) =>
+      (l10n) => switch (failure) {
+        PaperOrderFailure.invalidAmount => l10n.paperOrderErrorInvalidAmount,
+        PaperOrderFailure.insufficientPaper =>
+          l10n.paperOrderErrorInsufficientPaper,
+        PaperOrderFailure.insufficientShares =>
+          l10n.paperOrderErrorInsufficientShares,
+        PaperOrderFailure.quoteExpired => l10n.paperOrderErrorQuoteExpired,
+        PaperOrderFailure.priceChanged => l10n.paperOrderErrorPriceChanged,
+        PaperOrderFailure.offline => l10n.paperOrderErrorOffline,
+        PaperOrderFailure.timeout => l10n.paperOrderErrorTimeout,
+        PaperOrderFailure.accountRequired =>
+          l10n.paperOrderErrorAccountRequired,
+        PaperOrderFailure.duplicate => l10n.paperOrderErrorDuplicate,
+        PaperOrderFailure.rejected => l10n.paperOrderErrorRejected,
+        PaperOrderFailure.unavailable => l10n.paperOrderErrorUnavailable,
+      };
 
   void _back() {
     if (_busy || _savingReason) return;
@@ -483,10 +490,16 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
   @override
   Widget build(BuildContext context) {
     if (widget.firstTradeAmount != null) return _firstTradeReview();
+    final l10n = context.l10n;
+    final buying = widget.side == PaperOrderSide.buy;
     final title = switch (_step) {
-      _OrderStep.amount => '$_verb ${widget.company.symbol}',
-      _OrderStep.review => 'Review your ${_verb.toLowerCase()}',
-      _OrderStep.report => 'Trade confirmed',
+      _OrderStep.amount =>
+        buying
+            ? l10n.paperOrderBuyTitle(widget.company.symbol)
+            : l10n.paperOrderSellTitle(widget.company.symbol),
+      _OrderStep.review =>
+        buying ? l10n.paperOrderReviewBuyTitle : l10n.paperOrderReviewSellTitle,
+      _OrderStep.report => l10n.paperOrderConfirmedTitle,
     };
     return PopScope(
       canPop: !_busy && !_savingReason,
@@ -496,7 +509,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
           backgroundColor: MarketPalette.paper,
           surfaceTintColor: Colors.transparent,
           leading: IconButton(
-            tooltip: _step == _OrderStep.report ? 'Close' : 'Back',
+            tooltip: _step == _OrderStep.report
+                ? l10n.commonClose
+                : l10n.commonBack,
             onPressed: _busy || _savingReason ? null : _back,
             icon: Icon(
               _step == _OrderStep.report
@@ -506,6 +521,8 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
           ),
           title: Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
         ),
@@ -528,6 +545,8 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
 
   Widget _firstTradeReview() {
     final quote = _quote;
+    final l10n = context.l10n;
+    final formats = context.formats;
     return PopScope<Object?>(
       canPop: !_busy,
       child: SafeArea(
@@ -556,7 +575,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                         Align(
                           alignment: Alignment.topCenter,
                           child: Semantics(
-                            label: 'Swipe down to edit your buy',
+                            label: l10n.paperOrderFirstTradeSwipeHint,
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onVerticalDragEnd: (details) {
@@ -587,7 +606,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: IconButton(
-                            tooltip: 'Skip first trade',
+                            tooltip: l10n.paperOrderFirstTradeSkip,
                             onPressed: _busy ? null : widget.onExitFirstTrade,
                             icon: const Icon(Icons.close_rounded, size: 29),
                           ),
@@ -596,9 +615,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Review your buy.',
-                    style: TextStyle(
+                  Text(
+                    l10n.paperOrderFirstTradeReviewTitle,
+                    style: const TextStyle(
                       fontFamily: reviewDisplay,
                       fontSize: 30,
                       fontWeight: FontWeight.w700,
@@ -635,17 +654,17 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                           ),
                           const SizedBox(height: 26),
                           _DetailRow(
-                            label: 'Shares',
-                            value: Text(quote.estimatedShares),
+                            label: l10n.paperOrderSharesLabel,
+                            value: Text(formats.number(quote.estimatedShares)),
                           ),
                           const SizedBox(height: 14),
                           _DetailRow(
-                            label: 'Price per share',
+                            label: l10n.paperOrderPricePerShare,
                             value: PaperAmount(quote.unitPricePaper),
                           ),
                           const SizedBox(height: 14),
                           _DetailRow(
-                            label: 'Fee',
+                            label: l10n.paperOrderFee,
                             value: PaperAmount(quote.feePaper),
                           ),
                         ],
@@ -653,7 +672,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                       lower: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total'),
+                          Text(l10n.paperOrderTotal),
                           const SizedBox(height: 7),
                           PaperAmount(
                             quote.totalPaper,
@@ -676,11 +695,11 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                     background: UiReviewColor.violet,
                     label: _busy
                         ? (_step == _OrderStep.review
-                              ? 'Confirming buy…'
-                              : 'Checking price…')
+                              ? l10n.paperOrderConfirmingBuy
+                              : l10n.paperOrderCheckingPrice)
                         : _step == _OrderStep.amount
-                        ? 'Try again'
-                        : 'Confirm buy',
+                        ? l10n.commonTryAgain
+                        : l10n.paperOrderConfirmBuy,
                     onPressed: _busy || _receipt != null
                         ? null
                         : _step == _OrderStep.amount
@@ -697,132 +716,165 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
     );
   }
 
-  Widget _amountScreen() => Column(
-    key: const ValueKey('paper-order-amount'),
-    children: [
-      Expanded(
-        child: LayoutBuilder(
-          builder: (context, box) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: box.maxHeight - 20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    children: [
-                      CompanyLogo(
-                        name: widget.company.name,
-                        logoUrl: widget.company.logoUrl,
-                        color: widget.company.brandColor,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 20),
-                      Semantics(
-                        label:
-                            '${_displayInput()} ${_unit == PaperQuantityUnit.paper ? 'paper' : 'shares'}',
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            _displayInput(),
-                            key: const ValueKey('order-amount-value'),
-                            style: const TextStyle(
-                              fontSize: 58,
-                              height: 1.15,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1.8,
-                              fontFeatures: [FontFeature.tabularFigures()],
+  Widget _amountScreen() {
+    final l10n = context.l10n;
+    final formats = context.formats;
+    final display = _displayInput(formats);
+    final available = _trimDecimal(widget.availableShares);
+    return Column(
+      key: const ValueKey('paper-order-amount'),
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: box.maxHeight - 20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      children: [
+                        CompanyLogo(
+                          name: widget.company.name,
+                          logoUrl: widget.company.logoUrl,
+                          color: widget.company.brandColor,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 20),
+                        Semantics(
+                          label: _unit == PaperQuantityUnit.paper
+                              ? l10n.paperAmount(display)
+                              : l10n.paperOrderSharesValue(
+                                  _shareCount(_trimDecimal(_input)),
+                                  display,
+                                ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              display,
+                              key: const ValueKey('order-amount-value'),
+                              style: const TextStyle(
+                                fontSize: 58,
+                                height: 1.15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -1.8,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _equivalent,
-                        key: const ValueKey('order-equivalent'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: MarketPalette.muted,
-                          fontSize: 15,
+                        const SizedBox(height: 8),
+                        Text(
+                          _equivalent(l10n, formats),
+                          key: const ValueKey('order-equivalent'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: MarketPalette.muted,
+                            fontSize: 15,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        width: 220,
-                        child: _UnitSwitch(
-                          value: _unit,
-                          onChanged: _switchUnit,
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: 220,
+                          child: _UnitSwitch(
+                            value: _unit,
+                            onChanged: _switchUnit,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      _presets(),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.side == PaperOrderSide.sell
-                            ? '${_trimDecimal(widget.availableShares)} shares available'
-                            : '${formatPaperForDisplay(widget.availablePaper)} paper available',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: MarketPalette.muted,
-                          fontSize: 13,
+                        const SizedBox(height: 18),
+                        _presets(l10n, formats),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        Text(
+                          widget.side == PaperOrderSide.sell
+                              ? l10n.paperOrderSharesAvailable(
+                                  _shareCount(available),
+                                  formats.number(available),
+                                )
+                              : l10n.paperOrderPaperAvailable(
+                                  formats.number(
+                                    formatPaperForDisplay(
+                                      widget.availablePaper,
+                                    ),
+                                  ),
+                                ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: MarketPalette.muted,
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      _Keypad(onKey: _key),
-                    ],
-                  ),
-                ],
+                        const SizedBox(height: 8),
+                        _Keypad(onKey: _key),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-      _BottomAction(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_message != null) ...[
-              _messageView(),
-              const SizedBox(height: 10),
+        _BottomAction(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_message != null) ...[
+                _messageView(),
+                const SizedBox(height: 10),
+              ],
+              MarketPrimaryButton(
+                key: const ValueKey('paper-order-review-button'),
+                label: l10n.commonContinue,
+                color: MarketPalette.violet,
+                onPressed: _busy ? null : _requestQuote,
+                busy: _busy,
+              ),
             ],
-            MarketPrimaryButton(
-              key: const ValueKey('paper-order-review-button'),
-              label: 'Continue',
-              color: MarketPalette.violet,
-              onPressed: _busy ? null : _requestQuote,
-              busy: _busy,
-            ),
-          ],
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 
-  Widget _presets() {
+  Widget _presets(AppLocalizations l10n, AppFormats formats) {
     final selling = widget.side == PaperOrderSide.sell;
+    // (id for the widget key, label shown, exact value entered). The id
+    // stays the English label so keys never depend on the language.
     final presets = selling
-        ? <(String, String)>[
-            ('25%', OrderAmountMath.portion(widget.availableShares, 25)),
-            ('50%', OrderAmountMath.portion(widget.availableShares, 50)),
-            ('75%', OrderAmountMath.portion(widget.availableShares, 75)),
-            ('Max', widget.availableShares),
+        ? <(String, String, String)>[
+            (
+              '25%',
+              formats.percent('25'),
+              OrderAmountMath.portion(widget.availableShares, 25),
+            ),
+            (
+              '50%',
+              formats.percent('50'),
+              OrderAmountMath.portion(widget.availableShares, 50),
+            ),
+            (
+              '75%',
+              formats.percent('75'),
+              OrderAmountMath.portion(widget.availableShares, 75),
+            ),
+            ('Max', l10n.commonMax, widget.availableShares),
           ]
         : _unit == PaperQuantityUnit.paper
-        ? <(String, String)>[
-            ('100', '100'),
-            ('500', '500'),
-            ('1,000', '1000'),
-            ('Max', _maxValue()),
+        ? <(String, String, String)>[
+            ('100', formats.number('100'), '100'),
+            ('500', formats.number('500'), '500'),
+            ('1,000', formats.number('1,000'), '1000'),
+            ('Max', l10n.commonMax, _maxValue()),
           ]
-        : <(String, String)>[
-            ('1', '1'),
-            ('5', '5'),
-            ('10', '10'),
-            ('Max', _maxValue()),
+        : <(String, String, String)>[
+            ('1', formats.number('1'), '1'),
+            ('5', formats.number('5'), '5'),
+            ('10', formats.number('10'), '10'),
+            ('Max', l10n.commonMax, _maxValue()),
           ];
     return Wrap(
       spacing: 8,
@@ -832,7 +884,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
         for (final preset in presets)
           ActionChip(
             key: ValueKey('paper-preset-${preset.$1}'),
-            label: Text(preset.$1),
+            label: Text(preset.$2),
             onPressed: _busy
                 ? null
                 : () {
@@ -842,7 +894,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                     // Percentages and Max always sell exact shares, never a rounded
                     // cash equivalent that can oversell or leave fractional dust.
                     if (selling) _unit = PaperQuantityUnit.shares;
-                    _setPreset(preset.$2);
+                    _setPreset(preset.$3);
                   },
             backgroundColor: const Color(0xFFF5F3FA),
             side: BorderSide.none,
@@ -858,6 +910,11 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
 
   Widget _reviewScreen() {
     final quote = _quote!;
+    final l10n = context.l10n;
+    final formats = context.formats;
+    final buying = widget.side == PaperOrderSide.buy;
+    final shares = formats.number(quote.estimatedShares);
+    final count = _shareCount(quote.estimatedShares);
     return Column(
       key: const ValueKey('paper-order-review'),
       children: [
@@ -907,7 +964,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                     ),
                     const SizedBox(height: 32),
                     Text(
-                      '${widget.side == PaperOrderSide.buy ? 'Buying' : 'Selling'} ${quote.estimatedShares} shares',
+                      buying
+                          ? l10n.paperOrderBuyingShares(count, shares)
+                          : l10n.paperOrderSellingShares(count, shares),
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -915,12 +974,12 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                     ),
                     const SizedBox(height: 28),
                     _DetailRow(
-                      label: 'Price per share',
+                      label: l10n.paperOrderPricePerShare,
                       value: PaperAmount(quote.unitPricePaper),
                     ),
                     const SizedBox(height: 20),
                     _DetailRow(
-                      label: 'Fee',
+                      label: l10n.paperOrderFee,
                       value: PaperAmount(quote.feePaper),
                     ),
                   ],
@@ -929,9 +988,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.side == PaperOrderSide.buy
-                          ? 'You pay'
-                          : 'You receive',
+                      buying
+                          ? l10n.paperOrderYouPay
+                          : l10n.paperOrderYouReceive,
                       style: const TextStyle(
                         color: Color(0xFF66558A),
                         fontSize: 14,
@@ -961,7 +1020,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
               ],
               MarketPrimaryButton(
                 key: const ValueKey('paper-order-confirm-button'),
-                label: 'Confirm ${_verb.toLowerCase()}',
+                label: buying
+                    ? l10n.paperOrderConfirmBuy
+                    : l10n.paperOrderConfirmSell,
                 color: MarketPalette.violet,
                 onPressed: _busy ? null : _confirm,
                 busy: _busy,
@@ -976,24 +1037,30 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
   Widget _reportScreen() {
     final receipt = _receipt!;
     final savedReason = _reasonReceipt;
+    final l10n = context.l10n;
+    final formats = context.formats;
+    final buying = widget.side == PaperOrderSide.buy;
+    final symbol = widget.company.symbol;
+    final filled = formats.number(receipt.filledShares);
+    final filledCount = _shareCount(receipt.filledShares);
     return ListView(
       key: const ValueKey('paper-order-report'),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
         Semantics(
           liveRegion: true,
-          label: widget.side == PaperOrderSide.buy
-              ? 'Buy confirmed'
-              : 'Sale confirmed',
+          label: buying
+              ? l10n.paperOrderBuyConfirmed
+              : l10n.paperOrderSaleConfirmed,
           child: const Center(child: ProductSuccessMark(size: 66)),
         ),
         const SizedBox(height: 12),
         Text(
-          widget.side == PaperOrderSide.buy
-              ? '${widget.company.symbol} is on your desk.'
+          buying
+              ? l10n.paperOrderOnYourDesk(symbol)
               : receipt.positionShares == '0'
-              ? '${widget.company.symbol} left your desk.'
-              : 'Your ${widget.company.symbol} position changed.',
+              ? l10n.paperOrderLeftYourDesk(symbol)
+              : l10n.paperOrderPositionChanged(symbol),
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 28,
@@ -1003,7 +1070,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
         ),
         const SizedBox(height: 8),
         Text(
-          '${widget.side == PaperOrderSide.buy ? 'Bought' : 'Sold'} ${receipt.filledShares} shares',
+          buying
+              ? l10n.paperOrderBoughtShares(filledCount, filled)
+              : l10n.paperOrderSoldShares(filledCount, filled),
           textAlign: TextAlign.center,
           style: const TextStyle(color: MarketPalette.muted),
         ),
@@ -1013,20 +1082,25 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
           child: Column(
             children: [
               _DetailRow(
-                label: 'Your position',
-                value: Text('${receipt.positionShares} shares'),
+                label: l10n.paperOrderYourPosition,
+                value: Text(
+                  l10n.paperOrderSharesValue(
+                    _shareCount(receipt.positionShares),
+                    formats.number(receipt.positionShares),
+                  ),
+                ),
                 strong: true,
               ),
               const SizedBox(height: 22),
               _DetailRow(
-                label: 'Position value',
+                label: l10n.paperOrderPositionValue,
                 value: PaperAmount(receipt.positionValuePaper),
               ),
               if (receipt.trimsEarned > 0) ...[
                 const SizedBox(height: 22),
                 _DetailRow(
-                  label: 'Trims earned',
-                  value: Text('+${receipt.trimsEarned}'),
+                  label: l10n.paperOrderTrimsEarned,
+                  value: Text(formats.number('+${receipt.trimsEarned}')),
                 ),
               ],
               if (receipt.missionProgress != null) ...[
@@ -1054,8 +1128,8 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
               maxLines: 1,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                labelText: 'Why did you buy?',
-                hintText: 'One clear line',
+                labelText: l10n.paperOrderReasonLabel,
+                hintText: l10n.paperOrderReasonHint,
                 filled: true,
                 fillColor: const Color(0xFFF7F6FA),
                 border: OutlineInputBorder(
@@ -1080,7 +1154,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
             MarketPrimaryButton(
               color: MarketPalette.violet,
               key: const ValueKey('paper-order-save-reason'),
-              label: _pendingReason == null ? 'Save reason' : 'Retry reason',
+              label: _pendingReason == null
+                  ? l10n.paperOrderSaveReason
+                  : l10n.paperOrderRetryReason,
               onPressed: _savingReason ? null : _saveReason,
               busy: _savingReason,
             ),
@@ -1090,7 +1166,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
               onPressed: _savingReason
                   ? null
                   : () => Navigator.of(context).pop(receipt),
-              child: const Text('Skip'),
+              child: Text(l10n.commonSkip),
             ),
           ] else ...[
             MarketPanel(
@@ -1101,8 +1177,10 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                   const SizedBox(height: 8),
                   Text(
                     savedReason.trimsAwarded > 0
-                        ? '+${savedReason.trimsAwarded} Trims'
-                        : 'Reason saved',
+                        ? l10n.paperOrderReasonTrims(
+                            formats.number('${savedReason.trimsAwarded}'),
+                          )
+                        : l10n.paperOrderReasonSaved,
                     key: const ValueKey('paper-order-reason-reward'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -1112,7 +1190,7 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '“${savedReason.note}”',
+                    l10n.paperOrderReasonQuote(savedReason.note),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: MarketPalette.muted),
                   ),
@@ -1123,23 +1201,23 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
             MarketPrimaryButton(
               color: MarketPalette.violet,
               key: const ValueKey('paper-order-reason-done'),
-              label: 'Done',
+              label: l10n.commonDone,
               onPressed: () => Navigator.of(context).pop(receipt),
             ),
           ],
         ] else ...[
           if (receipt.side == PaperOrderSide.buy) ...[
-            const Text(
-              'Your trade is confirmed. Saving a reason is unavailable right now.',
+            Text(
+              l10n.paperOrderReasonUnavailable,
               textAlign: TextAlign.center,
-              style: TextStyle(color: MarketPalette.muted),
+              style: const TextStyle(color: MarketPalette.muted),
             ),
             const SizedBox(height: 14),
           ],
           MarketPrimaryButton(
             color: MarketPalette.violet,
             key: const ValueKey('paper-order-done'),
-            label: 'Done',
+            label: l10n.commonDone,
             onPressed: () => Navigator.of(context).pop(receipt),
           ),
         ],
@@ -1171,7 +1249,7 @@ class _UnitSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     container: true,
-    label: 'Order amount unit',
+    label: context.l10n.paperOrderUnitLabel,
     child: Container(
       padding: const EdgeInsets.all(4),
       decoration: ShapeDecoration(
@@ -1196,10 +1274,18 @@ class _UnitSwitch extends StatelessWidget {
                     customBorder: marketSquircle(14),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        unit == PaperQuantityUnit.paper ? 'Paper' : 'Shares',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      // The switch keeps its width; a longer word shrinks a
+                      // little instead of wrapping.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          unit == PaperQuantityUnit.paper
+                              ? context.l10n.paperOrderUnitPaper
+                              : context.l10n.paperOrderUnitShares,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
                       ),
                     ),
                   ),
@@ -1218,6 +1304,10 @@ class _Keypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    // The decimal key types a plain '.' whatever it shows, so the typed value
+    // stays the exact decimal the order math reads.
+    final decimalMark = context.formats.decimalSeparator;
     const keys = [
       '1',
       '2',
@@ -1246,9 +1336,9 @@ class _Keypad extends StatelessWidget {
         final key = keys[index];
         return Semantics(
           label: key == 'backspace'
-              ? 'Delete'
+              ? l10n.paperOrderKeyDelete
               : key == '.'
-              ? 'Decimal point'
+              ? l10n.paperOrderKeyDecimal
               : key,
           button: true,
           child: Material(
@@ -1262,7 +1352,7 @@ class _Keypad extends StatelessWidget {
                 child: key == 'backspace'
                     ? const Icon(Icons.backspace_outlined)
                     : Text(
-                        key,
+                        key == '.' ? decimalMark : key,
                         style: const TextStyle(
                           fontSize: 27,
                           fontWeight: FontWeight.w600,

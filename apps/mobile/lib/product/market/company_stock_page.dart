@@ -317,7 +317,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
     if (!mounted || following.isFollowing(_company.assetId) != wasFollowing) {
       return;
     }
-    showProductNotice(context, 'Following did not change. Try again.');
+    showProductNotice(context, context.l10n.marketFollowUnchanged);
   }
 
   Future<void> _trade(PaperOrderSide side) async {
@@ -365,6 +365,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final followed = widget.following?.isFollowing(_company.assetId) ?? false;
     return Scaffold(
       backgroundColor: MarketPalette.paper,
@@ -372,7 +373,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
         backgroundColor: MarketPalette.paper,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          tooltip: 'Back',
+          tooltip: l10n.commonBack,
           onPressed: () => Navigator.maybePop(context),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
@@ -380,8 +381,8 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
           IconButton(
             key: const ValueKey('stock-follow-button'),
             tooltip: followed
-                ? 'Unfollow ${_company.name}'
-                : 'Follow ${_company.name}',
+                ? l10n.stockUnfollowTooltip(_company.name)
+                : l10n.stockFollowTooltip(_company.name),
             onPressed: widget.following == null || widget.following!.busy
                 ? null
                 : _toggleFollowing,
@@ -390,7 +391,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
           if (widget.onShare != null)
             IconButton(
               key: const ValueKey('stock-share-button'),
-              tooltip: 'Share ${_company.name}',
+              tooltip: l10n.stockShareTooltip(_company.name),
               onPressed: widget.onShare,
               icon: const MarketActionIcon('share'),
             ),
@@ -430,13 +431,13 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Your position',
+                          l10n.stockPositionTitle,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           widget.realPositionLabel ??
-                              '${widget.availableShares} ${_company.primaryVariant?.symbol ?? _company.symbol}',
+                              '${context.formats.number(widget.availableShares)} ${_company.primaryVariant?.symbol ?? _company.symbol}',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                       ],
@@ -519,7 +520,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        shortPrice(_snapshot?.priceUsd ?? _company.priceUsd),
+        shortPrice(_snapshot?.priceUsd ?? _company.priceUsd, context.formats),
         style: const TextStyle(
           fontSize: 46,
           height: 1,
@@ -540,9 +541,9 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
               _snapshot?.changePercent24h ?? _company.dayChangePercent,
               textStyle: const TextStyle(fontSize: 15),
             ),
-            const Text(
-              'past 24h',
-              style: TextStyle(color: MarketPalette.muted, fontSize: 13),
+            Text(
+              context.l10n.stockPast24h,
+              style: const TextStyle(color: MarketPalette.muted, fontSize: 13),
             ),
           ],
         ],
@@ -559,6 +560,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
         now: widget.now,
       );
     }
+    final l10n = context.l10n;
     final data = _insight;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -580,14 +582,14 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                         ? const TrimmyLiquidMark(size: 70)
                         : ProductEmptyState(
                             title: _insightFailed
-                                ? 'Chart did not load'
-                                : 'No chart yet',
+                                ? l10n.stockChartFailedTitle
+                                : l10n.stockChartEmptyTitle,
                             message: _insightFailed
                                 ? null
-                                : 'This token needs more price history.',
+                                : l10n.stockChartEmptyBody,
                             action: TextButton(
                               onPressed: () => _loadInsight(null, true),
-                              child: const Text('Try again'),
+                              child: Text(l10n.commonTryAgain),
                             ),
                           ),
                   ),
@@ -595,11 +597,11 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
         ),
         Row(
           children: [
-            for (final entry in const {
-              'day': '1D',
-              'week': '1W',
-              'month': '1M',
-              'year': '1Y',
+            for (final entry in {
+              'day': l10n.chartPeriodDay,
+              'week': l10n.chartPeriodWeek,
+              'month': l10n.chartPeriodMonth,
+              'year': l10n.chartPeriodYear,
             }.entries)
               Expanded(
                 child: Padding(
@@ -626,7 +628,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
             if (widget.onPriceAlert != null)
               IconButton(
                 key: const ValueKey('stock-price-alert'),
-                tooltip: 'Set a price alert',
+                tooltip: l10n.stockPriceAlertTooltip,
                 onPressed: widget.onPriceAlert,
                 icon: const MarketActionIcon('bell'),
               ),
@@ -636,7 +638,9 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
             child: Text(
-              'Chart to ${_time(data.points.last.at)}',
+              l10n.stockChartUpdatedAt(
+                _time(data.points.last.at, context.formats),
+              ),
               textAlign: TextAlign.end,
               style: const TextStyle(fontSize: 11, color: MarketPalette.muted),
             ),
@@ -645,77 +649,87 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
     );
   }
 
-  Widget _position(MarketPosition position) => Container(
-    key: const ValueKey('stock-position-card'),
-    padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
-    decoration: ShapeDecoration(
-      color: const Color(0xFFF3F0F8),
-      shape: marketSquircle(32),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Your position',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF786D87),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+  Widget _position(MarketPosition position) {
+    final l10n = context.l10n;
+    return Container(
+      key: const ValueKey('stock-position-card'),
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFF3F0F8),
+        shape: marketSquircle(32),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.stockPositionTitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF786D87),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: ShapeDecoration(
-            color: Colors.white,
-            shape: marketSquircle(26),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '${position.shares} shares',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -.6,
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: marketSquircle(26),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.stockPositionShares(
+                    double.tryParse(position.shares.replaceAll(',', '')) ?? 0,
+                    context.formats.number(position.shares),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.6,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 22),
-              Wrap(
-                spacing: 24,
-                runSpacing: 18,
-                children: [
-                  _positionMetric(
-                    _confirmed == null ? 'Value' : 'Value at trade',
-                    position.valuePaper == null
-                        ? const Text('Not priced')
-                        : PaperAmount(
-                            position.exactValuePaper ??
-                                '${position.valuePaper}',
-                          ),
-                  ),
-                  _positionMetric(
-                    'Average cost',
-                    PaperAmount(
-                      position.exactAverageCostPaper ??
-                          '${position.averageCostPaper}',
-                    ),
-                  ),
-                  if (position.gainPercent != null)
+                const SizedBox(height: 22),
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 18,
+                  children: [
                     _positionMetric(
-                      _confirmed == null ? 'Return' : 'Return at trade',
-                      DirectionLabel(position.gainPercent!),
+                      _confirmed == null
+                          ? l10n.stockPositionValue
+                          : l10n.stockPositionValueAtTrade,
+                      position.valuePaper == null
+                          ? Text(l10n.stockPositionNotPriced)
+                          : PaperAmount(
+                              position.exactValuePaper ??
+                                  '${position.valuePaper}',
+                            ),
                     ),
-                ],
-              ),
-            ],
+                    _positionMetric(
+                      l10n.stockPositionAverageCost,
+                      PaperAmount(
+                        position.exactAverageCostPaper ??
+                            '${position.averageCostPaper}',
+                      ),
+                    ),
+                    if (position.gainPercent != null)
+                      _positionMetric(
+                        _confirmed == null
+                            ? l10n.stockPositionReturn
+                            : l10n.stockPositionReturnAtTrade,
+                        DirectionLabel(position.gainPercent!),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
   Widget _positionMetric(String label, Widget value) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,7 +749,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
 
   Widget _sectionSwitch() => Semantics(
     container: true,
-    label: 'Company details',
+    label: context.l10n.stockSectionsLabel,
     child: Container(
       padding: const EdgeInsets.all(4),
       decoration: ShapeDecoration(
@@ -759,17 +773,27 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                     customBorder: marketSquircle(14),
                     onTap: () => setState(() => _section = section),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        switch (section) {
-                          MarketStockSection.reasons => 'Comments',
-                          MarketStockSection.holders => 'Holders',
-                          MarketStockSection.about => 'About',
-                        },
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.fade,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 4,
+                      ),
+                      // Longer labels (French "Commentaires") shrink to fit
+                      // instead of fading out.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          switch (section) {
+                            MarketStockSection.reasons =>
+                              context.l10n.stockSectionComments,
+                            MarketStockSection.holders =>
+                              context.l10n.stockSectionHolders,
+                            MarketStockSection.about =>
+                              context.l10n.stockSectionAbout,
+                          },
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
                       ),
                     ),
                   ),
@@ -804,21 +828,28 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
   }
 
   Widget _about() {
+    final l10n = context.l10n;
     final formats = context.formats;
     final data = _snapshot;
     final description = data?.description ?? _company.description;
     final metrics = <(String, String)>[
       if (data?.volume24hUsd != null)
-        ('24h volume', formats.compactUsd(data!.volume24hUsd!)),
+        (l10n.stockMetricVolume24h, formats.compactUsd(data!.volume24hUsd!)),
       if (data?.liquidityUsd != null)
-        ('Liquidity', formats.compactUsd(data!.liquidityUsd!)),
+        (l10n.stockMetricLiquidity, formats.compactUsd(data!.liquidityUsd!)),
       if (data?.tokenMarketCapUsd != null)
-        ('Token market cap', formats.compactUsd(data!.tokenMarketCapUsd!)),
+        (
+          l10n.stockMetricTokenMarketCap,
+          formats.compactUsd(data!.tokenMarketCapUsd!),
+        ),
       if (data?.holders != null)
-        ('Token holders', formats.integer(data!.holders!)),
+        (l10n.stockMetricTokenHolders, formats.integer(data!.holders!)),
       if (data?.stockMarketCapUsd != null)
-        ('Company market cap', formats.compactUsd(data!.stockMarketCapUsd!)),
-      if (_company.sector != null) ('Sector', _company.sector!),
+        (
+          l10n.stockMetricCompanyMarketCap,
+          formats.compactUsd(data!.stockMarketCapUsd!),
+        ),
+      if (_company.sector != null) (l10n.stockMetricSector, _company.sector!),
     ];
     return Column(
       key: const ValueKey('stock-about'),
@@ -842,7 +873,11 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                   () => _expandedDescription = !_expandedDescription,
                 ),
                 style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                child: Text(_expandedDescription ? 'Read less' : 'Read more'),
+                child: Text(
+                  _expandedDescription
+                      ? l10n.stockAboutReadLess
+                      : l10n.stockAboutReadMore,
+                ),
               ),
             ),
           const SizedBox(height: 20),
@@ -882,9 +917,9 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
           ),
         if (metrics.isNotEmpty) const SizedBox(height: 26),
         if (_company.asset.variants.isNotEmpty) ...[
-          const Text(
-            'Available tokens',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          Text(
+            l10n.stockTokensTitle,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           for (final version in _company.asset.variants)
@@ -927,14 +962,18 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip:
-                        'Copy ${version.symbol ?? _company.symbol} address',
+                    tooltip: l10n.stockCopyAddressTooltip(
+                      version.symbol ?? _company.symbol,
+                    ),
                     onPressed: () async {
                       await Clipboard.setData(
                         ClipboardData(text: version.mint),
                       );
                       if (mounted) {
-                        showProductNotice(context, 'Address copied');
+                        showProductNotice(
+                          context,
+                          context.l10n.stockAddressCopied,
+                        );
                       }
                     },
                     icon: const MarketActionIcon('copy'),
@@ -947,12 +986,13 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
             metrics.isEmpty &&
             _company.asset.variants.isEmpty &&
             !_insightLoading)
-          const ProductEmptyState(title: 'Details are on their way'),
+          ProductEmptyState(title: l10n.stockAboutEmpty),
       ],
     );
   }
 
   Widget _tradeBar() {
+    final l10n = context.l10n;
     final canBuy = widget.tradingAvailable && _company.primaryVariant != null;
     final canSell = canBuy && (double.tryParse(_availableShares) ?? 0) > 0;
     return DecoratedBox(
@@ -977,13 +1017,13 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
               if (widget.onRetryTrading != null)
                 TextButton(
                   onPressed: widget.onRetryTrading,
-                  child: const Text('Retry'),
+                  child: Text(l10n.commonRetry),
                 ),
               if (widget.onPracticeInPaper != null)
                 TextButton(
                   key: const ValueKey('stock-practice-paper'),
                   onPressed: widget.onPracticeInPaper,
-                  child: const Text('Practice in Paper'),
+                  child: Text(l10n.stockPracticeInPaper),
                 ),
               const SizedBox(height: 9),
             ],
@@ -996,7 +1036,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                 Expanded(
                   child: MarketPrimaryButton(
                     key: const ValueKey('stock-buy-button'),
-                    label: 'Buy',
+                    label: l10n.commonBuy,
                     color: MarketPalette.violet,
                     onPressed: canBuy ? () => _trade(PaperOrderSide.buy) : null,
                   ),
@@ -1005,7 +1045,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                 Expanded(
                   child: MarketPrimaryButton(
                     key: const ValueKey('stock-sell-button'),
-                    label: 'Sell',
+                    label: l10n.commonSell,
                     onPressed: canSell
                         ? () => _trade(PaperOrderSide.sell)
                         : null,
@@ -1022,14 +1062,15 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
   }
 
   Widget _variantPicker() {
+    final l10n = context.l10n;
     final selected = widget.variantChoices
         .where((c) => c.tradeable && c.mint == _company.primaryVariant?.mint)
         .firstOrNull;
     return Semantics(
       button: true,
       label: selected == null
-          ? 'Token versions'
-          : 'Token version ${selected.label}. Change',
+          ? l10n.stockVersionsLabel
+          : l10n.stockVersionSelectedLabel(selected.label),
       onTap: _chooseVariant,
       child: ExcludeSemantics(
         child: Material(
@@ -1048,7 +1089,9 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                     Expanded(
                       child: Text(
                         selected?.label ??
-                            '${widget.variantChoices.length} versions',
+                            l10n.stockVersionsCount(
+                              widget.variantChoices.length,
+                            ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1090,7 +1133,7 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Text(
-                'Versions',
+                sheet.l10n.stockVersionsTitle,
                 style: Theme.of(
                   sheet,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1110,8 +1153,8 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
                 ),
                 subtitle: Text(
                   choice.tradeable
-                      ? choice.marketNote ?? 'Tradeable'
-                      : choice.reason ?? 'Not available to trade.',
+                      ? choice.marketNote ?? sheet.l10n.marketTradeable
+                      : choice.reason ?? sheet.l10n.stockVersionNotTradeable,
                   style: choice.tradeable && choice.marketOpen
                       ? const TextStyle(
                           color: MarketPalette.pine,
@@ -1138,35 +1181,23 @@ class _CompanyStockPageState extends State<CompanyStockPage> {
     }
   }
 
-  static String _time(DateTime value) {
+  /// "14:05" today, otherwise "30 Sep · 14:05", in [formats]' language.
+  static String _time(DateTime value, AppFormats formats) {
     final local = value.toLocal();
-    final hour = local.hour.toString().padLeft(2, '0');
-    final minute = local.minute.toString().padLeft(2, '0');
     final now = DateTime.now();
     if (local.year == now.year &&
         local.month == now.month &&
         local.day == now.day) {
-      return '$hour:$minute';
+      return formats.time24(local);
     }
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${local.day} ${months[local.month - 1]} · $hour:$minute';
+    return '${formats.dayMonth(local)} · ${formats.time24(local)}';
   }
 }
 
 enum _ProductHistoryPeriod { day, week, month, year }
+
+/// Why the history chart shows a message instead of a chart.
+enum _HistoryIssue { noYear, unavailable }
 
 class ProductStockHistory extends StatefulWidget {
   const ProductStockHistory({
@@ -1189,7 +1220,7 @@ class ProductStockHistory extends StatefulWidget {
 class _ProductStockHistoryState extends State<ProductStockHistory> {
   _ProductHistoryPeriod _period = _ProductHistoryPeriod.week;
   StockHistoryRequest? _request;
-  String? _message;
+  _HistoryIssue? _issue;
   var _generation = 0;
 
   bool get _supported =>
@@ -1216,7 +1247,7 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
       oldWidget.controller?.removeListener(_changed);
       widget.controller?.addListener(_changed);
       _request = null;
-      _message = null;
+      _issue = null;
       _generation++;
     }
   }
@@ -1239,7 +1270,7 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
         _generation++;
         _period = period;
         _request = null;
-        _message = 'A year of history is not available yet.';
+        _issue = _HistoryIssue.noYear;
       });
       return;
     }
@@ -1254,13 +1285,13 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
     setState(() {
       _period = period;
       _request = request;
-      _message = null;
+      _issue = null;
     });
     try {
       await controller.loadTokensHistory(request);
     } catch (_) {
       if (!mounted || generation != _generation) return;
-      setState(() => _message = 'Price history is unavailable. Try again.');
+      setState(() => _issue = _HistoryIssue.unavailable);
     }
   }
 
@@ -1278,6 +1309,7 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
         (state.phase == StockResearchReadPhase.error ||
             state.phase == StockResearchReadPhase.offline);
     final stale = matching && state.phase == StockResearchReadPhase.stale;
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1289,10 +1321,10 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
               ChoiceChip(
                 key: ValueKey('product-history-${period.name}'),
                 label: Text(switch (period) {
-                  _ProductHistoryPeriod.day => '1D',
-                  _ProductHistoryPeriod.week => '1W',
-                  _ProductHistoryPeriod.month => '1M',
-                  _ProductHistoryPeriod.year => '1Y',
+                  _ProductHistoryPeriod.day => l10n.chartPeriodDay,
+                  _ProductHistoryPeriod.week => l10n.chartPeriodWeek,
+                  _ProductHistoryPeriod.month => l10n.chartPeriodMonth,
+                  _ProductHistoryPeriod.year => l10n.chartPeriodYear,
                 }),
                 selected: period == _period,
                 onSelected: (_) => _load(period),
@@ -1308,13 +1340,15 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
             key: ValueKey('product-history-loading'),
             color: MarketPalette.pine,
           ),
-        if (_message != null || failed)
+        if (_issue != null || failed)
           Semantics(
             liveRegion: true,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 18),
               child: Text(
-                _message ?? 'Price history is unavailable. Try again.',
+                _issue == _HistoryIssue.noYear
+                    ? l10n.chartNoYear
+                    : l10n.chartHistoryUnavailable,
                 style: const TextStyle(color: MarketPalette.muted),
               ),
             ),
@@ -1322,39 +1356,40 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
         if (stale)
           Semantics(
             liveRegion: true,
-            child: const Padding(
-              padding: EdgeInsets.only(top: 12),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
               child: Text(
-                'This is an older reading. Refresh for a newer chart.',
-                style: TextStyle(color: MarketPalette.muted),
+                l10n.chartStaleReading,
+                style: const TextStyle(color: MarketPalette.muted),
               ),
             ),
           ),
         if (data != null && data.candles.length >= 2)
           StockHistoryChart(page: data),
         if (data != null && data.candles.length < 2 && !loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
             child: Text(
-              'There are not enough readings for this period.',
-              style: TextStyle(color: MarketPalette.muted),
+              l10n.chartNotEnoughReadings,
+              style: const TextStyle(color: MarketPalette.muted),
             ),
           ),
         if (data != null && data.candles.length < 2 && _hasFactsTrend)
           _factsFallback(),
         if (data == null &&
             !loading &&
-            (_hasFactsTrend || (!failed && _message == null)))
+            (_hasFactsTrend || (!failed && _issue == null)))
           _factsFallback(),
       ],
     );
   }
 
   Widget _factsFallback() {
+    final l10n = context.l10n;
     final points = widget.company.weekTrend;
     if (_hasFactsTrend) {
       return Semantics(
-        label: 'Seven day company price movement',
+        label: l10n.chartSevenDayLabel,
         image: true,
         child: ExcludeSemantics(
           child: Column(
@@ -1369,9 +1404,12 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
                 ),
               ),
               const SizedBox(height: 7),
-              const Text(
-                '7-day listed stock movement',
-                style: TextStyle(color: MarketPalette.muted, fontSize: 12),
+              Text(
+                l10n.chartSevenDayCaption,
+                style: const TextStyle(
+                  color: MarketPalette.muted,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -1387,12 +1425,12 @@ class _ProductStockHistoryState extends State<ProductStockHistory> {
         ),
       );
     }
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 24),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Text(
-        'Price history is not available for this version yet.',
-        key: ValueKey('stock-facts-chart-unavailable'),
-        style: TextStyle(color: MarketPalette.muted),
+        l10n.chartNoHistoryForVersion,
+        key: const ValueKey('stock-facts-chart-unavailable'),
+        style: const TextStyle(color: MarketPalette.muted),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import '../../l10n/l10n.dart';
+
 /// New York Stock Exchange core-session clock.
 ///
 /// Tokenized stocks remain available all day. This label describes the NYSE
@@ -12,7 +14,8 @@ abstract final class WallStreetClock {
   /// NYSE publishes each new rolling calendar and announces one-off closures.
   static const verifiedScheduleThroughYear = 2028;
 
-  static String label(DateTime now) {
+  /// The Desk's market-hours line in [l10n]'s language.
+  static String label(DateTime now, AppLocalizations l10n) {
     final utc = now.toUtc();
     final ny = _newYorkWallClock(utc);
     final date = _dateOnly(ny);
@@ -25,11 +28,15 @@ abstract final class WallStreetClock {
         minutes >= _openMinutes &&
         minutes < closeMinutes) {
       final closeUtc = _newYorkWallToUtc(date, closeMinutes);
-      return 'Stocks trade here 24/7. Wall Street closes in ${_duration(closeUtc.difference(utc))}.';
+      return l10n.clockWallStreetClosesIn(
+        _duration(closeUtc.difference(utc), l10n),
+      );
     }
 
     final nextOpenUtc = _nextOpenUtc(ny);
-    return 'Stocks trade here 24/7. Wall Street opens in ${_duration(nextOpenUtc.difference(utc))}.';
+    return l10n.clockWallStreetOpensIn(
+      _duration(nextOpenUtc.difference(utc), l10n),
+    );
   }
 
   /// Produces a UTC-backed value whose fields represent the New York wall
@@ -245,19 +252,23 @@ abstract final class WallStreetClock {
       left.month == right.month &&
       left.day == right.day;
 
-  static String _duration(Duration duration) {
+  static String _duration(Duration duration, AppLocalizations l10n) {
     final minutes = duration.inSeconds <= 0
         ? 1
         : (duration.inSeconds + Duration.secondsPerMinute - 1) ~/
               Duration.secondsPerMinute;
-    if (minutes < 60) return '${minutes}m';
+    if (minutes < 60) return l10n.clockDurationMinutes(minutes);
     final hours = minutes ~/ 60;
     final remainder = minutes % 60;
     if (hours < 24) {
-      return remainder == 0 ? '${hours}h' : '${hours}h ${remainder}m';
+      return remainder == 0
+          ? l10n.clockDurationHours(hours)
+          : l10n.clockDurationHoursMinutes(hours, remainder);
     }
     final days = hours ~/ 24;
     final left = hours % 24;
-    return left == 0 ? '${days}d' : '${days}d ${left}h';
+    return left == 0
+        ? l10n.clockDurationDays(days)
+        : l10n.clockDurationDaysHours(days, left);
   }
 }

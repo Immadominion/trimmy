@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/l10n.dart';
 import '../career/career_repository.dart';
 import 'market_craft.dart';
 import 'market_models.dart';
@@ -131,7 +132,10 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
   final _note = TextEditingController();
   PaperOrderReason? _pendingReason;
   PaperReasonReceipt? _receipt;
-  String? _message;
+
+  /// Why the last save failed. Turned into words when shown, so the message
+  /// follows the app's language.
+  CareerFailure? _failure;
   bool _saving = false;
   bool _reasonAlreadyExists = false;
 
@@ -154,16 +158,16 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
           );
       _pendingReason = reason;
     } on CareerException catch (error) {
-      setState(() => _message = _failureMessage(error.failure));
+      setState(() => _failure = error.failure);
       return;
     } catch (_) {
-      setState(() => _message = _failureMessage(CareerFailure.rejected));
+      setState(() => _failure = CareerFailure.rejected);
       return;
     }
 
     setState(() {
       _saving = true;
-      _message = null;
+      _failure = null;
     });
     try {
       final saved = await widget.repository.saveReason(reason);
@@ -179,7 +183,7 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
       setState(() {
         _saving = false;
         _receipt = saved;
-        _message = null;
+        _failure = null;
       });
       try {
         widget.onSaved?.call(saved);
@@ -190,51 +194,45 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _message = _failureMessage(error.failure);
+        _failure = error.failure;
         _reasonAlreadyExists = error.failure == CareerFailure.reasonExists;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _message = _failureMessage(CareerFailure.rejected);
+        _failure = CareerFailure.rejected;
       });
     }
   }
 
-  String _failureMessage(CareerFailure failure) => switch (failure) {
-    CareerFailure.invalidInput => 'Use one line and 180 characters or fewer.',
-    CareerFailure.offline =>
-      'You are offline. Your reason was not saved. Try again.',
-    CareerFailure.timeout => 'Saving took too long. Try again.',
-    CareerFailure.accountRequired =>
-      'Refresh your session before saving this reason.',
-    CareerFailure.profileRequired =>
-      'Finish setting up your profile before saving this reason.',
-    CareerFailure.orderNotFound =>
-      'This paper buy was not found. Refresh your desk.',
-    CareerFailure.buyOrderRequired =>
-      'A reason can be added only to a confirmed paper buy.',
-    CareerFailure.positionRequired =>
-      'You need to still hold this stock before saving a reason.',
-    CareerFailure.reasonExists =>
-      'This paper buy already has a reason. Refresh your Career.',
-    CareerFailure.idempotencyConflict =>
-      'This retry could not be matched. Refresh your Career.',
-    CareerFailure.rateLimited =>
-      'Reasons are busy right now. Try again shortly.',
-    CareerFailure.invalidResponse ||
-    CareerFailure.unavailable ||
-    CareerFailure.dayContextRevisionConflict ||
-    CareerFailure.timeZoneChangeTooSoon ||
-    CareerFailure.revisionExhausted ||
-    CareerFailure.rejected => 'Your reason was not saved. Try again.',
-  };
+  String _failureMessage(CareerFailure failure, AppLocalizations l10n) =>
+      switch (failure) {
+        CareerFailure.invalidInput => l10n.reasonWriteErrorInvalidInput,
+        CareerFailure.offline => l10n.reasonWriteErrorOffline,
+        CareerFailure.timeout => l10n.reasonWriteErrorTimeout,
+        CareerFailure.accountRequired => l10n.reasonWriteErrorAccount,
+        CareerFailure.profileRequired => l10n.reasonWriteErrorProfile,
+        CareerFailure.orderNotFound => l10n.reasonWriteErrorOrderNotFound,
+        CareerFailure.buyOrderRequired => l10n.reasonWriteErrorBuyRequired,
+        CareerFailure.positionRequired => l10n.reasonWriteErrorPositionRequired,
+        CareerFailure.reasonExists => l10n.reasonWriteErrorExists,
+        CareerFailure.idempotencyConflict => l10n.reasonWriteErrorRetryMismatch,
+        CareerFailure.rateLimited => l10n.reasonWriteErrorRateLimited,
+        CareerFailure.invalidResponse ||
+        CareerFailure.unavailable ||
+        CareerFailure.dayContextRevisionConflict ||
+        CareerFailure.timeZoneChangeTooSoon ||
+        CareerFailure.revisionExhausted ||
+        CareerFailure.rejected => l10n.reasonWriteErrorGeneric,
+      };
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final receipt = _receipt;
     final saved = receipt != null;
+    final failure = _failure;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -242,7 +240,7 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           key: const ValueKey('paper-reason-close'),
-          tooltip: 'Close',
+          tooltip: l10n.commonClose,
           onPressed: _saving ? null : () => Navigator.maybePop(context),
           icon: const Icon(Icons.close_rounded),
         ),
@@ -259,14 +257,14 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
               const SizedBox(height: 22),
             ],
             Text(
-              saved ? 'Reason saved' : 'Write your reason',
+              saved ? l10n.reasonWriteSavedTitle : l10n.reasonWriteTitle,
               textAlign: saved ? TextAlign.center : TextAlign.start,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
             if (!saved) ...[
               const SizedBox(height: 8),
               Text(
-                'What made you buy?',
+                l10n.reasonWritePrompt,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -287,7 +285,7 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
                   FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),
                 ],
                 decoration: InputDecoration(
-                  hintText: 'Your take on this stock…',
+                  hintText: l10n.reasonWriteHint,
                   filled: true,
                   fillColor: const Color(0xFFF6F4FA),
                   contentPadding: const EdgeInsets.all(20),
@@ -306,16 +304,16 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
                 ),
                 onSubmitted: (_) => _save(),
               ),
-              if (_message != null) ...[
+              if (failure != null) ...[
                 const SizedBox(height: 8),
-                _ReasonMessage(_message!),
+                _ReasonMessage(_failureMessage(failure, l10n)),
               ],
               const SizedBox(height: 18),
               if (_reasonAlreadyExists)
                 MarketPrimaryButton(
                   key: const ValueKey('paper-reason-close-existing'),
                   color: MarketPalette.violet,
-                  label: 'Close and refresh',
+                  label: l10n.reasonWriteCloseRefresh,
                   onPressed: () => Navigator.maybePop(context),
                 )
               else
@@ -323,8 +321,8 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
                   key: const ValueKey('paper-reason-save'),
                   color: MarketPalette.violet,
                   label: _pendingReason == null
-                      ? 'Save reason'
-                      : 'Retry reason',
+                      ? l10n.reasonWriteSave
+                      : l10n.reasonWriteRetry,
                   onPressed: _saving ? null : _save,
                   busy: _saving,
                 ),
@@ -347,8 +345,10 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
                     const SizedBox(height: 20),
                     Text(
                       receipt.trimsAwarded > 0
-                          ? '+${receipt.trimsAwarded} Trims'
-                          : 'Mission recorded',
+                          ? l10n.reasonWriteRewardTrims(
+                              context.formats.number('${receipt.trimsAwarded}'),
+                            )
+                          : l10n.reasonWriteMissionRecorded,
                       key: const ValueKey('paper-reason-reward'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: MarketPalette.violet,
@@ -361,7 +361,7 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
               MarketPrimaryButton(
                 key: const ValueKey('paper-reason-done'),
                 color: MarketPalette.violet,
-                label: 'Done',
+                label: l10n.commonDone,
                 onPressed: () => Navigator.of(context).pop(receipt),
               ),
             ],
@@ -396,7 +396,10 @@ class _HeldBuyCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${target.heldShares} ${num.tryParse(target.heldShares) == 1 ? 'share' : 'shares'}',
+              context.l10n.reasonWriteHeldShares(
+                _pluralCount(target.heldShares),
+                context.formats.number(target.heldShares),
+              ),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -406,6 +409,13 @@ class _HeldBuyCard extends StatelessWidget {
       const ProductSuccessMark(size: 30),
     ],
   );
+}
+
+/// The held amount as a number for choosing "share" or "shares". Anything
+/// unreadable counts as zero, which reads as "shares" in English, as before.
+num _pluralCount(String shares) {
+  final parsed = num.tryParse(shares);
+  return parsed != null && parsed.isFinite ? parsed : 0;
 }
 
 class _ReasonMessage extends StatelessWidget {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import 'product_theme.dart';
 
 enum ProductCastMember { sal, wolf, oracle, shark }
@@ -8,11 +9,11 @@ extension ProductCastMemberDetails on ProductCastMember {
   String get assetPath =>
       'assets/images/cast/${name.toLowerCase()}-neutral-v2.png';
 
-  String get semanticName => switch (this) {
-    ProductCastMember.sal => 'Sal, your floor boss',
-    ProductCastMember.wolf => 'The Wolf trader portrait',
-    ProductCastMember.oracle => 'The Oracle trader portrait',
-    ProductCastMember.shark => 'The Shark trader portrait',
+  String semanticName(AppLocalizations l10n) => switch (this) {
+    ProductCastMember.sal => l10n.designCastSal,
+    ProductCastMember.wolf => l10n.designCastWolf,
+    ProductCastMember.oracle => l10n.designCastOracle,
+    ProductCastMember.shark => l10n.designCastShark,
   };
 
   Color get backgroundColor => switch (this) {
@@ -58,7 +59,7 @@ class CastPortrait extends StatelessWidget {
 
     return Semantics(
       image: true,
-      label: semanticLabel ?? member.semanticName,
+      label: semanticLabel ?? member.semanticName(context.l10n),
       child: ExcludeSemantics(
         child: SizedBox.square(
           dimension: size,

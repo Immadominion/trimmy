@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:trimmy/account/guest_session.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/workdays/workdays.dart';
 import 'package:trimmy/product/workdays/workday_screen.dart';
@@ -91,7 +92,11 @@ void main() {
     expect(journey.upcoming!.ordinal, 2);
     expect(journey.assignments.single.trims, 10);
     expect(
-      journey.upcoming!.opensLabel(now: DateTime(2026, 9, 30, 12)),
+      journey.upcoming!.opensLabel(
+        englishLocalizations,
+        AppFormats.english,
+        now: DateTime(2026, 9, 30, 12),
+      ),
       'Opens tomorrow',
     );
   });
@@ -119,7 +124,7 @@ void main() {
         c.save(c.journey!.current!, {'value': 'wrong'}),
         throwsA(
           isA<WorkdayException>().having(
-            (e) => e.message,
+            (e) => e.message(englishLocalizations),
             'feedback',
             'Compare revenue with profit.',
           ),

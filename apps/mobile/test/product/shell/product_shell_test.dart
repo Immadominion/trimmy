@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/shell/product_shell.dart';
 
@@ -33,6 +34,40 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('product-tab-market')));
     await tester.pumpAndSettle();
     expect(find.text('Count 1'), findsOneWidget);
+  });
+
+  testWidgets('tab names fit a narrow phone in every language', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    for (final (locale, desk) in [
+      (const Locale('en'), 'Desk'),
+      (const Locale('es', '419'), 'Escritorio'),
+      (const Locale('pt', 'BR'), 'Mesa'),
+      (const Locale('fr'), 'Bureau'),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const ProductShell(
+            desk: SizedBox(),
+            market: SizedBox(),
+            floor: SizedBox(),
+            profile: SizedBox(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(desk), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 }
 

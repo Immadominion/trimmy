@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 
 class WorkAssignment {
   WorkAssignment(this.data);
@@ -53,7 +55,13 @@ class WorkUpcoming {
   final int ordinal;
   final DateTime opensAt;
 
-  String opensLabel({DateTime? now}) {
+  /// When this day opens, in [l10n]'s language: "Opens tomorrow", "Opens
+  /// Monday", "Opens 30/9".
+  String opensLabel(
+    AppLocalizations l10n,
+    AppFormats formats, {
+    DateTime? now,
+  }) {
     final local = opensAt.toLocal();
     final today = (now ?? DateTime.now()).toLocal();
     final days = DateTime.utc(
@@ -61,20 +69,17 @@ class WorkUpcoming {
       local.month,
       local.day,
     ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
-    if (days <= 0) return 'Opens soon';
-    if (days == 1) return 'Opens tomorrow';
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    if (days < 7) return 'Opens ${weekdays[local.weekday - 1]}';
-    return 'Opens ${local.day}/${local.month}';
+    if (days <= 0) return l10n.workdayOpensSoon;
+    if (days == 1) return l10n.workdayOpensTomorrow;
+    if (days < 7) return l10n.workdayOpensOnWeekday(_weekday(formats, local));
+    return l10n.workdayOpensOnDate(formats.numericDayMonth(local));
   }
+
+  /// The full weekday name ("Monday", "lunes", "segunda-feira", "lundi").
+  /// AppFormats only has the short form, so this reads the same locale
+  /// AppFormats uses for dates; English keeps the 'EEEE' name it always had.
+  static String _weekday(AppFormats formats, DateTime date) =>
+      DateFormat('EEEE', formats.dateLocale).format(date);
 }
 
 class WorkJourney {
@@ -125,18 +130,18 @@ class WorkdayException implements Exception {
   final String code;
   final String? feedback;
   final WorkJourney? journey;
-  String get message => switch (code) {
-    'CHECK_EVIDENCE' =>
-      'Check the source again. Those details don’t support this update.',
-    'CHECK_DECISION' => feedback ?? 'Take another look at the figures.',
-    'WORK_TOMORROW' =>
-      'Today’s assignment is done. Your next workday opens soon.',
-    'WORK_CLOSED' => 'The desk is closed today. Come back on the next workday.',
-    'WORK_CHANGED' =>
-      'Your work changed on another screen. We’ve refreshed it.',
-    'WORK_LOCKED' => 'File the earlier assignment first.',
-    'SESSION_CHANGED' => 'Your account changed. Open your desk again.',
-    _ => 'Couldn’t save yet. Your work is still here—try again.',
+
+  /// What to tell the player, in [l10n]'s language. [feedback] is written
+  /// by the server and shown as it came.
+  String message(AppLocalizations l10n) => switch (code) {
+    'CHECK_EVIDENCE' => l10n.workdayErrorCheckEvidence,
+    'CHECK_DECISION' => feedback ?? l10n.workdayErrorCheckDecision,
+    'WORK_TOMORROW' => l10n.workdayErrorTomorrow,
+    'WORK_CLOSED' => l10n.workdayErrorClosed,
+    'WORK_CHANGED' => l10n.workdayErrorChanged,
+    'WORK_LOCKED' => l10n.workdayErrorLocked,
+    'SESSION_CHANGED' => l10n.workdayErrorSession,
+    _ => l10n.workdayErrorSaveFailed,
   };
 }
 
@@ -242,7 +247,9 @@ class WorkdayController extends ChangeNotifier {
   final WorkdayRepository repository;
   WorkJourney? journey;
   bool loading = false, closed = false;
-  String? error;
+
+  /// The last read failed. The Career map shows its own localized message.
+  bool loadFailed = false;
   Future<void> _queue = Future<void>.value();
   Future<void>? _refresh;
   Future<T> _serial<T>(Future<T> Function() operation) {
@@ -257,7 +264,7 @@ class WorkdayController extends ChangeNotifier {
   void _accept(WorkJourney next) {
     if (closed) throw const WorkdayException('SESSION_CHANGED');
     journey = next;
-    error = null;
+    loadFailed = false;
     notifyListeners();
   }
 
@@ -267,7 +274,7 @@ class WorkdayController extends ChangeNotifier {
     try {
       _accept(await repository.read());
     } catch (_) {
-      if (!closed) error = 'Your assignments couldn’t load.';
+      if (!closed) loadFailed = true;
     } finally {
       if (!closed) {
         loading = false;

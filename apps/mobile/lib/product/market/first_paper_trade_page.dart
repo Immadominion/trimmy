@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_amount_picker.dart';
 import '../../ui_review/review_components.dart';
 import '../../ui_review/review_feedback.dart';
@@ -62,7 +63,7 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
   PaperOrderReceipt? _receipt;
   MarketCompany? _confirmedCompany;
   bool _leaving = false;
-  String? _exitError;
+  bool _exitFailed = false;
 
   List<MarketCompany> get _companies => widget.companies
       .where((company) => company.primaryVariant != null)
@@ -80,13 +81,13 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
     if (_leaving) return;
     setState(() {
       _leaving = true;
-      _exitError = null;
+      _exitFailed = false;
     });
     try {
       await (_receipt == null ? widget.onExit() : widget.onFinished());
     } catch (_) {
       if (mounted) {
-        setState(() => _exitError = 'Couldn’t continue. Try again.');
+        setState(() => _exitFailed = true);
       }
     } finally {
       if (mounted) setState(() => _leaving = false);
@@ -206,12 +207,13 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
         _ready &&
         !_leaving;
     final largeText = MediaQuery.textScalerOf(context).scale(16) > 23;
+    final l10n = context.l10n;
     if (_receipt != null) {
       return _FirstPaperTradeResult(
         company: _confirmedCompany!,
         receipt: _receipt!,
         busy: _leaving,
-        message: _exitError,
+        message: _exitFailed ? context.l10n.firstTradeContinueError : null,
         onContinue: _leave,
       );
     }
@@ -246,7 +248,7 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                       child: SizedBox(
                         child: ReviewIconButton(
                           icon: Icons.close_rounded,
-                          label: 'Skip first trade',
+                          label: l10n.firstTradeSkip,
                           onPressed: _leave,
                         ),
                       ),
@@ -266,9 +268,9 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Text(
-                                'Your first move.',
-                                style: TextStyle(
+                              Text(
+                                l10n.firstTradeTitle,
+                                style: const TextStyle(
                                   fontFamily: reviewDisplay,
                                   fontSize: 36,
                                   fontWeight: FontWeight.w700,
@@ -281,18 +283,19 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                                 Text(
                                   widget.message ??
                                       (widget.loading
-                                          ? 'Opening your paper desk…'
-                                          : 'Your paper desk is unavailable. Try again.'),
+                                          ? l10n.firstTradeOpeningDesk
+                                          : l10n.firstTradeDeskUnavailable),
                                 ),
                                 if (widget.onRetry != null)
                                   TextButton(
                                     onPressed: widget.loading
                                         ? null
                                         : widget.onRetry,
-                                    child: const Text('Try again'),
+                                    child: Text(l10n.commonTryAgain),
                                   ),
                               ],
-                              if (_exitError != null) Text(_exitError!),
+                              if (_exitFailed)
+                                Text(l10n.firstTradeContinueError),
                               const SizedBox(height: 28),
                               Column(
                                 key: _companyKey,
@@ -300,8 +303,10 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                                 children: [
                                   Row(
                                     children: [
-                                      const Expanded(
-                                        child: _SectionTitle('Pick a company.'),
+                                      Expanded(
+                                        child: _SectionTitle(
+                                          l10n.firstTradePickCompany,
+                                        ),
                                       ),
                                       TextButton(
                                         onPressed: () {
@@ -326,7 +331,7 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                                         ),
                                         child: Semantics(
                                           toggled: _showGuidance,
-                                          child: const Text('Hint'),
+                                          child: Text(l10n.firstTradeHint),
                                         ),
                                       ),
                                     ],
@@ -335,10 +340,9 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                                       choosingCompany &&
                                       _ready &&
                                       companies.isNotEmpty)
-                                    const ReviewGuideCue(
-                                      key: ValueKey('company-guide'),
-                                      text:
-                                          'A share is a small piece of a company. Pick one.',
+                                    ReviewGuideCue(
+                                      key: const ValueKey('company-guide'),
+                                      text: l10n.firstTradeCompanyGuide,
                                     ),
                                   const SizedBox(height: 8),
                                   _available(
@@ -397,14 +401,13 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    const _SectionTitle('Select price'),
+                                    _SectionTitle(l10n.firstTradeAmountTitle),
                                     if (_showGuidance &&
                                         !choosingCompany &&
                                         _ready)
-                                      const ReviewGuideCue(
-                                        key: ValueKey('amount-guide'),
-                                        text:
-                                            'Pick an amount to try. It’s free.',
+                                      ReviewGuideCue(
+                                        key: const ValueKey('amount-guide'),
+                                        text: l10n.firstTradeAmountGuide,
                                       ),
                                     const SizedBox(height: 16),
                                     ReviewAmountPicker(
@@ -436,7 +439,7 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                           key: _reviewKey,
                           child: ReviewPrimaryButton(
                             background: UiReviewColor.violet,
-                            label: 'Review buy',
+                            label: l10n.firstTradeReviewBuy,
                             onPressed: canReview ? _reviewBuy : null,
                           ),
                         ),
@@ -583,125 +586,135 @@ class _FirstPaperTradeResult extends StatelessWidget {
   final VoidCallback onContinue;
 
   @override
-  Widget build(BuildContext context) => PopScope<void>(
-    canPop: false,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop && !busy) onContinue();
-    },
-    child: Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(22, 40, 22, 24),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: .7, end: 1),
-                      duration: uiReviewDuration(context, 560),
-                      curve: Curves.easeOutBack,
-                      builder: (_, value, child) =>
-                          Transform.scale(scale: value, child: child),
-                      child: const ProductSuccessMark(size: 64),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !busy) onContinue();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(22, 40, 22, 24),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: .7, end: 1),
+                        duration: uiReviewDuration(context, 560),
+                        curve: Curves.easeOutBack,
+                        builder: (_, value, child) =>
+                            Transform.scale(scale: value, child: child),
+                        child: const ProductSuccessMark(size: 64),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'You’ve placed your first order!',
-                    style: TextStyle(
-                      fontFamily: reviewDisplay,
-                      fontSize: 36,
-                      fontWeight: FontWeight.w700,
-                      height: 1.06,
-                      letterSpacing: -.9,
+                    const SizedBox(height: 20),
+                    Text(
+                      l10n.firstTradeOrderPlaced,
+                      style: const TextStyle(
+                        fontFamily: reviewDisplay,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        height: 1.06,
+                        letterSpacing: -.9,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Now let’s create your trader profile.'),
-                  const SizedBox(height: 28),
-                  ReviewTradeTicket(
-                    upper: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            _CompanyCoin(company: company, size: 46),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                company.name,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
+                    const SizedBox(height: 12),
+                    Text(l10n.firstTradeCreateProfile),
+                    const SizedBox(height: 28),
+                    ReviewTradeTicket(
+                      upper: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              _CompanyCoin(company: company, size: 46),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  company.name,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Semantics(
-                              label: 'Buy confirmed',
-                              child: const ProductSuccessMark(size: 34),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-                        const Text('Invested'),
-                        const SizedBox(height: 7),
-                        PaperAmount(
-                          receipt.filledPaper,
-                          style: const TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.w700,
+                              Semantics(
+                                label: l10n.firstTradeBuyConfirmed,
+                                child: const ProductSuccessMark(size: 34),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 28),
-                        Text('Shares  ${receipt.filledShares}'),
-                      ],
-                    ),
-                    lower: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Buy confirmed',
-                          style: TextStyle(color: UiReviewColor.pine),
-                        ),
-                        if (receipt.trimsEarned > 0) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            '+${receipt.trimsEarned} Trims',
+                          const SizedBox(height: 28),
+                          Text(l10n.firstTradeInvested),
+                          const SizedBox(height: 7),
+                          PaperAmount(
+                            receipt.filledPaper,
                             style: const TextStyle(
-                              color: UiReviewColor.pine,
-                              fontSize: 29,
+                              fontSize: 40,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
+                          const SizedBox(height: 28),
+                          Text(
+                            l10n.firstTradeSharesLine(
+                              formats.number(receipt.filledShares),
+                            ),
+                          ),
                         ],
-                        if (receipt.missionProgress != null) ...[
-                          const SizedBox(height: 8),
-                          Text(receipt.missionProgress!),
+                      ),
+                      lower: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.firstTradeBuyConfirmed,
+                            style: const TextStyle(color: UiReviewColor.pine),
+                          ),
+                          if (receipt.trimsEarned > 0) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.firstTradeTrimsEarned(
+                                formats.number('${receipt.trimsEarned}'),
+                              ),
+                              style: const TextStyle(
+                                color: UiReviewColor.pine,
+                                fontSize: 29,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                          if (receipt.missionProgress != null) ...[
+                            const SizedBox(height: 8),
+                            Text(receipt.missionProgress!),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  if (message != null) ...[
-                    const SizedBox(height: 16),
-                    Text(message!),
+                    if (message != null) ...[
+                      const SizedBox(height: 16),
+                      Text(message!),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 10, 22, 12),
-              child: ReviewPrimaryButton(
-                background: UiReviewColor.violet,
-                label: 'Continue',
-                onPressed: busy ? null : onContinue,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 10, 22, 12),
+                child: ReviewPrimaryButton(
+                  background: UiReviewColor.violet,
+                  label: l10n.commonContinue,
+                  onPressed: busy ? null : onContinue,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

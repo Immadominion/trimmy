@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../market/market_craft.dart';
 
@@ -65,12 +66,14 @@ class HoldingTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Semantics(
-                        label: value == '—' ? 'Value unavailable' : null,
+                        label: value == '—'
+                            ? context.l10n.deskHoldingValueUnavailable
+                            : null,
                         child: Text(value, style: type.titleMedium),
                       ),
                       if (change != null)
                         Text(
-                          signedPercent(change),
+                          signedPercent(change, context.formats),
                           style: type.bodySmall?.copyWith(
                             color: change >= 0
                                 ? ProductColor.gain

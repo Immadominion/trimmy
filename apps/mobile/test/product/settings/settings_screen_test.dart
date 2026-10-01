@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/product_theme.dart';
+import 'package:trimmy/product/settings/product_information_screen.dart';
 import 'package:trimmy/product/settings/settings.dart';
 
 void main() {
@@ -277,6 +279,118 @@ void main() {
     expect(find.text('Support'), findsNothing);
     expect(find.text('Report a bug'), findsNothing);
   });
+
+  testWidgets('paper reset asks for the phrase in the reader\'s language', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        locale: const Locale('pt', 'BR'),
+        state: _state(resetAvailable: true),
+        onResetPaper: () async => SettingsPaperResetReceipt(
+          revision: 4,
+          currentRevision: 4,
+          paperBalance: '10,000',
+          resetAt: DateTime.utc(2026, 9, 20, 12),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Configurações'), findsOneWidget);
+    // The limit is 10,000. A pt-BR figure ("10.000") fed back into the
+    // paper parser would read as ten.
+    await _show(tester, 'Limite de dinheiro de treino');
+    expect(find.text('10'), findsNothing);
+
+    await _show(tester, 'Reiniciar treino');
+    await tester.tap(find.byKey(const ValueKey('settings-reset-paper')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Digite “reiniciar minha mesa” para continuar.'),
+      findsOneWidget,
+    );
+
+    final confirm = find.byKey(const ValueKey('confirm-reset-paper'));
+    final field = find.byKey(const ValueKey('paper-reset-confirmation'));
+    await tester.enterText(field, 'reset my paper desk');
+    await tester.pump();
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+    await tester.enterText(field, 'reiniciar minha mesa');
+    await tester.pump();
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Sua mesa está pronta com 10.000 em dinheiro de treino.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('French settings fit a small phone with larger text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+        child: _app(
+          locale: const Locale('fr'),
+          state: _state(signedIn: true, resetAvailable: true),
+          onResetPaper: () async => throw const SettingsPaperResetException(
+            SettingsPaperResetFailure.offline,
+          ),
+          onTerms: () {},
+          onCloseAccount: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _show(tester, 'Qui voit mes placements');
+    expect(tester.takeException(), isNull);
+    await _show(tester, 'Fermer le compte');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('legal pages keep English and read in the chosen language', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: const ProductInformationScreen(
+          information: ProductInformation.privacy,
+        ),
+      ),
+    );
+    expect(find.text('Last updated 26 September 2026'), findsOneWidget);
+    await _show(tester, 'Privy: https://www.privy.io/privacy-policy');
+
+    // A fresh tree, so the French page does not inherit the English scroll position.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const ProductInformationScreen(
+          information: ProductInformation.terms,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Conditions'), findsOneWidget);
+    expect(
+      find.text('Dernière mise à jour : 26 septembre 2026'),
+      findsOneWidget,
+    );
+  });
 }
 
 Widget _app({
@@ -286,8 +400,16 @@ Widget _app({
   ValueChanged<SettingsVisibility>? onHoldingsVisibilityChanged,
   VoidCallback? onTerms,
   VoidCallback? onCloseAccount,
+  Locale? locale,
 }) => MaterialApp(
   theme: productTheme(),
+  locale: locale,
+  localizationsDelegates: locale == null
+      ? null
+      : AppLocalizations.localizationsDelegates,
+  supportedLocales: locale == null
+      ? const [Locale('en', 'US')]
+      : AppLocalizations.supportedLocales,
   home: ProductSettingsScreen(
     state: state,
     onNotificationChanged: onNotificationChanged,

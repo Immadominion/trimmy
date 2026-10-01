@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../market/market_craft.dart';
 import 'career_repository.dart';
@@ -71,6 +73,8 @@ class CareerStreakStrip extends StatelessWidget {
   final bool embedded;
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final today = DateTime.parse(
       '${week?.serverDate ?? career.serverDate}T00:00:00Z',
     );
@@ -99,13 +103,16 @@ class CareerStreakStrip extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${career.streak.days} day streak',
+                  l10n.careerStreakDays(
+                    career.streak.days,
+                    formats.number('${career.streak.days}'),
+                  ),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               if (onRetry != null)
                 IconButton(
-                  tooltip: 'Retry activity',
+                  tooltip: l10n.careerStreakRetryActivity,
                   onPressed: onRetry,
                   icon: const Icon(
                     Icons.refresh_rounded,
@@ -125,19 +132,21 @@ class CareerStreakStrip extends StatelessWidget {
                 final current = iso == (week?.serverDate ?? career.serverDate);
                 return Expanded(
                   child: Semantics(
-                    label:
-                        '$iso, ${week == null
-                            ? 'activity unavailable'
-                            : active
-                            ? 'active'
-                            : day.isAfter(today)
-                            ? 'upcoming'
-                            : 'no activity'}',
+                    label: l10n.careerStreakDaySemantics(
+                      _spokenDate(day, iso, formats),
+                      week == null
+                          ? 'unavailable'
+                          : active
+                          ? 'active'
+                          : day.isAfter(today)
+                          ? 'upcoming'
+                          : 'none',
+                    ),
                     child: ExcludeSemantics(
                       child: Column(
                         children: [
                           Text(
-                            const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index],
+                            _weekdayInitial(day, index, formats),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: current
@@ -181,4 +190,20 @@ class CareerStreakStrip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The date a screen reader says for one day of the streak week. English
+/// keeps the ISO date it has always read; other languages read the weekday
+/// and date in words.
+String _spokenDate(DateTime day, String iso, AppFormats formats) {
+  if (formats.isEnglish) return iso;
+  return DateFormat.MMMMEEEEd(formats.dateLocale).format(day);
+}
+
+/// The one-letter weekday above each day of the streak week, Monday first.
+String _weekdayInitial(DateTime day, int index, AppFormats formats) {
+  if (formats.isEnglish) {
+    return const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index];
+  }
+  return DateFormat('EEEEE', formats.dateLocale).format(day).toUpperCase();
 }

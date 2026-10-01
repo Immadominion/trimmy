@@ -19,6 +19,7 @@ import '../money/real_holdings.dart';
 import 'live_trading.dart';
 import 'market_craft.dart';
 import 'market_models.dart';
+import '../../l10n/l10n.dart';
 
 class LiveOrderFailure implements Exception {
   const LiveOrderFailure(this.code);
@@ -644,7 +645,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       return;
     }
     if (!asset.marketOpen) {
-      _notice('${asset.market!.label(DateTime.now())}.');
+      _notice(
+        '${asset.market!.label(DateTime.now(), context.l10n, context.formats)}.',
+      );
       return;
     }
     final legacy = _capabilities!.legacy;
@@ -1112,7 +1115,11 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             ? 'Checking price and fees…'
             : asset.marketOpen
             ? 'Review ${_sell ? 'sell' : 'buy'}'
-            : asset.market!.label(DateTime.now()),
+            : asset.market!.label(
+                DateTime.now(),
+                context.l10n,
+                context.formats,
+              ),
         onPressed: _busy || !accepted || !asset.marketOpen ? null : _preview,
       ),
       if (_fundingNeeded ||
@@ -1439,7 +1446,7 @@ class _MarketStateNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = Theme.of(context).textTheme;
-    final hours = state.hours;
+    final hours = state.hours(context.l10n);
     return Container(
       key: const ValueKey('live-order-market-state'),
       width: double.infinity,
@@ -1452,7 +1459,7 @@ class _MarketStateNote extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            state.label(DateTime.now()),
+            state.label(DateTime.now(), context.l10n, context.formats),
             style: type.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           if (hours != null) ...[

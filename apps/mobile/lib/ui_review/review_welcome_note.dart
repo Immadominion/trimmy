@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import 'review_components.dart';
 import 'review_feedback.dart';
 import 'ui_review_app.dart';
@@ -70,7 +71,7 @@ class _ReviewWelcomeNotePageState extends State<ReviewWelcomeNotePage>
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
-                  tooltip: 'Skip introduction',
+                  tooltip: context.l10n.welcomeNoteSkip,
                   onPressed: widget.onSkip,
                   icon: const Icon(Icons.close_rounded, size: 29),
                   color: UiReviewColor.ink,
@@ -119,7 +120,7 @@ class _ReviewWelcomeNotePageState extends State<ReviewWelcomeNotePage>
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                child: const Text('Continue'),
+                child: Text(context.l10n.commonContinue),
               ),
             ],
           ),
@@ -250,9 +251,9 @@ class _NoteCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  const Text(
-                    'Welcome to\nthe floor.',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.welcomeNoteTitle,
+                    style: const TextStyle(
                       fontFamily: reviewDisplay,
                       color: UiReviewColor.ink,
                       fontSize: 31,
@@ -262,9 +263,9 @@ class _NoteCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  const Text(
-                    'Your first day starts with practice.\n\nPick a company. It’s free.',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.welcomeNoteBody,
+                    style: const TextStyle(
                       color: UiReviewColor.ink,
                       fontSize: 15,
                       height: 1.45,
