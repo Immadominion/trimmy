@@ -8,6 +8,7 @@ import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
 import {ProductApp} from '../src/product/ProductApp.js';
 import {StockScreen} from '../src/product/stock-screen.js';
+import {FastBuySheet} from '../src/product/fast-buy.js';
 import {MarketScreen} from '../src/product/market-screen.js';
 import {MobileAppPrompt} from '../src/product/onboarding.js';
 import {micros, shares} from '../src/product/ui.js';
@@ -179,6 +180,38 @@ async function firstDayPractice(h: Awaited<ReturnType<typeof harness>>) {
   await h.app(); await h.click('Start my first day'); await h.click('Continue');
   assert.ok(h.button('Choose Apple'), 'the real starter company choices are shown');
 }
+
+test('Fast buy Retry repeats the failed read without requiring a changed search', async () => {
+  let attempts = 0;
+  const h = await harness({reply: call => call.path.endsWith('/catalog') && ++attempts === 1
+    ? json({code: 'STOCK_PROVIDER_UNAVAILABLE'}, 503) : undefined});
+  try {
+    await h.render(createElement(FastBuySheet, {market: h.market, session: h.session, portfolio: null,
+      ensureDesk: async () => {}, onCommitted: async () => {}, onPending() {}, saveReason: null, onClose() {}}));
+    assert.match(h.text(), /Search did not finish/);
+    await h.click('Retry');
+    assert.equal(attempts, 2);
+    assert.ok(h.button('Buy Apple'));
+    assert.doesNotMatch(h.text(), /Search did not finish/);
+  } finally {await h.close();}
+});
+
+test('a confirming paper order shows recovery only after the attempt cannot settle', async () => {
+  const pending = deferred<Response>();
+  const h = await harness({reply: call => call.path.endsWith('/commit') ? pending.promise : undefined});
+  try {
+    await h.stock(); await h.click('Review paper buy'); await h.click('Confirm paper buy');
+    await h.stock();
+    assert.ok(h.session.pendingCommit);
+    assert.ok(h.button('Confirming…')?.disabled);
+    assert.doesNotMatch(h.text(), /An order still needs checking/);
+    pending.resolve(json({code: 'PRACTICE_UNAVAILABLE'}, 503)); await h.flush();
+    assert.ok(h.session.pendingCommit, 'failed acknowledgement retains the durable command');
+    assert.match(h.text(), /An order still needs checking/);
+    assert.ok(h.button('Check it from your desk'));
+    assert.equal(h.calls.filter(call => call.path.endsWith('/commit')).length, 1);
+  } finally {pending.resolve(json({}, 503)); await h.close();}
+});
 
 test('first-day Welcome opens the short note locally without creating a desk or profile', async () => {
   const h = await harness({profileMissing: true});

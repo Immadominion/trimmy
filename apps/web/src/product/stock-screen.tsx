@@ -189,6 +189,6 @@ function TradePanel({assetId, variant, name, session, portfolio, ensureDesk, onC
       {unavailable ? <p className="trade-error">Paper orders are unavailable while this token has a provider caution.</p> : <button className="primary full" disabled={busy || !quantity || session.pendingCommit !== null} onClick={() => void review()}>{busy ? 'Getting your quote…' : `Review paper ${action}`}</button>}
       <p className="trade-available">{portfolio ? `${micros(portfolio.cashPaperMicros)} paper available` : session.hasIdentity ? 'Paper balance unavailable. Refresh your desk.' : 'Start with 10,000 paper. No sign-in needed.'}</p></>}
     {error !== null && <p className="trade-error" role="alert">{errorCopy(error)}</p>}
-    {session.pendingCommit !== null && <div className="trade-error">An order still needs checking.<button className="text-button full" onClick={onDesk}>Check it from your desk</button></div>}
+    {session.pendingCommit !== null && !busy && <div className="trade-error">An order still needs checking.<button className="text-button full" onClick={onDesk}>Check it from your desk</button></div>}
   </aside>;
 }
