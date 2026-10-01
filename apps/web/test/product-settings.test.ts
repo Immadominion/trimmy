@@ -153,3 +153,25 @@ test('reminders open from Settings and closing them changes nothing', async () =
     assert.match(h.text(), /Mon, Wed and Fri, around 7 PM\. Saved on this browser\./);
   } finally {await h.close();}
 });
+
+test('an open dialog keeps Tab inside it, holds the page still and gives focus back when it closes', async () => {
+  const h = await harness({checkpoint: 'app', savedGuest: true, storage: chosenGuest()});
+  try {
+    await openSettings(h);
+    const opener = h.button('Change who can see my comments')!;
+    opener.focus(); await h.click('Change who can see my comments');
+    const dialog = h.dom.window.document.querySelector<HTMLElement>('[role="dialog"]')!;
+    assert.ok(dialog);
+    assert.ok(h.dom.window.document.documentElement.classList.contains('modal-open'), 'the page behind is held still');
+    const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])')];
+    const tab = (shiftKey = false) => h.dom.window.document.dispatchEvent(new h.dom.window.KeyboardEvent('keydown', {key: 'Tab', shiftKey, bubbles: true, cancelable: true}));
+    focusable.at(-1)!.focus(); tab();
+    assert.equal(h.dom.window.document.activeElement, focusable[0], 'Tab from the last control wraps to the first');
+    tab(true);
+    assert.equal(h.dom.window.document.activeElement, focusable.at(-1), 'Shift+Tab from the first wraps to the last');
+    await h.escape();
+    assert.equal(h.dom.window.document.querySelector('[role="dialog"]'), null);
+    assert.equal(h.dom.window.document.documentElement.classList.contains('modal-open'), false);
+    assert.equal(h.dom.window.document.activeElement, opener, 'focus is back on what opened it');
+  } finally {await h.close();}
+});

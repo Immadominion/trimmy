@@ -9,6 +9,7 @@ import {art, shares, sharesPlain} from './ui';
 import {t, type MessageKey} from '../i18n/runtime';
 import {useT} from '../i18n/react';
 import * as fmt from '../i18n/format';
+import {useModalFocus} from './use-modal-focus';
 
 const RANK_KEYS: Readonly<Record<CareerRank, MessageKey>> = {rookie: 'career.rank.rookie', analyst: 'career.rank.analyst', trader: 'career.rank.trader',
   'senior-trader': 'career.rank.seniorTrader', partner: 'career.rank.partner', legend: 'career.rank.legend'};
@@ -86,6 +87,8 @@ export function ReasonComposer({target, companyName, pending, onSave, onClose}: 
   target: ReasonTarget; companyName: string | null; pending: TradeReasonWrite | null;
   onSave: (note: string) => Promise<TradeReasonReceipt>; onClose: (saved: boolean) => void;
 }) {
+  const reasonComposerDialog = useRef<HTMLDivElement>(null);
+  useModalFocus(reasonComposerDialog);
   const [note, setNote] = useState(pending?.orderId === target.orderId ? pending.note : '');
   const tr = useT();
   const [busy, setBusy] = useState(false), [error, setError] = useState<MessageKey | null>(null), [exists, setExists] = useState(false);
@@ -106,7 +109,7 @@ export function ReasonComposer({target, companyName, pending, onSave, onClose}: 
     finally {if (mounted.current) setBusy(false);}
   }
   return <div className="settings-modal-backdrop" onClick={event => {if (event.target === event.currentTarget && !busy) onClose(receipt !== null);}}>
-    <div className="settings-modal reason-composer" role="dialog" aria-modal="true" aria-labelledby="reason-composer-title">
+    <div className="settings-modal reason-composer" ref={reasonComposerDialog} role="dialog" aria-modal="true" aria-labelledby="reason-composer-title">
       <button className="rank-close" aria-label={tr('career.reason.close')} disabled={busy} onClick={() => onClose(receipt !== null)}>×</button>
       <p className="daily-label">{tr('career.reason.held', {name: companyName ?? target.symbol,
         shares: new fmt.Shown(Number(sharesPlain(target.heldQuantityMicros).replaceAll(',', '')), shares(target.heldQuantityMicros))})}</p>
@@ -131,10 +134,12 @@ export function ReasonComposer({target, companyName, pending, onSave, onClose}: 
 
 /** Mobile's PromotionMoment after a confirmed promotion. */
 export function PromotionMoment({receipt, onContinue}: {receipt: PromotionReceipt; onContinue: () => void}) {
+  const promotionDialog = useRef<HTMLDivElement>(null);
+  useModalFocus(promotionDialog);
   const heading = useRef<HTMLHeadingElement>(null);
   const tr = useT();
   useEffect(() => {heading.current?.focus();}, []);
-  return <div className="settings-modal-backdrop"><div className="settings-modal promotion-moment" role="dialog" aria-modal="true" aria-labelledby="promotion-title">
+  return <div className="settings-modal-backdrop"><div className="settings-modal promotion-moment" ref={promotionDialog} role="dialog" aria-modal="true" aria-labelledby="promotion-title">
     <img src={art('career-world/trophy.png')} alt="" className="promotion-art"/>
     <h2 id="promotion-title" ref={heading} tabIndex={-1}>{tr('career.promotion.title', {rank: receipt.toRank, name: rankLabel(receipt.toRank)})}</h2>
     <p>{tr('career.promotion.subtitle')}</p>

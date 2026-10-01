@@ -8,6 +8,7 @@ import {CompanyLogo, Loading, errorCopy, micros, shares, toPaperMicros, usd} fro
 import {categoryLabel, categoryOf, marketFigures, shareCount} from './market-social';
 import {useT, type Translator} from '../i18n/react';
 import {useBackCloses} from './use-back-closes';
+import {useModalFocus} from './use-modal-focus';
 
 /**
  * Mobile's compact Fast buy (practice): find a company, choose an amount,
@@ -31,6 +32,8 @@ function reasonFailure(tr: Translator, error: unknown): string {
   return tr('market.fastBuy.reason.failed');
 }
 export function FastBuySheet(props: FastBuyProps) {
+  const fastBuySheetDialog = useRef<HTMLDivElement>(null);
+  useModalFocus(fastBuySheetDialog);
   const {market, session, portfolio} = props;
   const tr = useT();
   const [step, setStep] = useState<Step>('search');
@@ -91,7 +94,7 @@ export function FastBuySheet(props: FastBuyProps) {
   }
   const name = company?.name ?? company?.assetId ?? null;
   return <div className="settings-modal-backdrop" onClick={event => {if (event.target === event.currentTarget && !locked.current) props.onClose();}}>
-    <div className="settings-modal fast-buy" role="dialog" aria-modal="true" aria-labelledby="fast-buy-title">
+    <div className="settings-modal fast-buy" ref={fastBuySheetDialog} role="dialog" aria-modal="true" aria-labelledby="fast-buy-title">
       <div className="fast-buy-head"><h2 id="fast-buy-title" ref={heading} tabIndex={-1}>{step === 'search' ? tr('market.fastBuy.title') : step === 'review' ? tr('market.trade.reviewTitle', {action: 'buy'})
           : step === 'receipt' ? tr('market.fastBuy.confirmedTitle') : name === null ? tr('market.fastBuy.buyUnknown') : tr('market.fastBuy.buyName', {name})}</h2>
         <button className="rank-close" aria-label={tr('market.fastBuy.close')} disabled={busy} onClick={props.onClose}>×</button></div>

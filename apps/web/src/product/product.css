@@ -49,3 +49,5 @@ html,body,#root{height:100%;overflow:hidden}body{background:#fff}
 @media(max-height:690px){.sign-in-screen{margin-top:12px}.sign-in-art .sal-art{max-height:170px}}
 /* iOS Safari zooms the page into any field under 16px. On phones, small fields read at 16px; the large amount fields keep their size. */
 @media(max-width:700px){.market-search input,.market-sort select,.token-select,.sign-in-content input:not(.sign-in-code),.reason-note,.fast-buy-search,.settings-phrase input,.send-form select,.send-form input,.workday-note textarea{font-size:16px!important}}
+/* An open dialog or sheet holds the page behind it still. */
+.modal-open,.modal-open body,.modal-open .product-main{overflow:hidden}
