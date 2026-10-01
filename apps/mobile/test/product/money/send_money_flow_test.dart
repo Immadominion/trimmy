@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -309,6 +310,65 @@ void main() {
     expect(requests, isEmpty);
     await fill(tester, _friend, '5');
     expect(find.textContaining('That address isn’t a wallet.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a pasted address is read exactly: trimmed, from a plain solana: link, never stripped',
+    (tester) async {
+      final requests = await mount(tester, (request) async {
+        return _reply(_review());
+      });
+      // A leading space and a line break no longer cost the last character.
+      await fill(tester, ' $_friend\n', '5');
+      expect(jsonDecode(requests.single.body)['destination'], _friend);
+    },
+  );
+
+  testWidgets(
+    'a solana: link gives its address; a character outside it is refused',
+    (tester) async {
+      final requests = await mount(tester, (_) async => _reply(_review()));
+      // 'l' is not in the address alphabet: refused, not quietly removed.
+      await fill(tester, '${_friend}l', '5');
+      expect(requests, isEmpty);
+      expect(find.byKey(const ValueKey('send-notice')), findsOneWidget);
+      await fill(tester, 'solana:$_friend', '5');
+      expect(jsonDecode(requests.single.body)['destination'], _friend);
+    },
+  );
+
+  testWidgets('the sheet can close while it checks for an earlier send', (
+    tester,
+  ) async {
+    final recovery = Completer<http.Response>();
+    var closed = 0;
+    final flow = SendMoneyFlow(
+      account: account,
+      origin: _origin,
+      httpClient: MockClient((request) => recovery.future),
+      onBack: () => closed++,
+    );
+    await tester.pumpWidget(MaterialApp(theme: productTheme(), home: flow));
+    await tester.pump();
+    final back = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.arrow_back_rounded),
+    );
+    expect(
+      back.onPressed,
+      isNotNull,
+      reason: 'closing never waits on the check',
+    );
+    back.onPressed!();
+    expect(closed, 1);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('send-amount')))
+          .enabled,
+      isFalse,
+      reason: 'the form waits for the check',
+    );
+    recovery.complete(_reply({'transfer': null}));
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('sends stock tokens in shares, and cancelling sends nothing', (

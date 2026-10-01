@@ -480,7 +480,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   String? _assetId;
   SendReview? _review;
   _Stage _stage = _Stage.details;
-  bool _busy = true, _recoveryFailed = false;
+  // `_recovering` is the check for an earlier send when the sheet opens: it
+  // holds the form but, unlike a send in progress, never stops closing.
+  bool _busy = false, _recovering = true, _recoveryFailed = false;
+  bool get _working => _busy || _recovering;
+  final _noticeKey = GlobalKey();
   _SendNotice? _error;
   String? _signature, _status;
   Timer? _poll;
@@ -510,7 +514,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   Future<void> _recover() async {
     if (mounted) {
       setState(() {
-        _busy = true;
+        _recovering = true;
         _error = null;
         _recoveryFailed = false;
       });
@@ -543,7 +547,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
         });
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _recovering = false);
     }
   }
 
@@ -563,8 +567,34 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   String get _typedAmount =>
       context.formats.normalizeDecimalInput(_amount.text);
 
+  /// The address exactly as pasted or typed: surrounding spaces go, and a
+  /// plain `solana:` link gives its address. Nothing inside it is removed or
+  /// cut, so a mistyped address is refused, never changed into another.
+  String get _recipient {
+    final text = _to.text.trim();
+    final link = RegExp(
+      r'^solana:([^?]*)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    return link == null ? text : link[1]!;
+  }
+
+  void _show(_SendNotice notice) {
+    setState(() => _error = notice);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _noticeKey.currentContext;
+      if (target == null || !target.mounted) return;
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
   _SendNotice? _check(SendAsset asset) {
-    final to = _to.text.trim();
+    final to = _recipient;
     if (!_address.hasMatch(to)) return (l10n, _) => l10n.sendEnterAddress;
     if (to == _ownAddress) return (l10n, _) => l10n.sendErrorSelf;
     final raw = asset.rawFor(_typedAmount);
@@ -578,13 +608,15 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   Future<void> _preview() async {
     final asset = _asset;
-    if (asset == null || _busy || _recoveryFailed) return;
+    if (asset == null || _working || _recoveryFailed) return;
+    // Close the keyboard first, so a message is not hidden under it.
+    FocusScope.of(context).unfocus();
     final problem = _check(asset);
     if (problem != null) {
-      setState(() => _error = problem);
+      _show(problem);
       return;
     }
-    final to = _to.text.trim(), amountRaw = asset.rawFor(_typedAmount)!;
+    final to = _recipient, amountRaw = asset.rawFor(_typedAmount)!;
     setState(() {
       _busy = true;
       _error = null;
@@ -612,10 +644,10 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       if (mounted && failure.code == 'TRANSFER_PENDING') {
         await _recover();
       } else if (mounted) {
-        setState(() => _error = failure.message);
+        _show(failure.message);
       }
     } catch (_) {
-      if (mounted) setState(() => _error = const SendFailure('').message);
+      if (mounted) _show(const SendFailure('').message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -623,7 +655,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   Future<void> _send() async {
     final review = _review;
-    if (review == null || _busy || _recoveryFailed) return;
+    if (review == null || _working || _recoveryFailed) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -765,6 +797,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
                 },
                 if (_error != null)
                   Padding(
+                    key: _noticeKey,
                     padding: const EdgeInsets.only(top: 16),
                     child: ProductNotice(
                       key: const ValueKey('send-notice'),
@@ -818,7 +851,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
               ),
             ),
         ],
-        onChanged: _busy
+        onChanged: _working
             ? null
             : (value) => setState(() {
                 _assetId = value;
@@ -830,20 +863,19 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       TextField(
         key: const ValueKey('send-destination'),
         controller: _to,
-        enabled: !_busy,
+        enabled: !_working,
         autocorrect: false,
         enableSuggestions: false,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp('[1-9A-HJ-NP-Za-km-z]')),
-          LengthLimitingTextInputFormatter(44),
-        ],
+        // No character filter or 44-character cut: either could turn a pasted
+        // address into a different one. The review refuses a bad address.
+        inputFormatters: [LengthLimitingTextInputFormatter(200)],
         decoration: InputDecoration(
           labelText: l10n.sendRecipientLabel,
           suffixIcon: IconButton(
             key: const ValueKey('send-paste'),
             tooltip: l10n.sendPaste,
             icon: const Icon(Icons.content_paste_rounded),
-            onPressed: _busy
+            onPressed: _working
                 ? null
                 : () async {
                     final text = (await Clipboard.getData(
@@ -860,7 +892,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       TextField(
         key: const ValueKey('send-amount'),
         controller: _amount,
-        enabled: !_busy,
+        enabled: !_working,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [
           FilteringTextInputFormatter.allow(formats.decimalInputCharacters),
@@ -875,7 +907,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
           ),
           suffixIcon: TextButton(
             key: const ValueKey('send-max'),
-            onPressed: _busy
+            onPressed: _working
                 ? null
                 : () => setState(
                     () => _amount.text = formats.decimalInput(
@@ -899,8 +931,8 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       const SizedBox(height: 24),
       ProductButton(
         key: const ValueKey('send-review'),
-        label: _busy ? l10n.commonChecking : l10n.sendReview,
-        onPressed: _busy || _recoveryFailed ? null : _preview,
+        label: _working ? l10n.commonChecking : l10n.sendReview,
+        onPressed: _working || _recoveryFailed ? null : _preview,
       ),
     ];
   }
@@ -958,10 +990,10 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       ProductButton(
         key: const ValueKey('send-confirm'),
         label: _busy ? l10n.commonSending : l10n.sendNow,
-        onPressed: _busy || _recoveryFailed ? null : _send,
+        onPressed: _working || _recoveryFailed ? null : _send,
       ),
       TextButton(
-        onPressed: _busy
+        onPressed: _working
             ? null
             : () => setState(() {
                 _review = null;
@@ -1065,7 +1097,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
               if (mounted) widget.onBack();
             } catch (_) {
               if (mounted) {
-                setState(() => _error = (l10n, _) => l10n.sendCloseFailed);
+                _show((l10n, _) => l10n.sendCloseFailed);
               }
             }
           },
