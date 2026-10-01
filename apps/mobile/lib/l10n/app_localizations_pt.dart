@@ -4754,4 +4754,18 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get appCloseAccountFailed =>
       'Sua conta não foi encerrada. Tente de novo.';
+
+  @override
+  String get settingsUsage => 'Compartilhar dados de uso';
+
+  @override
+  String get settingsUsageDetail =>
+      'Contagens de quais telas abrem e quais etapas são concluídas, para melhorar o Trimmy. Sem nomes, valores nem mensagens.';
+
+  @override
+  String get infoPrivacyUsageTitle => 'Contagens de uso';
+
+  @override
+  String get infoPrivacyUsageBody =>
+      'O Trimmy conta quais telas abrem e quais etapas são concluídas. Cada contagem leva um número de instalação aleatório (vinculado à sua mesa, para que cada retorno conte uma só vez), a versão do app, o idioma e o horário. Nunca registra nomes, e-mails, valores nem nada do que você escreve. As contagens ficam guardadas por até 400 dias. Desative Compartilhar dados de uso em Configurações para parar a contagem e apagar o que ainda não foi enviado.';
 }

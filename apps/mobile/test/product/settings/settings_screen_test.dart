@@ -30,6 +30,33 @@ void main() {
     expect(haptics, false);
   });
 
+  testWidgets('Share usage data shows only when the build records usage', (
+    tester,
+  ) async {
+    bool? sharing;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: ProductSettingsScreen(
+          state: _state(),
+          usageEnabled: true,
+          onUsageChanged: (v) => sharing = v,
+        ),
+      ),
+    );
+    await _show(tester, 'Share usage data');
+    await tester.tap(find.byKey(const ValueKey('settings-usage')));
+    expect(sharing, false);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        home: ProductSettingsScreen(state: _state()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('settings-usage')), findsNothing);
+  });
+
   testWidgets('shows guest settings without dead financial actions', (
     tester,
   ) async {

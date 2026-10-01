@@ -13,6 +13,8 @@ import 'market_craft.dart';
 import 'market_models.dart';
 import 'paper_order_flow.dart';
 import 'paper_order_repository.dart';
+import '../analytics/product_events.dart';
+import '../analytics/usage_scope.dart';
 
 const _softSurface = Color(0xFFF6F5F8);
 
@@ -113,6 +115,9 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _showGuidance = false);
     _reviewOpen = true;
+    UsageScope.of(
+      context,
+    ).once(ProductEvent.onboardingStep(OnboardingStep.review));
     final company = companies[_companyIndex];
     final repository = widget.repository!;
     final availablePaper = widget.availablePaper!;

@@ -13,6 +13,10 @@ import 'features/practice/practice_controller.dart';
 import 'markets/stock_research_host.dart';
 import 'product/app/product_app.dart';
 import 'ui_review/review_feedback.dart';
+import 'account/config.dart';
+import 'product/analytics/product_events.dart'
+    show ProductEvents, SharedPreferencesEventsStore;
+import 'product/analytics/usage_scope.dart' show UsageLocale;
 
 /// Normal builds open the stocks-first Trimmy product.
 Future<void> main() async {
@@ -37,6 +41,7 @@ Future<void> main() async {
   final preferences = await SharedPreferences.getInstance();
   final feedback = ReviewFeedback.shared;
   await feedback.load();
+  final usage = await _usage(preferences);
   // The actual Settings screen controls these persisted device preferences.
   runApp(
     StockResearchHost(
@@ -47,10 +52,36 @@ Future<void> main() async {
           account: account,
           accountConfigurationFailed: configurationFailed,
           showStartupSplash: true,
+          usage: usage,
         ),
       ),
     ),
   );
+}
+
+/// First-party usage events for phone builds that know their API (see
+/// product/analytics). None for other builds; never blocks startup.
+Future<ProductEvents?> _usage(SharedPreferences preferences) async {
+  final origin = PracticeAccountConfig.fromEnvironment().apiUri;
+  final platform = switch (defaultTargetPlatform) {
+    TargetPlatform.android => 'android',
+    TargetPlatform.iOS => 'ios',
+    _ => null,
+  };
+  if (kIsWeb || origin == null || platform == null) return null;
+  try {
+    final usage = ProductEvents(
+      origin: origin,
+      platform: platform,
+      appVersion: ProductEvents.buildVersion,
+      locale: () => UsageLocale.tag,
+      store: SharedPreferencesEventsStore(preferences),
+    );
+    await usage.load().timeout(const Duration(seconds: 2));
+    return usage;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Retained for migration tests and the explicit legacy entry point.

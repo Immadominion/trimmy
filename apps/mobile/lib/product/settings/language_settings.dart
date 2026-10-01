@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
+import '../analytics/product_events.dart' show ProductEvent;
+import '../analytics/usage_scope.dart';
 
 /// What the Language row in Settings shows: "Phone language" until someone
 /// picks, then the chosen language's own name.
@@ -23,6 +25,11 @@ Future<void> showLanguagePicker(
   );
   if (choice == null) return;
   await controller.setLanguage(choice);
+  if (context.mounted) {
+    UsageScope.of(
+      context,
+    ).track(ProductEvent.languageSet(choice.tag ?? 'phone'));
+  }
 }
 
 class LanguagePickerSheet extends StatelessWidget {

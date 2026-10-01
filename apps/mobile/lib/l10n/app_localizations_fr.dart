@@ -4755,4 +4755,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get appCloseAccountFailed => 'Ton compte n’a pas été fermé. Réessaie.';
+
+  @override
+  String get settingsUsage => 'Partager les données d’utilisation';
+
+  @override
+  String get settingsUsageDetail =>
+      'Le nombre d’écrans ouverts et d’étapes terminées, pour améliorer Trimmy. Aucun nom, montant ni message.';
+
+  @override
+  String get infoPrivacyUsageTitle => 'Statistiques d’utilisation';
+
+  @override
+  String get infoPrivacyUsageBody =>
+      'Trimmy compte les écrans ouverts et les étapes terminées. Chaque comptage porte un numéro d’installation aléatoire (lié à ton bureau, pour qu’un retour ne compte qu’une fois), la version de l’app, la langue et l’heure. Il n’enregistre jamais de nom, d’adresse e-mail, de montant ni rien de ce que tu écris. Ces statistiques sont conservées jusqu’à 400 jours. Désactive Partager les données d’utilisation dans les Réglages pour arrêter le comptage et effacer ce qui n’a pas encore été envoyé.';
 }

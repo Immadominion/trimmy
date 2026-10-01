@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n.dart';
 import '../../ui_review/review_welcome_note.dart';
 import '../../ui_review/welcome_review_screen.dart';
+import '../analytics/product_events.dart';
+import '../analytics/usage_scope.dart';
 
 /// The approved first-use presentation. Its host persists real launch state;
 /// this widget never supplies answers or creates a practice position.
@@ -29,6 +31,29 @@ class ProductIntroduction extends StatefulWidget {
 
 class _ProductIntroductionState extends State<ProductIntroduction> {
   late bool _showNote = widget.startAtNote;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _recordStep();
+    });
+  }
+
+  /// The welcome and Sal's note, the first time this install sees each.
+  void _recordStep() => UsageScope.of(context).once(
+    ProductEvent.onboardingStep(
+      _showNote ? OnboardingStep.note : OnboardingStep.welcome,
+    ),
+  );
+
+  void _skip() {
+    UsageScope.of(
+      context,
+    ).track(ProductEvent.onboardingSkip(OnboardingStep.note));
+    unawaited(_finish(widget.onSkip));
+  }
+
   bool _busy = false;
   bool _failed = false;
   int _welcomeAttempt = 0;
@@ -57,7 +82,7 @@ class _ProductIntroductionState extends State<ProductIntroduction> {
   Widget build(BuildContext context) => PopScope<void>(
     canPop: !_showNote,
     onPopInvokedWithResult: (didPop, _) {
-      if (!didPop && _showNote) unawaited(_finish(widget.onSkip));
+      if (!didPop && _showNote) _skip();
     },
     child: Stack(
       children: [
@@ -69,6 +94,7 @@ class _ProductIntroductionState extends State<ProductIntroduction> {
                   onStart: () {
                     if (widget.showWelcomeNote) {
                       setState(() => _showNote = true);
+                      _recordStep();
                     } else {
                       unawaited(_finish(widget.onContinue));
                     }
@@ -77,7 +103,7 @@ class _ProductIntroductionState extends State<ProductIntroduction> {
                 )
               : ReviewWelcomeNotePage(
                   onContinue: () => unawaited(_finish(widget.onContinue)),
-                  onSkip: () => unawaited(_finish(widget.onSkip)),
+                  onSkip: _skip,
                 ),
         ),
         if (_busy)

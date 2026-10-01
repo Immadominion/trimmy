@@ -4625,4 +4625,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appCloseAccountFailed => 'Your account was not closed. Try again.';
+
+  @override
+  String get settingsUsage => 'Share usage data';
+
+  @override
+  String get settingsUsageDetail =>
+      'Counts of which screens open and which steps finish, to make Trimmy better. No names, amounts or messages.';
+
+  @override
+  String get infoPrivacyUsageTitle => 'Usage counts';
+
+  @override
+  String get infoPrivacyUsageBody =>
+      'Trimmy counts which screens open and which steps finish. Each count carries a random install number (tied to your desk, so a return visit counts once), the app version, the language and the time. It never records names, email addresses, amounts or anything you write. Counts are kept for up to 400 days. Turn off Share usage data in Settings to stop counting and forget anything not yet sent.';
 }

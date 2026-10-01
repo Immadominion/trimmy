@@ -136,6 +136,8 @@ List<(String, String)> _privacy(AppLocalizations l10n, String updated) => [
   ('p', l10n.infoPrivacyFundingBody),
   ('h2', l10n.settingsReminders),
   ('p', l10n.infoPrivacyRemindersBody),
+  ('h2', l10n.infoPrivacyUsageTitle),
+  ('p', l10n.infoPrivacyUsageBody),
   ('h2', l10n.infoPrivacyServicesTitle),
   ('p', l10n.infoPrivacyServicesBody),
   ('h2', l10n.infoPrivacyChoicesTitle),

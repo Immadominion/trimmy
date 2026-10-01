@@ -4766,4 +4766,18 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get appCloseAccountFailed =>
       'Tu cuenta no se cerró. Vuelve a intentarlo.';
+
+  @override
+  String get settingsUsage => 'Compartir datos de uso';
+
+  @override
+  String get settingsUsageDetail =>
+      'Conteos de qué pantallas se abren y qué pasos se completan, para mejorar Trimmy. Sin nombres, montos ni mensajes.';
+
+  @override
+  String get infoPrivacyUsageTitle => 'Conteos de uso';
+
+  @override
+  String get infoPrivacyUsageBody =>
+      'Trimmy cuenta qué pantallas se abren y qué pasos se completan. Cada conteo lleva un número de instalación aleatorio (vinculado a tu escritorio, para que cada regreso cuente una sola vez), la versión de la app, el idioma y la hora. Nunca registra nombres, correos electrónicos, montos ni nada de lo que escribes. Los conteos se guardan hasta 400 días. Desactiva Compartir datos de uso en Configuración para dejar de contar y borrar lo que aún no se envió.';
 }

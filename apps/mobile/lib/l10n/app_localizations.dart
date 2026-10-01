@@ -7641,6 +7641,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your account was not closed. Try again.'**
   String get appCloseAccountFailed;
+
+  /// Settings switch that turns first-party usage counting on or off. On by default; off forgets anything not yet sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Share usage data'**
+  String get settingsUsage;
+
+  /// Small text under the Share usage data switch, saying plainly what is counted and what never is.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts of which screens open and which steps finish, to make Trimmy better. No names, amounts or messages.'**
+  String get settingsUsageDetail;
+
+  /// Heading of the privacy page section about first-party usage counting.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage counts'**
+  String get infoPrivacyUsageTitle;
+
+  /// Privacy page text: what usage counting records, what it never records, how long it is kept, and how to turn it off. "Share usage data" is the Settings switch (settingsUsage); use the same words.
+  ///
+  /// In en, this message translates to:
+  /// **'Trimmy counts which screens open and which steps finish. Each count carries a random install number (tied to your desk, so a return visit counts once), the app version, the language and the time. It never records names, email addresses, amounts or anything you write. Counts are kept for up to 400 days. Turn off Share usage data in Settings to stop counting and forget anything not yet sent.'**
+  String get infoPrivacyUsageBody;
 }
 
 class _AppLocalizationsDelegate

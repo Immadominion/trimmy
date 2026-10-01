@@ -8,6 +8,8 @@ import '../../account/auth.dart';
 import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import 'sign_in_methods_page.dart';
+import '../analytics/product_events.dart';
+import '../analytics/usage_scope.dart';
 
 enum _EmailStage { methods, address, code }
 
@@ -181,8 +183,16 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
       operation == _operation &&
       identical(controller, widget.controller);
 
+  /// How the player left the first-run gate (only there, not from Settings).
+  void _gate(GateChoice choice) {
+    if (widget.entryGate) {
+      UsageScope.of(context).track(ProductEvent.gateChoice(choice));
+    }
+  }
+
   Future<void> _oauth(PracticeOAuthProvider provider) =>
       _run((operation) async {
+        _gate(GateChoice.values.byName(provider.name));
         final controller = widget.controller;
         if (controller == null) return;
         final result = await controller.signIn(provider);
@@ -214,6 +224,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
       setState(() => _error = _SignInError.emailInvalid);
       return;
     }
+    _gate(GateChoice.email);
     if (controller == null) return;
     final result = await controller.sendEmailCode(email);
     if (!_isCurrentOperation(operation, controller)) return;
@@ -457,7 +468,8 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                     onChanged: codeStep
                         ? (value) {
                             if (!waiting &&
-                                normalizePracticeEmailCode(value)?.length == 6) {
+                                normalizePracticeEmailCode(value)?.length ==
+                                    6) {
                               unawaited(_verifyCode());
                             }
                           }

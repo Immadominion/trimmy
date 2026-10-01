@@ -11,6 +11,9 @@ import '../design/product_theme.dart';
 import '../market/market_craft.dart';
 import '../notifications/notification_permission.dart';
 import 'onboarding_models.dart';
+import '../analytics/product_events.dart'
+    show PermissionOutcome, ProductEvent, ReminderFrequency;
+import '../analytics/usage_scope.dart';
 
 /// What went wrong on the celebration or next-move step.
 enum _FollowupError { notSaved, continueFailed }
@@ -390,6 +393,18 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
         permission,
       );
       savedLocally = true;
+      if (mounted) {
+        UsageScope.of(context).track(
+          ProductEvent.reminderChoice(
+            ReminderFrequency.values.byName(choice.name),
+            switch (permission) {
+              OnboardingNotificationStatus.granted => PermissionOutcome.granted,
+              OnboardingNotificationStatus.denied => PermissionOutcome.denied,
+              _ => PermissionOutcome.notAsked,
+            },
+          ),
+        );
+      }
       var scheduled = await widget.setReminder(
         permission == OnboardingNotificationStatus.granted
             ? choice.name

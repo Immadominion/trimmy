@@ -287,15 +287,20 @@ class ProductEvents {
   });
 
   /// Ties this install to the desk using it, once per desk per launch.
-  Future<void> link(String deskKey) async {
-    if (!_loaded ||
-        !_enabled ||
-        _linkedTo == deskKey ||
-        authorization == null) {
+  /// [using] gives that desk's Authorization header when it differs from the
+  /// default.
+  Future<void> link(String deskKey, {Future<String?> Function()? using}) async {
+    final header = using ?? authorization;
+    if (!_loaded || !_enabled || _linkedTo == deskKey || header == null) {
       return;
     }
-    final header = await authorization!();
-    if (header == null) return;
+    final String? value;
+    try {
+      value = await header();
+    } catch (_) {
+      return;
+    }
+    if (value == null) return;
     try {
       final response = await _client
           .post(
@@ -303,7 +308,7 @@ class ProductEvents {
             headers: {
               'content-type': 'application/json',
               'accept': 'application/json',
-              'authorization': header,
+              'authorization': value,
             },
             body: jsonEncode({'schemaVersion': 1, 'installId': _installId}),
           )

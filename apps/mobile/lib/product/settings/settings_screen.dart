@@ -27,6 +27,8 @@ class ProductSettingsScreen extends StatefulWidget {
     this.onQuietHoursChanged,
     this.onEditQuietHours,
     this.onSoundChanged,
+    this.usageEnabled = false,
+    this.onUsageChanged,
     this.onHapticsChanged,
     this.onAnimationsChanged,
     this.onResetPaper,
@@ -61,6 +63,10 @@ class ProductSettingsScreen extends StatefulWidget {
   final ValueChanged<bool>? onQuietHoursChanged;
   final VoidCallback? onEditQuietHours;
   final ValueChanged<bool>? onSoundChanged;
+
+  /// "Share usage data". Shown only when this build records usage.
+  final bool usageEnabled;
+  final ValueChanged<bool>? onUsageChanged;
   final ValueChanged<bool>? onHapticsChanged;
   final ValueChanged<bool>? onAnimationsChanged;
   final SettingsPaperReset? onResetPaper;
@@ -321,6 +327,14 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
               : l10n.settingsReduceMotionOff,
         ),
         _languageRow(context),
+        if (widget.onUsageChanged != null)
+          _SettingsSwitchRow(
+            key: const ValueKey('settings-usage'),
+            title: l10n.settingsUsage,
+            subtitle: l10n.settingsUsageDetail,
+            value: widget.usageEnabled,
+            onChanged: widget.onUsageChanged,
+          ),
       ],
     );
   }

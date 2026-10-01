@@ -64,6 +64,8 @@ import 'launch_moments.dart';
 import 'product_market_session.dart';
 import 'product_session.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../analytics/product_events.dart' as events;
+import '../analytics/usage_scope.dart';
 
 class TrimmyProductApp extends StatefulWidget {
   const TrimmyProductApp({
@@ -73,12 +75,17 @@ class TrimmyProductApp extends StatefulWidget {
     required this.accountConfigurationFailed,
     this.stockFactsRepository,
     this.showStartupSplash = false,
+    this.usage,
   });
 
   final SharedPreferences preferences;
   final AccountController? account;
   final bool accountConfigurationFailed;
   final bool showStartupSplash;
+
+  /// Usage events (see analytics/usage_scope.dart). The production entry
+  /// passes one; none records nothing.
+  final events.ProductEvents? usage;
 
   /// Test/native injection only. Production constructs the credential-free
   /// HTTP reader from the configured public stock API origin.
@@ -101,8 +108,27 @@ class _TrimmyProductAppState extends State<TrimmyProductApp> {
   /// The language chosen in Settings. Follows the phone until someone picks.
   late final _language = AppLocaleController(widget.preferences);
 
+  late bool _real = _moneyMode.real;
+
+  @override
+  void initState() {
+    super.initState();
+    _moneyMode.addListener(_modeChanged);
+    Usage(
+      widget.usage,
+    ).track(events.ProductEvent.appOpen(events.AppOpenSource.launch));
+  }
+
+  void _modeChanged() {
+    final real = _moneyMode.real;
+    if (real == _real) return;
+    _real = real;
+    Usage(widget.usage).track(events.ProductEvent.modeSwitch(real: real));
+  }
+
   @override
   void dispose() {
+    _moneyMode.removeListener(_modeChanged);
     _moneyMode.dispose();
     _session.dispose();
     _language.dispose();
@@ -116,7 +142,8 @@ class _TrimmyProductAppState extends State<TrimmyProductApp> {
       controller: _moneyMode,
       child: ListenableBuilder(
         listenable: _language,
-        builder: (context, _) => _app(),
+        builder: (context, _) =>
+            UsageScope(recorder: widget.usage, child: _app()),
       ),
     ),
   );
@@ -354,6 +381,9 @@ class _ProductExperienceState extends State<ProductExperience>
 
   Future<void> _consumeReminderCareer() async {
     if (await ProductNotificationPermission.consumeOpenCareer() && mounted) {
+      UsageScope.of(
+        context,
+      ).track(events.ProductEvent.appOpen(events.AppOpenSource.reminder));
       _onReminderCareer();
     }
   }
@@ -505,7 +535,10 @@ class _ProductExperienceState extends State<ProductExperience>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final usage = UsageScope.of(context).recorder;
+    if (state == AppLifecycleState.paused) unawaited(usage?.flush());
     if (state != AppLifecycleState.resumed) return;
+    unawaited(usage?.resumed());
     _syncReminder();
     unawaited(_tradePush?.refresh());
     unawaited(_consumeReminderCareer());
@@ -594,6 +627,8 @@ class _ProductExperienceState extends State<ProductExperience>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    UsageLocale.tag = Localizations.localeOf(context).toLanguageTag();
+    _usageSharing.value ??= UsageScope.of(context).recorder?.enabled;
     // Reminders are planned ahead in the app's language. A language change
     // rewrites the one already scheduled.
     if (ProductNotificationPermission.useLanguage(context.l10n)) {
@@ -889,6 +924,14 @@ class _ProductExperienceState extends State<ProductExperience>
         _portfolioBinding = binding;
         _paperPrincipalKey = principalKey;
         _syncReminder();
+        // Ties this install to the desk it now uses, so retention counts
+        // people rather than launches.
+        unawaited(
+          UsageScope.of(context).recorder?.link(
+            principalKey,
+            using: () async => (await account.paperAuthorization()).headerValue,
+          ),
+        );
         _httpOrders = orders;
         _httpPortfolio = portfolio;
         _httpPaperReset = paperResetRepository;
@@ -1438,6 +1481,7 @@ class _ProductExperienceState extends State<ProductExperience>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _usageSharing.dispose();
     widget.account?.removeListener(_realPortfolioChanged);
     ProductNotificationPermission.setOnOpenCareer(null);
     _tradePush?.dispose();
@@ -1571,6 +1615,7 @@ class _ProductExperienceState extends State<ProductExperience>
         });
       }
       final profile = widget.session.profile;
+      _recordLaunchStep(widget.session.launchStep);
       return switch (widget.session.launchStep) {
         ProductLaunchStep.onboarding => _introduction(),
         ProductLaunchStep.firstTrade => _firstTradePage(),
@@ -1582,8 +1627,35 @@ class _ProductExperienceState extends State<ProductExperience>
     },
   );
 
+  /// Each first-run step after the introduction, the first time this install
+  /// reaches it (the introduction records its own two).
+  /// "Share usage data" as Settings shows it; null until the scope is read.
+  final _usageSharing = ValueNotifier<bool?>(null);
+
+  ProductLaunchStep? _lastLaunchStep;
+  void _recordLaunchStep(ProductLaunchStep step) {
+    if (step == _lastLaunchStep) return;
+    _lastLaunchStep = step;
+    final usage = UsageScope.of(context);
+    final mapped = switch (step) {
+      ProductLaunchStep.onboarding => null,
+      ProductLaunchStep.firstTrade => events.OnboardingStep.firstTrade,
+      ProductLaunchStep.firstPosition => events.OnboardingStep.celebration,
+      ProductLaunchStep.dayOne => events.OnboardingStep.nextMove,
+      ProductLaunchStep.saveDesk => events.OnboardingStep.gate,
+      ProductLaunchStep.app => events.OnboardingStep.home,
+    };
+    if (mapped == null || usage.recorder == null) return;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => usage.once(events.ProductEvent.onboardingStep(mapped)),
+    );
+  }
+
   Future<void> _continueAsGuest() async {
     if (_acceptingGuest) return;
+    UsageScope.of(
+      context,
+    ).track(events.ProductEvent.gateChoice(events.GateChoice.guest));
     _acceptingGuest = true;
     try {
       if (!await widget.preferences.setBool(guestChoiceKey, true)) {
@@ -1706,7 +1778,16 @@ class _ProductExperienceState extends State<ProductExperience>
 
   Future<void> _openDailyDesk(String assignmentId) async {
     final controller = _dailyDesk;
-    if (controller?.journey?.find(assignmentId) == null) return;
+    final work = controller?.journey?.find(assignmentId);
+    if (work == null) return;
+    if (work.ordinal >= 1 && work.ordinal <= 500) {
+      UsageScope.of(context).track(
+        events.ProductEvent.workdayOpen(
+          ordinal: work.ordinal,
+          resumed: work.step > 0 || work.draft.isNotEmpty,
+        ),
+      );
+    }
     final generation = _portfolioGeneration;
     final finished = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -1918,6 +1999,9 @@ class _ProductExperienceState extends State<ProductExperience>
         ]);
       },
       onConfirmed: (receipt) {
+        UsageScope.of(context).once(
+          events.ProductEvent.onboardingStep(events.OnboardingStep.firstOrder),
+        );
         final company = _knownCompany(receipt.assetId);
         if (company == null) return;
         _orderConfirmed(
@@ -1929,7 +2013,12 @@ class _ProductExperienceState extends State<ProductExperience>
         );
       },
       onFinished: _startFirstStockFollowup,
-      onExit: widget.session.skipIntroduction,
+      onExit: () {
+        UsageScope.of(context).track(
+          events.ProductEvent.onboardingSkip(events.OnboardingStep.firstTrade),
+        );
+        return widget.session.skipIntroduction();
+      },
     );
   }
 
@@ -1990,6 +2079,9 @@ class _ProductExperienceState extends State<ProductExperience>
   /// Sending USDC, SOL or a stock token to another Solana wallet.
   Future<void> _openSend() async {
     if (!_realMoney || !_signedIn || widget.account == null) return;
+    UsageScope.of(
+      context,
+    ).track(events.ProductEvent.moneyAction(events.MoneyAction.sendOpen));
     final account = widget.account;
     final generation = _portfolioGeneration;
     final origin = PracticeAccountConfig.fromEnvironment().apiUri;
@@ -2067,6 +2159,9 @@ class _ProductExperienceState extends State<ProductExperience>
     if (!_signedIn) await _openSignIn();
     if (!mounted || !_signedIn || widget.account == null) return;
     final mode = MoneyModeScope.of(context);
+    UsageScope.of(
+      context,
+    ).track(events.ProductEvent.moneyAction(events.MoneyAction.addMoneyOpen));
     if (mode != null && !mode.real) await mode.select(true);
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -2095,6 +2190,9 @@ class _ProductExperienceState extends State<ProductExperience>
     final generation = _portfolioGeneration;
     final principalKey = _paperPrincipalKey;
     final repository = _httpOrders;
+    UsageScope.of(
+      context,
+    ).track(events.ProductEvent.moneyAction(events.MoneyAction.fastBuyOpen));
     ReviewFeedback.shared.press();
     await showModalBottomSheet<PaperOrderReceipt>(
       context: context,
@@ -2476,6 +2574,14 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   void _productTabChanged(ProductTab tab) {
+    UsageScope.of(context).track(
+      events.ProductEvent.tabView(switch (tab) {
+        ProductTab.desk => events.ProductTab.desk,
+        ProductTab.market => events.ProductTab.market,
+        ProductTab.floor => events.ProductTab.career,
+        ProductTab.profile => events.ProductTab.profile,
+      }),
+    );
     if (_dailyDesk != null) unawaited(_dailyDesk!.refresh());
     if (tab == ProductTab.desk) {
       if (_realMoney) unawaited(_refreshRealPortfolio());
@@ -3116,6 +3222,7 @@ class _ProductExperienceState extends State<ProductExperience>
         builder: (_) => ListenableBuilder(
           listenable: Listenable.merge([
             ReviewFeedback.shared,
+            _usageSharing,
             ?_tradePush,
             widget.session,
             if (widget.account != null) widget.account!,
@@ -3125,12 +3232,33 @@ class _ProductExperienceState extends State<ProductExperience>
               if (kind != SettingsNotificationKind.tradesAndReceipts) return;
               await _tradePush?.setEnabled(value);
               final error = _tradePush?.error;
+              if (mounted) {
+                UsageScope.of(this.context).track(
+                  events.ProductEvent.pushOptIn(
+                    enabled: value && error == null,
+                    permission: !value
+                        ? events.PermissionOutcome.notAsked
+                        : error == null
+                        ? events.PermissionOutcome.granted
+                        : events.PermissionOutcome.denied,
+                  ),
+                );
+              }
               if (mounted && error != null) {
                 _message(error.message(this.context.l10n));
               }
             },
             onSoundChanged: (value) =>
                 unawaited(ReviewFeedback.shared.setSound(value)),
+            usageEnabled: _usageSharing.value ?? false,
+            onUsageChanged: UsageScope.of(this.context).recorder == null
+                ? null
+                : (value) {
+                    _usageSharing.value = value;
+                    unawaited(
+                      UsageScope.of(this.context).recorder!.setEnabled(value),
+                    );
+                  },
             onHapticsChanged: (value) =>
                 unawaited(ReviewFeedback.shared.setHaptics(value)),
             onChangePersona: _openPersona,
