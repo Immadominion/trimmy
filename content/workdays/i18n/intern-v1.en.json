@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "intern-2026-09-24.1",
+  "locale": "en",
+  "note": "English edits over the immutable seed: hints point to the method instead of stating the answer, and no em dashes. Only changed fields appear here.",
+  "assignments": {
+    "two-companies": {
+      "feedback": "You compared whole businesses. That is a useful comparison, not a buy recommendation.",
+      "decision": {"hint": "Multiply each company’s share price by its number of shares, then compare the totals."}
+    },
+    "before-the-trade": {
+      "decision": {"hint": "Divide the loss budget by the review distance written as a decimal (5% is 0.05). A plan is not a guarantee."}
+    },
+    "missing-costs": {
+      "decision": {"hint": "The costs are missing, so nobody can check a profit claim yet. Which options stay within what you actually know?"}
+    },
+    "the-follow-up": {
+      "decision": {"hint": "Work out profit for both periods: sales minus costs. Then compare."}
+    },
+    "fees-add-up": {
+      "decision": {"hint": "Start with the sale, subtract the purchase, then subtract the fee on each side."}
+    },
+    "share-split": {
+      "decision": {"hint": "Divide your shares by the company’s total shares, before and after the split."}
+    },
+    "thin-market": {
+      "decision": {"hint": "Compare the average price per token at each size. What could avoid the worse price?"}
+    },
+    "old-news": {
+      "decision": {"hint": "Which date tells you when the figures were first published?"}
+    },
+    "whole-desk": {
+      "decision": {"hint": "Divide Aster’s value by the value of the whole desk, cash included."}
+    },
+    "what-you-own": {
+      "decision": {"hint": "Compare what each term card says about the holder’s rights. The logo does not say."}
+    },
+    "mint-check": {
+      "decision": {"hint": "Compare the two identifiers one character at a time."}
+    },
+    "spread": {
+      "decision": {"hint": "The spread is the gap between the price to buy now and the price to sell now."}
+    },
+    "dilution": {
+      "decision": {"hint": "Divide your shares by the new total number of shares."}
+    },
+    "second-hand-off": {
+      "decision": {"hint": "Which option lists only checks the team actually made?"}
+    },
+    "drawdown": {
+      "decision": {"hint": "Divide the amount to recover by the current value, not the starting value."}
+    },
+    "cash-buffer": {
+      "decision": {"hint": "Start with the available cash, then set aside the reserve and the fees."}
+    },
+    "change-your-mind": {
+      "decision": {"hint": "Work out how much costs rose as a percentage of $500, then compare that with the plan’s trigger."}
+    }
+  }
+}

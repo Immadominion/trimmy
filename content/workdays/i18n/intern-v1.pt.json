@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "intern-2026-09-24.1",
+  "locale": "pt",
+  "note": "Brazilian Portuguese (pt-BR), você. Amounts are US dollars written the Brazilian way: US$ 1.000 and US$ 10,10.",
+  "assignments": {
+    "morning-brief": {
+      "title": "O relatório da manhã",
+      "brief": "O relatório da Aster chegou. Me diga o que realmente mudou.",
+      "district": "Primeiros dias",
+      "sourceTitle": "Aster · relatório anual",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "As vendas subiram. O lucro caiu. Você achou o que a manchete deixou passar. Seu relatório já está na minha mesa.",
+      "rows": {
+        "before": {"label": "2024", "value": "US$ 1.000 em vendas · US$ 600 em custos", "detail": "Lucro é o que sobra depois dos custos mostrados."},
+        "after": {"label": "2025", "value": "US$ 1.500 em vendas · US$ 1.300 em custos", "detail": "Mesma empresa. Mesma moeda. Compare os dois períodos."},
+        "headline": {"label": "Rascunho de manchete", "value": "Um ano recorde de lucro", "detail": "Uma manchete é uma afirmação. Confira com os números."}
+      },
+      "evidence": {"prompt": "Fixe os dois períodos de que você precisa para conferir o lucro."},
+      "decision": {"prompt": "Qual foi o lucro da Aster em 2025?", "hint": "Subtraia os custos de 2025 das vendas de 2025.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "As vendas subiram de US$ 1.000 para US$ 1.500.",
+        "fact-2": "O lucro caiu de US$ 400 para US$ 200.",
+        "fact-3": "Mais vendas provam que o lucro aumentou."
+      }}
+    },
+    "two-companies": {
+      "title": "Duas empresas, uma decisão",
+      "brief": "Uma ação da Aster custa US$ 5. Uma da Helio custa US$ 100. Qual das duas empresas inteiras vale menos no mercado?",
+      "district": "Primeiros dias",
+      "sourceTitle": "Duas empresas fictícias",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você comparou empresas inteiras. É uma comparação útil, não uma recomendação de compra.",
+      "rows": {
+        "aster": {"label": "Aster", "value": "US$ 5 × 10 milhões de ações", "detail": "O preço vezes o número de ações em circulação dá o valor de mercado da empresa."},
+        "helio": {"label": "Helio", "value": "US$ 100 × 100.000 ações", "detail": "Use o mesmo cálculo para as duas empresas."},
+        "chat": {"label": "Mensagem do Shark", "value": "Cinco dólares parece barato", "detail": "O preço de uma ação não é o valor da empresa inteira."}
+      },
+      "evidence": {"prompt": "Fixe as duas empresas para uma comparação justa."},
+      "decision": {"prompt": "Qual tem o menor valor de mercado?", "hint": "Multiplique o preço da ação de cada empresa pelo número de ações e compare os totais.", "choices": {
+        "aster": {"label": "Aster", "feedback": "Conte todas as ações, não só o preço de uma."},
+        "helio": {"label": "Helio", "feedback": "Exato: US$ 100 × 100.000 = US$ 10 milhões."},
+        "equal": {"label": "Valem o mesmo", "feedback": "As quantidades de ações são diferentes."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "O valor de mercado da Helio é de US$ 10 milhões.",
+        "fact-2": "O da Aster é de US$ 50 milhões; o preço de uma ação sozinho não define o valor.",
+        "fact-3": "A Aster tem de ser mais barata porque uma ação custa menos."
+      }}
+    },
+    "before-the-trade": {
+      "title": "Antes de operar",
+      "brief": "Você tem uma ideia. Decida quanto espaço ela merece antes de tocar em Comprar.",
+      "district": "Primeiros dias",
+      "sourceTitle": "Seu plano de risco fictício",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "O tamanho vem do plano. Registre a incerteza também.",
+      "rows": {
+        "cash": {"label": "Caixa da mesa", "value": "US$ 1.000", "detail": "É um exemplo de planejamento, não o seu saldo real."},
+        "loss": {"label": "Perda máxima planejada", "value": "US$ 20", "detail": "É o máximo que você planeja perder com essa ideia."},
+        "move": {"label": "Distância de revisão", "value": "5% abaixo da entrada", "detail": "Neste exercício, calcule 5% da posição. Uma abertura com salto de preço poderia aumentar a perda real."}
+      },
+      "evidence": {"prompt": "Fixe a perda máxima planejada e a distância de revisão."},
+      "decision": {"prompt": "Qual tamanho de posição dá uma perda planejada de US$ 20 com uma queda de 5%?", "hint": "Divida a perda máxima planejada pela distância de revisão escrita em decimal (5% é 0,05). Um plano não é uma garantia.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Uma posição de US$ 400 tem perda planejada de US$ 20 com uma queda de 5%.",
+        "fact-2": "Um salto de preço ou um atraso na execução poderia aumentar a perda real.",
+        "fact-3": "Um preço de revisão garante uma perda máxima de US$ 20."
+      }}
+    },
+    "missing-costs": {
+      "title": "Um colega precisa de ajuda",
+      "brief": "Estou com os números de vendas. Você manda um relatório para o Sal?",
+      "district": "Primeiros dias",
+      "sourceTitle": "O relatório inacabado do Wolf",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Boa. Você manteve a afirmação dentro do que a evidência permite. O Wolf vai cuidar do resto.",
+      "rows": {
+        "sales": {"label": "Vendas", "value": "US$ 1.800 → US$ 2.400", "detail": "Esses números comparam o ano passado com este ano."},
+        "costs": {"label": "Custos", "value": "Não anexados", "detail": "Sem os custos não dá para calcular o lucro."},
+        "draft": {"label": "Rascunho do Wolf", "value": "O lucro está crescendo rápido", "detail": "Isso vai além das informações disponíveis."}
+      },
+      "evidence": {"prompt": "Fixe a evidência e a informação que falta."},
+      "decision": {"prompt": "Como você segue com isso?", "hint": "Faltam os custos, então ninguém consegue conferir ainda uma afirmação sobre lucro. Quais opções ficam dentro do que você realmente sabe?", "choices": {
+        "ask": {"label": "Pedir os custos ao Wolf", "feedback": "O Wolf vai buscar o relatório de custos que falta."},
+        "qualify": {"label": "Enviar um relatório só de vendas", "feedback": "Seu relatório deixa claro que o lucro ainda é desconhecido."},
+        "approve": {"label": "Enviar o rascunho do Wolf", "feedback": "O rascunho afirma algo sobre o lucro que os números não sustentam."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "As vendas subiram de US$ 1.800 para US$ 2.400.",
+        "fact-2": "Só com este relatório não dá para avaliar o lucro.",
+        "fact-3": "O lucro deve ter subido junto com as vendas."
+      }}
+    },
+    "the-follow-up": {
+      "title": "O acompanhamento",
+      "brief": "Os custos chegaram. Revise o relatório que você preparou com o Wolf.",
+      "district": "Primeiros dias",
+      "sourceTitle": "Os números que o Wolf devolveu",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você voltou à evidência e atualizou sua opinião. O trabalho é isso. Primeira semana entregue.",
+      "rows": {
+        "old": {"label": "Período anterior", "value": "US$ 1.800 em vendas · US$ 1.300 em custos", "detail": "O lucro anterior foi de US$ 500."},
+        "new": {"label": "Período mais recente", "value": "US$ 2.400 em vendas · US$ 2.200 em custos", "detail": "O lucro mais recente é vendas menos custos."},
+        "note": {"label": "Fonte", "value": "Relatório de custos devolvido", "detail": "É a informação que faltava no relatório anterior."}
+      },
+      "evidence": {"prompt": "Fixe os dois períodos comparáveis."},
+      "decision": {"prompt": "O que muda no seu relatório?", "hint": "Calcule o lucro dos dois períodos: vendas menos custos. Depois compare.", "choices": {
+        "revise": {"label": "Incluir a queda do lucro", "feedback": "Seu relatório revisado agora inclui os custos que faltavam."},
+        "ignore": {"label": "Manter a afirmação anterior", "feedback": "Uma evidência nova deve mudar uma afirmação sem base."},
+        "double": {"label": "Dizer que o lucro dobrou", "feedback": "Os números novos mostram o contrário."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "As vendas subiram enquanto o lucro caiu de US$ 500 para US$ 200.",
+        "fact-2": "A nova evidência de custos muda a avaliação.",
+        "fact-3": "A afirmação anterior sobre o lucro continua valendo."
+      }},
+      "context": {
+        "ask": "Você pediu os custos ao Wolf. Ele já mandou o relatório.",
+        "qualify": "Você enviou um relatório só de vendas. O Wolf já mandou os custos que faltavam."
+      }
+    },
+    "fees-add-up": {
+      "title": "As letras miúdas somam",
+      "brief": "Esta operação ganhou um dólar antes das taxas. Confira quanto a mesa realmente ficou.",
+      "district": "No pregão",
+      "sourceTitle": "Um comprovante de operação fictício",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você conferiu o comprovante. Taxas pequenas podem mudar o resultado de um movimento pequeno.",
+      "rows": {
+        "buy": {"label": "Compra", "value": "10 ações a US$ 10", "detail": "As ações custaram US$ 100 antes das taxas."},
+        "sell": {"label": "Venda", "value": "10 ações a US$ 10,10", "detail": "As ações foram vendidas por US$ 101 antes das taxas."},
+        "fees": {"label": "Taxas", "value": "US$ 1 na compra + US$ 1 na venda", "detail": "Inclua os dois lados ao calcular o resultado."}
+      },
+      "evidence": {"prompt": "Fixe a venda e o total de taxas."},
+      "decision": {"prompt": "Qual é o resultado líquido depois das duas taxas?", "hint": "Comece pela venda, subtraia a compra e depois subtraia a taxa de cada lado.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "A operação ganhou US$ 1 antes das taxas.",
+        "fact-2": "Depois de US$ 2 em taxas, o resultado foi uma perda de US$ 1.",
+        "fact-3": "Um movimento verde no preço sempre significa ganho líquido."
+      }}
+    },
+    "share-split": {
+      "title": "Mais ações, a mesma fatia",
+      "brief": "Um desdobramento mudou o número de ações. Mudou a sua participação?",
+      "district": "No pregão",
+      "sourceTitle": "Um desdobramento de 10 para 1",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Número diferente de fatias. A mesma fatia da empresa.",
+      "rows": {
+        "before": {"label": "Antes", "value": "1 ação a US$ 100", "detail": "A empresa tinha 100 ações no total."},
+        "after": {"label": "Depois", "value": "10 ações a US$ 10", "detail": "Agora a empresa tem 1.000 ações no total."},
+        "claim": {"label": "Chat da mesa", "value": "Dez vezes mais ricos?", "detail": "A quantidade mudou. Confira a fração e o valor total."}
+      },
+      "evidence": {"prompt": "Fixe os registros de antes e de depois."},
+      "decision": {"prompt": "O que aconteceu com a sua fração da empresa?", "hint": "Divida suas ações pelo total de ações da empresa, antes e depois do desdobramento.", "choices": {
+        "more": {"label": "Ficou dez vezes maior", "feedback": "O total de ações da empresa também aumentou."},
+        "same": {"label": "Continuou igual", "feedback": "As duas frações são de 1%."},
+        "less": {"label": "Ficou dez vezes menor", "feedback": "Seu número de ações também foi multiplicado por dez."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Neste exemplo, o investimento continua valendo US$ 100.",
+        "fact-2": "Logo depois do desdobramento, sua participação continua em 1%.",
+        "fact-3": "O desdobramento sozinho fez o investimento valer dez vezes mais."
+      }}
+    },
+    "thin-market": {
+      "title": "Um mercado com pouca liquidez",
+      "brief": "O preço na tela parece bom. A cotação conta outra história.",
+      "district": "No pregão",
+      "sourceTitle": "Duas simulações por tamanho de ordem",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você conferiu o preço para o tamanho que queria. Isso importa mais que um número verde.",
+      "rows": {
+        "small": {"label": "Ordem pequena", "value": "US$ 100 → 49,5 tokens", "detail": "Preço médio estimado: cerca de US$ 2,02 por token."},
+        "large": {"label": "Ordem grande", "value": "US$ 1.000 → 450 tokens", "detail": "Preço médio estimado: cerca de US$ 2,22 por token."},
+        "last": {"label": "Último preço negociado", "value": "US$ 2,00", "detail": "Um último negócio não promete esse preço para o seu tamanho."}
+      },
+      "evidence": {"prompt": "Fixe as duas cotações por tamanho de ordem."},
+      "decision": {"prompt": "Qual é um próximo passo defensável?", "hint": "Compare o preço médio por token em cada tamanho. O que poderia evitar o preço pior?", "choices": {
+        "smaller": {"label": "Avaliar uma ordem menor", "feedback": "Um tamanho menor pode reduzir o impacto no preço; confira uma cotação nova."},
+        "wait": {"label": "Esperar mais liquidez", "feedback": "Esperar é uma decisão válida; nenhuma ordem foi enviada."},
+        "force": {"label": "Supor US$ 2 para tudo", "feedback": "A cotação para esse tamanho contradiz essa suposição."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "A ordem maior tem um preço médio cotado pior.",
+        "fact-2": "Um último preço na tela não garante a execução.",
+        "fact-3": "Toda ordem será executada pelo último preço negociado."
+      }}
+    },
+    "old-news": {
+      "title": "A manchete de ontem",
+      "brief": "Essa publicação está em todo lugar. Antes de compartilhar, confira se é nova.",
+      "district": "No pregão",
+      "sourceTitle": "Uma notícia circulando no chat",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Fonte conferida. Você impediu que uma informação velha se passasse por um fato novo.",
+      "rows": {
+        "post": {"label": "Data da republicação", "value": "24 de setembro de 2026", "detail": "A publicação apareceu hoje."},
+        "source": {"label": "Relatório original", "value": "18 de abril de 2026", "detail": "Os números descrevem o período anterior."},
+        "caption": {"label": "Legenda", "value": "Urgente: notícia de crescimento", "detail": "Uma republicação nova não torna a evidência nova."}
+      },
+      "evidence": {"prompt": "Fixe a data da republicação e a do relatório original."},
+      "decision": {"prompt": "Como a notícia deve ser descrita?", "hint": "Qual data diz quando os números foram publicados pela primeira vez?", "choices": {
+        "new": {"label": "Uma notícia nova da empresa", "feedback": "A própria fonte é mais antiga."},
+        "old": {"label": "Um relatório antigo compartilhado de novo", "feedback": "Assim as duas datas ficam claras."},
+        "fake": {"label": "Com certeza é falsa", "feedback": "Ser antiga não prova que é falsa."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "A publicação é nova, mas o relatório é de abril.",
+        "fact-2": "Procure um relatório mais recente antes de tratar isso como novidade.",
+        "fact-3": "Uma republicação de setembro torna atuais os números de abril."
+      }}
+    },
+    "whole-desk": {
+      "title": "Olhe a mesa inteira",
+      "brief": "Uma boa sequência mudou o formato desta carteira. Me mostre onde está o risco.",
+      "district": "No pregão",
+      "sourceTitle": "Uma carteira fictícia de US$ 1.000",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você achou a concentração. Agora dá para discutir em vez de deixar escondida num total.",
+      "rows": {
+        "aster": {"label": "Aster", "value": "US$ 700", "detail": "Um único emissor domina este exemplo."},
+        "helio": {"label": "Helio", "value": "US$ 200", "detail": "Uma segunda empresa."},
+        "cash": {"label": "Caixa", "value": "US$ 100", "detail": "O caixa está incluído no total."}
+      },
+      "evidence": {"prompt": "Fixe a maior posição e a reserva em caixa."},
+      "decision": {"prompt": "Que porcentagem da mesa está na Aster?", "hint": "Divida o valor da Aster pelo valor da mesa inteira, caixa incluído.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "A Aster representa 70% da carteira.",
+        "fact-2": "Um movimento da Aster pode dominar o resultado da mesa.",
+        "fact-3": "Três linhas numa carteira significam diversificação equilibrada."
+      }}
+    },
+    "what-you-own": {
+      "title": "O que você tem de verdade?",
+      "brief": "Dois produtos usam o mesmo logo de empresa. Compare as condições antes de tratá-los como iguais.",
+      "district": "Suas próprias decisões",
+      "sourceTitle": "Fichas fictícias de condições do emissor",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você separou a empresa do instrumento usado para ter exposição a ela.",
+      "rows": {
+        "one": {"label": "Token A", "value": "Exposição ao preço · sem direito a voto", "detail": "O resgate depende dos requisitos do emissor."},
+        "two": {"label": "Token B", "value": "Cota de fundo · prazo de resgate definido", "detail": "Estrutura jurídica e condições diferentes."},
+        "logo": {"label": "Mesmo logo", "value": "A mesma empresa de referência", "detail": "Ser a mesma empresa não prova que o titular tem os mesmos direitos."}
+      },
+      "evidence": {"prompt": "Fixe as duas fichas de condições do emissor."},
+      "decision": {"prompt": "O que você pode concluir?", "hint": "Compare o que cada ficha diz sobre os direitos do titular. O logo não diz.", "choices": {
+        "same": {"label": "Têm de dar os mesmos direitos", "feedback": "As fichas apresentadas são diferentes."},
+        "different": {"label": "A exposição é parecida; os direitos são diferentes", "feedback": "Mantenha o emissor e as condições ligados ao instrumento."},
+        "vote": {"label": "Os dois dão direito a voto", "feedback": "O token A diz claramente que não."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Os dois produtos se referem à mesma empresa.",
+        "fact-2": "Os direitos e as condições de resgate são diferentes.",
+        "fact-3": "Um logo igual garante os direitos de um acionista comum."
+      }}
+    },
+    "mint-check": {
+      "title": "O endereço certo",
+      "brief": "Um logo convincente veio com um endereço novo. Confira a identidade antes de a mesa usar.",
+      "district": "Suas próprias decisões",
+      "sourceTitle": "Uma verificação fictícia da identidade de um ativo",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você pegou a diferença antes de ela virar uma ordem.",
+      "rows": {
+        "issuer": {"label": "Registro do emissor", "value": "Mint: ASTER-VERIFIED-01", "detail": "Identificadores ilustrativos; não são endereços reais na blockchain."},
+        "listing": {"label": "Listagem compartilhada", "value": "Mint: ASTER-VERlFIED-01", "detail": "Olhe com atenção: um caractere é diferente."},
+        "logo": {"label": "Imagem da listagem", "value": "Um logo de empresa conhecido", "detail": "Uma imagem pode ser copiada."}
+      },
+      "evidence": {"prompt": "Fixe o identificador do registro e o da listagem."},
+      "decision": {"prompt": "O que deve acontecer agora?", "hint": "Compare os dois identificadores caractere por caractere.", "choices": {
+        "verify": {"label": "Pausar e verificar o mint exato", "feedback": "A diferença precisa ser resolvida."},
+        "trust": {"label": "Confiar no logo", "feedback": "O logo não resolve a diferença."},
+        "guess": {"label": "Escolher o que tem mais seguidores", "feedback": "Popularidade não verifica este contrato."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "O identificador da listagem não bate com o do registro.",
+        "fact-2": "Pause e verifique o contrato exato antes de usá-lo.",
+        "fact-3": "Uma imagem conhecida basta para estabelecer a identidade."
+      }}
+    },
+    "spread": {
+      "title": "Os dois lados de uma cotação",
+      "brief": "O bid e o ask não são o mesmo preço. Calcule quanto custa atravessar o spread.",
+      "district": "Suas próprias decisões",
+      "sourceTitle": "Um mercado simplificado com dois lados",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Agora você consegue explicar a diferença antes de uma operação começar.",
+      "rows": {
+        "bid": {"label": "Melhor bid", "value": "US$ 9,90", "detail": "O preço exibido para vender agora, neste tamanho."},
+        "ask": {"label": "Melhor ask", "value": "US$ 10,10", "detail": "O preço exibido para comprar agora, neste tamanho."},
+        "mid": {"label": "Ponto médio", "value": "US$ 10,00", "detail": "O ponto médio não é necessariamente um preço em que dá para negociar."}
+      },
+      "evidence": {"prompt": "Fixe o bid e o ask."},
+      "decision": {"prompt": "Qual é o spread por ação?", "hint": "O spread é a diferença entre o preço para comprar agora e o preço para vender agora.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "O spread é de US$ 0,20 por ação.",
+        "fact-2": "O ponto médio sozinho não diz o preço de execução.",
+        "fact-3": "Comprar e vender agora acontecem os dois a US$ 10,00."
+      }}
+    },
+    "dilution": {
+      "title": "Mais ações em circulação",
+      "brief": "Uma empresa emitiu ações novas. Recalcule a fatia de quem já era acionista.",
+      "district": "Suas próprias decisões",
+      "sourceTitle": "Emissão de ações novas",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "O denominador importa. Você explicou a mudança sem inventar uma previsão de preço.",
+      "rows": {
+        "held": {"label": "Seu investimento", "value": "10 ações", "detail": "Seu número de ações não mudou."},
+        "old": {"label": "Total anterior", "value": "100 ações", "detail": "Sua participação antes era de 10%."},
+        "new": {"label": "Total novo", "value": "125 ações", "detail": "Considere que todas as ações dão os mesmos direitos."}
+      },
+      "evidence": {"prompt": "Fixe seu investimento e o total novo."},
+      "decision": {"prompt": "Qual é a sua nova porcentagem da empresa?", "hint": "Divida suas ações pelo novo total de ações.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "A participação mudou de 10% para 8%.",
+        "fact-2": "O número de ações do investimento continuou em 10.",
+        "fact-3": "Se o número de ações não muda, a participação não muda."
+      }}
+    },
+    "second-hand-off": {
+      "title": "Envie a versão útil",
+      "brief": "Preciso das checagens da semana num repasse curto. Me ajude a deixar de fora o que não dá para defender.",
+      "district": "Suas próprias decisões",
+      "sourceTitle": "As anotações conferidas da equipe",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Claro, curto e útil. A próxima pessoa pode agir com as checagens que você realmente fez.",
+      "rows": {
+        "rights": {"label": "Instrumento", "value": "As condições do emissor são diferentes", "detail": "A mesma empresa não significa os mesmos direitos do token."},
+        "identity": {"label": "Identidade", "value": "O contrato tem de bater com o registro", "detail": "Um logo sozinho não verifica um mint."},
+        "promise": {"label": "Afirmação não verificada", "value": "Uma empresa famosa não pode perder valor", "detail": "Nenhuma fonte sustenta um resultado garantido."}
+      },
+      "evidence": {"prompt": "Fixe as duas checagens com respaldo."},
+      "decision": {"prompt": "O que vai no repasse?", "hint": "Qual opção lista só checagens que a equipe realmente fez?", "choices": {
+        "checks": {"label": "Condições, identidade e cotação para o tamanho da ordem", "feedback": "São checagens concretas."},
+        "promise": {"label": "A promessa de retorno garantido", "feedback": "A evidência não oferece garantia nenhuma."},
+        "logo": {"label": "Só os logos das empresas", "feedback": "As imagens deixam de fora as diferenças importantes."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Confira as condições do emissor e a identidade exata do contrato.",
+        "fact-2": "Use a cotação para o tamanho real da ordem.",
+        "fact-3": "Empresas conhecidas garantem retorno positivo."
+      }}
+    },
+    "drawdown": {
+      "title": "Voltar ao zero a zero",
+      "brief": "Esta posição caiu de US$ 100 para US$ 80. Uma alta de 20% basta para recuperar?",
+      "district": "O quadro geral",
+      "sourceTitle": "Uma posição fictícia",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você usou a base certa. A mesma diferença em dólares, outra porcentagem.",
+      "rows": {
+        "start": {"label": "Valor inicial", "value": "US$ 100", "detail": "Use para entender a perda original."},
+        "now": {"label": "Valor atual", "value": "US$ 80", "detail": "A porcentagem de recuperação usa o valor atual como base."},
+        "gap": {"label": "Valor a recuperar", "value": "US$ 20", "detail": "Compare com US$ 80, não com US$ 100."}
+      },
+      "evidence": {"prompt": "Fixe o valor atual e o valor a recuperar."},
+      "decision": {"prompt": "Que alta a partir de US$ 80 volta a US$ 100?", "hint": "Divida o valor a recuperar pelo valor atual, não pelo valor inicial.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Uma queda de 20% precisa de uma alta de 25% para se recuperar.",
+        "fact-2": "A base da porcentagem muda depois da perda.",
+        "fact-3": "Uma alta de 20% sempre anula uma queda de 20%."
+      }}
+    },
+    "sample-check": {
+      "title": "Para quem nós perguntamos?",
+      "brief": "A equipe diz que todo mundo ama a Aster. Leia os resultados do teste e corrija a afirmação.",
+      "district": "O quadro geral",
+      "sourceTitle": "Respostas de um teste de produto",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Um resultado pequeno pode ser útil quando os limites dele vêm junto.",
+      "rows": {
+        "group": {"label": "Pessoas consultadas", "value": "10 testadores beta convidados", "detail": "Foram escolhidos para um teste de produto."},
+        "yes": {"label": "Respostas positivas", "value": "8 de 10", "detail": "Dois testadores não gostaram do produto."},
+        "outside": {"label": "Outros clientes", "value": "Não pesquisados", "detail": "O teste não fala por todos os clientes."}
+      },
+      "evidence": {"prompt": "Fixe quem era o grupo e quantas respostas foram positivas."},
+      "decision": {"prompt": "Qual frase combina com a evidência?", "hint": "Mantenha na frase tanto a quantidade quanto o grupo.", "choices": {
+        "everyone": {"label": "Todo mundo adora", "feedback": "Os outros clientes não foram consultados."},
+        "sample": {"label": "8 de 10 testadores beta gostaram", "feedback": "Assim aparecem a quantidade e o grupo."},
+        "all": {"label": "Todos os testadores beta gostaram", "feedback": "Dois dos dez não gostaram."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "8 de 10 testadores beta convidados gostaram do produto.",
+        "fact-2": "O teste não mostra o que todos os clientes pensam.",
+        "fact-3": "Todo mundo gosta do produto."
+      }}
+    },
+    "cash-buffer": {
+      "title": "Deixe espaço para respirar",
+      "brief": "Esta mesa precisa de uma reserva em caixa. Calcule quanto está disponível para a ideia proposta.",
+      "district": "O quadro geral",
+      "sourceTitle": "Um orçamento de mesa fictício",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "O plano inclui o que acontece depois que o botão é apertado.",
+      "rows": {
+        "cash": {"label": "Caixa disponível", "value": "US$ 1.200", "detail": "Não há ordens pendentes neste exercício."},
+        "reserve": {"label": "Reserva necessária", "value": "US$ 300", "detail": "Ela precisa continuar disponível depois da ordem."},
+        "fees": {"label": "Taxas estimadas", "value": "US$ 10", "detail": "As taxas também saem do caixa."}
+      },
+      "evidence": {"prompt": "Fixe a reserva necessária e as taxas previstas."},
+      "decision": {"prompt": "Qual é a maior compra, antes das taxas, que mantém a reserva?", "hint": "Comece pelo caixa disponível e depois separe a reserva e as taxas.", "choices": {}},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "A compra máxima é de US$ 890 antes das taxas.",
+        "fact-2": "Isso deixa US$ 300 depois da taxa de US$ 10.",
+        "fact-3": "Os US$ 1.200 inteiros estão disponíveis para a compra."
+      }}
+    },
+    "change-your-mind": {
+      "title": "O plano diante de evidência nova",
+      "brief": "Nossa anotação antiga supunha que os custos ficariam estáveis. O novo relatório põe isso em dúvida. O que fazemos com a anotação?",
+      "district": "O quadro geral",
+      "sourceTitle": "Um plano e um relatório posterior",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Você seguiu uma regra que escreveu antes do barulho. Agora faça um julgamento novo.",
+      "rows": {
+        "plan": {"label": "Plano anterior", "value": "Revisar se os custos operacionais subirem mais de 10%", "detail": "O gatilho de revisão foi escrito antes deste relatório."},
+        "update": {"label": "Custos novos", "value": "US$ 500 → US$ 600", "detail": "Os custos subiram US$ 100 sobre uma base de US$ 500."},
+        "price": {"label": "Preço hoje", "value": "Alta de 3%", "detail": "Um movimento de preço de curto prazo não apaga o gatilho do plano."}
+      },
+      "evidence": {"prompt": "Fixe o gatilho original e os números novos de custos."},
+      "decision": {"prompt": "O que o plano pede?", "hint": "Calcule quanto os custos subiram como porcentagem de US$ 500 e compare com o gatilho do plano.", "choices": {
+        "review": {"label": "Revisar o caso com os custos novos", "feedback": "Uma revisão é devida; comprar ou vender é outra decisão."},
+        "ignore": {"label": "Ignorar porque o preço subiu", "feedback": "Isso troca a evidência por um movimento de preço de curto prazo."},
+        "panic": {"label": "Vender automaticamente sem ler", "feedback": "O plano pede uma revisão, não uma venda automática."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Os custos subiram 20%, então o gatilho de revisão foi atingido.",
+        "fact-2": "Reavalie o caso; uma revisão não manda fazer uma operação automática.",
+        "fact-3": "Um preço verde significa que o gatilho anterior pode ser ignorado."
+      }}
+    },
+    "first-desk-review": {
+      "title": "Sua primeira revisão de mesa",
+      "brief": "Me traga uma decisão que você consiga explicar: a evidência, o limite e o que faria você mudar de ideia.",
+      "district": "O quadro geral",
+      "sourceTitle": "O repasse do seu primeiro mês",
+      "sourceLabel": "Simulação de escritório",
+      "feedback": "Esta é uma mesa para quem eu posso passar trabalho. Suas primeiras vinte tarefas estão entregues, e suas decisões ficaram registradas.",
+      "rows": {
+        "evidence": {"label": "Evidência", "value": "Uma fonte com data e números conferidos", "detail": "Separe o que foi observado do que foi suposto."},
+        "risk": {"label": "Risco", "value": "Um tamanho de posição e um gatilho de revisão", "detail": "Um plano descreve a incerteza; não a elimina."},
+        "outcome": {"label": "Resultado", "value": "Um resultado de uma decisão", "detail": "Um único ganho ou perda não prova que o processo é bom."}
+      },
+      "evidence": {"prompt": "Fixe os requisitos de evidência e do plano de risco."},
+      "decision": {"prompt": "O que torna útil o registro de uma decisão?", "hint": "Um registro útil pode ser conferido e retomado mesmo quando o resultado decepciona.", "choices": {
+        "profit": {"label": "Só o número final do lucro", "feedback": "O resultado não mostra como a decisão foi tomada."},
+        "process": {"label": "Evidência, limites e um motivo para revisar", "feedback": "Outra pessoa consegue entender e revisar esse registro."},
+        "certainty": {"label": "Uma promessa de que a ideia vai dar certo", "feedback": "Nenhum registro garante a reação do mercado."}
+      }},
+      "file": {"prompt": "Entregue seu relatório", "parts": {
+        "fact-1": "Mantenha juntos a evidência, as suposições e o gatilho de revisão.",
+        "fact-2": "Julgue o processo além do resultado.",
+        "fact-3": "Um resultado com lucro prova que cada parte da decisão estava certa."
+      }}
+    }
+  }
+}

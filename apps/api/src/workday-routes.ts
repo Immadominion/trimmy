@@ -1,6 +1,8 @@
 import type {FastifyInstance, FastifyRequest, FastifyReply} from 'fastify';
 import type {Pool} from 'pg';
 import {GuestSessionError} from './guest-session-repository.js';
+import {WORKDAY_LANGUAGES, localizeJourney, localizeMissFeedback, normalizeDecimal} from './workday-localization.js';
+import type {WorkdayLanguage} from './workday-texts.generated.js';
 
 export interface WorkdayWrite {
   assignmentId: string; revision: number; step: number;
@@ -29,7 +31,8 @@ export function postgresWorkdays(pool: Pool): Pick<WorkdayAdapters, 'read' | 'sa
   return {read: userId => scoped(userId), save: (userId,input) => scoped(userId,input)};
 }
 const slug = {type:'string',pattern:'^[a-z][a-z0-9-]*$',maxLength:80} as const;
-const noQuery = {type:'object',additionalProperties:false,properties:{}} as const;
+// `lang` picks the text language; installed apps that send none keep English.
+const noQuery = {type:'object',additionalProperties:false,properties:{lang:{enum:[...WORKDAY_LANGUAGES]}}} as const;
 const base = {assignmentId:slug,revision:{type:'integer',minimum:0,maximum:2147483646}};
 export function registerWorkdayRoutes(app: FastifyInstance, adapters?: WorkdayAdapters) {
   async function run(request: FastifyRequest, reply: FastifyReply, input?: WorkdayWrite) {
@@ -38,12 +41,17 @@ export function registerWorkdayRoutes(app: FastifyInstance, adapters?: WorkdayAd
     try {
       const account = await adapters.authenticate(request);
       if(!account) return reply.code(401).send({code:'ACCOUNT_REQUIRED'});
-      const journey = input ? await adapters.save(account.userId,input) : await adapters.read(account.userId);
+      const language = (request.query as {lang?: WorkdayLanguage}).lang ?? 'en';
+      const value = input && 'value' in input.answer ? input.answer.value : undefined;
+      const write = input && value !== undefined ? {...input, answer: {value: normalizeDecimal(value)}} : input;
+      const journey = write ? await adapters.save(account.userId,write) : await adapters.read(account.userId);
       // A wrong answer is recorded, not rolled back; it still answers 400 with the code installed apps know.
       const {miss, ...rest} = journey as {miss?: {code?: unknown; step?: unknown; feedback?: unknown}};
       if(miss) return reply.code(400).send({code: miss.code==='CHECK_DECISION'?'CHECK_DECISION':'CHECK_EVIDENCE',
-        step: typeof miss.step==='number'?miss.step:null, feedback: typeof miss.feedback==='string'?miss.feedback:null, journey: rest});
-      return {journey};
+        step: typeof miss.step==='number'?miss.step:null,
+        feedback: localizeMissFeedback(write?.assignmentId ?? '', value, typeof miss.feedback==='string'?miss.feedback:null, language),
+        journey: localizeJourney(rest, language)});
+      return {journey: localizeJourney(journey, language)};
     } catch(error) {
       if(error instanceof GuestSessionError) {
         const rate = error.code==='GUEST_SESSION_RATE_LIMITED';

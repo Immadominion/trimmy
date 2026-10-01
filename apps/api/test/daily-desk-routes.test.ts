@@ -36,3 +36,22 @@ test('daily conflicts and temporary outages remain distinguishable',async()=>{
  try{for(const [error,status] of [['DAY_CHANGED',409],['SHIFT_ALREADY_COMPLETE',409],['INVALID_CHOICE',400],['secret provider details',503]] as const){code=error;const response=await app.inject({method:'POST',url:'/v1/career/daily-desk/complete',payload:body});assert.equal(response.statusCode,status);if(status===503)assert.ok(!response.body.includes('secret'));}}
  finally{await app.close();}
 });
+test('the desk story comes in the asked language by id, history titles too; English stays exact',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const seed=JSON.parse(await readFile(new URL('../../../content/desk-stories-v1.json',import.meta.url),'utf8')) as {stories:{id:string;title:string;choices:{id:string}[]}[]};
+ const story=seed.stories.find(s=>s.id==='a-red-morning')!;
+ const shift={date:'2026-09-24',story,completedChoice:'read',completedAt:'2026-09-24T10:00:00Z',history:[{date:'2026-09-24',caseId:'a-red-morning',title:story.title,choiceId:'read',completedAt:'2026-09-24T10:00:00Z'}],trimsEarned:10};
+ const app=buildApp({logger:false,dailyDesk:{authenticate:async()=>({userId:user}),read:async()=>shift,complete:async()=>shift}});
+ try{
+  const en=(await app.inject({method:'GET',url:'/v1/career/daily-desk'})).json().shift;
+  assert.deepEqual(en,shift,'installed apps that send no language get the stored story unchanged');
+  const fr=(await app.inject({method:'GET',url:'/v1/career/daily-desk?lang=fr'})).json().shift;
+  assert.equal(fr.story.title,'Une matinée dans le rouge.');
+  assert.equal(fr.history[0].title,fr.story.title,'the day in the history reads as the story does');
+  assert.deepEqual(fr.story.choices.map((c:{id:string})=>c.id),story.choices.map(c=>c.id),'choices keep their ids and order');
+  assert.equal(fr.completedChoice,'read');
+  const es=(await app.inject({method:'POST',url:'/v1/career/daily-desk/complete?lang=es',payload:body})).json().shift;
+  assert.equal(es.story.title,'Una mañana en rojo.');
+  assert.equal((await app.inject({method:'GET',url:'/v1/career/daily-desk?lang=de'})).statusCode,400);
+ }finally{await app.close();}
+});

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "locale": "pt",
+  "contentVersion": "desk-stories-v1",
+  "stories": {
+    "the-group-chat": {
+      "title": "O grupo está agitado.",
+      "body": "Todo mundo está falando de Aster. “Vai subir”, diz Wolf. A captura de tela não tem fonte. Seu café nem esfriou ainda.",
+      "choices": {
+        "ask": {
+          "label": "Pedir a fonte",
+          "outcome": "Wolf manda a publicação original. Ela tem três meses. Você coloca a empolgação em pausa e abre a atualização da empresa.",
+          "takeaway": "Uma captura de tela é um ponto de partida, não a história toda."
+        },
+        "wait": {
+          "label": "Observar por um tempo",
+          "outcome": "Você deixa Aster na sua lista de acompanhamento. Mais tarde, o grupo se acalma. Você manteve suas opções abertas sem fazer uma operação.",
+          "takeaway": "Esperar também é uma decisão."
+        },
+        "follow": {
+          "label": "Seguir a multidão",
+          "outcome": "Nesta história, você entra correndo. Uma segunda mensagem contradiz a primeira. Agora você tem uma posição, mas nenhum motivo em que confie.",
+          "takeaway": "Antes de seguir a multidão, anote o que faria você mudar de ideia."
+        }
+      }
+    },
+    "a-red-morning": {
+      "title": "Uma manhã no vermelho.",
+      "body": "Aster cai 6% nesta história da mesa. Sal deixa um bilhete ao lado da sua tela: “O preço mexeu. O que mais mudou?”",
+      "choices": {
+        "read": {
+          "label": "Ler a atualização da empresa",
+          "outcome": "A receita está estável, mas os custos subiram. Agora você tem um fato para comparar com seu plano original.",
+          "takeaway": "Preço e desempenho do negócio são evidências diferentes."
+        },
+        "plan": {
+          "label": "Abrir meu plano original",
+          "outcome": "Seu bilhete diz que você revisaria depois dos próximos resultados. Você coloca a manchete ao lado desse plano antes de tomar uma nova decisão.",
+          "takeaway": "Um plano dá algo a que voltar quando as emoções falam alto."
+        },
+        "panic": {
+          "label": "Vender porque está no vermelho",
+          "outcome": "Você reage à cor antes de ler a atualização. A história para aí: vender pode fazer parte de um plano, mas o vermelho sozinho não explica nenhum.",
+          "takeaway": "Pergunte o que mudou antes de escolher como responder."
+        }
+      }
+    },
+    "one-big-position": {
+      "title": "Uma posição muito grande.",
+      "body": "Uma única empresa agora representa 70% da sua mesa fictícia. Oracle vira o monitor para você: “Uma boa semana deixou esta mesa bem desequilibrada.”",
+      "choices": {
+        "inspect": {
+          "label": "Olhar a mesa inteira",
+          "outcome": "Você compara quanto depende dessa única empresa. Um pequeno movimento ali poderia pesar mais que todo o resto.",
+          "takeaway": "Olhe o tamanho da posição, além do desempenho."
+        },
+        "trim": {
+          "label": "Pensar em reduzi-la",
+          "outcome": "Você simula no papel uma posição menor antes de agir. Você está decidindo quanta incerteza carregar.",
+          "takeaway": "Reduzir a concentração é uma decisão de risco, não uma previsão."
+        },
+        "leave": {
+          "label": "Deixar como está por enquanto",
+          "outcome": "Você mantém a posição e anota por que está confortável com a concentração. Você também escolhe quando revisá-la.",
+          "takeaway": "Manter uma posição também merece um motivo pensado."
+        }
+      }
+    },
+    "the-cheap-share": {
+      "title": "“Essa ação é mais barata.”",
+      "body": "Shark aponta para duas empresas fictícias: uma ação custa 5 e a outra 100. “Cinco é uma pechincha, né?”",
+      "choices": {
+        "compare": {
+          "label": "Perguntar quantas ações existem",
+          "outcome": "A empresa de preço 5 tem muito mais ações. O preço da ação sozinho não dizia qual negócio inteiro era mais barato.",
+          "takeaway": "O preço por ação e o valor de uma empresa são coisas diferentes."
+        },
+        "business": {
+          "label": "Olhar os negócios",
+          "outcome": "Você coloca lucros, dívidas e expectativas ao lado do preço. Ainda há trabalho a fazer antes de chamar qualquer uma de pechincha.",
+          "takeaway": "Um preço de ação baixo não é um argumento de investimento."
+        },
+        "cheap": {
+          "label": "Escolher o número menor",
+          "outcome": "O preço baixo chama sua atenção. Sal mostra a quantidade de ações: esse único número deixava de fora quase toda a comparação.",
+          "takeaway": "O menor número não é automaticamente o melhor valor."
+        }
+      }
+    },
+    "the-friday-close": {
+      "title": "Antes de fechar o notebook.",
+      "body": "Foi uma semana barulhenta. Sal deixa um bilhete em branco na sua mesa. Você tem tempo para uma coisa útil.",
+      "choices": {
+        "review": {
+          "label": "Revisar uma decisão",
+          "outcome": "Você compara seu motivo com o que aconteceu. Um bom resultado pode vir de um processo fraco, e uma decisão cuidadosa ainda pode perder.",
+          "takeaway": "Revise o raciocínio, além do resultado."
+        },
+        "write": {
+          "label": "Escrever o plano da próxima semana",
+          "outcome": "Você anota uma empresa para pesquisar e uma pergunta que ainda não consegue responder. A segunda-feira agora tem um ponto de partida.",
+          "takeaway": "Uma pergunta sem resposta pode ser um bom próximo passo."
+        },
+        "stop": {
+          "label": "Tirar a noite de folga",
+          "outcome": "Você fecha a mesa sem forçar mais uma operação. O mercado ainda vai estar lá quando você voltar.",
+          "takeaway": "Você não precisa de uma operação a cada visita."
+        }
+      }
+    },
+    "know-what-you-hold": {
+      "title": "Mesma empresa. Outro token.",
+      "body": "Dois tokens acompanham a mesma empresa. Os nomes parecem familiares. Oracle coloca as páginas dos emissores lado a lado.",
+      "choices": {
+        "rights": {
+          "label": "Ler os termos do emissor",
+          "outcome": "As páginas descrevem direitos e formas de resgate diferentes. Você confere o próprio token, não só o nome da empresa.",
+          "takeaway": "Um token ligado a uma ação não dá automaticamente todos os direitos de um acionista."
+        },
+        "market": {
+          "label": "Comparar os mercados",
+          "outcome": "Você nota liquidez e preços diferentes. Você inclui os termos do emissor nas suas verificações antes de tratá-los como intercambiáveis.",
+          "takeaway": "Identidade da empresa, termos do token e condições de negociação, tudo isso importa."
+        },
+        "logo": {
+          "label": "Confiar no logo igual",
+          "outcome": "Os logos coincidem, mas os contratos e os termos não. Você para antes de supor que as imagens provam que são equivalentes.",
+          "takeaway": "Um logo conhecido não verifica um ativo."
+        }
+      }
+    },
+    "the-weekend-note": {
+      "title": "Uma mesa mais tranquila.",
+      "body": "Sem pressa hoje. Sal pede que você escolha uma coisa que quer entender melhor antes do próximo dia agitado.",
+      "choices": {
+        "company": {
+          "label": "Como uma empresa ganha dinheiro",
+          "outcome": "Você faz uma lista curta: quem paga, o que compra e quanto custa entregar. Agora você tem um plano de pesquisa para a próxima visita.",
+          "takeaway": "Comece pelo negócio por trás do código."
+        },
+        "risk": {
+          "label": "O que pode dar errado",
+          "outcome": "Você nomeia uma suposição do seu plano e que evidência a colocaria em dúvida. A incerteza fica mais fácil de discutir quando é específica.",
+          "takeaway": "Um risco é mais útil quando você consegue explicá-lo."
+        },
+        "journal": {
+          "label": "Em que mudei de ideia",
+          "outcome": "Você relê um motivo antigo e acrescenta o que vê diferente agora. Mudar de ideia pode fazer parte de um processo cuidadoso.",
+          "takeaway": "Registre como seu jeito de pensar muda."
+        }
+      }
+    }
+  }
+}
