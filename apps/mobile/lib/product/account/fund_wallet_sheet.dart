@@ -43,13 +43,16 @@ class _FundWalletSheetState extends State<FundWalletSheet>
         widget.account.phase != AccountPhase.active) {
       return;
     }
+    // The last outcome stays on screen while a poll runs; it changes only
+    // when the poll finishes, so a failing wallet does not flicker every 8s.
     _refreshing = true;
-    if (mounted) setState(() => _refreshFailed = false);
+    var failed = false;
     try {
       await widget.account.refreshPortfolio();
     } catch (_) {
-      _refreshFailed = true;
+      failed = true;
     } finally {
+      _refreshFailed = failed;
       _refreshing = false;
       _checked = true;
       if (mounted) setState(() {});
@@ -116,8 +119,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
           : portfolio?.phase == AccountPortfolioPhase.offline
           ? l10n.fundWalletOffline
           : _refreshFailed ||
-                (portfolio?.issue != null && !_refreshing) ||
-                (_checked && !_refreshing && wallet == null)
+                (_checked && (portfolio?.issue != null || wallet == null))
           ? l10n.fundWalletLoadFailed
           : null;
       final type = Theme.of(context).textTheme;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/account/account_controller.dart';
@@ -10,12 +11,13 @@ import '../../support/account_data_fixtures.dart' as fixtures;
 
 class _Reader implements AccountPortfolioReader {
   bool fail = false;
+  AccountDataFailure failure = AccountDataFailure.unavailable;
   String? walletStatus;
   @override
   String get accountId => fixtures.account;
   @override
   Future<AccountContextSnapshot> readContext() async {
-    if (fail) throw const AccountDataException(AccountDataFailure.unavailable);
+    if (fail) throw AccountDataException(failure);
     return AccountContextSnapshot.fromEnvelope(
       fixtures.contextEnvelope(
         embeddedWallet: walletStatus == null ? null : {'status': walletStatus},
@@ -43,6 +45,7 @@ class _Account extends ChangeNotifier implements AccountController {
   final AccountPortfolioRepository portfolioRepository;
   int refreshes = 0;
   bool setupThrows = false;
+  Completer<void>? hold;
   @override
   AccountPhase get phase => AccountPhase.active;
   @override
@@ -52,6 +55,7 @@ class _Account extends ChangeNotifier implements AccountController {
   @override
   Future<void> refreshPortfolio() async {
     refreshes++;
+    if (hold != null) await hold!.future;
     await portfolioRepository.refresh();
     notifyListeners();
   }
@@ -168,6 +172,32 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
       expect(account.refreshes, initial + 1);
+      await clean(tester);
+    },
+  );
+
+  testWidgets(
+    'a wallet that cannot load keeps saying so while it polls, without flickering',
+    (tester) async {
+      // A failure that is not being offline: "Couldn’t load your wallet."
+      reader
+        ..fail = true
+        ..failure = AccountDataFailure.invalidRequest;
+      await mount(tester);
+      final message = find.text('Couldn’t load your wallet.');
+      expect(message, findsOneWidget);
+      account.hold = Completer<void>();
+      await tester.pump(const Duration(seconds: 8));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(
+        message,
+        findsOneWidget,
+        reason: 'the poll in flight does not clear the message',
+      );
+      account.hold!.complete();
+      account.hold = null;
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(message, findsOneWidget);
       await clean(tester);
     },
   );
