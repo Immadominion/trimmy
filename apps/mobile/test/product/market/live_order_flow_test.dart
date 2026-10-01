@@ -426,6 +426,11 @@ void main() {
       await tap(tester, 'live-order-review');
       expect(previews, 1);
       expect(find.text('Edit amount'), findsOneWidget);
+      expect(
+        find.textContaining(RegExp(r'^Quote expires in \d+s$')),
+        findsOneWidget,
+        reason: 'the review says how long the quote lasts',
+      );
       expect(find.byKey(const ValueKey('live-order-amount')), findsNothing);
       await tester.binding.handlePopRoute();
       await pump(tester);

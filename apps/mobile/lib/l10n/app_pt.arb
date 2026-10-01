@@ -1254,5 +1254,6 @@
   "signInResendCode": "Enviar um novo código",
   "signInResendIn": "Reenviar em {seconds} s",
   "appCloseAccountClosing": "Encerrando sua conta…",
-  "appCloseAccountFailed": "Sua conta não foi encerrada. Tente de novo."
+  "appCloseAccountFailed": "Sua conta não foi encerrada. Tente de novo.",
+  "liveOrderQuoteExpiresIn": "A cotação expira em {seconds} s"
 }

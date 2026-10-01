@@ -1301,7 +1301,11 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
           ],
         ),
       ),
-      const SizedBox(height: 22),
+      const SizedBox(height: 14),
+      if (DateTime.tryParse(_order?['expiresAt'] as String? ?? '')
+          case final expiry?)
+        _QuoteCountdown(expiresAt: expiry),
+      const SizedBox(height: 10),
       ProductButton(
         key: const ValueKey('live-order-confirm'),
         label: _busy
@@ -1585,6 +1589,52 @@ class _MarketStateNote extends StatelessWidget {
             Text(hours, style: type.bodySmall),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// How long the reviewed quote has left, each second, as the web shows it.
+/// The flow itself still expires the quote; this only warns before it does.
+class _QuoteCountdown extends StatefulWidget {
+  const _QuoteCountdown({required this.expiresAt});
+  final DateTime expiresAt;
+
+  @override
+  State<_QuoteCountdown> createState() => _QuoteCountdownState();
+}
+
+class _QuoteCountdownState extends State<_QuoteCountdown> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final left = widget.expiresAt.difference(DateTime.now()).inSeconds;
+    if (left <= 0) return const SizedBox.shrink();
+    return Semantics(
+      liveRegion: left <= 10,
+      child: Text(
+        context.l10n.liveOrderQuoteExpiresIn(left),
+        key: const ValueKey('live-order-countdown'),
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: left <= 10 ? ProductColor.loss : ProductColor.muted,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ),
     );
   }

@@ -6266,5 +6266,14 @@
   "appCloseAccountFailed": "Your account was not closed. Try again.",
   "@appCloseAccountFailed": {
     "description": "Shown when closing the account failed; the player is still signed in and nothing changed."
+  },
+  "liveOrderQuoteExpiresIn": "Quote expires in {seconds}s",
+  "@liveOrderQuoteExpiresIn": {
+    "description": "Under a reviewed real-money quote, counting down each second until the quote expires. {seconds} is a whole number; keep the unit short.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
   }
 }

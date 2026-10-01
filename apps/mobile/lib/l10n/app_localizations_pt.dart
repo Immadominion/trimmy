@@ -4754,4 +4754,9 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get appCloseAccountFailed =>
       'Sua conta não foi encerrada. Tente de novo.';
+
+  @override
+  String liveOrderQuoteExpiresIn(int seconds) {
+    return 'A cotação expira em $seconds s';
+  }
 }

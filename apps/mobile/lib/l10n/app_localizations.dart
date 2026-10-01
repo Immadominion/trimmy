@@ -7641,6 +7641,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your account was not closed. Try again.'**
   String get appCloseAccountFailed;
+
+  /// Under a reviewed real-money quote, counting down each second until the quote expires. {seconds} is a whole number; keep the unit short.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote expires in {seconds}s'**
+  String liveOrderQuoteExpiresIn(int seconds);
 }
 
 class _AppLocalizationsDelegate

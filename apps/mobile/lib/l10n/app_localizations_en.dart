@@ -4625,4 +4625,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appCloseAccountFailed => 'Your account was not closed. Try again.';
+
+  @override
+  String liveOrderQuoteExpiresIn(int seconds) {
+    return 'Quote expires in ${seconds}s';
+  }
 }
