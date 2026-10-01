@@ -86,6 +86,59 @@ class AppLocalizationsEs extends AppLocalizations {
   String get marketPriceUnavailable => 'Precio no disponible';
 
   @override
+  String get commonAddMoney => 'Agregar dinero';
+
+  @override
+  String get commonSaving => 'Guardando…';
+
+  @override
+  String get commonChecking => 'Verificando…';
+
+  @override
+  String get commonConnecting => 'Conectando…';
+
+  @override
+  String get commonSending => 'Enviando…';
+
+  @override
+  String get commonConfirming => 'Confirmando…';
+
+  @override
+  String get commonLoading => 'Cargando…';
+
+  @override
+  String get commonOpen => 'Abrir';
+
+  @override
+  String get commonRefresh => 'Actualizar';
+
+  @override
+  String get commonCopy => 'Copiar';
+
+  @override
+  String get commonNotNow => 'Ahora no';
+
+  @override
+  String get commonSkip => 'Omitir';
+
+  @override
+  String get commonHistory => 'Historial';
+
+  @override
+  String get commonSettings => 'Configuración';
+
+  @override
+  String commonInProgress(String label) {
+    return '$label en curso';
+  }
+
+  @override
+  String get modePaper => 'Práctica';
+
+  @override
+  String get modeReal => 'Real';
+
+  @override
   String get settingsLanguage => 'Idioma';
 
   @override

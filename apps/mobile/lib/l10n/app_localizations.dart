@@ -240,6 +240,108 @@ abstract class AppLocalizations {
   /// **'Price unavailable'**
   String get marketPriceUnavailable;
 
+  /// Generic button or row that opens adding real money (a deposit) to the wallet. Keep short, it sits on buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'Add money'**
+  String get commonAddMoney;
+
+  /// Generic busy label while a choice is being saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get commonSaving;
+
+  /// Generic busy label while the app checks something with the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get commonChecking;
+
+  /// Generic busy label while the app connects to a service.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get commonConnecting;
+
+  /// Generic busy label while something is being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get commonSending;
+
+  /// Generic busy label while an order or action waits for confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming…'**
+  String get commonConfirming;
+
+  /// Generic loading label.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get commonLoading;
+
+  /// Generic button that opens something. Verb. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get commonOpen;
+
+  /// Generic button or tooltip that loads the latest data again. Verb.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get commonRefresh;
+
+  /// Generic button that copies a value, such as a wallet address. Verb. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get commonCopy;
+
+  /// Generic button that declines an offer for now.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get commonNotNow;
+
+  /// Generic button that skips an optional step. Verb. Keep short.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get commonSkip;
+
+  /// Title of the trade history page and buttons that open it.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get commonHistory;
+
+  /// Title of the Settings page and buttons or tooltips that open it.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get commonSettings;
+
+  /// Screen reader label for a button that is busy. {label} is the button's own label, already translated, such as 'Buy'.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} in progress'**
+  String commonInProgress(String label);
+
+  /// Name of Practice mode, where you trade with practice money (English calls it Paper). Shown on the mode switch and labels. Keep very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper'**
+  String get modePaper;
+
+  /// Name of Real mode, where you trade real tokenized stocks with real money. Shown on the mode switch and labels. Keep very short.
+  ///
+  /// In en, this message translates to:
+  /// **'Real'**
+  String get modeReal;
+
   /// Settings row title and the title of the language picker sheet.
   ///
   /// In en, this message translates to:
