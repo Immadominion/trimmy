@@ -267,6 +267,8 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
   Map<String, dynamic>? _order;
   LiveTradingCapabilities? _capabilities;
   Timer? _poll, _noticeTimer, _quoteTimer;
+  // The message sits below the form; a new one is scrolled into view.
+  final _noticeKey = GlobalKey();
   bool _busy = false, _checking = true, _sell = false;
   bool _restoring = false, _recoveryFailed = false, _capabilitiesFailed = false;
   bool _foreground = true, _polling = false, _initialAmountSet = false;
@@ -417,6 +419,16 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     if (!mounted) return;
     _noticeTimer?.cancel();
     setState(() => _error = message);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notice = _noticeKey.currentContext;
+      if (notice == null || !notice.mounted) return;
+      Scrollable.ensureVisible(
+        notice,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
     _noticeTimer = Timer(const Duration(seconds: 6), () {
       if (mounted) setState(() => _error = null);
     });
@@ -636,6 +648,8 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         _recoveryFailed) {
       return;
     }
+    // Close the keyboard first, so a message about the amount is not hidden under it.
+    FocusScope.of(context).unfocus();
     if (!_termsAccepted) {
       _notice((l10n, _) => l10n.liveOrderConfirmTermsFirst);
       _showTerms();
@@ -675,7 +689,6 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       return;
     }
     final legacy = _capabilities!.legacy;
-    FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;
       _error = null;
@@ -946,6 +959,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                   ..._entry(context),
                 if (_error != null)
                   Padding(
+                    key: _noticeKey,
                     padding: const EdgeInsets.only(top: 16),
                     child: ProductNotice(
                       key: const ValueKey('live-order-notice'),
@@ -1108,6 +1122,15 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 ),
               ],
             ),
+            // The minimum is known before the first try, as on the web.
+            if (!_sell && asset.minBuyInputRaw != '1')
+              Text(
+                l10n.liveOrderMinimum(
+                  _amountLabel(BigInt.parse(asset.minBuyInputRaw), formats),
+                ),
+                key: const ValueKey('live-order-minimum'),
+                style: type.bodySmall,
+              ),
           ],
         ),
       ),

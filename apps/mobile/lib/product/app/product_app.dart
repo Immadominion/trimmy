@@ -1995,6 +1995,9 @@ class _ProductExperienceState extends State<ProductExperience>
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      // A drag closes a sheet past its PopScope, even while a send or an
+      // order is being confirmed. These sheets close with their own buttons.
+      enableDrag: false,
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: productSquircle(30),
@@ -2031,6 +2034,7 @@ class _ProductExperienceState extends State<ProductExperience>
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: productSquircle(30),
@@ -2093,6 +2097,7 @@ class _ProductExperienceState extends State<ProductExperience>
     await showModalBottomSheet<PaperOrderReceipt>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       useSafeArea: true,
       backgroundColor: Colors.white,
       showDragHandle: false,

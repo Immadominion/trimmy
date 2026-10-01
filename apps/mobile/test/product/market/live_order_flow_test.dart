@@ -887,6 +887,71 @@ void main() {
       expect(quotes, 0);
       await clean(tester);
     });
+
+    testWidgets(
+      'the minimum shows before the first try, and a refusal closes the keyboard and comes into view',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        SharedPreferences.setMockInitialValues({
+          _termsKey: [_accepted('ondo')],
+        });
+        LiveIssuerTerms.resetSession();
+        var quotes = 0;
+        final caps = _caps();
+        final assets = caps['assets'] as List;
+        final ondo = assets.indexWhere(
+          (asset) => (asset as Map)['mint'] == ondoNvidiaMint,
+        );
+        assets[ondo] = {
+          ...(assets[ondo] as Map<String, Object?>),
+          'minBuyInputRaw': '2000000',
+        };
+        await mount(
+          tester,
+          (request) async {
+            if (request.url.path.endsWith('capabilities')) return _reply(caps);
+            if (request.url.path.endsWith('preview')) quotes++;
+            return _reply({'order': null});
+          },
+          company: _nvidia(),
+          variantMint: ondoNvidiaMint,
+        );
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('live-order-minimum')))
+              .data,
+          contains('start at'),
+          reason: 'the minimum is known before the first try',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('live-order-amount')),
+          '1',
+        );
+        await tester.pump();
+        expect(
+          FocusManager.instance.primaryFocus?.context
+              ?.findAncestorWidgetOfExactType<EditableText>(),
+          isNotNull,
+        );
+        await tap(tester, 'live-order-review');
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(quotes, 0);
+        expect(
+          FocusManager.instance.primaryFocus?.context
+              ?.findAncestorWidgetOfExactType<EditableText>(),
+          isNull,
+          reason: 'the keyboard closes before the message shows',
+        );
+        final notice = find.byKey(const ValueKey('live-order-notice'));
+        expect(notice, findsOneWidget);
+        final rect = tester.getRect(notice);
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.bottom, lessThanOrEqualTo(700), reason: 'the message is on screen');
+        await clean(tester);
+      },
+    );
   });
 
   group('issuer terms', () {
