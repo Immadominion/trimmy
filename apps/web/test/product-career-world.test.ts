@@ -81,6 +81,26 @@ test('scrolling past the released work extends the same street with inert future
   } finally {await h.close();}
 });
 
+test('a tap on the open Career tab goes back to today, at once when motion is off', async () => {
+  // Day one filed, so today is the second row.
+  const h = await harness({motion: true, assignments: assignments.map((item, index) => index === 0 ? {...item, completedAt: '2026-09-24T19:00:00Z'} : item)});
+  try {
+    const doc = h.dom.window.document;
+    const scroll = doc.querySelector<HTMLElement>('.career-world-scroll')!;
+    assert.notEqual(doc.querySelector('[data-current="true"]'), doc.querySelector('.career-world-row'));
+    Object.defineProperty(doc.querySelector('[data-current="true"]')!, 'offsetTop', {configurable: true, value: 900});
+    Object.defineProperty(doc.querySelector('.career-world-row')!, 'offsetTop', {configurable: true, value: 100});
+    const calls: ScrollToOptions[] = [];
+    Object.defineProperty(scroll, 'scrollTo', {configurable: true, value: (options: ScrollToOptions) => {calls.push(options);}});
+    await h.render({top: 1});
+    assert.deepEqual(calls, [{top: 776, behavior: 'smooth'}]);
+    await h.render({motion: false});
+    assert.equal(calls.length, 1, 'only a new tap scrolls');
+    await h.render({top: 2});
+    assert.deepEqual(calls[1], {top: 776, behavior: 'instant'});
+  } finally {await h.close();}
+});
+
 test('optional motion stops when disabled or the document is hidden, while artwork reserves its layout', async () => {
   const h = await harness({motion: false});
   try {

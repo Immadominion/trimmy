@@ -1,10 +1,24 @@
 import {useEffect, useState} from 'react';
-import type {CSSProperties, ReactNode} from 'react';
+import type {CSSProperties, KeyboardEvent, ReactNode} from 'react';
 import {t} from '../i18n/runtime';
 import {useT} from '../i18n/react';
 import * as fmt from '../i18n/format';
 
 export const art = (file: string) => `/trimmy/${file}`;
+
+/** Enter in an amount field presses its main button, only when that button could be pressed. */
+export function enterPresses(ready: boolean, press: () => void) {
+  return (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (ready) press();
+  };
+}
+
+/** How to scroll back to a start: smoothly, unless motion is off here or on the device. */
+export function scrollBehavior(motion: boolean): ScrollBehavior {
+  return motion && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant';
+}
 
 export function SalArt({motion = true, className = ''}: {motion?: boolean; className?: string}) {
   const [animate, setAnimate] = useState(false);

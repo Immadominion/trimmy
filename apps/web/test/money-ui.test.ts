@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import {createElement, useEffect} from 'react';
+import {act, createElement, useEffect} from 'react';
 import {FundWalletSheet} from '../src/product/money/fund-wallet-sheet.js';
 import {LiveOrderPanel} from '../src/product/money/live-order-panel.js';
 import {useMoney} from '../src/product/money/money-api.js';
@@ -183,6 +183,23 @@ test('a refusal under the market maker’s minimum reads as BELOW_MINIMUM, not a
     await page.tick(); await page.type('#live-amount', '2'); await page.click('Review buy');
     await page.waitFor(() => /under the market maker’s minimum/.test(page.text()), 'refusal');
     assert.doesNotMatch(page.text(), /US markets are open/);
+  } finally {await page.close();}
+});
+
+test('Enter in the live amount reviews it, as the Review button does', async () => {
+  const page = await moneyPage({route: 'rfq'});
+  page.storage.data.set(REAL_KEY, 'real');
+  const meta = 'fDxs5y12E7x7jBwCKBXGqt71uJmCWsAQ3Srkte6ondo';
+  const previews: string[] = [];
+  page.server.reply = call => {if (call.path === '/v1/trading/preview') {previews.push(call.path); return Response.json({code: 'BELOW_MINIMUM'}, {status: 409});} return undefined;};
+  try {
+    await page.render(createElement(LiveOrderPanel, {assetId: 'meta', mint: meta, companyName: 'Meta', discovery: [{mint: meta}]}));
+    await page.waitFor(() => /Buy METAon/.test(page.text()), 'order entry');
+    await page.tick(); await page.type('#live-amount', '2');
+    const field = page.dom.window.document.querySelector<HTMLInputElement>('#live-amount')!;
+    await act(async () => {field.dispatchEvent(new page.dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));});
+    await page.waitFor(() => /under the market maker’s minimum/.test(page.text()), 'the same review as the button');
+    assert.equal(previews.length, 1);
   } finally {await page.close();}
 });
 

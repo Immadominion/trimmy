@@ -51,7 +51,7 @@ import {HomeActions, HomeInvitations, type HomeParity} from './home-extras';
 import {EntryDoodle, type DoodleScene} from './entry-doodle';
 import {useHoldingPrices} from './money/holding-values';
 import {PracticeError} from './practice-client';
-import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, shares, sharesPlain} from './ui';
+import {CompanyLogo, Failure, Loading, SalArt, art, dateLabel, errorCopy, micros, scrollBehavior, shares, sharesPlain} from './ui';
 import {useT, type Translator} from '../i18n/react';
 import type {MessageKey} from '../i18n/runtime';
 import * as fmt from '../i18n/format';
@@ -156,6 +156,8 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
   const registerLeaveGuard = useCallback((guard: (() => Promise<boolean>) | null) => {leaveGuard.current = guard;}, []);
   const cards = useRef(new Map<string, StockCard>());
   const heading = useRef<HTMLElement>(null);
+  // Taps on the tab that is already open, per page: that page goes back to its start.
+  const [tabTop, setTabTop] = useState<{page: string; count: number}>({page: '', count: 0});
   const loadEpoch = useRef(0), enterPromise = useRef<Promise<void> | null>(null);
   const restoreJob = useRef<{session: PracticeSession; promise: Promise<unknown>} | null>(null);
   const workspaceActive = useRef(true);
@@ -369,6 +371,13 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     navigate({page: 'desk'}, true);
     if (addMoney) requestFunding('first-day');
   }
+  /** A nav tap. The tab already open goes back to its start instead of reloading. */
+  function tabTapped(page: Route['page']) {
+    const current = routeRef.current;
+    if (current.page !== page || current.assetId) {navigate({page}); return;}
+    heading.current?.scrollTo?.({top: 0, behavior: scrollBehavior(motion)});
+    setTabTop(prior => ({page, count: prior.page === page ? prior.count + 1 : 1}));
+  }
   function openSignIn(intent: SignInIntent | null = null) {journey.setSignInIntent(intent); navigate({page: 'sign-in'});}
   /** Deposits need an account first, as mobile's `_openFunding` does (see fund-wallet.ts). */
   function requestFunding(source: FundWalletSource) {
@@ -505,7 +514,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
     <a className="skip" href="#main-content" onClick={event => {event.preventDefault(); heading.current?.focus();}}>{tr('shell.skipToContent')}</a>
     <aside className="product-nav"><button className="product-brand" aria-label={tr('shell.nav.brandLabel')} onClick={() => navigate({page: 'desk'})}><img src={art('trimmy-mark.png')} alt=""/>trimmy</button>
       {money.real && <span className="nav-money-mode" role="status">{tr('shell.nav.realMoney')}</span>}
-      <nav aria-label={tr('shell.nav.label')}>{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' || route.page === 'settings' && item.page === 'profile' ? 'page' : undefined} onClick={() => navigate({page: item.page})}><img src={art(`icons/${item.icon}`)} alt=""/><span>{tr(item.title)}</span></button>)}</nav>
+      <nav aria-label={tr('shell.nav.label')}>{pages.map(item => <button key={item.page} aria-current={route.page === item.page || (route.page === 'daily' || route.page === 'work') && item.page === 'career' || route.page === 'settings' && item.page === 'profile' ? 'page' : undefined} onClick={() => tabTapped(item.page)}><img src={art(`icons/${item.icon}`)} alt=""/><span>{tr(item.title)}</span></button>)}</nav>
       {(snapshot.profile?.onboarding.persona || auth.logins.length > 0) && <button className="nav-identity" onClick={() => navigate({page:'profile'})}><img src={art(snapshot.profile?.onboarding.persona ? `persona-${snapshot.profile.onboarding.persona}-avatar-v1.png` : 'icons/nav-plumpy-profile.png')} alt=""/><span><strong>{snapshot.profile?.onboarding.handle ? `@${snapshot.profile.onboarding.handle}` : auth.logins[0]?.label ?? tr('shell.nav.yourDesk')}</strong>{snapshot.career && <small>{rankName(snapshot.career.rank)}</small>}</span></button>}
     </aside>
     <div className="product-body">{(firstDay || signIn || journeyScreen || recoveryScreen) && <header className="onboard-header"><span className="product-brand"><img src={art('trimmy-mark.png')} alt=""/>trimmy</span>{firstDay && <button className="text-button" onClick={() => navigate({page: 'sign-in'})}>{tr('common.signIn')}</button>}</header>}
@@ -526,7 +535,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
         : signIn ? <SignInScreen motion={motion} hasDesk={hasGuest} expiredGuestRecovery={guestRecovery !== null} onBack={() => {journey.setSignInIntent(null); navigate({page: hasGuest ? 'desk' : 'welcome'}, true);}} onAccount={() => navigate({page: 'desk'}, true)}/> : firstDay && session && market ? (restoring ? <Loading/> : <FirstDay initialStep={introInitial} motion={motion} market={market} session={session} portfolio={snapshot.portfolio} career={snapshot.career} ensureDesk={ensureDesk} onExplore={() => navigate({page: 'market'})} onExit={exitIntroduction} onReceiptContinue={orderId => journey.continueAfterCelebration(orderId)} onCommitted={introCommitted} onPending={() => setRevision(value => value + 1)} onStep={firstDayStep} onSignIn={() => navigate({page: 'sign-in'})}/>) : <>
         {route.page === 'market' && market && <>
           {/* The Market stays mounted under a company page, so Back returns to the same search, list and place. */}
-          <MarketScreen client={market} onSelect={select} social={marketSocial} real={money.real} capabilities={money.capabilities} active={!(route.assetId && session)}/>
+          <MarketScreen client={market} onSelect={select} social={marketSocial} real={money.real} capabilities={money.capabilities} active={!(route.assetId && session)} top={tabTop.page === 'market' ? tabTop.count : 0} motion={motion}/>
           {route.assetId && session && <StockScreen key={`${route.assetId}:${route.mint ?? ''}`} assetId={route.assetId} {...(selectedCard ? {card: selectedCard} : {})} {...(route.mint ? {selectedMint: route.mint} : {})} market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk} onBack={() => navigate({page: 'market'})} onDesk={() => navigate({page: 'desk'})} onCommitted={committed} onPending={() => setRevision(value => value + 1)} onPracticeInPaper={() => money.setReal(false)} {...(companySocial ? {social: companySocial} : {})}/>}
         </>}
         {route.page === 'history' && (money.available ? <TradeHistoryScreen onBack={() => navigate({page: 'desk'})} onOpenAsset={(assetId, mint) => navigate({page: 'market', assetId, mint})}/>
@@ -540,7 +549,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
         {fastBuy && market && (money.real ? <LiveFastBuySheet market={market} knownCards={cards.current} onOpen={openFastBuyChoice} onClose={() => setFastBuy(false)}/>
           : session && <PracticeFastBuySheet market={market} session={session} portfolio={snapshot.portfolio} ensureDesk={ensureDesk}
           onCommitted={committed} onPending={() => setRevision(value => value + 1)} saveReason={productApi ? milestones.saveReasonFor : null} onClose={() => setFastBuy(false)}/>)}
-        {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title={tr('shell.guest.careerTitle')} onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle} milestones={milestones}/>)}
+        {(route.page === 'career' || route.page === 'daily' && !progress.pending) && (!hasGuest ? <GuestInvitation title={tr('shell.guest.careerTitle')} onStart={start} motion={motion}/> : <CareerJourneyScreen workdays={workdays} career={snapshot.career} missions={snapshot.missions} week={progress.week} progressError={careerError !== null} onRetry={() => {void refresh(); void progress.refresh();}} onMarket={() => navigate({page: 'market'})} onOpen={openWork} motion={motion} sound={workSound.enabled} onSound={workSound.toggle} milestones={milestones} top={tabTop.page === 'career' ? tabTop.count : 0}/>)}
         {progress.pending && route.page !== 'daily' && <div className="work-recovery" role="status"><span>{tr('shell.dailyPending.title')}</span><button className="text-button" onClick={() => navigate({page:'daily'})}>{tr('shell.dailyPending.check')}</button></div>}
         {route.page === 'daily' && progress.pending && <DailyStoryScreen progress={progress} onBack={() => navigate({page:'career'})}/>}
         {route.page === 'work' && (!hasGuest ? <GuestInvitation title={tr('shell.guest.workTitle')} onStart={start} motion={motion}/> : assignment ? canOpenWork(assignment, workdays.journey!.assignments) ? <WorkdayScreen key={assignment.id} assignment={assignment} working={workdays.working} error={workdays.error} pending={Boolean(workdays.pending)} onSubmit={workdays.saveStep} onSaveDraft={workdays.saveDraft} onRecover={workdays.recover} onBack={() => commitNavigation({page:'career'})} registerLeaveGuard={registerLeaveGuard} onCue={workSound.play} next={scheduleNotice(workdays.journey)}/> : <div className="empty-page"><h1>{assignment.title}</h1><p>{tr('shell.work.locked', {day: assignment.ordinal - 1})}</p><button className="primary" onClick={() => navigate({page:'career'})}>{tr('shell.work.backToCareer')}</button></div> : workdays.journey?.upcoming && workdays.journey.upcoming.id === route.assignmentId ? <div className="empty-page"><h1>{workdays.journey.upcoming.title}</h1><p>{scheduleNotice(workdays.journey)?.body}</p><button className="primary" onClick={() => navigate({page:'career'})}>{tr('shell.work.backToCareer')}</button></div> : workdays.loading ? <Loading>{tr('shell.work.opening')}</Loading> : <div className="empty-page"><h1>{tr('shell.work.failed')}</h1><button className="text-button" onClick={() => void workdays.refresh()}>{tr('common.tryAgain')}</button><button className="primary" onClick={() => navigate({page:'career'})}>{tr('shell.work.backToCareer')}</button></div>)}

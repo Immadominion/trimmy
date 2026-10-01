@@ -1,6 +1,6 @@
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import type {ProductMarketClient, StockCard} from './market-client';
-import {CompanyLogo, Failure, Loading, change, errorCopy, usd} from './ui';
+import {CompanyLogo, Failure, Loading, change, errorCopy, scrollBehavior, usd} from './ui';
 import {FollowButton, MarketControls, RecentsStrip, availableSorts, followNoticeText, marketFigures, sortCards, useFollowedCards} from './market-social';
 import type {FollowNotice, FollowingState, MarketList, MarketSort, SearchRecents} from './market-social';
 import {useT} from '../i18n/react';
@@ -10,10 +10,12 @@ import {companyMarketNote, companyTradeable, discoveryRefs, tradeableCompanies, 
 /** Mobile's Following, sort and recents (market-social.tsx). Omitted, the Market is read-only browsing. */
 export interface MarketSocial {readonly following: FollowingState; readonly recents: SearchRecents; readonly onSignIn: () => void}
 /** Real mode marks what can be traded and adds a Tradeable list; Paper shows the Market without them. */
-export function MarketScreen({client, onSelect, social, real = false, capabilities = null, active = true}: {client: ProductMarketClient; onSelect: (card: StockCard) => void; social?: MarketSocial;
+export function MarketScreen({client, onSelect, social, real = false, capabilities = null, active = true, top = 0, motion = true}: {client: ProductMarketClient; onSelect: (card: StockCard) => void; social?: MarketSocial;
   real?: boolean; capabilities?: TradingCapabilities | null;
   /** False while a company page is open over it: the Market stays as it was (search, list, sort, loaded rows, scroll). */
-  active?: boolean}) {
+  active?: boolean;
+  /** Counts taps on the Market tab while the list is open; each goes back to the top of the list. */
+  top?: number; motion?: boolean}) {
   const discovery = useRef(new Map<string, ReturnType<typeof discoveryRefs>>());
   const index = (pages: readonly {discovery: {results: readonly {assetId: string; variants: Parameters<typeof discoveryRefs>[0]}[]}}[]) => {
     for (const page of pages) for (const row of page.discovery.results) discovery.current.set(row.assetId, discoveryRefs(row.variants));
@@ -43,6 +45,8 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
     if (active) element.scrollTop = scrolled.current;
     else scrolled.current = element.scrollTop;
   }, [active]);
+  // Only a new tap scrolls; a change of motion setting does not.
+  useEffect(() => {if (top) results.current?.scrollTo?.({top: 0, behavior: scrollBehavior(motion)});}, [top]);
   useEffect(() => {if (list === 'tradeable' && !(real && capabilities?.enabled === true)) setList('all');}, [list, real, capabilities]);
   const followed = useFollowedCards(client, social?.following.assetIds ?? null, cards, Boolean(social) && list === 'following');
   // Nothing claims to be tradeable without a live capabilities read, or while trading is paused.

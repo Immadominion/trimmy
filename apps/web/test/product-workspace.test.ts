@@ -4,7 +4,6 @@ import {webcrypto} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {act, createElement, StrictMode} from 'react';
 import type {ReactElement} from 'react';
-import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
 import {ProductApp} from '../src/product/ProductApp.js';
 import {StockScreen} from '../src/product/stock-screen.js';
@@ -152,6 +151,8 @@ async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: 
   const practice = new PracticeClient({baseUrl: '/api', fetch: fetcher, timeoutMs: 1000});
   const market = new ProductMarketClient({baseUrl: '/api', fetch: fetcher, timeoutMs: 1000});
   const session = new PracticeSession({client: practice, storage});
+  // react-dom decides whether the page supports input events when it first loads: load it after the DOM exists.
+  const {createRoot} = await import('react-dom/client');
   const root = createRoot(dom.window.document.getElementById('root')!);
   const flush = async (ms = 25) => {await act(async () => {await delay(ms);});};
   const render = async (element: ReactElement) => {await act(async () => {root.render(element);}); await flush();};
@@ -193,6 +194,50 @@ test('Fast buy Retry repeats the failed read without requiring a changed search'
     assert.equal(attempts, 2);
     assert.ok(h.button('Buy Apple'));
     assert.doesNotMatch(h.text(), /Search did not finish/);
+  } finally {await h.close();}
+});
+
+test('Fast buy says why Review is off: an unusable amount, or more than the paper cash', async () => {
+  const h = await harness();
+  try {
+    await h.render(createElement(FastBuySheet, {market: h.market, session: h.session, portfolio: h.f.portfolio() as unknown as PaperPortfolio,
+      ensureDesk: async () => {}, onCommitted: async () => {}, onPending() {}, saveReason: null, onClose() {}}));
+    await h.click('Buy Apple');
+    const field = h.dom.window.document.querySelector<HTMLInputElement>('#fast-buy-amount')!;
+    const setter = Object.getOwnPropertyDescriptor(h.dom.window.HTMLInputElement.prototype, 'value')!.set!;
+    const type = async (value: string) => {await act(async () => {setter.call(field, value); field.dispatchEvent(new h.dom.window.Event('input', {bubbles: true}));}); await h.flush();};
+    const review = () => h.dom.window.document.querySelector<HTMLButtonElement>('.fast-buy-sheet .primary, .primary.full');
+    await type('0');
+    assert.match(h.text(), /Enter an amount above 0, with up to 2 decimals\./); assert.equal(field.getAttribute('aria-describedby'), 'fast-buy-hint');
+    await type('20000');
+    assert.match(h.text(), /This amount is more than the paper cash available\./); assert.equal(review()?.disabled, true);
+    await type('100');
+    assert.doesNotMatch(h.text(), /Enter an amount above 0|more than the paper cash/); assert.equal(field.getAttribute('aria-describedby'), null);
+  } finally {await h.close();}
+});
+
+test('the paper amount says why Review is off, and Enter reviews a usable amount', async () => {
+  const h = await harness();
+  try {
+    await h.stock();
+    const doc = h.dom.window.document, field = doc.querySelector<HTMLInputElement>('#order-amount')!;
+    const setter = Object.getOwnPropertyDescriptor(h.dom.window.HTMLInputElement.prototype, 'value')!.set!;
+    const type = async (value: string) => {await act(async () => {setter.call(field, value); field.dispatchEvent(new h.dom.window.Event('input', {bubbles: true}));}); await h.flush();};
+    const enter = async () => {await act(async () => {field.dispatchEvent(new h.dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));}); await h.flush();};
+    const previews = () => h.calls.filter(call => call.path === '/v1/account/paper/orders/preview').length;
+    for (const value of ['0', '12.345']) {
+      await type(value);
+      assert.equal(h.button('Review paper buy')?.disabled, true);
+      assert.match(h.text(), /Enter an amount above 0, with up to 2 decimals\./);
+      assert.equal(field.getAttribute('aria-describedby'), 'order-unit order-hint');
+      await enter(); assert.equal(previews(), 0, `Enter does nothing with ${value}`);
+    }
+    await type('');
+    assert.doesNotMatch(h.text(), /Enter an amount above 0/, 'an empty field needs no telling');
+    await type('25.5');
+    assert.doesNotMatch(h.text(), /Enter an amount above 0/); assert.equal(field.getAttribute('aria-invalid'), null);
+    await enter();
+    assert.equal(previews(), 1); assert.ok(h.button('Confirm paper buy'));
   } finally {await h.close();}
 });
 

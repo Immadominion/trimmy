@@ -4,7 +4,7 @@ import type {PracticeSession} from './practice-session';
 import type {PaperPortfolio, PaperPreview, PaperReceipt} from './practice-client';
 import {PracticeError} from './practice-client';
 import type {TradeReasonReceipt} from './career-actions';
-import {CompanyLogo, Loading, errorCopy, micros, shares, toPaperMicros, usd} from './ui';
+import {CompanyLogo, Loading, enterPresses, errorCopy, micros, shares, toPaperMicros, usd} from './ui';
 import {categoryLabel, categoryOf, marketFigures, shareCount} from './market-social';
 import {useT, type Translator} from '../i18n/react';
 import {useBackCloses} from './use-back-closes';
@@ -64,6 +64,9 @@ export function FastBuySheet(props: FastBuyProps) {
   useEffect(() => {if (!preview) return; const id = window.setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(id);}, [preview]);
   const amountMicros = toPaperMicros(amount), cash = portfolio ? BigInt(portfolio.cashPaperMicros) : null;
   const valid = amountMicros !== null && cash !== null && BigInt(amountMicros) <= cash;
+  // Review stays off for an amount it cannot use; say why rather than leave it grey.
+  const amountHint = amount.trim() && amountMicros === null ? tr('market.trade.amountHintBuy')
+    : amountMicros !== null && cash !== null && BigInt(amountMicros) > cash ? tr('common.error.cashInsufficient') : null;
   const remaining = preview ? Math.max(0, Math.ceil((Date.parse(preview.expiresAt) - clock) / 1000)) : 0;
   const pending = session.pendingCommit !== null;
   async function run(task: () => Promise<void>) {
@@ -112,7 +115,9 @@ export function FastBuySheet(props: FastBuyProps) {
       {step === 'amount' && company && <>
         <p className="settings-modal-note">{tr('market.fastBuy.practiceBuy', {symbol: company.primaryVariant?.symbol ?? company.symbol ?? tr('market.fastBuy.tokenFallback')})}</p>
         <label className="settings-phrase" htmlFor="fast-buy-amount"><span>{tr('market.trade.amountToSpend')}</span></label>
-        <div className="amount-field"><input id="fast-buy-amount" inputMode="decimal" autoComplete="off" maxLength={12} value={amount} disabled={busy} onChange={event => {setAmount(event.target.value); setError(null);}}/><span>{tr('common.paperUnit')}</span></div>
+        <div className="amount-field"><input id="fast-buy-amount" inputMode="decimal" autoComplete="off" maxLength={12} value={amount} disabled={busy} onChange={event => {setAmount(event.target.value); setError(null);}}
+          onKeyDown={enterPresses(!busy && !pending && valid, () => void review())} aria-invalid={amountHint ? true : undefined} aria-describedby={amountHint ? 'fast-buy-hint' : undefined}/><span>{tr('common.paperUnit')}</span></div>
+        {amountHint && <p className="trade-caption amount-hint" id="fast-buy-hint">{amountHint}</p>}
         <div className="amount-options">{['50', '100', '500'].map(value => <button key={value} aria-pressed={amount === value} disabled={busy} onClick={() => setAmount(value)}>{value}</button>)}</div>
         <p className="trade-available">{cash === null ? tr('market.trade.balanceUnavailable') : tr('market.trade.available', {amount: micros(cash.toString())})}</p>
         <button className="primary full" disabled={busy || pending || !valid} onClick={() => void review()}>{tr(busy ? 'market.fastBuy.checkingPrice' : 'market.fastBuy.reviewBuy')}</button>
