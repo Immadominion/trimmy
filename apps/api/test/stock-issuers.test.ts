@@ -3,7 +3,7 @@ import test from 'node:test';
 import Fastify from 'fastify';
 import {getAddressDecoder} from '@solana/kit';
 import {generateKeyPairSync} from 'node:crypto';
-import {LEGACY_STOCK_ISSUER, STOCK_ISSUERS, STOCK_ISSUER_IDS, acceptsIssuerTerms} from '../src/stock-issuers.js';
+import {STOCK_ISSUERS, STOCK_ISSUER_IDS, acceptsIssuerTerms} from '../src/stock-issuers.js';
 import {STOCK_TRADING_ASSETS} from '../src/stock-trading-catalog.js';
 import type {StockTradingAsset} from '../src/stock-trading-catalog.js';
 import {LiveStockOrders, PostgresLiveOrderStore, registerLiveStockRoutes, transferFeeWithinDisclosure} from '../src/live-stock-orders.js';
@@ -48,10 +48,10 @@ test('every issuer publishes a complete, plain disclosure and a dated attestatio
   assert.deepEqual(STOCK_ISSUER_IDS.filter(id => STOCK_ISSUERS[id].identity.route === 'rfq'), ['ondo']);
 });
 
-test('terms acceptance must name the exact issuer and current version; only xStocks has a legacy path', () => {
+test('terms acceptance must name the exact issuer and current version; no issuer has an implicit acceptance path', () => {
   for (const id of STOCK_ISSUER_IDS) {
     const version = STOCK_ISSUERS[id].disclosure.attestation.version;
-    assert.equal(acceptsIssuerTerms(id, undefined), id === LEGACY_STOCK_ISSUER);
+    assert.equal(acceptsIssuerTerms(id, undefined), false);
     assert.equal(acceptsIssuerTerms(id, {issuerId: id, version}), true);
     assert.equal(acceptsIssuerTerms(id, {issuerId: id, version: '2000-01-01'}), false);
     for (const other of STOCK_ISSUER_IDS.filter(item => item !== id)) {
@@ -71,14 +71,13 @@ test('preview refuses missing or stale terms before reading a wallet or provider
     const other = STOCK_ISSUER_IDS.find(id => id !== asset.issuerId)!;
     await assert.rejects(service.preview('user', wallet, {...input,
       termsAccepted: {issuerId: other, version: STOCK_ISSUERS[other].disclosure.attestation.version}}), {code: 'TERMS_REQUIRED'});
-    if (asset.issuerId !== LEGACY_STOCK_ISSUER) await assert.rejects(service.preview('user', wallet, input), {code: 'TERMS_REQUIRED'});
+    await assert.rejects(service.preview('user', wallet, input), {code: 'APP_UPDATE_REQUIRED'});
   }
   assert.equal(reads, 0);
 });
 
-test('accepted terms (and the legacy xStocks request) proceed to the reviewed route request', async () => {
-  const cases = [...STOCK_TRADING_ASSETS.map(asset => ({asset, terms: current(asset)})),
-    ...STOCK_TRADING_ASSETS.filter(asset => asset.issuerId === LEGACY_STOCK_ISSUER).slice(0, 1).map(asset => ({asset, terms: undefined}))];
+test('accepted terms proceed to the reviewed route request', async () => {
+  const cases = STOCK_TRADING_ASSETS.map(asset => ({asset, terms: current(asset)}));
   for (const {asset, terms} of cases) {
     let orderRequests = 0;
     const fake = async (rawUrl: URL | RequestInfo, options?: RequestInit) => {
@@ -91,8 +90,8 @@ test('accepted terms (and the legacy xStocks request) proceed to the reviewed ro
     const service = new LiveStockOrders({rpcUrl: 'https://rpc.example', store: noStore, fetch: fake as typeof fetch});
     await assert.rejects(service.preview('user', wallet, {assetId: asset.assetId, variantMint: asset.mint, side: 'buy', amountRaw: '1000000',
       ...(terms ? {termsAccepted: terms} : {})}), {code: 'NO_ROUTE'});
-    // The other route is tried too, except for Ondo (market makers only) and clients without issuer terms.
-    assert.equal(orderRequests, asset.issuerId === 'ondo' || terms === undefined ? 1 : 2);
+    // The other route is tried too, except for Ondo (market makers only).
+    assert.equal(orderRequests, asset.issuerId === 'ondo' ? 1 : 2);
   }
 });
 
@@ -113,6 +112,9 @@ test('preview HTTP boundary validates the terms field shape and reports TERMS_RE
       const response = await app.inject({method: 'POST', url: '/v1/trading/preview', payload: {...base, termsAccepted}});
       assert.equal(response.statusCode, 400);
     }
+    const legacy = await app.inject({method: 'POST', url: '/v1/trading/preview', payload: base});
+    assert.equal(legacy.statusCode, 409);
+    assert.deepEqual(legacy.json(), {code: 'APP_UPDATE_REQUIRED'});
     const stale = await app.inject({method: 'POST', url: '/v1/trading/preview',
       payload: {...base, termsAccepted: {issuerId: asset.issuerId, version: '2000-01-01'}}});
     assert.equal(stale.statusCode, 409);

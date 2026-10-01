@@ -126,7 +126,7 @@ test('less than one signature fee reports funding before requesting an order', a
    return Response.json({jsonrpc:'2.0',id:1,result});
   };
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
-  await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000'}),new RegExp(expected));
+  await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000',termsAccepted:terms(STOCK_TRADING_ASSETS[0]!)}),new RegExp(expected));
   assert.equal(orderRequests,0);
  }
 });
@@ -142,7 +142,7 @@ test('a wallet below the sponsorship heuristic can request an order without spen
   return Response.json({jsonrpc:'2.0',id:1,result});
  };
  const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake as typeof fetch});
- await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000'}),/ADD_USDC/);
+ await assert.rejects(service.preview('user',wallet,{assetId:'apple',variantMint:'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',side:'buy',amountRaw:'5000000',termsAccepted:terms(STOCK_TRADING_ASSETS[0]!)}),/ADD_USDC/);
  assert.equal(orderRequests,1);
 });
 
@@ -160,8 +160,8 @@ test('a fresh preview refuses malformed or regressing confirmed balance context 
   };
   const service=new LiveStockOrders({rpcUrl:'https://rpc.example',store,fetch:fake});
   await assert.rejects(service.preview('user',f.order.wallet,{assetId:'apple',variantMint:STOCK_TRADING_ASSETS[0]!.mint,
-   side:'sell',amountRaw:'1000000'}),{code:slot===501?'NO_ROUTE':'LIVE_UNAVAILABLE'});
-  assert.equal(orderRequests,slot===501?1:0);
+   side:'sell',amountRaw:'1000000',termsAccepted:terms(STOCK_TRADING_ASSETS[0]!)}),{code:slot===501?'NO_ROUTE':'LIVE_UNAVAILABLE'});
+  assert.equal(orderRequests,slot===501?2:0);
  }
 });
 
@@ -263,7 +263,7 @@ test('live previews refuse sponsorship and map genuine provider funding failures
    return Response.json({jsonrpc:'2.0',id:1,result:method==='getGenesisHash'?'5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d':method==='getBlockHeight'?100:{context:{slot:501},value:9_435_303}});
   }});
   const asset=STOCK_TRADING_ASSETS[0]!;
-  await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side:item.side,amountRaw:'1000000'}),new RegExp(item.code));
+  await assert.rejects(service.preview('user',wallet,{assetId:asset.assetId,variantMint:asset.mint,side:item.side,amountRaw:'1000000',termsAccepted:terms(asset)}),new RegExp(item.code));
  }
 });
 
