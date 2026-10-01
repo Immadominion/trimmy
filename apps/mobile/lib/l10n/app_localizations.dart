@@ -7617,6 +7617,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t connect notifications. Please try again.'**
   String get pushErrorConnect;
+
+  /// Button under the sign-in code field, for when the emailed code is slow or lost. Sends a fresh code to the same address.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a new code'**
+  String get signInResendCode;
+
+  /// The same button while it waits before another code may be sent; counts down every second. {seconds} is a whole number of seconds; keep the unit short.
+  ///
+  /// In en, this message translates to:
+  /// **'Send again in {seconds}s'**
+  String signInResendIn(int seconds);
+
+  /// Shown while the account is being closed, after the player confirmed. Nothing can be tapped until it finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing your account…'**
+  String get appCloseAccountClosing;
+
+  /// Shown when closing the account failed; the player is still signed in and nothing changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account was not closed. Try again.'**
+  String get appCloseAccountFailed;
 }
 
 class _AppLocalizationsDelegate

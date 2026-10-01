@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -52,6 +54,9 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
   final _code = TextEditingController();
   var _stage = _EmailStage.methods;
   var _sentTo = '';
+  // A new code can be asked for 30 seconds after the last one, as on the web.
+  var _resendSeconds = 0;
+  Timer? _resendTick;
   var _busy = false;
   var _operation = 0;
   var _completionQueued = false;
@@ -123,6 +128,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
   void dispose() {
     widget.controller?.removeListener(_accountChanged);
     _operation++;
+    _resendTick?.cancel();
     _email.dispose();
     _code.dispose();
     super.dispose();
@@ -216,6 +222,31 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
         _sentTo = email;
         _stage = _EmailStage.code;
       });
+      _startResendWait();
+    } else {
+      setState(() => _error = _SignInError.sendFailed);
+    }
+  });
+
+  void _startResendWait() {
+    _resendTick?.cancel();
+    setState(() => _resendSeconds = 30);
+    _resendTick = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return timer.cancel();
+      setState(() => _resendSeconds--);
+      if (_resendSeconds <= 0) timer.cancel();
+    });
+  }
+
+  /// A fresh code to the same address, for when the first is slow or lost.
+  Future<void> _resendCode() => _run((operation) async {
+    final controller = widget.controller;
+    if (controller == null || _sentTo.isEmpty) return;
+    final result = await controller.sendEmailCode(_sentTo);
+    if (!_isCurrentOperation(operation, controller)) return;
+    if (result == PracticeEmailCodeResult.sent) {
+      _code.clear();
+      _startResendWait();
     } else {
       setState(() => _error = _SignInError.sendFailed);
     }
@@ -418,6 +449,19 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                     ],
                     autocorrect: false,
                     enableSuggestions: false,
+                    // Keeps the Sign in button above the keyboard, with
+                    // larger text or a long address above the field.
+                    scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
+                    // The iOS number pad has no return key: a complete code
+                    // signs in by itself.
+                    onChanged: codeStep
+                        ? (value) {
+                            if (!waiting &&
+                                normalizePracticeEmailCode(value)?.length == 6) {
+                              unawaited(_verifyCode());
+                            }
+                          }
+                        : null,
                     style: const TextStyle(
                       fontFamily: 'Dejanire Sans',
                       color: _ink,
@@ -478,6 +522,21 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                       : _sendCode,
                   busy: waiting,
                 ),
+                if (codeStep) ...[
+                  const SizedBox(height: 4),
+                  TextButton(
+                    key: const ValueKey('sign-in-resend'),
+                    onPressed: waiting || _resendSeconds > 0
+                        ? null
+                        : _resendCode,
+                    style: TextButton.styleFrom(foregroundColor: _violet),
+                    child: Text(
+                      _resendSeconds > 0
+                          ? l10n.signInResendIn(_resendSeconds)
+                          : l10n.signInResendCode,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: waiting ? null : _backToPreviousStep,

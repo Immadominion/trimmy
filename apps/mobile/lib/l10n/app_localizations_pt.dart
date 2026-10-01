@@ -4739,4 +4739,19 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get pushErrorConnect =>
       'Não foi possível conectar as notificações. Tente de novo.';
+
+  @override
+  String get signInResendCode => 'Enviar um novo código';
+
+  @override
+  String signInResendIn(int seconds) {
+    return 'Reenviar em $seconds s';
+  }
+
+  @override
+  String get appCloseAccountClosing => 'Encerrando sua conta…';
+
+  @override
+  String get appCloseAccountFailed =>
+      'Sua conta não foi encerrada. Tente de novo.';
 }

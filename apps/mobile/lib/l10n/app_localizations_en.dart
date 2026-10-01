@@ -4611,4 +4611,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pushErrorConnect =>
       'Couldn’t connect notifications. Please try again.';
+
+  @override
+  String get signInResendCode => 'Send a new code';
+
+  @override
+  String signInResendIn(int seconds) {
+    return 'Send again in ${seconds}s';
+  }
+
+  @override
+  String get appCloseAccountClosing => 'Closing your account…';
+
+  @override
+  String get appCloseAccountFailed => 'Your account was not closed. Try again.';
 }

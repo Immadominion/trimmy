@@ -1250,5 +1250,9 @@
   "pushErrorNotificationsOff": "Las notificaciones están desactivadas en la configuración del dispositivo.",
   "pushErrorUpdate": "No se pudieron actualizar las notificaciones. Intenta de nuevo.",
   "pushErrorTurnOff": "No se pudieron desactivar las alertas. Intenta de nuevo cuando tengas conexión.",
-  "pushErrorConnect": "No se pudieron conectar las notificaciones. Intenta de nuevo."
+  "pushErrorConnect": "No se pudieron conectar las notificaciones. Intenta de nuevo.",
+  "signInResendCode": "Enviar un código nuevo",
+  "signInResendIn": "Reenviar en {seconds} s",
+  "appCloseAccountClosing": "Cerrando tu cuenta…",
+  "appCloseAccountFailed": "Tu cuenta no se cerró. Vuelve a intentarlo."
 }

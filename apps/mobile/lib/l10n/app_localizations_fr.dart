@@ -4741,4 +4741,18 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get pushErrorConnect =>
       'Impossible de connecter les notifications. Réessaie.';
+
+  @override
+  String get signInResendCode => 'Envoyer un nouveau code';
+
+  @override
+  String signInResendIn(int seconds) {
+    return 'Renvoyer dans $seconds s';
+  }
+
+  @override
+  String get appCloseAccountClosing => 'Fermeture de ton compte…';
+
+  @override
+  String get appCloseAccountFailed => 'Ton compte n’a pas été fermé. Réessaie.';
 }

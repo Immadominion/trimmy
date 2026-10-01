@@ -6245,5 +6245,26 @@
   "pushErrorConnect": "Couldn’t connect notifications. Please try again.",
   "@pushErrorConnect": {
     "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone could not register for notifications."
+  },
+  "signInResendCode": "Send a new code",
+  "@signInResendCode": {
+    "description": "Button under the sign-in code field, for when the emailed code is slow or lost. Sends a fresh code to the same address."
+  },
+  "signInResendIn": "Send again in {seconds}s",
+  "@signInResendIn": {
+    "description": "The same button while it waits before another code may be sent; counts down every second. {seconds} is a whole number of seconds; keep the unit short.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "appCloseAccountClosing": "Closing your account…",
+  "@appCloseAccountClosing": {
+    "description": "Shown while the account is being closed, after the player confirmed. Nothing can be tapped until it finishes."
+  },
+  "appCloseAccountFailed": "Your account was not closed. Try again.",
+  "@appCloseAccountFailed": {
+    "description": "Shown when closing the account failed; the player is still signed in and nothing changed."
   }
 }
