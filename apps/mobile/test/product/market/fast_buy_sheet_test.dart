@@ -86,7 +86,7 @@ void main() {
     }
 
     await mount(tester, load: load);
-    expect(find.text('Trading could not connect.'), findsOneWidget);
+    expect(find.text('Trading couldn’t connect.'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pump();
     expect(calls, 2);

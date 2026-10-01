@@ -211,7 +211,7 @@ class DeskScreen extends StatelessWidget {
                     logoUrl: holding.logoUrl,
                     quantity: deskSharesLabel(l10n, formats, holding.quantity),
                     value: holding.valuePaper == null
-                        ? '—'
+                        ? '–'
                         : formats.number(
                             formatPaperForDisplay(holding.valuePaper!),
                           ),

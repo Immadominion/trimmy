@@ -101,7 +101,7 @@ object ReminderSchedule {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL,
-                context.getString(R.string.notification_channel_check_in),
+                context.getString(R.string.notification_channel_reminders),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ),
         )

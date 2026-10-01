@@ -272,7 +272,7 @@ class _WalletStackState extends State<WalletStack>
               alignment: Alignment.centerLeft,
               child: Text(
                 real
-                    ? widget.balance ?? '—'
+                    ? widget.balance ?? '–'
                     : formats.usd(
                         formatPaperForDisplay(widget.paper.paperValue),
                       ),

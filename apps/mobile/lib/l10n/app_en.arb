@@ -372,7 +372,7 @@
   "@appDeskStalePaper": {
     "description": "Status banner on the Desk in Practice mode when the practice desk (English: \"paper desk\") shown is an older saved copy because Trimmy is not connected."
   },
-  "appTradingCouldNotConnect": "Trading could not connect.",
+  "appTradingCouldNotConnect": "Trading couldn’t connect.",
   "@appTradingCouldNotConnect": {
     "description": "Message on a stock page in Real mode (real money) when the app could not reach the trading service, so Buy and Sell are unavailable."
   },
@@ -2550,7 +2550,7 @@
   "@fastBuyOpenFailed": {
     "description": "Notice on the Fast buy sheet when the stock the person tapped could not be opened for buying."
   },
-  "fastBuyConnectFailed": "Trading could not connect.",
+  "fastBuyConnectFailed": "Trading couldn’t connect.",
   "@fastBuyConnectFailed": {
     "description": "Error on the Fast buy sheet (real money mode) when the list of stocks that can be bought could not be loaded. A Retry button follows."
   },
@@ -3762,7 +3762,7 @@
   "@walletUsdcAvailable": {
     "description": "Desk wallet card in Real mode, small note under the cash amount: the cash is USDC (a US dollar token) ready to use. USDC is never translated."
   },
-  "walletPositions": "{count, plural, other{{countText} positions}}",
+  "walletPositions": "{count, plural, =1{{countText} position} other{{countText} positions}}",
   "@walletPositions": {
     "description": "Desk wallet card in Practice mode, small note under the balance: how many stocks the person holds. A position is one stock you own. {countText} is {count} already formatted.",
     "placeholders": {
@@ -4108,11 +4108,11 @@
   "@signInNoticeExpired": {
     "description": "Small note on the sign-in page when the guest session expired: closing the sign-in page does not delete the old guest desk."
   },
-  "signInErrorConnection": "We could not connect your account. Your desk is still here.",
+  "signInErrorConnection": "We couldn’t connect your account. Your desk is still here.",
   "@signInErrorConnection": {
     "description": "Error on the sign-in page when the provider signed the player in but Trimmy's server could not connect the account. Reassures that the current desk (practice progress on this phone) is kept."
   },
-  "signInErrorConnectionExpired": "We could not connect your account. Your previous desk is preserved.",
+  "signInErrorConnectionExpired": "We couldn’t connect your account. Your previous desk is preserved.",
   "@signInErrorConnectionExpired": {
     "description": "Same error as signInErrorConnection, shown when the player's guest session expired: the previous (guest) desk is kept."
   },
@@ -6242,7 +6242,7 @@
   "@pushErrorTurnOff": {
     "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when trade updates could not be turned off because the phone is offline."
   },
-  "pushErrorConnect": "Couldn’t connect notifications. Please try again.",
+  "pushErrorConnect": "Couldn’t connect notifications. Try again.",
   "@pushErrorConnect": {
     "description": "Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone could not register for notifications."
   },

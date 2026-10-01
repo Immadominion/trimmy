@@ -2,7 +2,6 @@
 <!-- Brazilian Portuguese, read by Portuguese phones in any region (pt-BR included). -->
 <resources>
     <string name="notification_channel_reminders">Lembretes de expediente</string>
-    <string name="notification_channel_check_in">Lembrete diário</string>
     <string name="notification_channel_trade_updates">Atualizações de operações</string>
     <string name="reminder_title">Sua mesa está te esperando</string>
     <string name="reminder_body">Sua próxima tarefa está te esperando na sua mesa.</string>

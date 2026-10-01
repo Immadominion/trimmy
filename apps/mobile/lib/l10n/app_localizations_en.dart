@@ -298,7 +298,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Showing your last confirmed paper desk. Trading is paused until Trimmy reconnects.';
 
   @override
-  String get appTradingCouldNotConnect => 'Trading could not connect.';
+  String get appTradingCouldNotConnect => 'Trading couldn’t connect.';
 
   @override
   String get appTradingChecking => 'Checking trading…';
@@ -1902,7 +1902,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fastBuyOpenFailed => 'This stock couldn’t open. Try again.';
 
   @override
-  String get fastBuyConnectFailed => 'Trading could not connect.';
+  String get fastBuyConnectFailed => 'Trading couldn’t connect.';
 
   @override
   String get fastBuyNoneAvailable => 'No stocks available to buy right now.';
@@ -2796,6 +2796,7 @@ class AppLocalizationsEn extends AppLocalizations {
       count,
       locale: localeName,
       other: '$countText positions',
+      one: '$countText position',
     );
     return '$_temp0';
   }
@@ -3061,11 +3062,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInErrorConnection =>
-      'We could not connect your account. Your desk is still here.';
+      'We couldn’t connect your account. Your desk is still here.';
 
   @override
   String get signInErrorConnectionExpired =>
-      'We could not connect your account. Your previous desk is preserved.';
+      'We couldn’t connect your account. Your previous desk is preserved.';
 
   @override
   String get signInErrorUnfinished => 'That did not finish. Try again.';
@@ -4609,8 +4610,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t turn off alerts. Try again when you’re online.';
 
   @override
-  String get pushErrorConnect =>
-      'Couldn’t connect notifications. Please try again.';
+  String get pushErrorConnect => 'Couldn’t connect notifications. Try again.';
 
   @override
   String get signInResendCode => 'Send a new code';

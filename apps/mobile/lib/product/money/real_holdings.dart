@@ -212,7 +212,7 @@ class RealHoldings extends StatelessWidget {
               priceForHolding?.call(holding),
             )) {
               final double worth => realUsd(worth, formats),
-              null => '—',
+              null => '–',
             },
             onTap: onAsset != null
                 ? () => onAsset!(holding)

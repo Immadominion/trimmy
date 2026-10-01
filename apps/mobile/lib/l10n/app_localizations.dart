@@ -603,7 +603,7 @@ abstract class AppLocalizations {
   /// Message on a stock page in Real mode (real money) when the app could not reach the trading service, so Buy and Sell are unavailable.
   ///
   /// In en, this message translates to:
-  /// **'Trading could not connect.'**
+  /// **'Trading couldn’t connect.'**
   String get appTradingCouldNotConnect;
 
   /// Message on a stock page in Real mode while the app checks whether real-money trading is available.
@@ -3175,7 +3175,7 @@ abstract class AppLocalizations {
   /// Error on the Fast buy sheet (real money mode) when the list of stocks that can be bought could not be loaded. A Retry button follows.
   ///
   /// In en, this message translates to:
-  /// **'Trading could not connect.'**
+  /// **'Trading couldn’t connect.'**
   String get fastBuyConnectFailed;
 
   /// Empty state on the Fast buy sheet when there is nothing to buy and nothing was searched.
@@ -4567,7 +4567,7 @@ abstract class AppLocalizations {
   /// Desk wallet card in Practice mode, small note under the balance: how many stocks the person holds. A position is one stock you own. {countText} is {count} already formatted.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, other{{countText} positions}}'**
+  /// **'{count, plural, =1{{countText} position} other{{countText} positions}}'**
   String walletPositions(int count, String countText);
 
   /// Desk wallet card in Practice mode, small note when a few positions have no price right now.
@@ -5029,13 +5029,13 @@ abstract class AppLocalizations {
   /// Error on the sign-in page when the provider signed the player in but Trimmy's server could not connect the account. Reassures that the current desk (practice progress on this phone) is kept.
   ///
   /// In en, this message translates to:
-  /// **'We could not connect your account. Your desk is still here.'**
+  /// **'We couldn’t connect your account. Your desk is still here.'**
   String get signInErrorConnection;
 
   /// Same error as signInErrorConnection, shown when the player's guest session expired: the previous (guest) desk is kept.
   ///
   /// In en, this message translates to:
-  /// **'We could not connect your account. Your previous desk is preserved.'**
+  /// **'We couldn’t connect your account. Your previous desk is preserved.'**
   String get signInErrorConnectionExpired;
 
   /// Generic error on the sign-in page when a sign-in step failed unexpectedly.
@@ -7615,7 +7615,7 @@ abstract class AppLocalizations {
   /// Settings, trade update alerts (push notifications when a real-money order finishes). Message when the phone could not register for notifications.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t connect notifications. Please try again.'**
+  /// **'Couldn’t connect notifications. Try again.'**
   String get pushErrorConnect;
 
   /// Button under the sign-in code field, for when the emailed code is slow or lost. Sends a fresh code to the same address.

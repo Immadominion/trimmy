@@ -1118,9 +1118,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 focusedBorder: InputBorder.none,
                 filled: false,
                 hintText: '0',
-                prefixText: _sell || !formats.dollarFirst
-                    ? null
-                    : '${formats.dollarSymbol} ',
+                // One currency mark: the buy is paid in USDC, so no "$" too.
                 suffixText: _sell ? _symbol : 'USDC',
                 suffixStyle: type.bodyMedium,
               ),

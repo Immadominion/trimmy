@@ -8,10 +8,8 @@
      Portuguese, read by every Portuguese phone) and values-fr. The app's name
      stays "Trimmy" in every language (android:label in the manifest). -->
 <resources>
-    <!-- Notification channel for the opt-in workday reminder, as named when the app starts. -->
+    <!-- Notification channel for the opt-in workday reminder. -->
     <string name="notification_channel_reminders">Workday reminders</string>
-    <!-- The same reminder channel's name as set when a reminder is delivered. -->
-    <string name="notification_channel_check_in">Daily check-in</string>
     <!-- Notification channel for alerts when a real-money order finishes. -->
     <string name="notification_channel_trade_updates">Trade updates</string>
     <!-- Title of the workday reminder notification. "Desk" is the app's home tab. -->

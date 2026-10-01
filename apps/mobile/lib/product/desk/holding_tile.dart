@@ -66,7 +66,7 @@ class HoldingTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Semantics(
-                        label: value == '—'
+                        label: value == '–'
                             ? context.l10n.deskHoldingValueUnavailable
                             : null,
                         child: Text(value, style: type.titleMedium),
