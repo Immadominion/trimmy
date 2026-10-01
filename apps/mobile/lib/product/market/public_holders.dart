@@ -1,6 +1,7 @@
 import '../../ui_review/review_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_empty_state.dart';
 import '../design/product_notice.dart';
 import '../../ui_review/review_animated_splash.dart';
@@ -157,16 +158,18 @@ class _PublicHoldersViewState extends State<PublicHoldersView> {
         ),
       );
     }
+    final l10n = context.l10n;
+    final formats = context.formats;
     final page = _page;
     if (page == null) {
       return ProductEmptyState(
-        title: 'Holders couldn’t load',
-        message: 'Try again in a moment.',
-        action: TextButton(onPressed: _load, child: const Text('Retry')),
+        title: l10n.holdersLoadFailedTitle,
+        message: l10n.holdersLoadFailedBody,
+        action: TextButton(onPressed: _load, child: Text(l10n.commonRetry)),
       );
     }
     if (page.holders.isEmpty) {
-      return const ProductEmptyState(title: 'No holders to show');
+      return ProductEmptyState(title: l10n.holdersEmpty);
     }
     final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final rowHeight = 56.0 * scale.clamp(1, 4);
@@ -183,19 +186,26 @@ class _PublicHoldersViewState extends State<PublicHoldersView> {
             padding: const EdgeInsets.fromLTRB(16, 10, 8, 2),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Holder',
-                    style: TextStyle(color: MarketPalette.muted, fontSize: 12),
+                    l10n.holdersColumnHolder,
+                    style: const TextStyle(
+                      color: MarketPalette.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-                const Text(
-                  'Tokens',
-                  style: TextStyle(color: MarketPalette.muted, fontSize: 12),
+                Text(
+                  l10n.holdersColumnTokens,
+                  style: const TextStyle(
+                    color: MarketPalette.muted,
+                    fontSize: 12,
+                  ),
                 ),
                 Tooltip(
-                  message:
-                      'Balances from the largest ${page.sampledAccounts} token accounts. Not the full holder list.',
+                  message: l10n.holdersSampleNote(
+                    formats.integer(page.sampledAccounts),
+                  ),
                   triggerMode: TooltipTriggerMode.tap,
                   child: const SizedBox(
                     width: 32,
@@ -267,9 +277,9 @@ class _PublicHoldersViewState extends State<PublicHoldersView> {
                             Expanded(
                               flex: 2,
                               child: Tooltip(
-                                message: holder.amount,
+                                message: formats.number(holder.amount),
                                 child: Text(
-                                  _quantity(holder.amount),
+                                  _quantity(holder.amount, formats),
                                   textAlign: TextAlign.right,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -308,18 +318,18 @@ class _PublicHoldersViewState extends State<PublicHoldersView> {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
         content: ProductNotice(
-          message: 'Address copied',
+          message: context.l10n.stockAddressCopied,
           onDismiss: () => messenger.hideCurrentSnackBar(),
         ),
       ),
     );
   }
 
-  String _quantity(String value) {
+  /// "1.25M", "12.50K", "<0.001" or "0.125" in English; the same figures
+  /// with the reader's separators and short units elsewhere.
+  String _quantity(String value, AppFormats formats) {
     final number = double.parse(value);
-    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(2)}M';
-    if (number >= 1000) return '${(number / 1000).toStringAsFixed(2)}K';
-    if (number != 0 && number < .001) return '<0.001';
-    return number.toStringAsFixed(3).replaceFirst(RegExp(r'\.?0+$'), '');
+    if (number != 0 && number < .001) return formats.number('<0.001');
+    return formats.compactNumber(number);
   }
 }

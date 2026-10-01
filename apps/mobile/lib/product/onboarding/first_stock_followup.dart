@@ -2,6 +2,7 @@ import '../notifications/reminder_preferences.dart';
 export '../notifications/reminder_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_feedback.dart';
 import '../../ui_review/review_trade_ticket.dart';
 import '../design/product_motion_icon.dart';
@@ -10,6 +11,9 @@ import '../design/product_theme.dart';
 import '../market/market_craft.dart';
 import '../notifications/notification_permission.dart';
 import 'onboarding_models.dart';
+
+/// What went wrong on the celebration or next-move step.
+enum _FollowupError { notSaved, continueFailed }
 
 /// Optional preferences never submit another order. The final callback commits
 /// the existing server-verified introduction checkpoint before opening Home.
@@ -74,7 +78,7 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                   : widget.initialStep))
           .clamp(0, 2);
   bool _busy = false;
-  String? _error;
+  _FollowupError? _error;
 
   @override
   void initState() {
@@ -103,7 +107,7 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
       }
       if (mounted) setState(() => _step = next);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Couldn’t save that. Try again.');
+      if (mounted) setState(() => _error = _FollowupError.notSaved);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -119,7 +123,7 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
       await widget.onFinish(money);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Your trade is safe. Try continuing again.');
+        setState(() => _error = _FollowupError.continueFailed);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -137,6 +141,8 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
       );
     }
     final theme = Theme.of(context).textTheme;
+    final l10n = context.l10n;
+    final formats = context.formats;
     return PopScope<void>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -153,7 +159,7 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 12, top: 6),
                     child: IconButton(
-                      tooltip: 'Keep using free money',
+                      tooltip: l10n.firstTradeKeepFreeMoney,
                       onPressed: _busy ? null : () => _finish(false),
                       icon: const Icon(Icons.close_rounded),
                     ),
@@ -174,13 +180,13 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'You’ve placed your first order!',
+                        l10n.firstTradeOrderPlaced,
                         textAlign: TextAlign.center,
                         style: theme.headlineLarge,
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Now let’s create your trader profile.',
+                        l10n.firstTradeCreateProfile,
                         textAlign: TextAlign.center,
                         style: theme.bodyLarge,
                       ),
@@ -208,20 +214,25 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              '${widget.shares} shares',
+                              l10n.firstTradeSharesCount(
+                                _shareCount(widget.shares),
+                                formats.number(widget.shares),
+                              ),
                               style: theme.headlineMedium,
                             ),
                             if (widget.amount != null) ...[
                               const SizedBox(height: 12),
                               Text(
-                                '${widget.amount} free money',
+                                l10n.firstTradeFreeMoneyAmount(
+                                  formats.number(widget.amount!),
+                                ),
                                 style: theme.bodyMedium,
                               ),
                             ],
                           ],
                         ),
                         lower: Text(
-                          'Buy confirmed',
+                          l10n.firstTradeBuyConfirmed,
                           style: theme.titleMedium?.copyWith(
                             color: ProductColor.gain,
                           ),
@@ -235,16 +246,13 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                         ),
                       ),
                       const SizedBox(height: 26),
-                      Text('Your next move.', style: theme.headlineLarge),
+                      Text(l10n.firstTradeNextMove, style: theme.headlineLarge),
                       const SizedBox(height: 12),
-                      Text(
-                        'Keep finding your feet, or fund your wallet.',
-                        style: theme.bodyLarge,
-                      ),
+                      Text(l10n.firstTradeNextMoveBody, style: theme.bodyLarge),
                       const SizedBox(height: 28),
                       SetupChoiceCard(
-                        title: 'Keep using free money',
-                        caption: 'Build your confidence on the desk.',
+                        title: l10n.firstTradeKeepFreeMoney,
+                        caption: l10n.firstTradeKeepFreeMoneyDetail,
                         icon: const ProductMotionIcon(
                           file: 'goal-goal-animated.png',
                           animatedFile: 'goal-goal-animated.gif',
@@ -254,8 +262,8 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                       ),
                       const SizedBox(height: 14),
                       SetupChoiceCard(
-                        title: 'Add money',
-                        caption: 'See your deposit options.',
+                        title: l10n.commonAddMoney,
+                        caption: l10n.firstTradeAddMoneyDetail,
                         icon: const Icon(
                           Icons.add_rounded,
                           color: ProductColor.violet,
@@ -265,14 +273,19 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'You can add money from your desk any time.',
+                        l10n.firstTradeAddMoneyLater,
                         style: theme.bodySmall,
                       ),
                     ],
                     if (_error != null) ...[
                       const SizedBox(height: 18),
                       Text(
-                        _error!,
+                        switch (_error!) {
+                          _FollowupError.notSaved =>
+                            l10n.onboardingCouldNotSave,
+                          _FollowupError.continueFailed =>
+                            l10n.firstTradeContinueSafe,
+                        },
                         style: theme.bodyMedium?.copyWith(
                           color: ProductColor.loss,
                         ),
@@ -293,7 +306,9 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
                         padding: const EdgeInsets.all(18),
                         shape: productSquircle(22),
                       ),
-                      child: Text(_busy ? 'Saving…' : 'Continue'),
+                      child: Text(
+                        _busy ? l10n.commonSaving : l10n.commonContinue,
+                      ),
                     ),
                   ),
                 ),
@@ -303,6 +318,22 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
       ),
     );
   }
+}
+
+/// The share count for picking "share" or "shares" in each language. The
+/// text shown is always the exact figure the server sent.
+num _shareCount(String shares) =>
+    double.tryParse(shares.replaceAll(',', '')) ?? 0;
+
+/// What the reminder step tells the player after trying to save.
+enum _ReminderNotice {
+  permissionDenied,
+  notificationsUnavailable,
+  reminderNotSet,
+  changedElsewhere,
+  notSaved,
+  savedReminderNotSet,
+  savedSyncPending,
 }
 
 class ReminderPreferencePage extends StatefulWidget {
@@ -331,7 +362,7 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
     widget.principal,
   );
   bool _busy = false;
-  String? _message;
+  _ReminderNotice? _message;
   bool _saved = false;
 
   Future<void> _save({bool skip = false}) async {
@@ -383,11 +414,11 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
         setState(() {
           _saved = true;
           _message = permission == OnboardingNotificationStatus.denied
-              ? 'Notifications are off. You can change this in your phone settings.'
-              : 'Your preference is saved. Notifications aren’t available on this build yet.';
+              ? _ReminderNotice.permissionDenied
+              : _ReminderNotice.notificationsUnavailable;
         });
       } else if (!scheduled) {
-        setState(() => _message = 'Couldn’t set the reminder. Try again.');
+        setState(() => _message = _ReminderNotice.reminderNotSet);
       } else {
         await widget.onDone();
       }
@@ -409,7 +440,7 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
             widget.preferences,
             widget.principal,
           );
-          _message = 'Your preference changed on another device. Choose again.';
+          _message = _ReminderNotice.changedElsewhere;
         });
       }
     } catch (_) {
@@ -417,10 +448,10 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
         _saved = savedLocally && scheduledLocally;
         setState(
           () => _message = !savedLocally
-              ? 'Couldn’t save that. Try again.'
+              ? _ReminderNotice.notSaved
               : !scheduledLocally
-              ? 'Saved on this phone. Couldn’t set the reminder. Try again.'
-              : 'Saved on this phone. Sync will retry when you’re online.',
+              ? _ReminderNotice.savedReminderNotSet
+              : _ReminderNotice.savedSyncPending,
         );
       }
     } finally {
@@ -428,9 +459,24 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
     }
   }
 
+  String _notice(
+    AppLocalizations l10n,
+    _ReminderNotice notice,
+  ) => switch (notice) {
+    _ReminderNotice.permissionDenied => l10n.onboardingReminderPermissionOff,
+    _ReminderNotice.notificationsUnavailable =>
+      l10n.onboardingReminderUnavailable,
+    _ReminderNotice.reminderNotSet => l10n.onboardingReminderNotSet,
+    _ReminderNotice.changedElsewhere => l10n.onboardingReminderChanged,
+    _ReminderNotice.notSaved => l10n.onboardingCouldNotSave,
+    _ReminderNotice.savedReminderNotSet => l10n.onboardingReminderSavedNotSet,
+    _ReminderNotice.savedSyncPending => l10n.onboardingReminderSavedOffline,
+  };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
+    final l10n = context.l10n;
     return PopScope<void>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -446,7 +492,7 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
                 child: Padding(
                   padding: const EdgeInsets.only(left: 12, top: 6),
                   child: IconButton(
-                    tooltip: 'Skip reminders',
+                    tooltip: l10n.onboardingReminderSkip,
                     onPressed: _busy ? null : () => _save(skip: true),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -464,10 +510,13 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
                       ),
                     ),
                     const SizedBox(height: 26),
-                    Text('A little nudge?', style: theme.headlineLarge),
+                    Text(
+                      l10n.onboardingReminderTitle,
+                      style: theme.headlineLarge,
+                    ),
                     const SizedBox(height: 12),
                     Text(
-                      'How often would you like a reminder?',
+                      l10n.onboardingReminderQuestion,
                       style: theme.bodyLarge,
                     ),
                     const SizedBox(height: 30),
@@ -475,8 +524,8 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: SetupChoiceCard(
-                          title: preference.label,
-                          caption: preference.caption,
+                          title: preference.label(l10n),
+                          caption: preference.caption(l10n),
                           selected: _selected == preference,
                           onTap: _busy
                               ? null
@@ -501,7 +550,10 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
                     if (_message != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(_message!, style: theme.bodyMedium),
+                        child: Text(
+                          _notice(l10n, _message!),
+                          style: theme.bodyMedium,
+                        ),
                       ),
                     SizedBox(
                       width: double.infinity,
@@ -514,7 +566,9 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
                           padding: const EdgeInsets.all(18),
                           shape: productSquircle(22),
                         ),
-                        child: Text(_busy ? 'Saving…' : 'Continue'),
+                        child: Text(
+                          _busy ? l10n.commonSaving : l10n.commonContinue,
+                        ),
                       ),
                     ),
                   ],

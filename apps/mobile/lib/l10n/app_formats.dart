@@ -297,15 +297,16 @@ final class AppFormats {
 
   // Typed amounts.
 
-  /// What an amount field accepts while typing. English accepts digits and
-  /// a point, as it always has. Languages whose decimal mark is a comma also
-  /// accept the comma their keypad shows.
-  RegExp get decimalInputCharacters =>
-      decimalSeparator == ',' ? RegExp(r'[0-9.,]') : RegExp(r'[0-9.]');
+  /// What an amount field accepts while typing: digits and both decimal
+  /// marks, in every language. The iOS decimal pad shows the mark of the
+  /// phone's region, not the app's language, so an English reader in France
+  /// only has a comma; dropping it would turn "0,5" into "05".
+  RegExp get decimalInputCharacters => RegExp(r'[0-9.,]');
 
   /// Turns a typed amount into the plain `1234.5` form the exact parsers
-  /// read. English text is returned unchanged, so English parsing behaves
-  /// exactly as before.
+  /// read. English keeps its reading of the point; one comma that cannot be
+  /// a thousands separator is the decimal mark ("0,5" is a half), and
+  /// "1,000" comes back as typed so validation rejects it, never guessing.
   ///
   /// Where the decimal mark is a comma, both marks are accepted: a comma is
   /// the decimal mark and points are grouping ("1.234,5" is 1234.5). Without
@@ -314,7 +315,12 @@ final class AppFormats {
   /// Spaces are ignored. Anything unclear comes back as typed, so the
   /// existing validation rejects it rather than guessing.
   String normalizeDecimalInput(String typed) {
-    if (decimalSeparator != ',') return typed;
+    if (decimalSeparator != ',') {
+      final comma = RegExp(r'^\s*([0-9]*),([0-9]*)\s*$').firstMatch(typed);
+      return comma != null && comma[2]!.length != 3
+          ? '${comma[1]}.${comma[2]}'
+          : typed;
+    }
     final text = typed.trim().replaceAll(RegExp(r'[\s  ]'), '');
     if (text.contains(',')) {
       final parts = text.split(',');

@@ -48,17 +48,24 @@ object ReminderSchedule {
 
     fun createChannel(context: Context) {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "Workday reminders", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(
+                CHANNEL,
+                context.getString(R.string.notification_channel_reminders),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
         )
     }
 
     fun restore(context: Context): Boolean {
         val saved = preferences(context)
         val at = saved.getLong("at", 0L).takeIf { it > System.currentTimeMillis() }
-        return replace(context, preference(context), at, saved.getString("body", null))
+        return replace(
+            context, preference(context), at, saved.getString("title", null), saved.getString("body", null),
+        )
     }
 
-    fun replace(context: Context, preference: String, at: Long?, body: String?): Boolean {
+    /** [title] and [body] arrive from Dart in the app's language; null falls back to the phone's. */
+    fun replace(context: Context, preference: String, at: Long?, title: String?, body: String?): Boolean {
         require(preference in setOf("daily", "occasional", "off"))
         val alarm = context.getSystemService(AlarmManager::class.java)
         val delivery = PendingIntent.getBroadcast(
@@ -69,7 +76,8 @@ object ReminderSchedule {
         alarm.cancel(delivery)
         val whenMs = if (preference == "off") 0L else at ?: 0L
         if (!preferences(context).edit().putString("frequency", preference)
-                .putLong("at", whenMs).putString("body", body?.take(240)).commit()) return false
+                .putLong("at", whenMs).putString("title", title?.take(120))
+                .putString("body", body?.take(240)).commit()) return false
         context.getSystemService(NotificationManager::class.java).cancel(REQUEST)
         if (whenMs <= System.currentTimeMillis()) {
             context.getSystemService(NotificationManager::class.java).cancel(REQUEST)
@@ -91,7 +99,11 @@ object ReminderSchedule {
         if (!saved.edit().remove("at").commit() || now - at > 6 * 60 * 60_000L || !allowed(context)) return
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Daily check-in", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(
+                CHANNEL,
+                context.getString(R.string.notification_channel_reminders),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
         )
         val open = PendingIntent.getActivity(
             context, REQUEST,
@@ -102,8 +114,8 @@ object ReminderSchedule {
         )
         val notification = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_trimmy)
-            .setContentTitle("Your desk is waiting")
-            .setContentText(saved.getString("body", "Your next assignment is waiting at your desk."))
+            .setContentTitle(saved.getString("title", null) ?: context.getString(R.string.reminder_title))
+            .setContentText(saved.getString("body", null) ?: context.getString(R.string.reminder_body))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)

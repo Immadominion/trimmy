@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 import '../career/reason_privacy_controller.dart';
 import '../career/reason_sharing_repository.dart';
 import '../design/product_motion_icon.dart';
 import '../design/product_theme.dart';
-
-const reasonPrivacyConsentLine =
-    "Your comments and your handle will show on that stock's page for anyone in Trimmy. Money never shows.";
-const reasonPrivacyFriendsLine =
-    'Not available yet. Shares nothing until friends exist.';
-const reasonPrivacyFriendsAvailableLine =
-    'Only your Trimmy friends can see them on each stock page.';
 
 /// The "Who can see my comments" settings row. It shows only what the server
 /// confirmed. A choice in flight reads as saving until the server answers.
@@ -28,6 +22,7 @@ class ReasonPrivacyRow extends StatelessWidget {
       final pending = controller.pending;
       final canChoose = privacy != null && !controller.busy;
       final theme = Theme.of(context);
+      final l10n = context.l10n;
       final retry = _retryAction();
       return ListTile(
         key: const ValueKey('settings-reason-privacy'),
@@ -36,7 +31,7 @@ class ReasonPrivacyRow extends StatelessWidget {
         leading: const ProductMotionIcon(file: 'settings-lock.png'),
         enabled: canChoose,
         title: Text(
-          'Who can see my comments',
+          l10n.reasonPrivacyTitle,
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w700,
             color: canChoose ? ProductColor.ink : ProductColor.muted,
@@ -45,7 +40,7 @@ class ReasonPrivacyRow extends StatelessWidget {
         subtitle: Semantics(
           liveRegion: true,
           child: Text(
-            _subtitle(),
+            _subtitle(l10n),
             key: const ValueKey('settings-reason-privacy-status'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: _failed ? ProductColor.loss : ProductColor.muted,
@@ -71,18 +66,23 @@ class ReasonPrivacyRow extends StatelessWidget {
             ? TextButton(
                 key: const ValueKey('settings-reason-privacy-retry'),
                 onPressed: retry,
-                child: const Text('Try again'),
+                child: Text(l10n.commonTryAgain),
               )
             : privacy == null
             ? null
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    privacy.visibility.label,
-                    key: const ValueKey('settings-reason-privacy-value'),
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: ProductColor.violet,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 132),
+                    child: Text(
+                      privacy.visibility.label(l10n),
+                      key: const ValueKey('settings-reason-privacy-value'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: ProductColor.violet,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -106,89 +106,101 @@ class ReasonPrivacyRow extends StatelessWidget {
     return controller.retry;
   }
 
-  String _subtitle() {
+  String _subtitle(AppLocalizations l10n) {
     final privacy = controller.privacy;
     final pending = controller.pending;
     if (controller.saving && pending != null) {
-      return 'Saving ${pending.visibility.label}.';
+      return l10n.reasonPrivacySavingChoice(pending.visibility.label(l10n));
     }
-    if (controller.loading && privacy == null) return 'Loading your choice.';
+    if (controller.loading && privacy == null) {
+      return l10n.reasonPrivacyLoading;
+    }
     final guest = controller.guestSessionFailure;
-    if (guest != null) return _guestMessage(guest);
+    if (guest != null) return _guestMessage(guest, l10n);
     final failure = controller.failure;
     if (failure != null) {
       return privacy == null
-          ? _loadFailureMessage(failure)
-          : _saveFailureMessage(failure, pending);
+          ? _loadFailureMessage(failure, l10n)
+          : _saveFailureMessage(failure, pending, l10n);
     }
-    if (privacy == null) return 'Your choice is not available yet.';
+    if (privacy == null) return l10n.reasonPrivacyNotAvailable;
+    final status = _describe(
+      l10n,
+      privacy.visibility,
+      friendsSharingAvailable: privacy.friendsSharingAvailable,
+    );
     return switch (controller.notice) {
-      ReasonPrivacyNotice.saved =>
-        'Saved. ${_describe(privacy.visibility, privacy.friendsSharingAvailable)}',
+      ReasonPrivacyNotice.saved => l10n.reasonPrivacySavedStatus(status),
       ReasonPrivacyNotice.changedElsewhere =>
-        'Changed on another device. Refreshed. ${_describe(privacy.visibility, privacy.friendsSharingAvailable)}',
-      null => _describe(privacy.visibility, privacy.friendsSharingAvailable),
+        l10n.reasonPrivacyChangedElsewhere(status),
+      null => status,
     };
   }
 
-  String _describe(ReasonVisibility visibility, bool friendsSharingAvailable) =>
-      switch (visibility) {
-        ReasonVisibility.nobody => 'Only you can see your comments.',
-        ReasonVisibility.everyone =>
-          'Anyone in Trimmy can see them on each stock page.',
-        ReasonVisibility.friends =>
-          friendsSharingAvailable
-              ? reasonPrivacyFriendsAvailableLine
-              : reasonPrivacyFriendsLine,
+  String _guestMessage(GuestSessionFailure failure, AppLocalizations l10n) =>
+      switch (failure) {
+        GuestSessionFailure.expired ||
+        GuestSessionFailure.revoked => l10n.reasonPrivacyGuestRecovery,
+        _ => l10n.reasonPrivacySessionRefresh,
       };
 
-  String _guestMessage(GuestSessionFailure failure) => switch (failure) {
-    GuestSessionFailure.expired ||
-    GuestSessionFailure.revoked => 'This guest desk needs recovery.',
-    _ => 'Your session needs a refresh. Try again.',
-  };
-
-  String _loadFailureMessage(ReasonSharingFailure failure) => switch (failure) {
-    ReasonSharingFailure.offline =>
-      'You are offline. Your choice could not load.',
-    ReasonSharingFailure.timeout => 'Your choice took too long to load.',
-    ReasonSharingFailure.rateLimited => _rateLimited('load'),
-    ReasonSharingFailure.accountRequired =>
-      'Your session needs a refresh before this can load.',
-    ReasonSharingFailure.accountNotFound => 'This account is closed.',
-    _ => 'Your choice could not load.',
+  String _loadFailureMessage(
+    ReasonSharingFailure failure,
+    AppLocalizations l10n,
+  ) => switch (failure) {
+    ReasonSharingFailure.offline => l10n.reasonPrivacyLoadOffline,
+    ReasonSharingFailure.timeout => l10n.reasonPrivacyLoadTimeout,
+    ReasonSharingFailure.rateLimited => _rateLimited(
+      seconds: l10n.reasonPrivacyRateLimitedLoadSeconds,
+      shortly: l10n.reasonPrivacyRateLimitedLoad,
+    ),
+    ReasonSharingFailure.accountRequired => l10n.reasonPrivacyLoadSession,
+    ReasonSharingFailure.accountNotFound => l10n.reasonPrivacyAccountClosed,
+    _ => l10n.reasonPrivacyLoadFailed,
   };
 
   String _saveFailureMessage(
     ReasonSharingFailure failure,
     ReasonPrivacyWrite? pending,
+    AppLocalizations l10n,
   ) {
-    final choice = pending?.visibility.label;
-    final notSaved = choice == null
-        ? 'Your choice is not saved yet.'
-        : '$choice is not saved yet.';
+    final choice = pending?.visibility.label(l10n);
     return switch (failure) {
-      ReasonSharingFailure.offline => 'You are offline. $notSaved',
-      ReasonSharingFailure.timeout => 'Saving took too long. $notSaved',
-      ReasonSharingFailure.rateLimited => _rateLimited('save'),
+      ReasonSharingFailure.offline =>
+        choice == null
+            ? l10n.reasonPrivacySaveOffline
+            : l10n.reasonPrivacySaveOfflineChoice(choice),
+      ReasonSharingFailure.timeout =>
+        choice == null
+            ? l10n.reasonPrivacySaveTimeout
+            : l10n.reasonPrivacySaveTimeoutChoice(choice),
+      ReasonSharingFailure.rateLimited => _rateLimited(
+        seconds: l10n.reasonPrivacyRateLimitedSaveSeconds,
+        shortly: l10n.reasonPrivacyRateLimitedSave,
+      ),
       ReasonSharingFailure.accountRequired =>
-        'Your session needs a refresh. $notSaved',
+        choice == null
+            ? l10n.reasonPrivacySaveSession
+            : l10n.reasonPrivacySaveSessionChoice(choice),
       ReasonSharingFailure.accountNotFound =>
-        'This account is closed. Nothing was saved.',
+        l10n.reasonPrivacySaveAccountClosed,
       ReasonSharingFailure.idempotencyConflict =>
-        'That save could not be matched. Choose again.',
-      _ => "Couldn't save. $notSaved",
+        l10n.reasonPrivacySaveMismatch,
+      _ =>
+        choice == null
+            ? l10n.reasonPrivacySaveFailed
+            : l10n.reasonPrivacySaveFailedChoice(choice),
     };
   }
 
-  String _rateLimited(String action) {
+  /// The wait the server asked for, when it sent one, else "shortly".
+  String _rateLimited({
+    required String Function(int seconds) seconds,
+    required String shortly,
+  }) {
     final delay = controller.retryAfter;
-    if (delay == null || delay.inSeconds <= 0) {
-      return 'Too many changes. Try to $action again shortly.';
-    }
-    final seconds = delay.inSeconds;
-    return 'Too many changes. Try to $action again in $seconds '
-        '${seconds == 1 ? 'second' : 'seconds'}.';
+    if (delay == null || delay.inSeconds <= 0) return shortly;
+    return seconds(delay.inSeconds);
   }
 
   Future<void> _choose(
@@ -239,6 +251,7 @@ class _ReasonPrivacySheetState extends State<ReasonPrivacySheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -247,10 +260,10 @@ class _ReasonPrivacySheetState extends State<ReasonPrivacySheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Who can see my comments', style: theme.textTheme.titleLarge),
+            Text(l10n.reasonPrivacyTitle, style: theme.textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
-              'Now: ${widget.current.label}.',
+              l10n.reasonPrivacySheetNow(widget.current.label(l10n)),
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -273,7 +286,7 @@ class _ReasonPrivacySheetState extends State<ReasonPrivacySheet> {
               Semantics(
                 liveRegion: true,
                 child: Text(
-                  reasonPrivacyConsentLine,
+                  l10n.reasonPrivacyConsentLine,
                   key: const ValueKey('reason-privacy-consent'),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -290,7 +303,7 @@ class _ReasonPrivacySheetState extends State<ReasonPrivacySheet> {
                 shape: productSquircle(20),
               ),
               onPressed: () => Navigator.of(context).pop(_selected),
-              child: const Text('Save'),
+              child: Text(l10n.commonSave),
             ),
           ],
         ),
@@ -316,18 +329,15 @@ class _ReasonPrivacyOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (title, line) = switch (option) {
-      ReasonVisibility.nobody => ('Nobody', 'Only you. This is the default.'),
-      ReasonVisibility.everyone => (
-        'Everyone',
-        'Anyone in Trimmy, on each stock page.',
-      ),
-      ReasonVisibility.friends => (
-        'Friends',
+    final l10n = context.l10n;
+    final title = option.label(l10n);
+    final line = switch (option) {
+      ReasonVisibility.nobody => l10n.reasonPrivacyNobodyOption,
+      ReasonVisibility.everyone => l10n.reasonPrivacyEveryoneOption,
+      ReasonVisibility.friends =>
         friendsSharingAvailable
-            ? reasonPrivacyFriendsAvailableLine
-            : reasonPrivacyFriendsLine,
-      ),
+            ? l10n.reasonPrivacyFriendsAvailableLine
+            : l10n.reasonPrivacyFriendsLine,
     };
     return Semantics(
       inMutuallyExclusiveGroup: true,
@@ -375,3 +385,17 @@ class _ReasonPrivacyOption extends StatelessWidget {
     );
   }
 }
+
+/// Who can see your comments now, as one sentence.
+String _describe(
+  AppLocalizations l10n,
+  ReasonVisibility visibility, {
+  required bool friendsSharingAvailable,
+}) => switch (visibility) {
+  ReasonVisibility.nobody => l10n.reasonPrivacyNobodyLine,
+  ReasonVisibility.everyone => l10n.reasonPrivacyEveryoneLine,
+  ReasonVisibility.friends =>
+    friendsSharingAvailable
+        ? l10n.reasonPrivacyFriendsAvailableLine
+        : l10n.reasonPrivacyFriendsLine,
+};

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:trimmy/account/guest_session.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/workdays/workdays.dart';
 import 'package:trimmy/product/workdays/workday_screen.dart';
@@ -91,7 +92,11 @@ void main() {
     expect(journey.upcoming!.ordinal, 2);
     expect(journey.assignments.single.trims, 10);
     expect(
-      journey.upcoming!.opensLabel(now: DateTime(2026, 9, 30, 12)),
+      journey.upcoming!.opensLabel(
+        englishLocalizations,
+        AppFormats.english,
+        now: DateTime(2026, 9, 30, 12),
+      ),
       'Opens tomorrow',
     );
   });
@@ -119,7 +124,7 @@ void main() {
         c.save(c.journey!.current!, {'value': 'wrong'}),
         throwsA(
           isA<WorkdayException>().having(
-            (e) => e.message,
+            (e) => e.message(englishLocalizations),
             'feedback',
             'Compare revenue with profit.',
           ),
@@ -157,6 +162,115 @@ void main() {
       );
       expect(find.text('+20 Trims'), findsNothing);
       expect(find.text('Day 2: Read the company'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  test(
+    'workdays are read in the app language, and an API without languages is asked again in English',
+    () async {
+      final data = fixture();
+      WorkdayRepository repository(
+        String? language,
+        FutureOr<http.Response> Function(http.Request) fn,
+        List<Uri> urls,
+      ) => WorkdayRepository(
+        Uri.parse('https://trimmy.test'),
+        () async => const GuestPaperAuthorization('test'),
+        client: MockClient((request) async {
+          urls.add(request.url);
+          return await fn(request);
+        }),
+        language: () => language,
+      );
+      String shown(Uri url) =>
+          url.hasQuery ? '${url.path}?${url.query}' : url.path;
+
+      var urls = <Uri>[];
+      await repository('fr', (_) => response(data), urls).read();
+      expect(urls.map(shown), ['/v1/career/workdays?lang=fr']);
+
+      // The API before workday languages refuses the parameter while
+      // checking the request, before reading or saving anything.
+      urls = <Uri>[];
+      final old = repository(
+        'pt',
+        (request) => request.url.hasQuery
+            ? http.Response(
+                '{"error":{"code":"INVALID_REQUEST","message":"Request parameters are invalid."}}',
+                400,
+              )
+            : response(data),
+        urls,
+      );
+      await old.read();
+      await old.read();
+      expect(urls.map(shown), [
+        '/v1/career/workdays?lang=pt',
+        '/v1/career/workdays',
+        '/v1/career/workdays',
+      ]);
+
+      // Any other failure is the answer; nothing is sent twice.
+      urls = <Uri>[];
+      await expectLater(
+        repository(
+          'es',
+          (_) => http.Response('{"code":"WORK_UNAVAILABLE"}', 503),
+          urls,
+        ).read(),
+        throwsA(isA<WorkdayException>()),
+      );
+      expect(urls.map(shown), ['/v1/career/workdays?lang=es']);
+
+      urls = <Uri>[];
+      await repository(null, (_) => response(data), urls).read();
+      expect(urls.map(shown), [
+        '/v1/career/workdays',
+      ], reason: 'English sends no language, as installed apps do');
+    },
+  );
+  testWidgets(
+    'the evidence step counts pinned facts, and says when there are too many',
+    (tester) async {
+      final data = fixture();
+      final c = controller((_) => response(data))
+        ..journey = WorkJourney.fromJson(data);
+      addTearDown(c.dispose);
+      final first = (data['assignments'] as List).first as Map;
+      final required = first['evidence']['count'] as int;
+      final rows = List<Map>.from(first['rows'] as List);
+      await tester.pumpWidget(
+        app(
+          WorkdayScreen(
+            controller: c,
+            assignmentId: 'morning-brief',
+            onCompleted: () async {},
+          ),
+        ),
+      );
+      await tester.pump();
+      String counter() => tester
+          .widget<Text>(find.byKey(const ValueKey('workday-pin-count')))
+          .data!;
+      Color? colour() => tester
+          .widget<Text>(find.byKey(const ValueKey('workday-pin-count')))
+          .style
+          ?.color;
+      expect(counter(), '0 / $required');
+      for (final row in rows.take(required + 1)) {
+        final label = find.text(row['label'] as String);
+        await tester.ensureVisible(label);
+        await tester.tap(label);
+        await tester.pump();
+      }
+      expect(counter(), '${required + 1} / $required');
+      expect(
+        colour(),
+        ProductColor.loss,
+        reason: 'too many pinned reads as a problem',
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },

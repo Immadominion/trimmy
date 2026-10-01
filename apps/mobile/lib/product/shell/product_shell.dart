@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 
 enum ProductTab { desk, market, floor, profile }
@@ -104,11 +105,12 @@ class ProductShellState extends State<ProductShell> {
 
   Widget _destination(ProductTab tab) {
     final selected = tab == _tab;
+    final l10n = context.l10n;
     final label = switch (tab) {
-      ProductTab.desk => 'Desk',
-      ProductTab.market => 'Market',
-      ProductTab.floor => 'Career',
-      ProductTab.profile => 'Profile',
+      ProductTab.desk => l10n.tabDesk,
+      ProductTab.market => l10n.tabMarket,
+      ProductTab.floor => l10n.tabCareer,
+      ProductTab.profile => l10n.tabProfile,
     };
     final asset = switch (tab) {
       ProductTab.desk => 'desk',
@@ -167,10 +169,21 @@ class ProductShellState extends State<ProductShell> {
                     : icon,
               ),
               const SizedBox(height: 3),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: selected ? ProductColor.violet : ProductColor.muted,
+              // Longer translations shrink to fit the tab instead of
+              // wrapping or clipping.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: selected
+                          ? ProductColor.violet
+                          : ProductColor.muted,
+                    ),
+                  ),
                 ),
               ),
             ],

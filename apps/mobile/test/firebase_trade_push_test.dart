@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/product/notifications/firebase_trade_push.dart';
+import 'package:trimmy/product/notifications/trade_push.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -93,10 +94,10 @@ void main() {
       final assertion = expectLater(
         device.token(askPermission: true),
         throwsA(
-          isA<FormatException>().having(
-            (e) => e.message,
-            'message',
-            'Couldn’t connect notifications. Please try again.',
+          isA<TradePushFailure>().having(
+            (e) => e.issue,
+            'issue',
+            TradePushIssue.connectFailed,
           ),
         ),
       );
@@ -119,7 +120,13 @@ void main() {
       missingFcm = true;
       await expectLater(
         device.token(askPermission: true),
-        throwsA(isA<FormatException>()),
+        throwsA(
+          isA<TradePushFailure>().having(
+            (e) => e.issue,
+            'issue',
+            TradePushIssue.connectFailed,
+          ),
+        ),
       );
       expect(calls.last, 'autoInit:false');
     },

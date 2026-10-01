@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import 'product_theme.dart';
 
 /// A compact money-mode entry with the same raised edge as our choice cards.
@@ -28,7 +29,7 @@ class ProductMoneyTag extends StatelessWidget {
               children: [
                 Flexible(
                   child: Text(
-                    'Use real money',
+                    context.l10n.designUseRealMoney,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: ProductColor.pineDark,
                       fontWeight: FontWeight.w800,

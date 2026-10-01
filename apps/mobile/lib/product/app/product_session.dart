@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 import '../onboarding/onboarding_models.dart';
 import 'product_profile_repository.dart';
 
@@ -15,6 +16,48 @@ enum ProductLaunchStep {
   dayOne,
   saveDesk,
   app,
+}
+
+/// Why the product profile could not open or save. Kept as a code so the
+/// message is written in the reader's language when it is shown.
+enum ProductSessionIssue {
+  guestRecovery,
+  answersNotSaved,
+  stepNotSaved,
+  setupUnreadable,
+  readOffline,
+  readTimeout,
+  readSession,
+  readUnavailable,
+  handleTaken,
+  tradeRequired,
+  notReady,
+  principalChanged,
+  conflict,
+  writeOffline,
+  writeTimeout,
+  writeSession,
+  writeFailed;
+
+  String message(AppLocalizations l10n) => switch (this) {
+    guestRecovery => l10n.appSessionGuestRecovery,
+    answersNotSaved => l10n.appSessionAnswersNotSaved,
+    stepNotSaved => l10n.appSessionStepNotSaved,
+    setupUnreadable => l10n.appSessionSetupUnreadable,
+    readOffline => l10n.appSessionReadOffline,
+    readTimeout => l10n.appSessionReadTimeout,
+    readSession => l10n.appSessionReadSession,
+    readUnavailable => l10n.appSessionReadUnavailable,
+    handleTaken => l10n.appSessionHandleTaken,
+    tradeRequired => l10n.appSessionTradeRequired,
+    notReady => l10n.appSessionNotReady,
+    principalChanged => l10n.appSessionPrincipalChanged,
+    conflict => l10n.appSessionConflict,
+    writeOffline => l10n.appSessionWriteOffline,
+    writeTimeout => l10n.appSessionWriteTimeout,
+    writeSession => l10n.appSessionWriteSession,
+    writeFailed => l10n.appSessionWriteFailed,
+  };
 }
 
 /// Owns the first-use sequence. Production sessions bind to one server-owned
@@ -49,7 +92,7 @@ final class ProductSession extends ChangeNotifier {
   // Skip may need two server writes. Keep the note visible through both,
   // including a failed second write, instead of flashing the practice picker.
   var _holdIntroductionForSkip = false;
-  String? _loadIssue;
+  ProductSessionIssue? _loadIssue;
 
   ProductProfileRepository? _remoteRepository;
   ProductProfileSnapshot? _remoteSnapshot;
@@ -71,7 +114,10 @@ final class ProductSession extends ChangeNotifier {
   bool get firstPositionCollected => _firstPositionCollected;
   bool get dayOneSeen => _dayOneSeen;
   bool get accountGateSeen => _accountGateSeen;
-  String? get loadIssue => _loadIssue;
+
+  /// Why the profile could not open or save, if it could not. Shown with
+  /// [ProductSessionIssue.message].
+  ProductSessionIssue? get loadIssue => _loadIssue;
   bool get remoteLoading => _remoteLoading;
   ProductProfileFailure? get remoteFailure => _remoteFailure;
   GuestSessionFailure? get remoteGuestFailure => _remoteGuestFailure;
@@ -230,7 +276,7 @@ final class ProductSession extends ChangeNotifier {
       _remoteFailure = null;
       _remoteGuestFailure = error.failure;
       _remoteLoading = false;
-      _loadIssue = 'This guest desk needs recovery.';
+      _loadIssue = ProductSessionIssue.guestRecovery;
       _applyRemoteSnapshot(cached);
       notifyListeners();
     } on ProductProfileException catch (error) {
@@ -361,7 +407,7 @@ final class ProductSession extends ChangeNotifier {
     } catch (_) {
       _profile = previousProfile;
       _notificationStatus = previousNotification;
-      _loadIssue = 'Your answers could not be saved. Try once more.';
+      _loadIssue = ProductSessionIssue.answersNotSaved;
       notifyListeners();
       rethrow;
     }
@@ -564,7 +610,7 @@ final class ProductSession extends ChangeNotifier {
       if (!_isCurrentRemote(generation, repository, principalKey)) rethrow;
       _remoteFailure = null;
       _remoteGuestFailure = error.failure;
-      _loadIssue = 'This guest desk needs recovery.';
+      _loadIssue = ProductSessionIssue.guestRecovery;
       notifyListeners();
       rethrow;
     } on ProductProfileException catch (error) {
@@ -701,7 +747,7 @@ final class ProductSession extends ChangeNotifier {
       if (!_isCurrentRemote(generation, repository, principalKey)) rethrow;
       _remoteFailure = null;
       _remoteGuestFailure = error.failure;
-      _loadIssue = 'This guest desk needs recovery.';
+      _loadIssue = ProductSessionIssue.guestRecovery;
       notifyListeners();
       rethrow;
     } on ProductProfileException catch (error) {
@@ -755,7 +801,7 @@ final class ProductSession extends ChangeNotifier {
       if (!await _preferences.setBool(key, true)) throw StateError('NOT_SAVED');
     } catch (_) {
       set(false);
-      _loadIssue = 'That step could not be saved. Try again.';
+      _loadIssue = ProductSessionIssue.stepNotSaved;
       notifyListeners();
       rethrow;
     }
@@ -828,7 +874,7 @@ final class ProductSession extends ChangeNotifier {
       if (_profile == null) _clearProductState();
     } catch (_) {
       _clearProductState();
-      _loadIssue = 'Your Trimmy setup could not be opened. Start it again.';
+      _loadIssue = ProductSessionIssue.setupUnreadable;
     }
   }
 
@@ -945,33 +991,28 @@ final class ProductSession extends ChangeNotifier {
     return parsed;
   }
 
-  static String _readIssue(ProductProfileFailure failure) => switch (failure) {
-    ProductProfileFailure.offline =>
-      'Your profile is offline. Check your connection and try again.',
-    ProductProfileFailure.timeout =>
-      'Your profile took too long to open. Try again.',
-    ProductProfileFailure.unauthenticated =>
-      'Your profile needs a fresh session. Try again.',
-    _ => 'Your profile is unavailable. Try again.',
-  };
+  static ProductSessionIssue _readIssue(ProductProfileFailure failure) =>
+      switch (failure) {
+        ProductProfileFailure.offline => ProductSessionIssue.readOffline,
+        ProductProfileFailure.timeout => ProductSessionIssue.readTimeout,
+        ProductProfileFailure.unauthenticated =>
+          ProductSessionIssue.readSession,
+        _ => ProductSessionIssue.readUnavailable,
+      };
 
-  static String _writeIssue(ProductProfileFailure failure) => switch (failure) {
-    ProductProfileFailure.handleTaken =>
-      'That floor name is taken. Choose another one.',
-    ProductProfileFailure.tradeRequired =>
-      'Your confirmed trade must reach the desk before this step can continue.',
-    ProductProfileFailure.notReady =>
-      'Trimmy is still confirming that moment. Try again.',
+  static ProductSessionIssue _writeIssue(
+    ProductProfileFailure failure,
+  ) => switch (failure) {
+    ProductProfileFailure.handleTaken => ProductSessionIssue.handleTaken,
+    ProductProfileFailure.tradeRequired => ProductSessionIssue.tradeRequired,
+    ProductProfileFailure.notReady => ProductSessionIssue.notReady,
     ProductProfileFailure.principalChanged =>
-      'Your desk identity changed. Open it again and retry.',
-    ProductProfileFailure.conflict =>
-      'Your profile changed on another device. Try again.',
-    ProductProfileFailure.offline =>
-      'You are offline. Reconnect and try again.',
-    ProductProfileFailure.timeout => 'That took too long. Try again.',
-    ProductProfileFailure.unauthenticated =>
-      'Your session changed. Open your profile again.',
-    _ => 'That step was not saved. Try again.',
+      ProductSessionIssue.principalChanged,
+    ProductProfileFailure.conflict => ProductSessionIssue.conflict,
+    ProductProfileFailure.offline => ProductSessionIssue.writeOffline,
+    ProductProfileFailure.timeout => ProductSessionIssue.writeTimeout,
+    ProductProfileFailure.unauthenticated => ProductSessionIssue.writeSession,
+    _ => ProductSessionIssue.writeFailed,
   };
 
   static OnboardingProfile _decodeProfile(String raw) {

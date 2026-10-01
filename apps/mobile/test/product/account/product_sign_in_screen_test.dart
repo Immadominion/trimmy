@@ -373,6 +373,56 @@ void main() {
     expect(h.completed, 1);
   });
 
+  testWidgets(
+    'a complete code signs in by itself, and a new code can follow after 30 seconds',
+    (tester) async {
+      final verified = Completer<PracticeSignInResult>();
+      final h = _Harness();
+      h.auth.login = () => verified.future;
+      await _mount(tester, h);
+      await _tap(tester, find.byKey(const ValueKey('sign-in-email')));
+      await tester.enterText(
+        find.byKey(const ValueKey('sign-in-email-field')),
+        'person@example.test',
+      );
+      await _tap(tester, find.byKey(const ValueKey('sign-in-send-code')));
+      final resend = find.byKey(const ValueKey('sign-in-resend'));
+      TextButton button() => tester.widget<TextButton>(resend);
+      expect(find.text('Send again in 30s'), findsOneWidget);
+      expect(button().onPressed, isNull, reason: 'not before 30 seconds');
+      await tester.pump(const Duration(seconds: 10));
+      expect(find.text('Send again in 20s'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 20));
+      expect(find.text('Send a new code'), findsOneWidget);
+      expect(button().onPressed, isNotNull);
+      await _tap(tester, resend);
+      expect(h.auth.sentCodes, ['person@example.test', 'person@example.test']);
+      expect(
+        find.text('Send again in 30s'),
+        findsOneWidget,
+        reason: 'the wait starts again',
+      );
+
+      // The iOS number pad has no return key: six digits sign in by themselves.
+      await tester.enterText(
+        find.byKey(const ValueKey('sign-in-code-field')),
+        '12345',
+      );
+      await tester.pump();
+      expect(h.auth.codeLogins, isEmpty);
+      await tester.enterText(
+        find.byKey(const ValueKey('sign-in-code-field')),
+        '123456',
+      );
+      await _flush(tester);
+      expect(h.auth.codeLogins, [('person@example.test', '123456')]);
+      verified.complete(PracticeSignInResult.signedIn);
+      await _flush(tester);
+      expect(h.completed, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('email send and verification failures remain retryable', (
     tester,
   ) async {
@@ -390,14 +440,18 @@ void main() {
     expect(find.byKey(const ValueKey('sign-in-code-field')), findsNothing);
     h.auth.sendCode = () async => PracticeEmailCodeResult.sent;
     await _tap(tester, find.byKey(const ValueKey('sign-in-send-code')));
+    // Six digits try by themselves; a failure leaves Sign in to try again.
     await tester.enterText(
       find.byKey(const ValueKey('sign-in-code-field')),
       '000000',
     );
-    await _tap(tester, find.byKey(const ValueKey('sign-in-verify')));
+    await _flush(tester);
     await _expectError(tester);
     expect(find.byKey(const ValueKey('sign-in-code-field')), findsOneWidget);
     expect(h.auth.codeLogins, [('person@example.test', '000000')]);
+    await _tap(tester, find.byKey(const ValueKey('sign-in-verify')));
+    await _expectError(tester);
+    expect(h.auth.codeLogins, hasLength(2));
     expect(h.completed, 0);
     expect(h.controller.phase, AccountPhase.guest);
   });

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/product/onboarding/onboarding.dart';
+import 'package:trimmy/l10n/l10n.dart';
 
 void main() {
   test('controller requires each answer and emits one complete profile', () {
@@ -75,14 +76,26 @@ void main() {
     final controller = OnboardingController();
 
     controller.setHandle('ab');
-    expect(controller.handleError, 'Use at least 3 characters.');
+    expect(
+      controller.handleError(englishLocalizations),
+      'Use at least 3 characters.',
+    );
     controller.setHandle('1trader');
-    expect(controller.handleError, 'Start with a letter.');
+    expect(
+      controller.handleError(englishLocalizations),
+      'Start with a letter.',
+    );
     controller.setHandle('trader-name');
     expect(controller.handle, 'trader-name');
-    expect(controller.handleError, 'Use letters, numbers or underscores.');
+    expect(
+      controller.handleError(englishLocalizations),
+      'Use letters, numbers or underscores.',
+    );
     controller.setHandle('abcdefghijklmnopqrs');
-    expect(controller.handleError, 'Use 18 characters or fewer.');
+    expect(
+      controller.handleError(englishLocalizations),
+      'Use 18 characters or fewer.',
+    );
   });
 
   test('back keeps answers and returns through the same five questions', () {

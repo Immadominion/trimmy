@@ -2,8 +2,10 @@ import '../design/product_notice.dart';
 import 'package:flutter/material.dart';
 
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 import '../../social/relationship.dart';
 import '../../social/relationships_controller.dart';
+import '../career/career_repository.dart';
 import '../career/own_reason_history.dart';
 import '../career/reason_privacy_controller.dart';
 import '../career/reason_sharing_repository.dart';
@@ -350,70 +352,76 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     return _loaded && !_items.any((item) => item.author.isViewer);
   }
 
-  Future<ReasonReportCategory?>
-  _chooseReportCategory() => showModalBottomSheet<ReasonReportCategory>(
-    context: context,
-    useSafeArea: true,
-    showDragHandle: true,
-    backgroundColor: MarketPalette.paper,
-    shape: marketSquircle(28),
-    builder: (sheetContext) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Why are you reporting this?',
-            style: Theme.of(
-              sheetContext,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Choose the closest reason. The author will not see who reported it.',
-            style: TextStyle(color: MarketPalette.muted),
-          ),
-          const SizedBox(height: 12),
-          for (final category in ReasonReportCategory.values)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: MarketPalette.white,
-                shape: marketSquircle(16),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  key: ValueKey('reason-report-category-${category.name}'),
-                  onTap: () => Navigator.pop(sheetContext, category),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            category.label,
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
+  Future<ReasonReportCategory?> _chooseReportCategory() =>
+      showModalBottomSheet<ReasonReportCategory>(
+        context: context,
+        useSafeArea: true,
+        showDragHandle: true,
+        backgroundColor: MarketPalette.paper,
+        shape: marketSquircle(28),
+        builder: (sheetContext) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                sheetContext.l10n.reasonReportSheetTitle,
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                sheetContext.l10n.reasonReportSheetBody,
+                style: const TextStyle(color: MarketPalette.muted),
+              ),
+              const SizedBox(height: 12),
+              for (final category in ReasonReportCategory.values)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: MarketPalette.white,
+                    shape: marketSquircle(16),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      key: ValueKey('reason-report-category-${category.name}'),
+                      onTap: () => Navigator.pop(sheetContext, category),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                        const Icon(Icons.chevron_right_rounded),
-                      ],
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                category.label(sheetContext.l10n),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
+            ],
+          ),
+        ),
+      );
 
+  /// [keyName] names the confirm button's key ('Report' or 'Block'). It never
+  /// follows the translated [action] label, so the key is the same in every
+  /// language.
   Future<bool> _confirm({
     required String title,
     required String message,
     required String action,
+    required String keyName,
   }) async =>
       await showDialog<bool>(
         context: context,
@@ -424,10 +432,10 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(dialogContext.l10n.commonCancel),
             ),
             FilledButton(
-              key: ValueKey('reason-safety-confirm-$action'),
+              key: ValueKey('reason-safety-confirm-$keyName'),
               onPressed: () => Navigator.pop(dialogContext, true),
               child: Text(action),
             ),
@@ -441,11 +449,12 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     if (relationships == null || relationships.busy) return;
     final category = await _chooseReportCategory();
     if (!mounted || category == null) return;
+    final l10n = context.l10n;
     final confirmed = await _confirm(
-      title: 'Report this reason?',
-      message:
-          'Trimmy will review it as ${category.label.toLowerCase()}. It will leave this page after the report is received.',
-      action: 'Report',
+      title: l10n.reasonReportConfirmTitle,
+      message: l10n.reasonReportConfirmBody(category.name),
+      action: l10n.reasonReportAction,
+      keyName: 'Report',
     );
     if (!mounted || !confirmed) return;
     final succeeded = await relationships.reportReason(
@@ -455,7 +464,7 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     if (!mounted) return;
     _showSafetyResult(
       succeeded: succeeded,
-      success: 'Report received.',
+      success: context.l10n.reasonReportReceived,
       controller: relationships,
     );
   }
@@ -464,11 +473,12 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     final relationships = widget.relationships;
     final socialId = reason.author.socialId;
     if (relationships == null || socialId == null || relationships.busy) return;
+    final l10n = context.l10n;
     final confirmed = await _confirm(
-      title: 'Block @${reason.author.handle}?',
-      message:
-          'Their reasons will leave this page. Any friendship and open invitations between you will also be removed. Public reasons can still be seen from other accounts.',
-      action: 'Block',
+      title: l10n.reasonBlockConfirmTitle(reason.author.handle),
+      message: l10n.reasonBlockConfirmBody,
+      action: l10n.reasonBlockAction,
+      keyName: 'Block',
     );
     if (!mounted || !confirmed) return;
     final succeeded = await relationships.setBlocked(
@@ -479,7 +489,7 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     if (!mounted) return;
     _showSafetyResult(
       succeeded: succeeded,
-      success: '@${reason.author.handle} blocked.',
+      success: context.l10n.reasonBlockDone(reason.author.handle),
       controller: relationships,
     );
   }
@@ -489,34 +499,35 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     required String success,
     required RelationshipsController controller,
   }) {
-    final message = succeeded ? success : _relationshipFailure(controller);
+    final message = succeeded
+        ? success
+        : _relationshipFailure(controller, context.l10n);
     showProductNotice(context, message);
   }
 
-  String _relationshipFailure(RelationshipsController controller) =>
-      switch (controller.failure) {
-        RelationshipFailure.revisionConflict =>
-          'This changed on another device. Choose again.',
-        RelationshipFailure.rateLimited =>
-          'Too many changes at once. Wait a moment and try again.',
-        RelationshipFailure.unauthenticated ||
-        RelationshipFailure.accountMismatch ||
-        RelationshipFailure.forbidden =>
-          'This action is unavailable for your account right now.',
-        RelationshipFailure.timeout ||
-        RelationshipFailure.unavailable ||
-        RelationshipFailure.invalidResponse ||
-        RelationshipFailure.closed =>
-          'We could not confirm the result. It will retry safely.',
-        _ => 'That action could not be completed. Try again.',
-      };
+  String _relationshipFailure(
+    RelationshipsController controller,
+    AppLocalizations l10n,
+  ) => switch (controller.failure) {
+    RelationshipFailure.revisionConflict => l10n.reasonSafetyErrorConflict,
+    RelationshipFailure.rateLimited => l10n.reasonSafetyErrorRateLimited,
+    RelationshipFailure.unauthenticated ||
+    RelationshipFailure.accountMismatch ||
+    RelationshipFailure.forbidden => l10n.reasonSafetyErrorUnavailable,
+    RelationshipFailure.timeout ||
+    RelationshipFailure.unavailable ||
+    RelationshipFailure.invalidResponse ||
+    RelationshipFailure.closed => l10n.reasonSafetyErrorUnconfirmed,
+    _ => l10n.reasonSafetyErrorGeneric,
+  };
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (!_supported) {
-      return const ProductEmptyState(
-        key: ValueKey('stock-reasons-unavailable'),
-        title: 'No comments yet',
+      return ProductEmptyState(
+        key: const ValueKey('stock-reasons-unavailable'),
+        title: l10n.reasonEmpty,
       );
     }
     if (_loading && !_loaded) {
@@ -525,7 +536,7 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     if (!_loaded) {
       return _ReasonsNotice(
         key: const ValueKey('stock-reasons-failed'),
-        message: _failureMessage(),
+        message: _failureMessage(l10n),
         onRetry: _loadFirstPage,
       );
     }
@@ -546,8 +557,8 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
           _ReasonsNotice(
             key: const ValueKey('stock-own-reasons-failed'),
             message: _ownHistoryIncomplete
-                ? 'Your complete reason history could not be loaded here.'
-                : 'Your private reason status could not be checked.',
+                ? l10n.reasonOwnHistoryIncomplete
+                : l10n.reasonOwnStatusFailed,
             onRetry: _ownHistoryIncomplete ? null : _loadOwn,
           ),
           const SizedBox(height: 10),
@@ -556,8 +567,8 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
           ProductEmptyState(
             key: const ValueKey('stock-reasons-empty'),
             title: _audience == _ReasonAudience.friends
-                ? 'No comments from friends yet'
-                : 'No comments yet',
+                ? l10n.reasonEmptyFriends
+                : l10n.reasonEmpty,
           )
         else
           for (final reason in visibleItems)
@@ -575,7 +586,7 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
         if (_failure != null || _guestFailure) ...[
           _ReasonsNotice(
             key: const ValueKey('stock-reasons-more-failed'),
-            message: _failureMessage(),
+            message: _failureMessage(l10n),
             onRetry: _loadMore,
           ),
           const SizedBox(height: 10),
@@ -594,7 +605,7 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
             OutlinedButton(
               key: const ValueKey('stock-reasons-more'),
               onPressed: _loadMore,
-              child: const Text('Show more'),
+              child: Text(l10n.reasonShowMore),
             ),
           const SizedBox(height: 10),
         ],
@@ -602,19 +613,14 @@ class _StockReasonsTabState extends State<StockReasonsTab> {
     );
   }
 
-  String _failureMessage() {
-    if (_guestFailure) {
-      return 'Your session needs a refresh before comments can load.';
-    }
+  String _failureMessage(AppLocalizations l10n) {
+    if (_guestFailure) return l10n.reasonLoadSessionRefresh;
     return switch (_failure) {
-      ReasonSharingFailure.offline =>
-        'You are offline. Comments couldn’t load.',
-      ReasonSharingFailure.timeout => 'Comments took too long to load.',
-      ReasonSharingFailure.rateLimited =>
-        'Comments are refreshing too quickly. Try again shortly.',
-      ReasonSharingFailure.accountRequired =>
-        'Your session needs a refresh before comments can load.',
-      _ => 'Comments couldn’t load.',
+      ReasonSharingFailure.offline => l10n.reasonLoadOffline,
+      ReasonSharingFailure.timeout => l10n.reasonLoadTimeout,
+      ReasonSharingFailure.rateLimited => l10n.reasonLoadRateLimited,
+      ReasonSharingFailure.accountRequired => l10n.reasonLoadSessionRefresh,
+      _ => l10n.reasonLoadFailed,
     };
   }
 }
@@ -627,7 +633,7 @@ class _AudiencePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Choose whose comments to see',
+    label: context.l10n.reasonAudienceSemantics,
     child: Row(
       children: [
         for (final option in _ReasonAudience.values) ...[
@@ -671,7 +677,10 @@ class _AudienceButton extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 11),
             child: Text(
-              audience == _ReasonAudience.friends ? 'Friends' : 'Everyone',
+              switch (audience) {
+                _ReasonAudience.everyone => context.l10n.reasonAudienceEveryone,
+                _ReasonAudience.friends => context.l10n.reasonAudienceFriends,
+              },
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: selected ? MarketPalette.paper : MarketPalette.ink,
@@ -699,86 +708,95 @@ class _ReasonCard extends StatelessWidget {
   final VoidCallback? onBlock;
 
   @override
-  Widget build(BuildContext context) => MarketPanel(
-    key: ValueKey('stock-reason-${reason.reasonId}'),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    '@${reason.author.handle}',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return MarketPanel(
+      key: ValueKey('stock-reason-${reason.reasonId}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      '@${reason.author.handle}',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      _rankLabel(reason.author.rank, l10n),
+                      style: const TextStyle(
+                        color: MarketPalette.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (reason.author.isViewer)
+                Container(
+                  key: ValueKey('stock-reason-you-${reason.reasonId}'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
-                  Text(
-                    reason.author.rankLabel,
+                  decoration: ShapeDecoration(
+                    color: MarketPalette.yellow,
+                    shape: marketSquircle(9),
+                  ),
+                  child: Text(
+                    l10n.reasonYouBadge,
                     style: const TextStyle(
-                      color: MarketPalette.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                ],
-              ),
-            ),
-            if (reason.author.isViewer)
-              Container(
-                key: ValueKey('stock-reason-you-${reason.reasonId}'),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: ShapeDecoration(
-                  color: MarketPalette.yellow,
-                  shape: marketSquircle(9),
                 ),
-                child: const Text(
-                  'You',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(reason.note, style: const TextStyle(height: 1.4)),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Saved ${formatReasonSavedAt(reason.savedAt)}',
-                style: const TextStyle(
-                  color: MarketPalette.muted,
-                  fontSize: 12,
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(reason.note, style: const TextStyle(height: 1.4)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  formatReasonSavedAt(reason.savedAt, l10n, context.formats),
+                  style: const TextStyle(
+                    color: MarketPalette.muted,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
-            if (relationships != null && !reason.author.isViewer) ...[
-              _ReasonAction(
-                key: ValueKey('reason-report-${reason.reasonId}'),
-                label: 'Report',
-                icon: Icons.flag_outlined,
-                onPressed: relationships!.busy ? null : onReport,
-              ),
-              if (onBlock != null) ...[
-                const SizedBox(width: 6),
+              if (relationships != null && !reason.author.isViewer) ...[
                 _ReasonAction(
-                  key: ValueKey('reason-block-${reason.reasonId}'),
-                  label: 'Block',
-                  icon: Icons.block_outlined,
-                  onPressed: relationships!.busy ? null : onBlock,
+                  key: ValueKey('reason-report-${reason.reasonId}'),
+                  label: l10n.reasonReportAction,
+                  icon: Icons.flag_outlined,
+                  onPressed: relationships!.busy ? null : onReport,
                 ),
+                if (onBlock != null) ...[
+                  const SizedBox(width: 6),
+                  _ReasonAction(
+                    key: ValueKey('reason-block-${reason.reasonId}'),
+                    label: l10n.reasonBlockAction,
+                    icon: Icons.block_outlined,
+                    onPressed: relationships!.busy ? null : onBlock,
+                  ),
+                ],
               ],
             ],
-          ],
-        ),
-      ],
-    ),
-  );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ReasonAction extends StatelessWidget {
@@ -834,17 +852,17 @@ class _PrivateLine extends StatelessWidget {
     color: MarketPalette.mint,
     child: Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Text(
-            'Your comment is private.',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            context.l10n.reasonPrivateLine,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           ),
         ),
         if (onOpenSettings != null)
           TextButton(
             key: const ValueKey('stock-reason-private-settings'),
             onPressed: onOpenSettings,
-            child: const Text('Settings'),
+            child: Text(context.l10n.commonSettings),
           ),
       ],
     ),
@@ -871,7 +889,7 @@ class _ReasonsNotice extends StatelessWidget {
               child: TextButton(
                 key: const ValueKey('stock-reasons-retry'),
                 onPressed: onRetry,
-                child: const Text('Try again'),
+                child: Text(context.l10n.commonTryAgain),
               ),
             ),
         ],
@@ -885,7 +903,7 @@ class _ReasonsSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Loading comments',
+    label: context.l10n.reasonLoadingComments,
     child: ExcludeSemantics(
       child: Column(
         children: [
@@ -930,25 +948,22 @@ class _SkeletonBar extends StatelessWidget {
   );
 }
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-/// Local day, month, year and time, for example `20 Sep 2026, 13:51`.
-String formatReasonSavedAt(DateTime value) {
+/// When a reason was saved, in local time: `Saved 20 Sep 2026, 13:51` in
+/// English.
+String formatReasonSavedAt(
+  DateTime value,
+  AppLocalizations l10n,
+  AppFormats formats,
+) {
   final local = value.toLocal();
-  final hour = local.hour.toString().padLeft(2, '0');
-  final minute = local.minute.toString().padLeft(2, '0');
-  return '${local.day} ${_months[local.month - 1]} ${local.year}, $hour:$minute';
+  return l10n.reasonSavedAt(formats.dayMonthYear(local), formats.time24(local));
 }
+
+String _rankLabel(CareerRank rank, AppLocalizations l10n) => switch (rank) {
+  CareerRank.rookie => l10n.rankRookie,
+  CareerRank.analyst => l10n.rankAnalyst,
+  CareerRank.trader => l10n.rankTrader,
+  CareerRank.seniorTrader => l10n.rankSeniorTrader,
+  CareerRank.partner => l10n.rankPartner,
+  CareerRank.legend => l10n.rankLegend,
+};

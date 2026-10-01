@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/notifications/trade_push.dart';
 
 class Device implements TradePushDevice {
@@ -151,7 +152,11 @@ void main() {
     device.nextToken = null;
     await controller.setEnabled(true);
     expect(controller.enabled, false);
-    expect(controller.error, contains('device settings'));
+    expect(controller.error, TradePushIssue.notificationsOff);
+    expect(
+      controller.error!.message(englishLocalizations),
+      'Notifications are off in device settings.',
+    );
     expect(requests.where((r) => r.method == 'PUT'), isEmpty);
   });
   test(
@@ -268,7 +273,7 @@ void main() {
         true,
         reason: 'Do not claim successful opt-out',
       );
-      expect(controller.error, contains('Couldn’t turn off'));
+      expect(controller.error, TradePushIssue.turnOffFailed);
       expect(preferences.getBool('trimmy.tradePush.v1.owner'), false);
       final priorPuts = requests.where((r) => r.method == 'PUT').length;
       serverDown = false;

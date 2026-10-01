@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/l10n.dart';
 import 'onboarding_models.dart';
 
 enum OnboardingStage {
@@ -13,6 +14,9 @@ enum OnboardingStage {
   notifications,
   completed,
 }
+
+/// The rule shown under the handle field once something is typed.
+enum OnboardingHandleIssue { tooShort, tooLong, startWithLetter, characters }
 
 /// Owns onboarding state without storage, platform, or navigation side effects.
 final class OnboardingController extends ChangeNotifier {
@@ -57,15 +61,25 @@ final class OnboardingController extends ChangeNotifier {
 
   bool get isHandleValid => _handlePattern.hasMatch(_handle);
 
-  String? get handleError {
+  OnboardingHandleIssue? get handleIssue {
     if (_handle.isEmpty) return null;
-    if (_handle.length < 3) return 'Use at least 3 characters.';
-    if (_handle.length > 18) return 'Use 18 characters or fewer.';
+    if (_handle.length < 3) return OnboardingHandleIssue.tooShort;
+    if (_handle.length > 18) return OnboardingHandleIssue.tooLong;
     if (!RegExp(r'^[a-z]').hasMatch(_handle)) {
-      return 'Start with a letter.';
+      return OnboardingHandleIssue.startWithLetter;
     }
-    return 'Use letters, numbers or underscores.';
+    return OnboardingHandleIssue.characters;
   }
+
+  /// [handleIssue] in the reader's language, or null for an empty handle.
+  String? handleError(AppLocalizations l10n) => switch (handleIssue) {
+    null => null,
+    OnboardingHandleIssue.tooShort => l10n.onboardingHandleTooShort,
+    OnboardingHandleIssue.tooLong => l10n.onboardingHandleTooLong,
+    OnboardingHandleIssue.startWithLetter =>
+      l10n.onboardingHandleStartWithLetter,
+    OnboardingHandleIssue.characters => l10n.onboardingHandleCharacters,
+  };
 
   bool get canContinue => switch (_stage) {
     OnboardingStage.welcome || OnboardingStage.salHello => true,

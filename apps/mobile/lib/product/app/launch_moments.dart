@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../career/career.dart';
 import '../design/product_components.dart';
 import '../design/product_motion_icon.dart';
@@ -28,43 +29,58 @@ class PromotionMoment extends StatelessWidget {
   final VoidCallback onContinue;
 
   @override
-  Widget build(BuildContext context) => ProductStatePage(
-    artwork: const ProductStateArtwork(file: 'trophy.png'),
-    title:
-        'You’re ${_rankArticle(receipt.toRank)} ${_rankLabel(receipt.toRank)}!',
-    message: 'A new chapter on the floor.',
-    details: ProductCard(
-      key: const ValueKey('promotion-confirmed-facts'),
-      color: const Color(0xFFF4F0FF),
-      child: Wrap(
-        alignment: WrapAlignment.spaceAround,
-        spacing: 16,
-        runSpacing: 20,
-        children: [
-          _MomentFact(label: 'From', value: _rankLabel(receipt.fromRank)),
-          _MomentFact(label: 'New rank', value: _rankLabel(receipt.toRank)),
-          _MomentFact(label: 'Earned', value: '${receipt.trimsAwarded} Trims'),
-        ],
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ProductStatePage(
+      artwork: const ProductStateArtwork(file: 'trophy.png'),
+      title: l10n.appPromotionTitle(
+        receipt.toRank.name,
+        _rankLabel(l10n, receipt.toRank),
       ),
-    ),
-    actions: [
-      ProductButton(
-        key: const ValueKey('promotion-continue'),
-        label: 'Back to Career',
-        onPressed: onContinue,
+      message: l10n.appPromotionMessage,
+      details: ProductCard(
+        key: const ValueKey('promotion-confirmed-facts'),
+        color: const Color(0xFFF4F0FF),
+        child: Wrap(
+          alignment: WrapAlignment.spaceAround,
+          spacing: 16,
+          runSpacing: 20,
+          children: [
+            _MomentFact(
+              label: l10n.appPromotionFrom,
+              value: _rankLabel(l10n, receipt.fromRank),
+            ),
+            _MomentFact(
+              label: l10n.appPromotionNewRank,
+              value: _rankLabel(l10n, receipt.toRank),
+            ),
+            _MomentFact(
+              label: l10n.appPromotionEarned,
+              value: l10n.appPromotionTrims(
+                context.formats.number('${receipt.trimsAwarded}'),
+              ),
+            ),
+          ],
+        ),
       ),
-    ],
-  );
+      actions: [
+        ProductButton(
+          key: const ValueKey('promotion-continue'),
+          label: l10n.appPromotionBackToCareer,
+          onPressed: onContinue,
+        ),
+      ],
+    );
+  }
 }
 
-String _rankArticle(CareerRank rank) => rank == CareerRank.analyst ? 'an' : 'a';
-String _rankLabel(CareerRank rank) => switch (rank) {
-  CareerRank.rookie => 'Rookie',
-  CareerRank.analyst => 'Analyst',
-  CareerRank.trader => 'Trader',
-  CareerRank.seniorTrader => 'Senior Trader',
-  CareerRank.partner => 'Partner',
-  CareerRank.legend => 'Legend',
+String _rankLabel(AppLocalizations l10n, CareerRank rank) => switch (rank) {
+  CareerRank.rookie => l10n.rankRookie,
+  CareerRank.analyst => l10n.rankAnalyst,
+  CareerRank.trader => l10n.rankTrader,
+  CareerRank.seniorTrader => l10n.rankSeniorTrader,
+  CareerRank.partner => l10n.rankPartner,
+  CareerRank.legend => l10n.rankLegend,
 };
 
 /// Retained for older checkpoints and previews, using the same state layout.
@@ -78,31 +94,43 @@ class FirstPositionMoment extends StatelessWidget {
   final VoidCallback onCollect;
 
   @override
-  Widget build(BuildContext context) => ProductStatePage(
-    artwork: const _MomentArtwork(child: ProductSuccessMark(size: 104)),
-    title: 'Your first position.',
-    message: 'You’ve placed your first order!',
-    details: ProductCard(
-      key: const ValueKey('first-position-facts'),
-      child: Wrap(
-        alignment: WrapAlignment.spaceAround,
-        spacing: 16,
-        runSpacing: 20,
-        children: [
-          _MomentFact(label: 'Stock', value: data.symbol),
-          _MomentFact(label: 'Shares', value: data.quantity),
-          _MomentFact(label: 'Time', value: _utcTime(data.confirmedAt)),
-        ],
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
+    return ProductStatePage(
+      artwork: const _MomentArtwork(child: ProductSuccessMark(size: 104)),
+      title: l10n.appFirstPositionTitle,
+      message: l10n.appFirstPositionMessage,
+      details: ProductCard(
+        key: const ValueKey('first-position-facts'),
+        child: Wrap(
+          alignment: WrapAlignment.spaceAround,
+          spacing: 16,
+          runSpacing: 20,
+          children: [
+            _MomentFact(label: l10n.appFirstPositionStock, value: data.symbol),
+            _MomentFact(
+              label: l10n.appFirstPositionShares,
+              value: formats.number(data.quantity),
+            ),
+            _MomentFact(
+              label: l10n.appFirstPositionTime,
+              value: l10n.appFirstPositionTimeUtc(
+                formats.time24(data.confirmedAt.toUtc()),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-    actions: [
-      ProductButton(
-        key: const ValueKey('first-position-collect'),
-        label: 'Continue',
-        onPressed: onCollect,
-      ),
-    ],
-  );
+      actions: [
+        ProductButton(
+          key: const ValueKey('first-position-collect'),
+          label: l10n.commonContinue,
+          onPressed: onCollect,
+        ),
+      ],
+    );
+  }
 }
 
 class DayOneMoment extends StatelessWidget {
@@ -114,12 +142,12 @@ class DayOneMoment extends StatelessWidget {
     artwork: const _MomentArtwork(
       child: ProductMotionIcon(file: 'career-streak.png', size: 112),
     ),
-    title: 'Day 1, done.',
-    message: 'See you on the floor tomorrow.',
+    title: context.l10n.appDayOneTitle,
+    message: context.l10n.appDayOneMessage,
     actions: [
       ProductButton(
         key: const ValueKey('day-one-continue'),
-        label: 'Continue',
+        label: context.l10n.commonContinue,
         onPressed: onContinue,
       ),
     ],
@@ -157,10 +185,4 @@ class _MomentFact extends StatelessWidget {
       ],
     ),
   );
-}
-
-String _utcTime(DateTime value) {
-  final utc = value.toUtc();
-  return '${utc.hour.toString().padLeft(2, '0')}:'
-      '${utc.minute.toString().padLeft(2, '0')} UTC';
 }

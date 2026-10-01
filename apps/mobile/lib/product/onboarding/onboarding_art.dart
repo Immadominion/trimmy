@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../design/cast_portrait.dart';
 import '../design/product_theme.dart';
 import 'onboarding_models.dart';
@@ -34,7 +35,7 @@ class SalPortrait extends StatelessWidget {
   Widget build(BuildContext context) => CastPortrait(
     member: ProductCastMember.sal,
     size: size,
-    semanticLabel: 'Sal, your floor boss',
+    semanticLabel: context.l10n.onboardingSalPortrait,
   );
 }
 
@@ -52,7 +53,7 @@ class PersonaPortrait extends StatelessWidget {
       TraderPersona.shark => ProductCastMember.shark,
     },
     size: size,
-    semanticLabel: '${persona.label} trader portrait',
+    semanticLabel: context.l10n.personaPortrait(persona.label(context.l10n)),
     imageScale: 1.04,
   );
 }
@@ -63,7 +64,7 @@ class PermissionPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     image: true,
-    label: 'Preview of the phone notification permission',
+    label: context.l10n.onboardingPermissionPreview,
     child: ExcludeSemantics(
       child: AspectRatio(
         aspectRatio: 1.45,

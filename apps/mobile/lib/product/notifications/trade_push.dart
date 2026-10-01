@@ -6,6 +6,36 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/l10n.dart';
+
+/// Why trade updates could not change, shown in the reader's language.
+enum TradePushIssue {
+  /// The phone blocks Trimmy's notifications.
+  notificationsOff,
+
+  /// Turning trade updates on or off failed.
+  updateFailed,
+
+  /// Trade updates could not be turned off while offline.
+  turnOffFailed,
+
+  /// The phone could not register for notifications.
+  connectFailed;
+
+  String message(AppLocalizations l10n) => switch (this) {
+    notificationsOff => l10n.pushErrorNotificationsOff,
+    updateFailed => l10n.pushErrorUpdate,
+    turnOffFailed => l10n.pushErrorTurnOff,
+    connectFailed => l10n.pushErrorConnect,
+  };
+}
+
+/// A trade update step that failed for a reason worth telling the person.
+class TradePushFailure implements Exception {
+  const TradePushFailure(this.issue);
+  final TradePushIssue issue;
+}
+
 class PushIdentity {
   const PushIdentity(this.id, this.accessToken);
   final String id;
@@ -56,7 +86,10 @@ class TradePushController extends ChangeNotifier {
   bool get enabled =>
       _account != null &&
       (_consented || preferences.getBool(_pendingKey(_account!)) == true);
-  String? error;
+
+  /// Why the last change failed, or null. Screens write it in the reader's
+  /// language with [TradePushIssue.message].
+  TradePushIssue? error;
   Map<String, dynamic>? _pendingOpen;
 
   void bind() {
@@ -96,9 +129,7 @@ class TradePushController extends ChangeNotifier {
         final token = await device.token(askPermission: true);
         if (!_current(owner, generation)) return;
         if (token == null) {
-          throw const FormatException(
-            'Notifications are off in device settings.',
-          );
+          throw const TradePushFailure(TradePushIssue.notificationsOff);
         }
         try {
           await _register(owner, token);
@@ -127,9 +158,7 @@ class TradePushController extends ChangeNotifier {
         await action();
         error = null;
       } catch (e) {
-        error = e is FormatException
-            ? e.message
-            : 'Couldn’t update notifications. Try again.';
+        error = e is TradePushFailure ? e.issue : TradePushIssue.updateFailed;
       } finally {
         busy = false;
         _notify();
@@ -197,9 +226,7 @@ class TradePushController extends ChangeNotifier {
     if (serverStopped || deviceStopped) {
       await preferences.remove(_pendingKey(owner));
     } else {
-      throw const FormatException(
-        'Couldn’t turn off alerts. Try again when you’re online.',
-      );
+      throw const TradePushFailure(TradePushIssue.turnOffFailed);
     }
   }
 
@@ -244,7 +271,7 @@ class TradePushController extends ChangeNotifier {
                   ))
             .timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
-      throw const FormatException('Couldn’t update notifications. Try again.');
+      throw const TradePushFailure(TradePushIssue.updateFailed);
     }
     // A registration already in flight at logout must not survive token revocation.
     if (!_current(owner, generation) && token != null) await device.disable();

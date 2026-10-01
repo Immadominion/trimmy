@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import 'sign_in_chair_art.dart';
 
 // These are the reviewed account-page colours. Keeping them local preserves
@@ -20,8 +21,8 @@ class SignInMethodsPage extends StatelessWidget {
     required this.onGoogle,
     required this.onX,
     this.onApple,
-    this.title = 'Welcome back.',
-    this.caption = 'Your next move is waiting.',
+    this.title,
+    this.caption,
     this.error,
     this.notice,
     this.busy = false,
@@ -34,8 +35,12 @@ class SignInMethodsPage extends StatelessWidget {
   final VoidCallback? onGoogle;
   final VoidCallback? onX;
   final VoidCallback? onApple;
-  final String title;
-  final String caption;
+
+  /// Defaults to a "Welcome back." greeting in the app language.
+  final String? title;
+
+  /// Defaults to "Your next move is waiting." in the app language.
+  final String? caption;
   final String? error;
   final String? notice;
   final bool busy;
@@ -44,6 +49,7 @@ class SignInMethodsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final providers = [
       if (onApple != null) ('Apple', onApple),
       ('Google', onGoogle),
@@ -64,12 +70,12 @@ class SignInMethodsPage extends StatelessWidget {
                   child: Semantics(
                     button: true,
                     enabled: close != null,
-                    label: 'Close sign in',
+                    label: l10n.signInCloseTooltip,
                     onTap: close,
                     child: ExcludeSemantics(
                       child: IconButton(
                         key: const ValueKey('sign-in-close'),
-                        tooltip: 'Close sign in',
+                        tooltip: l10n.signInCloseTooltip,
                         onPressed: close,
                         color: _ink,
                         style: IconButton.styleFrom(
@@ -114,7 +120,7 @@ class SignInMethodsPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                title,
+                                title ?? l10n.signInWelcomeBackTitle,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontFamily: 'Bricolage Grotesque',
@@ -127,7 +133,7 @@ class SignInMethodsPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                caption,
+                                caption ?? l10n.signInWelcomeBackCaption,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontFamily: 'Dejanire Sans',
@@ -177,21 +183,24 @@ class SignInMethodsPage extends StatelessWidget {
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
-                                  child: const Text('Continue as guest'),
+                                  child: Text(
+                                    l10n.signInContinueAsGuest,
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
                               SizedBox(height: onGuest != null ? 12 : 24),
-                              const Row(
+                              Row(
                                 children: [
-                                  Expanded(
+                                  const Expanded(
                                     child: Divider(color: Color(0xFFEAE8EF)),
                                   ),
                                   Padding(
-                                    padding: EdgeInsets.symmetric(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 18,
                                     ),
                                     child: Text(
-                                      'OR',
-                                      style: TextStyle(
+                                      l10n.signInOr,
+                                      style: const TextStyle(
                                         fontFamily: 'Dejanire Sans',
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
@@ -199,7 +208,7 @@ class SignInMethodsPage extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  Expanded(
+                                  const Expanded(
                                     child: Divider(color: Color(0xFFEAE8EF)),
                                   ),
                                 ],
@@ -284,12 +293,15 @@ class _EmailButtonState extends State<_EmailButton> {
         MediaQuery.disableAnimationsOf(context) ||
         MediaQuery.accessibleNavigationOf(context);
     final contentColor = enabled ? Colors.white : _ink.withValues(alpha: .62);
-    final label = widget.busy ? 'Connecting…' : 'Continue with email';
+    final l10n = context.l10n;
+    final label = widget.busy
+        ? l10n.commonConnecting
+        : l10n.signInContinueWithEmail;
     return Semantics(
       button: true,
       enabled: enabled,
       label: label,
-      value: widget.busy ? 'In progress' : null,
+      value: widget.busy ? l10n.signInBusyValue : null,
       liveRegion: widget.busy,
       onTap: widget.onPressed,
       child: ExcludeSemantics(
@@ -467,7 +479,7 @@ class _ProviderButtonState extends State<_ProviderButton>
   Widget build(BuildContext context) => Column(
     children: [
       Semantics(
-        label: 'Continue with ${widget.provider}',
+        label: context.l10n.signInContinueWithProvider(widget.provider),
         button: true,
         enabled: widget.onTap != null,
         onTap: widget.onTap,

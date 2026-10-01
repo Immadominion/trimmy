@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 import 'career_repository.dart';
 import 'career_activity_week.dart';
 
@@ -113,17 +114,14 @@ final class CareerController extends ChangeNotifier {
     }
   }
 
-  String get message => switch (_failure) {
-    CareerFailure.offline =>
-      'Your career is offline. Check your connection and try again.',
-    CareerFailure.timeout => 'Your career took too long to open. Try again.',
-    CareerFailure.accountRequired =>
-      'Your career needs a fresh session. Try again.',
-    CareerFailure.rateLimited =>
-      'Your career is refreshing too quickly. Try again shortly.',
-    CareerFailure.profileRequired =>
-      'Finish setting up your Trimmy profile, then try again.',
-    _ => 'Your career is unavailable. Try again.',
+  /// What went wrong with the last read, in the reader's language.
+  String message(AppLocalizations l10n) => switch (_failure) {
+    CareerFailure.offline => l10n.careerErrorOffline,
+    CareerFailure.timeout => l10n.careerErrorTimeout,
+    CareerFailure.accountRequired => l10n.careerErrorSession,
+    CareerFailure.rateLimited => l10n.careerErrorRateLimited,
+    CareerFailure.profileRequired => l10n.careerErrorProfileRequired,
+    _ => l10n.careerErrorUnavailable,
   };
 
   bool _owns(

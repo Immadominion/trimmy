@@ -1,0 +1,7 @@
+/* French. */
+
+/* Title of the workday reminder notification. */
+"reminder.title" = "Ton bureau t’attend";
+
+/* Body of the workday reminder when no workday title is known. */
+"reminder.body" = "Ta prochaine mission t’attend à ton bureau.";

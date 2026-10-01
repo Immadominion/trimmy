@@ -149,6 +149,31 @@ void main() {
     expect(find.text('Opening the market'), findsOneWidget);
   });
 
+  testWidgets(
+    'the back arrow returns to the earlier question with its answer',
+    (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_app(onCompleted: (_) {}));
+      await _tap(tester, 'Start my first day');
+      await _tap(tester, 'Continue');
+      await _tap(tester, 'Learn');
+      await _tap(tester, 'Continue');
+      expect(find.text('How much do you know about trading?'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('onboarding-back')));
+      await tester.pumpAndSettle();
+      expect(find.text('Why are you here?'), findsOneWidget);
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('goal-learn')))
+            .getSemanticsData()
+            .flagsCollection
+            .isSelected,
+        Tristate.isTrue,
+        reason: 'the earlier answer is kept',
+      );
+    },
+  );
+
   testWidgets('notification request is called only after its explainer', (
     tester,
   ) async {

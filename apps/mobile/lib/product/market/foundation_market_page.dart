@@ -3,6 +3,7 @@ import '../../ui_review/review_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../markets/followed_stocks_controller.dart';
 import '../../markets/followed_stocks.dart';
 import 'live_trading.dart';
@@ -256,22 +257,26 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
     }
     if (!mounted) return;
     final changed = following.isFollowing(company.assetId) != wasFollowing;
+    final l10n = context.l10n;
     showProductNotice(
       context,
       changed
           ? wasFollowing
-                ? '${company.name} removed from Following.'
-                : '${company.name} added to Following.'
+                ? l10n.marketFollowRemoved(company.name)
+                : l10n.marketFollowAdded(company.name)
           : following.failure == FollowedStocksFailure.unauthenticated
-          ? 'Sign in to save your watchlist.'
+          ? l10n.marketFollowSignInNeeded
           : following.failure == FollowedStocksFailure.limitReached
-          ? 'Your watchlist is full. Remove a company first.'
-          : 'Following did not change. Try again.',
+          ? l10n.marketFollowListFull
+          : l10n.marketFollowUnchanged,
       action:
           !changed &&
               following.failure == FollowedStocksFailure.unauthenticated &&
               widget.onSignIn != null
-          ? SnackBarAction(label: 'Sign in', onPressed: widget.onSignIn!)
+          ? SnackBarAction(
+              label: l10n.commonSignIn,
+              onPressed: widget.onSignIn!,
+            )
           : null,
     );
   }
@@ -355,6 +360,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
   }
 
   Widget _buildBody(BuildContext context) {
+    final l10n = context.l10n;
     final companies = _visibleCompanies;
     return CustomScrollView(
       controller: _scroll,
@@ -369,7 +375,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Market',
+                      l10n.marketTitle,
                       style: Theme.of(context).textTheme.headlineLarge
                           ?.copyWith(
                             fontFamily: 'Bricolage Grotesque',
@@ -379,10 +385,10 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                     ),
                   ),
                   Tooltip(
-                    message: 'Sort: ${_activeSort.label}',
+                    message: l10n.marketSortTooltip(_activeSort.label(l10n)),
                     child: Semantics(
                       button: true,
-                      label: 'Sort stocks',
+                      label: l10n.marketSortButtonLabel,
                       child: TextButton(
                         key: const ValueKey('market-sort-button'),
                         style: TextButton.styleFrom(
@@ -406,10 +412,10 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                   ),
                   const SizedBox(width: 6),
                   Tooltip(
-                    message: 'Search companies',
+                    message: l10n.marketSearchButtonLabel,
                     child: Semantics(
                       button: true,
-                      label: 'Search companies',
+                      label: l10n.marketSearchButtonLabel,
                       child: Material(
                         color: const Color(0xFFF3F3F7),
                         shape: marketSquircle(17),
@@ -429,9 +435,12 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Tokenized stocks',
-                style: TextStyle(color: MarketPalette.muted, fontSize: 14),
+              Text(
+                l10n.marketSubtitle,
+                style: const TextStyle(
+                  color: MarketPalette.muted,
+                  fontSize: 14,
+                ),
               ),
               if (widget.intro != null) ...[
                 const SizedBox(height: 12),
@@ -447,7 +456,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                     for (final list in _availableLists)
                       _MarketFilter(
                         key: ValueKey('market-list-${list.name}'),
-                        label: list.label,
+                        label: list.label(l10n),
                         selected: list == _activeList,
                         onTap: () {
                           if (ReviewFeedback.shared.haptics) {
@@ -488,16 +497,16 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
             widget.status == MarketPageStatus.offline)
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverToBoxAdapter(child: _statusCard()),
+            sliver: SliverToBoxAdapter(child: _statusCard(l10n)),
           )
         else if (companies.isEmpty && _loadingAll)
-          const SliverPadding(
-            padding: EdgeInsets.all(24),
+          SliverPadding(
+            padding: const EdgeInsets.all(24),
             sliver: SliverToBoxAdapter(
               child: Text(
-                'Checking every stock…',
-                key: ValueKey('market-list-loading-all'),
-                style: TextStyle(color: MarketPalette.muted),
+                l10n.marketLoadingAll,
+                key: const ValueKey('market-list-loading-all'),
+                style: const TextStyle(color: MarketPalette.muted),
               ),
             ),
           )
@@ -513,12 +522,12 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                 children: [
                   Text(
                     _activeList == MarketList.following
-                        ? 'Your watchlist starts here.'
+                        ? l10n.marketEmptyFollowingTitle
                         : _activeList == MarketList.etfs
-                        ? 'No funds to show yet.'
+                        ? l10n.marketEmptyFunds
                         : _activeList == MarketList.preIpo
-                        ? 'No pre-IPO companies to show yet.'
-                        : 'No stocks to show yet.',
+                        ? l10n.marketEmptyPreIpo
+                        : l10n.marketEmptyStocks,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -527,13 +536,13 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                   const SizedBox(height: 8),
                   Text(
                     _activeList == MarketList.following
-                        ? 'Tap Follow on a company to keep it here.'
-                        : 'Try searching for a company.',
+                        ? l10n.marketEmptyFollowingBody
+                        : l10n.marketEmptyBody,
                     style: const TextStyle(color: MarketPalette.muted),
                   ),
                   TextButton(
                     onPressed: _openSearch,
-                    child: const Text('Find a company'),
+                    child: Text(l10n.marketFindCompany),
                   ),
                 ],
               ),
@@ -588,7 +597,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
           SliverToBoxAdapter(
             child: TextButton(
               onPressed: _loadFollowed,
-              child: const Text('Some stocks could not load. Retry'),
+              child: Text(l10n.marketFollowingLoadFailed),
             ),
           ),
         if (widget.hasMore && _activeList != MarketList.following)
@@ -606,17 +615,17 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                     TextButton(
                       key: const ValueKey('market-load-more'),
                       onPressed: widget.loadingMore ? null : _requestMore,
-                      child: const Text('Try again'),
+                      child: Text(l10n.commonTryAgain),
                     )
                   else if (widget.loadingMore || _loadingAll)
-                    const Padding(
-                      padding: EdgeInsets.all(12),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
                       child: SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          semanticsLabel: 'Loading more stocks',
+                          semanticsLabel: l10n.marketLoadingMore,
                         ),
                       ),
                     ),
@@ -629,7 +638,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
     );
   }
 
-  Widget _statusCard() => Semantics(
+  Widget _statusCard(AppLocalizations l10n) => Semantics(
     liveRegion: true,
     child: MarketPanel(
       color: widget.status == MarketPageStatus.error
@@ -641,13 +650,16 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
           Text(
             widget.statusMessage ??
                 (widget.status == MarketPageStatus.offline
-                    ? 'You are offline. Check your connection.'
-                    : 'The market list is unavailable.'),
+                    ? l10n.marketOffline
+                    : l10n.marketListUnavailable),
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
           if (widget.onRetry != null) ...[
             const SizedBox(height: 12),
-            MarketPrimaryButton(label: 'Try again', onPressed: widget.onRetry),
+            MarketPrimaryButton(
+              label: l10n.commonTryAgain,
+              onPressed: widget.onRetry,
+            ),
           ],
         ],
       ),
@@ -669,7 +681,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Sort loaded stocks',
+              context.l10n.marketSortTitle,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -686,7 +698,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                         color: MarketPalette.violet,
                       )
                     : null,
-                title: Text(sort.label),
+                title: Text(sort.label(context.l10n)),
                 onTap: () => Navigator.pop(context, sort),
               ),
           ],
@@ -716,6 +728,8 @@ class MarketCompanyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final change = company.dayChangePercent;
     final tint = Color.lerp(company.brandColor, Colors.white, .35)!;
     final large = MediaQuery.textScalerOf(context).scale(14) > 20;
@@ -760,7 +774,7 @@ class MarketCompanyCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
-          shortPrice(company.priceUsd),
+          shortPrice(company.priceUsd, formats),
           style: const TextStyle(
             fontSize: 21,
             fontWeight: FontWeight.w700,
@@ -770,8 +784,8 @@ class MarketCompanyCard extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           change == null
-              ? 'Change unavailable'
-              : '${signedPercent(change)}  24h',
+              ? l10n.marketChangeUnavailable
+              : l10n.marketCardChange24h(signedPercent(change, formats)),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -799,7 +813,7 @@ class MarketCompanyCard extends StatelessWidget {
                 style: tagStyle,
               ),
               Text(
-                'Tradeable',
+                l10n.marketTradeable,
                 key: ValueKey('market-tradeable-${company.assetId}'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -824,7 +838,7 @@ class MarketCompanyCard extends StatelessWidget {
           ),
           onPressed: onLongPress,
           child: Text(
-            followed ? 'Following' : '+ Follow',
+            followed ? l10n.marketFollowingButton : l10n.marketFollowButton,
             style: const TextStyle(fontSize: 12),
           ),
         ),
@@ -836,15 +850,22 @@ class MarketCompanyCard extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.standard,
         ),
-        child: const Text(
-          'Open',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        child: Text(
+          l10n.commonOpen,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ),
     ];
     return Semantics(
-      label:
-          '${company.name}, ${company.symbol}, ${shortPrice(company.priceUsd)}, ${change == null ? 'change unavailable' : signedPercent(change)}${tradeable ? ', tradeable' : ''}',
+      label: l10n.marketCardLabel(
+        tradeable ? 'yes' : 'no',
+        company.name,
+        company.symbol,
+        shortPrice(company.priceUsd, formats),
+        change == null
+            ? l10n.marketChangeUnavailableSpoken
+            : signedPercent(change, formats),
+      ),
       child: Material(
         color: tint,
         shape: marketSquircle(24),
@@ -873,12 +894,25 @@ class MarketCompanyCard extends StatelessWidget {
                               price,
                             ],
                           )
-                        : Row(
-                            children: [
-                              Expanded(child: identity),
-                              const SizedBox(width: 10),
-                              price,
-                            ],
+                        : LayoutBuilder(
+                            builder: (context, constraints) => Row(
+                              children: [
+                                Expanded(child: identity),
+                                const SizedBox(width: 10),
+                                // A longer price ("US$ 1.234,56") shrinks to
+                                // fit instead of squeezing the name.
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: constraints.maxWidth * .45,
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: price,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                   ),
                 ),

@@ -1,10 +1,33 @@
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/l10n.dart';
 import '../../markets/discovery.dart';
 import '../../markets/stock_research_controller.dart';
 import 'market_models.dart';
 
 enum MarketSearchPhase { idle, loading, ready, stale, offline, paused, error }
+
+/// What a search screen tells the player about the last search, as a code so
+/// the words follow the app's language when they are shown.
+enum MarketSearchNotice {
+  stale,
+  offline,
+  paused,
+  rateLimited,
+  timeout,
+  disabled,
+  unavailable;
+
+  String message(AppLocalizations l10n) => switch (this) {
+    MarketSearchNotice.stale => l10n.marketSearchStale,
+    MarketSearchNotice.offline => l10n.marketSearchOffline,
+    MarketSearchNotice.paused => l10n.marketSearchPaused,
+    MarketSearchNotice.rateLimited => l10n.marketSearchRateLimited,
+    MarketSearchNotice.timeout => l10n.marketSearchTimeout,
+    MarketSearchNotice.disabled => l10n.marketSearchDisabled,
+    MarketSearchNotice.unavailable => l10n.marketSearchUnavailable,
+  };
+}
 
 @immutable
 final class MarketSearchSnapshot {
@@ -12,19 +35,25 @@ final class MarketSearchSnapshot {
     required this.phase,
     required this.query,
     required this.companies,
-    this.message,
+    this.notice,
   });
 
   const MarketSearchSnapshot.idle()
     : phase = MarketSearchPhase.idle,
       query = '',
       companies = const <MarketCompany>[],
-      message = null;
+      notice = null;
 
   final MarketSearchPhase phase;
   final String query;
   final List<MarketCompany> companies;
-  final String? message;
+  final MarketSearchNotice? notice;
+
+  /// [notice] in the reader's language. Screens use this.
+  String? noticeText(AppLocalizations l10n) => notice?.message(l10n);
+
+  /// [notice] in English, for callers that have not moved to [noticeText].
+  String? get message => notice?.message(englishLocalizations);
 }
 
 abstract interface class MarketSearchGateway implements Listenable {
@@ -67,20 +96,23 @@ final class StockResearchSearchGateway implements MarketSearchGateway {
       companies: List.unmodifiable(
         page?.results.map(MarketCompany.fromDiscovery) ?? const [],
       ),
-      message: _message(state.phase, state.errorCode),
+      notice: _notice(state.phase, state.errorCode),
     );
   }
 
-  static String? _message(StockResearchReadPhase phase, String? code) {
+  static MarketSearchNotice? _notice(
+    StockResearchReadPhase phase,
+    String? code,
+  ) {
     if (phase == StockResearchReadPhase.stale) {
-      return 'These results are old. Search again for a newer list.';
+      return MarketSearchNotice.stale;
     }
     if (phase == StockResearchReadPhase.offline) {
-      return 'You are offline. Check your connection and try again.';
+      return MarketSearchNotice.offline;
     }
     if (phase == StockResearchReadPhase.background ||
         phase == StockResearchReadPhase.cancelled) {
-      return 'The search paused. Try again.';
+      return MarketSearchNotice.paused;
     }
     if (phase != StockResearchReadPhase.error &&
         phase != StockResearchReadPhase.disabled &&
@@ -88,13 +120,12 @@ final class StockResearchSearchGateway implements MarketSearchGateway {
       return null;
     }
     return switch (code) {
-      'STOCK_RATE_LIMITED' => 'Too many searches. Wait a moment and try again.',
-      'STOCK_TIMEOUT' => 'The search took too long. Try again.',
-      'STOCK_RESEARCH_RUNTIME_OFFLINE' || 'STOCK_NETWORK_ERROR' =>
-        'You are offline. Check your connection and try again.',
-      'STOCK_RESEARCH_RUNTIME_DISABLED' =>
-        'Company search is not available in this build.',
-      _ => 'Company search is unavailable. Try again.',
+      'STOCK_RATE_LIMITED' => MarketSearchNotice.rateLimited,
+      'STOCK_TIMEOUT' => MarketSearchNotice.timeout,
+      'STOCK_RESEARCH_RUNTIME_OFFLINE' ||
+      'STOCK_NETWORK_ERROR' => MarketSearchNotice.offline,
+      'STOCK_RESEARCH_RUNTIME_DISABLED' => MarketSearchNotice.disabled,
+      _ => MarketSearchNotice.unavailable,
     };
   }
 

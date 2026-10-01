@@ -1,12 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../account/account_controller.dart';
 import '../../account/auth.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import 'sign_in_methods_page.dart';
 
 enum _EmailStage { methods, address, code }
+
+/// What went wrong, kept as a reason so the message follows the app language.
+enum _SignInError {
+  unfinished,
+  closed,
+  connection,
+  code,
+  unavailable,
+  emailInvalid,
+  sendFailed,
+  codeMissing,
+}
 
 /// The account gate is a page because saving a desk is a meaningful decision.
 /// Guests can leave without losing the local paper desk.
@@ -39,11 +54,14 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
   final _code = TextEditingController();
   var _stage = _EmailStage.methods;
   var _sentTo = '';
+  // A new code can be asked for 30 seconds after the last one, as on the web.
+  var _resendSeconds = 0;
+  Timer? _resendTick;
   var _busy = false;
   var _operation = 0;
   var _completionQueued = false;
   var _completed = false;
-  String? _error;
+  _SignInError? _error;
 
   bool get _unavailable =>
       widget.configurationFailed ||
@@ -55,15 +73,32 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
       widget.controller?.phase == AccountPhase.initializing ||
       widget.controller?.phase == AccountPhase.connecting;
 
-  String get _connectionError => widget.expiredGuestRecovery
-      ? 'We could not connect your account. Your previous desk is preserved.'
-      : 'We could not connect your account. Your desk is still here.';
+  String _connectionError(AppLocalizations l10n) => widget.expiredGuestRecovery
+      ? l10n.signInErrorConnectionExpired
+      : l10n.signInErrorConnection;
 
-  String? get _visibleError =>
-      _error ??
-      (widget.controller?.phase == AccountPhase.error
-          ? _connectionError
-          : null);
+  String _errorText(_SignInError error, AppLocalizations l10n) =>
+      switch (error) {
+        _SignInError.unfinished => l10n.signInErrorUnfinished,
+        _SignInError.closed =>
+          widget.expiredGuestRecovery
+              ? l10n.signInClosedExpired
+              : l10n.signInClosed,
+        _SignInError.connection => _connectionError(l10n),
+        _SignInError.code => l10n.signInErrorCode,
+        _SignInError.unavailable => l10n.signInUnavailable,
+        _SignInError.emailInvalid => l10n.signInErrorEmailInvalid,
+        _SignInError.sendFailed => l10n.signInErrorSendCode,
+        _SignInError.codeMissing => l10n.signInErrorCodeMissing,
+      };
+
+  String? _visibleError(AppLocalizations l10n) {
+    final error = _error;
+    if (error != null) return _errorText(error, l10n);
+    return widget.controller?.phase == AccountPhase.error
+        ? _connectionError(l10n)
+        : null;
+  }
 
   @override
   void initState() {
@@ -93,6 +128,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
   void dispose() {
     widget.controller?.removeListener(_accountChanged);
     _operation++;
+    _resendTick?.cancel();
     _email.dispose();
     _code.dispose();
     super.dispose();
@@ -133,7 +169,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
       await action(operation);
     } catch (_) {
       if (mounted && operation == _operation) {
-        setState(() => _error = 'That did not finish. Try again.');
+        setState(() => _error = _SignInError.unfinished);
       }
     } finally {
       if (mounted && operation == _operation) setState(() => _busy = false);
@@ -158,21 +194,15 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
     final phase = widget.controller?.phase;
     if (phase == AccountPhase.active) return;
     if (result == PracticeSignInResult.cancelled) {
-      setState(() {
-        _error = widget.expiredGuestRecovery
-            ? 'Sign-in was closed. Your previous desk is preserved.'
-            : 'Sign-in was closed. Your desk is still here.';
-      });
+      setState(() => _error = _SignInError.closed);
     } else if (phase == AccountPhase.error ||
         result == PracticeSignInResult.signedIn ||
         result == PracticeSignInResult.sessionChanged) {
       // A provider credential is not a completed server account connection.
-      setState(() => _error = _connectionError);
+      setState(() => _error = _SignInError.connection);
     } else {
       setState(() {
-        _error = email
-            ? 'That code did not work. Try again.'
-            : 'Sign-in is unavailable right now.';
+        _error = email ? _SignInError.code : _SignInError.unavailable;
       });
     }
   }
@@ -181,7 +211,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
     final controller = widget.controller;
     final email = normalizePracticeEmail(_email.text);
     if (email == null) {
-      setState(() => _error = 'Enter a full email address.');
+      setState(() => _error = _SignInError.emailInvalid);
       return;
     }
     if (controller == null) return;
@@ -192,8 +222,33 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
         _sentTo = email;
         _stage = _EmailStage.code;
       });
+      _startResendWait();
     } else {
-      setState(() => _error = 'We could not send the code. Try again.');
+      setState(() => _error = _SignInError.sendFailed);
+    }
+  });
+
+  void _startResendWait() {
+    _resendTick?.cancel();
+    setState(() => _resendSeconds = 30);
+    _resendTick = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return timer.cancel();
+      setState(() => _resendSeconds--);
+      if (_resendSeconds <= 0) timer.cancel();
+    });
+  }
+
+  /// A fresh code to the same address, for when the first is slow or lost.
+  Future<void> _resendCode() => _run((operation) async {
+    final controller = widget.controller;
+    if (controller == null || _sentTo.isEmpty) return;
+    final result = await controller.sendEmailCode(_sentTo);
+    if (!_isCurrentOperation(operation, controller)) return;
+    if (result == PracticeEmailCodeResult.sent) {
+      _code.clear();
+      _startResendWait();
+    } else {
+      setState(() => _error = _SignInError.sendFailed);
     }
   });
 
@@ -201,7 +256,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
     final controller = widget.controller;
     final code = normalizePracticeEmailCode(_code.text);
     if (code == null) {
-      setState(() => _error = 'Enter the code from your email.');
+      setState(() => _error = _SignInError.codeMissing);
       return;
     }
     if (controller == null) return;
@@ -245,6 +300,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
   Widget build(BuildContext context) {
     final waiting = _waiting;
     final unavailable = _unavailable;
+    final l10n = context.l10n;
     return PopScope<void>(
       // The startup gate can only grant guest access through its named action.
       // In-flow account pages still handle Back through the close callback.
@@ -273,15 +329,15 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                   : () => _oauth(PracticeOAuthProvider.google),
               onX: waiting ? null : () => _oauth(PracticeOAuthProvider.x),
               title: widget.expiredGuestRecovery
-                  ? 'Sign in to Trimmy.'
-                  : 'Your desk awaits.',
+                  ? l10n.signInTitleTrimmy
+                  : l10n.signInTitleDeskAwaits,
               caption: widget.expiredGuestRecovery
-                  ? 'Open your account desk. The expired guest desk stays separate.'
-                  : 'Sign in or create your account.',
+                  ? l10n.signInCaptionExpired
+                  : l10n.signInCaption,
               notice: widget.expiredGuestRecovery
-                  ? 'Closing sign-in keeps the expired guest desk preserved.'
+                  ? l10n.signInNoticeExpired
                   : null,
-              error: _visibleError,
+              error: _visibleError(l10n),
               busy: waiting,
             )
           : _formPage(context, waiting, unavailable),
@@ -290,6 +346,8 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
 
   Widget _formPage(BuildContext context, bool waiting, bool unavailable) {
     final codeStep = _stage == _EmailStage.code;
+    final l10n = context.l10n;
+    final visibleError = _visibleError(l10n);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -304,7 +362,9 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                   if (!unavailable)
                     IconButton(
                       key: const ValueKey('sign-in-back'),
-                      tooltip: codeStep ? 'Use a different email' : 'Back',
+                      tooltip: codeStep
+                          ? l10n.signInUseDifferentEmail
+                          : l10n.commonBack,
                       onPressed: waiting ? null : _backToPreviousStep,
                       icon: const Icon(Icons.arrow_back_rounded, color: _ink),
                     )
@@ -313,7 +373,7 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                   if (!widget.entryGate)
                     IconButton(
                       key: const ValueKey('sign-in-close'),
-                      tooltip: 'Close sign in',
+                      tooltip: l10n.signInCloseTooltip,
                       onPressed: waiting ? null : _close,
                       icon: const Icon(Icons.close_rounded, color: _ink),
                     ),
@@ -323,11 +383,11 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
               Text(
                 unavailable
                     ? widget.expiredGuestRecovery
-                          ? 'Sign in to Trimmy.'
-                          : 'Save your desk.'
+                          ? l10n.signInTitleTrimmy
+                          : l10n.signInTitleSaveDesk
                     : codeStep
-                    ? 'Check your email.'
-                    : 'Your email.',
+                    ? l10n.signInTitleCheckEmail
+                    : l10n.signInTitleYourEmail,
                 style: const TextStyle(
                   fontFamily: 'Bricolage Grotesque',
                   fontSize: 36,
@@ -341,11 +401,11 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
               Text(
                 unavailable
                     ? widget.expiredGuestRecovery
-                          ? 'The expired guest desk stays separate.'
-                          : 'Your desk stays on this phone.'
+                          ? l10n.signInExpiredDeskSeparate
+                          : l10n.signInDeskStaysOnPhone
                     : codeStep
-                    ? 'We sent a code to $_sentTo.'
-                    : 'We’ll send you a sign-in code.',
+                    ? l10n.signInCodeSentTo(_sentTo)
+                    : l10n.signInWeWillSendCode,
                 style: const TextStyle(
                   fontFamily: 'Dejanire Sans',
                   color: _muted,
@@ -357,14 +417,16 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
               if (unavailable) ...[
                 Text(
                   widget.expiredGuestRecovery
-                      ? 'Account sign-in is not set up in this build. The expired guest desk stays preserved.'
-                      : 'Account sign-in is not set up in this build. Your desk stays on this phone.',
+                      ? l10n.signInNotSetUpExpired
+                      : l10n.signInNotSetUp,
                   style: const TextStyle(color: _muted, height: 1.45),
                 ),
                 const SizedBox(height: 24),
                 _AccountAction(
                   key: const ValueKey('sign-in-later'),
-                  label: widget.entryGate ? 'Continue as guest' : 'Later',
+                  label: widget.entryGate
+                      ? l10n.signInContinueAsGuest
+                      : l10n.signInLater,
                   onPressed: waiting ? null : _close,
                 ),
               ] else ...[
@@ -387,6 +449,19 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                     ],
                     autocorrect: false,
                     enableSuggestions: false,
+                    // Keeps the Sign in button above the keyboard, with
+                    // larger text or a long address above the field.
+                    scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
+                    // The iOS number pad has no return key: a complete code
+                    // signs in by itself.
+                    onChanged: codeStep
+                        ? (value) {
+                            if (!waiting &&
+                                normalizePracticeEmailCode(value)?.length == 6) {
+                              unawaited(_verifyCode());
+                            }
+                          }
+                        : null,
                     style: const TextStyle(
                       fontFamily: 'Dejanire Sans',
                       color: _ink,
@@ -394,7 +469,9 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                       letterSpacing: .2,
                     ),
                     decoration: InputDecoration(
-                      labelText: codeStep ? 'Code' : 'Email address',
+                      labelText: codeStep
+                          ? l10n.signInCodeLabel
+                          : l10n.signInEmailLabel,
                       floatingLabelStyle: const TextStyle(color: _violet),
                       filled: true,
                       fillColor: const Color(0xFFF5F3F8),
@@ -412,12 +489,12 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                         : (_) => codeStep ? _verifyCode() : _sendCode(),
                   ),
                 ),
-                if (_visibleError != null) ...[
+                if (visibleError != null) ...[
                   const SizedBox(height: 16),
                   Semantics(
                     liveRegion: true,
                     child: Text(
-                      _visibleError!,
+                      visibleError,
                       key: const ValueKey('sign-in-error'),
                       style: const TextStyle(
                         color: ProductColor.loss,
@@ -433,11 +510,11 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                   ),
                   label: waiting
                       ? codeStep
-                            ? 'Connecting…'
-                            : 'Sending…'
+                            ? l10n.commonConnecting
+                            : l10n.commonSending
                       : codeStep
-                      ? 'Sign in'
-                      : 'Send code',
+                      ? l10n.commonSignIn
+                      : l10n.signInSendCode,
                   onPressed: waiting
                       ? null
                       : codeStep
@@ -445,11 +522,28 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                       : _sendCode,
                   busy: waiting,
                 ),
+                if (codeStep) ...[
+                  const SizedBox(height: 4),
+                  TextButton(
+                    key: const ValueKey('sign-in-resend'),
+                    onPressed: waiting || _resendSeconds > 0
+                        ? null
+                        : _resendCode,
+                    style: TextButton.styleFrom(foregroundColor: _violet),
+                    child: Text(
+                      _resendSeconds > 0
+                          ? l10n.signInResendIn(_resendSeconds)
+                          : l10n.signInResendCode,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: waiting ? null : _backToPreviousStep,
                   style: TextButton.styleFrom(foregroundColor: _muted),
-                  child: Text(codeStep ? 'Use a different email' : 'Back'),
+                  child: Text(
+                    codeStep ? l10n.signInUseDifferentEmail : l10n.commonBack,
+                  ),
                 ),
               ],
             ],

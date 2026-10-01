@@ -4,6 +4,8 @@
 /// order IDs and credentials never cross this boundary.
 library;
 
+import '../l10n/l10n.dart';
+
 enum RelationshipFailure {
   invalidConfiguration,
   invalidRequest,
@@ -49,12 +51,14 @@ enum ReasonReportCategory {
   unsafe,
   other;
 
-  String get label => switch (this) {
-    ReasonReportCategory.spam => 'Spam',
-    ReasonReportCategory.harassment => 'Harassment',
-    ReasonReportCategory.impersonation => 'Impersonation',
-    ReasonReportCategory.unsafe => 'Unsafe content',
-    ReasonReportCategory.other => 'Something else',
+  /// The category's name in the reader's language. The wire value is [name].
+  String label(AppLocalizations l10n) => switch (this) {
+    ReasonReportCategory.spam => l10n.socialReportCategorySpam,
+    ReasonReportCategory.harassment => l10n.socialReportCategoryHarassment,
+    ReasonReportCategory.impersonation =>
+      l10n.socialReportCategoryImpersonation,
+    ReasonReportCategory.unsafe => l10n.socialReportCategoryUnsafe,
+    ReasonReportCategory.other => l10n.socialReportCategoryOther,
   };
 
   static ReasonReportCategory? parse(Object? value) {

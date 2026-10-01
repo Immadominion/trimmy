@@ -12,6 +12,7 @@ import '../../account/account_controller.dart';
 import '../../account/account_data_models.dart';
 import '../../account/wallet_trade_signer.dart';
 import '../../account/send_transaction_policy.dart';
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../design/product_components.dart';
 import '../design/product_notice.dart';
@@ -29,41 +30,43 @@ final _solReserve = BigInt.from(2000000);
 class SendFailure implements Exception {
   const SendFailure(this.code);
   final String code;
-  String get message => switch (code) {
+
+  /// What went wrong, in the reader's language. The server's code stays the
+  /// same in every language; SOL minimums read in the reader's numbers.
+  String message(AppLocalizations l10n, AppFormats formats) => switch (code) {
     'DESTINATION_INVALID' ||
-    'TRANSFER_INPUT_INVALID' => 'Check the address and the amount.',
-    'DESTINATION_SELF' => 'That’s your own wallet. Enter another address.',
-    'DESTINATION_NOT_WALLET' =>
-      'That address isn’t a wallet. It may be a token account or a program. Ask for the wallet address instead.',
-    'DESTINATION_FROZEN' => 'That wallet can’t receive this token right now.',
-    'ASSET_UNSUPPORTED' => 'This token can’t be sent from Trimmy.',
-    'ASSET_NOT_TRANSFERABLE' =>
-      'This token has transfer rules Trimmy can’t send with.',
-    'ASSET_PAUSED' => 'Its issuer has paused transfers for now.',
-    'ASSET_FROZEN' =>
-      'This token is frozen in your wallet. Contact its issuer.',
-    'INSUFFICIENT_BALANCE' => 'You don’t have that much ready to send.',
-    'ADD_SOL' => 'Add a little SOL to cover the network fee.',
-    'LEAVES_TOO_LITTLE_SOL' => 'Leave at least 0.001 SOL, or send all of it.',
-    'AMOUNT_TOO_SMALL' => 'A new wallet needs at least 0.001 SOL to open.',
-    'SIMULATION_FAILED' || 'SIMULATION_MISMATCH' =>
-      'This send didn’t pass its check. Nothing was sent.',
+    'TRANSFER_INPUT_INVALID' => l10n.sendErrorCheckInput,
+    'DESTINATION_SELF' => l10n.sendErrorSelf,
+    'DESTINATION_NOT_WALLET' => l10n.sendErrorNotWallet,
+    'DESTINATION_FROZEN' => l10n.sendErrorDestinationFrozen,
+    'ASSET_UNSUPPORTED' => l10n.sendErrorAssetUnsupported,
+    'ASSET_NOT_TRANSFERABLE' => l10n.sendErrorNotTransferable,
+    'ASSET_PAUSED' => l10n.sendErrorAssetPaused,
+    'ASSET_FROZEN' => l10n.sendErrorAssetFrozen,
+    'INSUFFICIENT_BALANCE' => l10n.sendErrorInsufficient,
+    'ADD_SOL' => l10n.sendErrorAddSol,
+    'LEAVES_TOO_LITTLE_SOL' => l10n.sendErrorLeaveSol(formats.number('0.001')),
+    'AMOUNT_TOO_SMALL' => l10n.sendErrorTooSmall(formats.number('0.001')),
+    'SIMULATION_FAILED' || 'SIMULATION_MISMATCH' => l10n.sendErrorCheckFailed,
     'REVIEW_EXPIRED' ||
     'INVALID_REVIEW' ||
-    'INVALID_SIGNATURE' => 'This review expired. Review it again.',
-    'TRANSFER_NOT_SENT' ||
-    'TRANSFER_PENDING' => 'Check your previous send before starting another.',
-    'INVALID_TRANSACTION' || 'SIGNATURE_MISMATCH' =>
-      'This transaction doesn’t match your review. Nothing was sent.',
-    'TRANSFER_STORAGE' => 'Allow device storage to keep your send recoverable.',
-    'TRANSFER_BUSY' => 'One moment, then try again.',
+    'INVALID_SIGNATURE' => l10n.sendErrorReviewExpired,
+    'TRANSFER_NOT_SENT' || 'TRANSFER_PENDING' => l10n.sendErrorPrevious,
+    'INVALID_TRANSACTION' || 'SIGNATURE_MISMATCH' => l10n.sendErrorMismatch,
+    'TRANSFER_STORAGE' => l10n.sendErrorStorage,
+    'TRANSFER_BUSY' => l10n.sendErrorBusy,
     'ACCOUNT_REQUIRED' ||
-    'WALLET_REQUIRED' => 'Sign in again to use your wallet.',
-    'SIGNING_CANCELLED' => 'Signing was cancelled. Nothing was sent.',
-    'TRANSFER_UNAVAILABLE' => 'Sending is paused right now. Try again later.',
-    _ => 'Sending couldn’t connect. Try again.',
+    'WALLET_REQUIRED' => l10n.liveOrderErrorAccountRequired,
+    'SIGNING_CANCELLED' => l10n.sendErrorCancelled,
+    'TRANSFER_UNAVAILABLE' => l10n.sendErrorPaused,
+    _ => l10n.sendErrorGeneric,
   };
 }
+
+/// A notice on the send screen, written when it is shown so it follows the
+/// current language.
+typedef _SendNotice =
+    String Function(AppLocalizations l10n, AppFormats formats);
 
 /// Something the wallet can send: USDC, SOL or a stock token, with what is
 /// ready to send from its main account.
@@ -96,6 +99,16 @@ class SendAsset {
 
   String label(String raw) =>
       stock ? scale.label(raw) : formatRawUnits(raw, decimals) ?? raw;
+
+  /// [label] with the symbol, in [formats]' numbers: "12.5 USDC" in English,
+  /// "12,5 USDC" in French. The amount is exact either way.
+  String amount(String raw, AppFormats formats) =>
+      '${formats.number(label(raw))} $symbol';
+
+  /// The asset's name for the reader. USDC's name is Trimmy's own copy; a
+  /// token's name is the issuer's and stays as written.
+  String title(AppLocalizations l10n) =>
+      id == 'USDC' ? l10n.sendAssetUsdc : name;
 
   /// Raw units for what someone typed; shares for a stock token.
   String? rawFor(String text) =>
@@ -467,8 +480,13 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   String? _assetId;
   SendReview? _review;
   _Stage _stage = _Stage.details;
-  bool _busy = true, _recoveryFailed = false;
-  String? _error, _signature, _status;
+  // `_recovering` is the check for an earlier send when the sheet opens: it
+  // holds the form but, unlike a send in progress, never stops closing.
+  bool _busy = false, _recovering = true, _recoveryFailed = false;
+  bool get _working => _busy || _recovering;
+  final _noticeKey = GlobalKey();
+  _SendNotice? _error;
+  String? _signature, _status;
   Timer? _poll;
   int _polls = 0;
 
@@ -496,7 +514,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   Future<void> _recover() async {
     if (mounted) {
       setState(() {
-        _busy = true;
+        _recovering = true;
         _error = null;
         _recoveryFailed = false;
       });
@@ -525,12 +543,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       if (mounted) {
         setState(() {
           _recoveryFailed = true;
-          _error =
-              'Your previous send couldn’t be checked. Try checking again.';
+          _error = (l10n, _) => l10n.sendRecoveryFailed;
         });
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _recovering = false);
     }
   }
 
@@ -545,29 +562,61 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   String? get _ownAddress => realWalletHoldings(widget.account)?.wallet.address;
 
-  String? _check(SendAsset asset) {
-    final to = _to.text.trim();
-    if (!_address.hasMatch(to)) return 'Enter a Solana wallet address.';
-    if (to == _ownAddress) {
-      return 'That’s your own wallet. Enter another address.';
-    }
-    final raw = asset.rawFor(_amount.text);
-    if (raw == null) return 'Enter an amount.';
+  /// The typed amount as the exact plain decimal the parsers read: a comma
+  /// typed as the decimal mark reads as the same amount.
+  String get _typedAmount =>
+      context.formats.normalizeDecimalInput(_amount.text);
+
+  /// The address exactly as pasted or typed: surrounding spaces go, and a
+  /// plain `solana:` link gives its address. Nothing inside it is removed or
+  /// cut, so a mistyped address is refused, never changed into another.
+  String get _recipient {
+    final text = _to.text.trim();
+    final link = RegExp(
+      r'^solana:([^?]*)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    return link == null ? text : link[1]!;
+  }
+
+  void _show(_SendNotice notice) {
+    setState(() => _error = notice);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _noticeKey.currentContext;
+      if (target == null || !target.mounted) return;
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
+  _SendNotice? _check(SendAsset asset) {
+    final to = _recipient;
+    if (!_address.hasMatch(to)) return (l10n, _) => l10n.sendEnterAddress;
+    if (to == _ownAddress) return (l10n, _) => l10n.sendErrorSelf;
+    final raw = asset.rawFor(_typedAmount);
+    if (raw == null) return (l10n, _) => l10n.sendEnterAmount;
     if (BigInt.parse(raw) > BigInt.parse(asset.availableRaw)) {
-      return 'You have ${asset.label(asset.availableRaw)} ${asset.symbol} ready to send.';
+      return (l10n, formats) =>
+          l10n.sendHaveReady(asset.amount(asset.availableRaw, formats));
     }
     return null;
   }
 
   Future<void> _preview() async {
     final asset = _asset;
-    if (asset == null || _busy || _recoveryFailed) return;
+    if (asset == null || _working || _recoveryFailed) return;
+    // Close the keyboard first, so a message is not hidden under it.
+    FocusScope.of(context).unfocus();
     final problem = _check(asset);
     if (problem != null) {
-      setState(() => _error = problem);
+      _show(problem);
       return;
     }
-    final to = _to.text.trim(), amountRaw = asset.rawFor(_amount.text)!;
+    final to = _recipient, amountRaw = asset.rawFor(_typedAmount)!;
     setState(() {
       _busy = true;
       _error = null;
@@ -595,10 +644,10 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       if (mounted && failure.code == 'TRANSFER_PENDING') {
         await _recover();
       } else if (mounted) {
-        setState(() => _error = failure.message);
+        _show(failure.message);
       }
     } catch (_) {
-      if (mounted) setState(() => _error = const SendFailure('').message);
+      if (mounted) _show(const SendFailure('').message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -606,7 +655,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   Future<void> _send() async {
     final review = _review;
-    if (review == null || _busy || _recoveryFailed) return;
+    if (review == null || _working || _recoveryFailed) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -707,6 +756,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   @override
   Widget build(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n;
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
@@ -715,7 +765,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           leading: IconButton(
-            tooltip: 'Back',
+            tooltip: l10n.commonBack,
             onPressed: _busy
                 ? null
                 : _stage == _Stage.review
@@ -726,7 +776,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
                 : widget.onBack,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
-          title: Text('Send', style: type.titleLarge),
+          title: Text(l10n.sendTitle, style: type.titleLarge),
         ),
         body: SafeArea(
           top: false,
@@ -737,7 +787,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
               children: [
                 if (_recoveryFailed)
                   ProductButton(
-                    label: 'Check previous send',
+                    label: l10n.sendCheckPrevious,
                     onPressed: _recover,
                   ),
                 ...switch (_stage) {
@@ -747,10 +797,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
                 },
                 if (_error != null)
                   Padding(
+                    key: _noticeKey,
                     padding: const EdgeInsets.only(top: 16),
                     child: ProductNotice(
                       key: const ValueKey('send-notice'),
-                      message: _error!,
+                      message: _error!(l10n, context.formats),
                       onDismiss: () => setState(() => _error = null),
                     ),
                   ),
@@ -764,23 +815,24 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   List<Widget> _details(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n, formats = context.formats;
     final assets = _assets, asset = _asset;
     if (asset == null) {
       return [
         const SizedBox(height: 28),
-        Text('Nothing to send yet', style: type.headlineMedium),
+        Text(l10n.sendNothingTitle, style: type.headlineMedium),
         const SizedBox(height: 12),
         Text(
-          'Add money or buy a stock first. Anything in your wallet can be sent from here.',
+          l10n.sendNothingBody,
           style: type.bodyLarge?.copyWith(color: ProductColor.muted),
         ),
       ];
     }
     return [
-      Text('Send to a Solana wallet', style: type.headlineLarge),
+      Text(l10n.sendHeading, style: type.headlineLarge),
       const SizedBox(height: 8),
       Text(
-        'Only send to a Solana address. Sends can’t be undone.',
+        l10n.sendWarning,
         style: type.bodyMedium?.copyWith(color: ProductColor.muted),
       ),
       const SizedBox(height: 22),
@@ -788,18 +840,18 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
         key: const ValueKey('send-asset'),
         initialValue: asset.id,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'What to send'),
+        decoration: InputDecoration(labelText: l10n.sendWhatLabel),
         items: [
           for (final option in assets)
             DropdownMenuItem(
               value: option.id,
               child: Text(
-                '${option.name} · ${option.label(option.availableRaw)} ${option.symbol}',
+                '${option.title(l10n)} · ${option.amount(option.availableRaw, formats)}',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
         ],
-        onChanged: _busy
+        onChanged: _working
             ? null
             : (value) => setState(() {
                 _assetId = value;
@@ -811,20 +863,19 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       TextField(
         key: const ValueKey('send-destination'),
         controller: _to,
-        enabled: !_busy,
+        enabled: !_working,
         autocorrect: false,
         enableSuggestions: false,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp('[1-9A-HJ-NP-Za-km-z]')),
-          LengthLimitingTextInputFormatter(44),
-        ],
+        // No character filter or 44-character cut: either could turn a pasted
+        // address into a different one. The review refuses a bad address.
+        inputFormatters: [LengthLimitingTextInputFormatter(200)],
         decoration: InputDecoration(
-          labelText: 'Recipient’s wallet address',
+          labelText: l10n.sendRecipientLabel,
           suffixIcon: IconButton(
             key: const ValueKey('send-paste'),
-            tooltip: 'Paste',
+            tooltip: l10n.sendPaste,
             icon: const Icon(Icons.content_paste_rounded),
-            onPressed: _busy
+            onPressed: _working
                 ? null
                 : () async {
                     final text = (await Clipboard.getData(
@@ -841,26 +892,31 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       TextField(
         key: const ValueKey('send-amount'),
         controller: _amount,
-        enabled: !_busy,
+        enabled: !_working,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          FilteringTextInputFormatter.allow(formats.decimalInputCharacters),
           LengthLimitingTextInputFormatter(40),
         ],
         decoration: InputDecoration(
-          labelText: asset.stock ? 'Shares' : 'Amount (${asset.symbol})',
-          helperText:
-              '${asset.label(asset.availableRaw)} ${asset.symbol} ready to send',
+          labelText: asset.stock
+              ? l10n.sendSharesLabel
+              : l10n.sendAmountLabel(asset.symbol),
+          helperText: l10n.sendReadyToSend(
+            asset.amount(asset.availableRaw, formats),
+          ),
           suffixIcon: TextButton(
             key: const ValueKey('send-max'),
-            onPressed: _busy
+            onPressed: _working
                 ? null
                 : () => setState(
-                    () => _amount.text = asset.stock
-                        ? asset.scale.shares(asset.maxRaw)
-                        : liveDecimal(asset.maxRaw, asset.decimals),
+                    () => _amount.text = formats.decimalInput(
+                      asset.stock
+                          ? asset.scale.shares(asset.maxRaw)
+                          : liveDecimal(asset.maxRaw, asset.decimals),
+                    ),
                   ),
-            child: const Text('Max'),
+            child: Text(l10n.commonMax),
           ),
         ),
       ),
@@ -868,59 +924,54 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            'Max keeps 0.002 SOL so you can still pay network fees.',
+            l10n.sendMaxKeepsSol(formats.number('0.002')),
             style: type.bodySmall?.copyWith(color: ProductColor.muted),
           ),
         ),
       const SizedBox(height: 24),
       ProductButton(
         key: const ValueKey('send-review'),
-        label: _busy ? 'Checking…' : 'Review send',
-        onPressed: _busy || _recoveryFailed ? null : _preview,
+        label: _working ? l10n.commonChecking : l10n.sendReview,
+        onPressed: _working || _recoveryFailed ? null : _preview,
       ),
     ];
   }
 
   List<Widget> _reviewStep(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n, formats = context.formats;
     final review = _review!;
     final asset = _asset;
     final scale = review.assetId == 'SOL' || review.assetId == 'USDC'
         ? LiveShareScale.plain(review.decimals)
         : LiveShareScale.fromMultiplier(review.decimals, review.uiMultiplier);
     String amount(String raw) => asset?.stock == true
-        ? '${scale.approx(raw)} ${review.symbol}'
-        : '${formatRawUnits(raw, review.decimals) ?? raw} ${review.symbol}';
+        ? '${formats.number(scale.approx(raw))} ${review.symbol}'
+        : '${formats.number(formatRawUnits(raw, review.decimals) ?? raw)} ${review.symbol}';
+    String sol(String lamports) =>
+        '${formats.number(liveDecimal(lamports, 9))} SOL';
     return [
-      Text('Review your send', style: type.headlineLarge),
+      Text(l10n.sendReviewTitle, style: type.headlineLarge),
       const SizedBox(height: 22),
       ProductCard(
         color: const Color(0xFFF6F3FB),
         child: Column(
           children: [
-            _line(context, 'You send', amount(review.amountRaw)),
+            _line(context, l10n.sendYouSend, amount(review.amountRaw)),
             if (review.receivedRaw != review.amountRaw)
-              _line(
-                context,
-                'They receive, after the issuer fee',
-                amount(review.receivedRaw),
-              ),
-            _line(
-              context,
-              'Network fee',
-              '${liveDecimal(review.networkFeeLamports, 9)} SOL',
-            ),
+              _line(context, l10n.sendTheyReceive, amount(review.receivedRaw)),
+            _line(context, l10n.sendNetworkFee, sol(review.networkFeeLamports)),
             if (review.createsAccount)
               _line(
                 context,
-                'Opens their ${review.symbol} account (once)',
-                '${liveDecimal(review.accountRentLamports, 9)} SOL',
+                l10n.sendOpensAccount(review.symbol),
+                sol(review.accountRentLamports),
               ),
           ],
         ),
       ),
       const SizedBox(height: 18),
-      Text('To this Solana wallet', style: type.titleMedium),
+      Text(l10n.sendToWallet, style: type.titleMedium),
       const SizedBox(height: 8),
       SelectableText(
         review.destination,
@@ -932,23 +983,23 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       ),
       const SizedBox(height: 8),
       Text(
-        'Check every character. Sends can’t be undone, and Trimmy can’t get money back from a wrong address.',
+        l10n.sendCheckEvery,
         style: type.bodyMedium?.copyWith(color: ProductColor.muted),
       ),
       const SizedBox(height: 22),
       ProductButton(
         key: const ValueKey('send-confirm'),
-        label: _busy ? 'Sending…' : 'Send now',
-        onPressed: _busy || _recoveryFailed ? null : _send,
+        label: _busy ? l10n.commonSending : l10n.sendNow,
+        onPressed: _working || _recoveryFailed ? null : _send,
       ),
       TextButton(
-        onPressed: _busy
+        onPressed: _working
             ? null
             : () => setState(() {
                 _review = null;
                 _stage = _Stage.details;
               }),
-        child: const Text('Edit'),
+        child: Text(l10n.sendEdit),
       ),
     ];
   }
@@ -980,6 +1031,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   List<Widget> _result(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n;
     final confirmed = _status == 'confirmed',
         failed = _status == 'failed',
         expired = _status == 'expired';
@@ -1000,14 +1052,14 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       const SizedBox(height: 22),
       Text(
         confirmed
-            ? 'Sent'
+            ? l10n.sendResultSent
             : waiting
-            ? 'Sending'
+            ? l10n.sendResultSending
             : failed
-            ? 'It didn’t go through'
+            ? l10n.sendResultFailed
             : expired
-            ? 'Send expired'
-            : 'Still confirming',
+            ? l10n.sendResultExpired
+            : l10n.sendResultChecking,
         key: const ValueKey('send-result'),
         textAlign: TextAlign.center,
         style: type.headlineMedium,
@@ -1015,14 +1067,14 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       const SizedBox(height: 12),
       Text(
         confirmed
-            ? 'It’s confirmed on Solana.'
+            ? l10n.sendBodySent
             : waiting
-            ? 'This usually takes a few seconds.'
+            ? l10n.sendBodySending
             : failed
-            ? 'Solana refused it. Only the network fee was spent.'
+            ? l10n.sendBodyFailed
             : expired
-            ? 'This transaction expired without confirmation. You can review a new send.'
-            : 'We’re still checking this send. Don’t send it again.',
+            ? l10n.sendBodyExpired
+            : l10n.sendBodyChecking,
         textAlign: TextAlign.center,
         style: type.bodyLarge?.copyWith(color: ProductColor.muted),
       ),
@@ -1033,21 +1085,19 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
             Uri.parse('https://solscan.io/tx/$_signature'),
             mode: LaunchMode.externalApplication,
           ),
-          child: const Text('View on Solscan'),
+          child: Text(l10n.sendViewSolscan),
         ),
       if (!waiting)
         ProductButton(
           key: const ValueKey('send-done'),
-          label: 'Done',
+          label: l10n.commonDone,
           onPressed: () async {
             try {
               if (_status != 'pending') await _client.acknowledge();
               if (mounted) widget.onBack();
             } catch (_) {
               if (mounted) {
-                setState(
-                  () => _error = 'This send is saved. Try closing it again.',
-                );
+                _show((l10n, _) => l10n.sendCloseFailed);
               }
             }
           },

@@ -1,0 +1,7 @@
+/* Brazilian Portuguese, also read by other Portuguese phones. */
+
+/* Title of the workday reminder notification. */
+"reminder.title" = "Sua mesa está te esperando";
+
+/* Body of the workday reminder when no workday title is known. */
+"reminder.body" = "Sua próxima tarefa está te esperando na sua mesa.";

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../../account/account_controller.dart';
 import '../../account/onramp_wallet_signer.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../design/product_motion_icon.dart';
 import '../design/product_success_mark.dart';
@@ -15,19 +16,26 @@ import '../design/product_success_mark.dart';
 class OnrampFailure implements Exception {
   const OnrampFailure(this.code);
   final String code;
-  String get message => switch (code) {
-    'ONRAMP_NOT_ENABLED' =>
-      'Card deposits aren’t available yet. You can still transfer from another wallet.',
-    'ACCOUNT_REQUIRED' => 'Sign in again to continue.',
-    'ONRAMP_EXPIRED' =>
-      'This checkout needs to be checked with support. Your wallet balance will still update.',
-    'ONRAMP_BUSY' => 'Give it a moment, then try again.',
-    'ONRAMP_AMOUNT_INVALID' => 'Enter an amount from \$5 to \$10,000.',
+
+  /// What to tell the person, in the app language. The server code stays the
+  /// key; amounts are formatted for the reader's locale.
+  String message(AppLocalizations l10n, AppFormats formats) => switch (code) {
+    'ONRAMP_NOT_ENABLED' => l10n.onrampErrorNotEnabled,
+    'ACCOUNT_REQUIRED' => l10n.onrampErrorSignIn,
+    'ONRAMP_EXPIRED' => l10n.onrampErrorExpired,
+    'ONRAMP_BUSY' => l10n.onrampErrorBusy,
+    'ONRAMP_AMOUNT_INVALID' => l10n.onrampErrorAmount(
+      formats.usd('5'),
+      formats.usd('10,000'),
+    ),
     'WALLET_REQUIRED' ||
-    'ONRAMP_WALLET_CHANGED' => 'Refresh your wallet before continuing.',
-    _ => 'Couldn’t open payment. Try again in a moment.',
+    'ONRAMP_WALLET_CHANGED' => l10n.onrampErrorWalletChanged,
+    _ => l10n.onrampErrorUnavailable,
   };
 }
+
+/// Problems the form finds itself, as opposed to server [OnrampFailure] codes.
+enum _OnrampIssue { step, receiptEmail, refresh }
 
 /// Uses the documented Crossmint checkout URL. Card details and identity
 /// documents stay in the system browser, outside Trimmy's app and API.
@@ -157,7 +165,11 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
   final _amount = TextEditingController(text: '50');
   final _email = TextEditingController();
   Map<String, dynamic>? _capability, _order, _challenge;
-  String? _walletToken, _error, _creationId;
+  String? _walletToken, _creationId;
+
+  /// An [OnrampFailure] or an [_OnrampIssue]. The text is built when shown,
+  /// so it follows the app language.
+  Object? _error;
   bool _busy = true,
       _checking = false,
       _finished = false,
@@ -190,12 +202,19 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
   void _showError(Object error) {
     if (mounted) {
       setState(
-        () => _error = error is OnrampFailure
-            ? error.message
-            : 'This step didn’t finish. Try again.',
+        () => _error = error is OnrampFailure ? error : _OnrampIssue.step,
       );
     }
   }
+
+  String? _errorText(AppLocalizations l10n, AppFormats formats) =>
+      switch (_error) {
+        final OnrampFailure failure => failure.message(l10n, formats),
+        _OnrampIssue.step => l10n.onrampErrorStep,
+        _OnrampIssue.receiptEmail => l10n.onrampErrorEmail,
+        _OnrampIssue.refresh => l10n.onrampErrorRefresh,
+        _ => null,
+      };
 
   Future<void> _load() async {
     try {
@@ -216,7 +235,10 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
 
   Future<void> _continue() async {
     if (_busy || !_client.current) return;
-    final amount = _amount.text.trim(), email = _email.text.trim();
+    // Accept the reader's decimal mark; the exact check and the server both
+    // read the plain form ("12.5").
+    final amount = context.formats.normalizeDecimalInput(_amount.text.trim()),
+        email = _email.text.trim();
     if (!RegExp(r'^(?:0|[1-9][0-9]{0,4})(?:\.[0-9]{1,2})?$').hasMatch(amount) ||
         double.parse(amount) < 5 ||
         double.parse(amount) > 10000) {
@@ -224,7 +246,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
       return;
     }
     if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
-      setState(() => _error = 'Enter an email for your receipt.');
+      setState(() => _error = _OnrampIssue.receiptEmail);
       return;
     }
     FocusScope.of(context).unfocus();
@@ -338,10 +360,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
         _timer?.cancel();
         _showError(error);
       } else if (mounted) {
-        setState(
-          () => _error =
-              'Couldn’t refresh this deposit. Check again before paying again.',
-        );
+        setState(() => _error = _OnrampIssue.refresh);
       }
     } finally {
       _checking = false;
@@ -351,6 +370,9 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
   @override
   Widget build(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n;
+    final formats = context.formats;
+    final error = _errorText(l10n, formats);
     if (_order != null) {
       final test = _order!['environment'] == 'staging';
       return Column(
@@ -365,33 +387,34 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
           const SizedBox(height: 20),
           Text(
             _finished
-                ? (test ? 'Test deposit complete' : 'Money added')
+                ? (test ? l10n.onrampTestDoneTitle : l10n.onrampDoneTitle)
                 : _deliveryFailed
-                ? 'Deposit needs attention'
-                : 'Finish your deposit',
+                ? l10n.onrampFailedTitle
+                : l10n.onrampPendingTitle,
             style: type.headlineMedium,
           ),
           const SizedBox(height: 10),
           Text(
             _finished
-                ? (test
-                      ? 'Test USDC arrived on Solana devnet.'
-                      : 'Your USDC is in your wallet.')
+                ? (test ? l10n.onrampTestDoneBody : l10n.onrampDoneBody)
                 : _deliveryFailed
-                ? 'Contact Crossmint with this order ID. Don’t pay again.'
-                : 'Finish payment in your browser, then return here.',
+                ? l10n.onrampFailedBody
+                : l10n.onrampPendingBody,
             style: type.bodyLarge,
           ),
           const SizedBox(height: 20),
           if (!_finished && !_deliveryFailed)
             FilledButton(
               onPressed: _openCheckout,
-              child: const Text('Open payment'),
+              child: Text(l10n.onrampOpenPayment),
             ),
 
-          if (_error != null) Text(_error!, style: type.bodyMedium),
+          if (error != null) Text(error, style: type.bodyMedium),
           const SizedBox(height: 12),
-          SelectableText('Order ${_order!['orderId']}', style: type.bodySmall),
+          SelectableText(
+            l10n.onrampOrderId('${_order!['orderId']}'),
+            style: type.bodySmall,
+          ),
         ],
       );
     }
@@ -402,14 +425,14 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
           const SizedBox(height: 18),
           Text(
             _busy
-                ? 'Checking payment options…'
-                : _error ?? 'Card deposits aren’t available yet.',
+                ? l10n.onrampCheckingOptions
+                : error ?? l10n.onrampCardUnavailable,
             style: type.bodyLarge,
           ),
           const SizedBox(height: 14),
           TextButton(
             onPressed: widget.onTransfer,
-            child: const Text('Transfer from a wallet'),
+            child: Text(l10n.onrampTransferFromWallet),
           ),
           if (!_busy)
             TextButton(
@@ -420,7 +443,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
                 });
                 unawaited(_load());
               },
-              child: const Text('Try again'),
+              child: Text(l10n.commonTryAgain),
             ),
         ],
       );
@@ -433,15 +456,15 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(
-              'Test checkout',
+              l10n.onrampTestCheckout,
               style: type.labelLarge?.copyWith(color: ProductColor.ink),
             ),
           ),
-        Text('Card, Apple Pay or Google Pay', style: type.titleMedium),
+        Text(l10n.onrampMethods, style: type.titleMedium),
         const SizedBox(height: 4),
-        Text('Available options appear at checkout.', style: type.bodySmall),
+        Text(l10n.onrampMethodsNote, style: type.bodySmall),
         const SizedBox(height: 22),
-        Text('Amount', style: type.titleMedium),
+        Text(l10n.onrampAmountLabel, style: type.titleMedium),
         const SizedBox(height: 18),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
@@ -456,13 +479,22 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
             enabled: !_busy,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              FilteringTextInputFormatter.allow(formats.decimalInputCharacters),
             ],
             style: type.headlineLarge,
-            decoration: const InputDecoration(
+            // English keeps "$ 50 USD". Other languages show their own
+            // dollar symbol (US$ or $US) on its usual side, which already
+            // says US dollars.
+            decoration: InputDecoration(
               filled: false,
-              prefixText: '\$ ',
-              suffixText: 'USD',
+              prefixText: formats.dollarFirst
+                  ? '${formats.dollarSymbol} '
+                  : null,
+              suffixText: formats.isEnglish
+                  ? 'USD'
+                  : formats.dollarFirst
+                  ? null
+                  : ' ${formats.dollarSymbol}',
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -483,7 +515,10 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
                             _amount.text = amount;
                             _creationId = null;
                           }),
-                    child: Text('\$$amount'),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(formats.usd(amount)),
+                    ),
                   ),
                 ),
               ),
@@ -497,7 +532,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           decoration: InputDecoration(
-            labelText: 'Receipt email',
+            labelText: l10n.onrampReceiptEmail,
             filled: true,
             fillColor: ProductColor.paperRaised,
             border: OutlineInputBorder(
@@ -516,14 +551,12 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
         ),
         const SizedBox(height: 16),
         Text(
-          _challenge == null
-              ? 'USDC on Solana. Fees shown at checkout.'
-              : 'Confirm this wallet is yours. This signs a message, not a payment.',
+          _challenge == null ? l10n.onrampUsdcNote : l10n.onrampConfirmWallet,
           style: type.bodyMedium,
         ),
         if (_challenge != null)
           ExpansionTile(
-            title: const Text('Verification message'),
+            title: Text(l10n.onrampVerificationMessage),
             shape: const Border(),
             collapsedShape: const Border(),
             children: [
@@ -533,25 +566,25 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
               ),
             ],
           ),
-        if (_error != null)
+        if (error != null)
           Padding(
             padding: const EdgeInsets.only(top: 14),
-            child: Text(_error!, style: type.bodyMedium),
+            child: Text(error, style: type.bodyMedium),
           ),
         const SizedBox(height: 22),
         FilledButton(
           onPressed: _busy ? null : _continue,
           child: Text(
             _busy
-                ? 'One moment…'
+                ? l10n.onrampOneMoment
                 : _challenge == null
-                ? 'Continue'
-                : 'Verify & continue',
+                ? l10n.commonContinue
+                : l10n.onrampVerifyContinue,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Powered by Crossmint',
+          l10n.onrampPoweredByCrossmint,
           style: type.bodySmall,
           textAlign: TextAlign.center,
         ),

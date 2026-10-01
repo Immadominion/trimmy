@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import 'ui_review_app.dart';
 
 /// Trimmy's first authored motion beat.
@@ -92,7 +93,7 @@ class _ReviewColdLaunchPageState extends State<ReviewColdLaunchPage>
     child: Scaffold(
       backgroundColor: UiReviewColor.paper,
       body: Semantics(
-        label: 'Trimmy is opening',
+        label: context.l10n.appSplashOpening,
         image: true,
         child: ExcludeSemantics(
           child: DecoratedBox(

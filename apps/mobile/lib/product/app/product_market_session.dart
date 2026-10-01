@@ -2,10 +2,35 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/l10n.dart';
 import '../../markets/discovery.dart';
 import '../../markets/stock_research_controller.dart';
 import '../market/market.dart';
 import '../market/market_catalog.dart';
+
+/// Why stocks could not load. Kept as a code so the message is written in the
+/// reader's language when it is shown.
+enum ProductMarketIssue {
+  loadMoreFailed,
+  catalogFailed,
+  noStarterPicks,
+  notConfigured,
+  busy,
+  timeout,
+  offline,
+  unavailable;
+
+  String message(AppLocalizations l10n) => switch (this) {
+    loadMoreFailed => l10n.appMarketLoadMoreFailed,
+    catalogFailed => l10n.appMarketCatalogFailed,
+    noStarterPicks => l10n.appMarketNoStarterPicks,
+    notConfigured => l10n.appMarketNotConfigured,
+    busy => l10n.appMarketBusy,
+    timeout => l10n.appMarketTimeout,
+    offline => l10n.appMarketOffline,
+    unavailable => l10n.appMarketUnavailable,
+  };
+}
 
 /// Keeps the launch picks stable while full-screen search uses the same public
 /// market runtime for independent queries.
@@ -29,16 +54,16 @@ final class ProductMarketSession extends ChangeNotifier {
   final MarketCatalogGateway? catalog;
   List<MarketCompany> _catalogCompanies = const [];
   MarketPageStatus _catalogStatus = MarketPageStatus.loading;
-  String? _catalogMessage;
+  ProductMarketIssue? _catalogIssue;
   bool _catalogLoading = false;
   int? _nextOffset;
   int _total = 0;
   bool _loadingMore = false;
-  String? _loadMoreMessage;
+  ProductMarketIssue? _loadMoreIssue;
   int get total => _total;
   bool get hasMore => _nextOffset != null;
   bool get loadingMore => _loadingMore;
-  String? get loadMoreMessage => _loadMoreMessage;
+  ProductMarketIssue? get loadMoreIssue => _loadMoreIssue;
 
   Future<MarketCompany?> findCompany(String assetId) async {
     final known = [
@@ -67,7 +92,7 @@ final class ProductMarketSession extends ChangeNotifier {
       return;
     }
     _loadingMore = true;
-    _loadMoreMessage = null;
+    _loadMoreIssue = null;
     notifyListeners();
     try {
       // Filtered provider pages can skip offsets. Always follow its cursor.
@@ -83,7 +108,7 @@ final class ProductMarketSession extends ChangeNotifier {
       _applyFacts();
     } catch (_) {
       if (!_disposed) {
-        _loadMoreMessage = 'Could not load more stocks. Try again.';
+        _loadMoreIssue = ProductMarketIssue.loadMoreFailed;
       }
     } finally {
       _loadingMore = false;
@@ -101,7 +126,7 @@ final class ProductMarketSession extends ChangeNotifier {
   List<MarketCompany> _companies = const [];
   Map<String, StockCardFacts> _starterCards = const {};
   MarketPageStatus _status = MarketPageStatus.loading;
-  String? _message;
+  ProductMarketIssue? _issue;
   bool _loading = false;
   bool _starterCardsLoading = false;
   bool _starterCardsLoaded = false;
@@ -111,16 +136,16 @@ final class ProductMarketSession extends ChangeNotifier {
       catalog == null ? _companies : _catalogCompanies;
   List<MarketCompany> get starterCompanies => _companies;
   MarketPageStatus get starterStatus => _status;
-  String? get starterMessage => _message;
+  ProductMarketIssue? get starterIssue => _issue;
   MarketPageStatus get status => catalog == null ? _status : _catalogStatus;
-  String? get message => catalog == null ? _message : _catalogMessage;
+  ProductMarketIssue? get issue => catalog == null ? _issue : _catalogIssue;
 
   Future<void> loadCatalog() async {
     if (catalog == null) return loadStarterPicks();
     if (_disposed || _catalogLoading || _loadingMore) return;
     _catalogLoading = true;
     _catalogStatus = MarketPageStatus.loading;
-    _catalogMessage = null;
+    _catalogIssue = null;
     notifyListeners();
     try {
       final page = await catalog!.load();
@@ -128,12 +153,12 @@ final class ProductMarketSession extends ChangeNotifier {
       _catalogCompanies = page.companies;
       _nextOffset = page.nextOffset;
       _total = page.total;
-      _loadMoreMessage = null;
+      _loadMoreIssue = null;
       _catalogStatus = MarketPageStatus.ready;
     } catch (_) {
       if (!_disposed) {
         _catalogStatus = MarketPageStatus.error;
-        _catalogMessage = 'Stocks could not load. Pull down to try again.';
+        _catalogIssue = ProductMarketIssue.catalogFailed;
       }
     } finally {
       _catalogLoading = false;
@@ -145,7 +170,7 @@ final class ProductMarketSession extends ChangeNotifier {
     if (_loading || _loadingMore || _disposed) return;
     _loading = true;
     _status = MarketPageStatus.loading;
-    _message = null;
+    _issue = null;
     notifyListeners();
     try {
       await controller.search('a', limit: 20);
@@ -173,7 +198,7 @@ final class ProductMarketSession extends ChangeNotifier {
         _status = state.phase == StockResearchReadPhase.offline
             ? MarketPageStatus.offline
             : MarketPageStatus.error;
-        _message = _marketMessage(state.errorCode);
+        _issue = _marketIssue(state.errorCode);
         return;
       }
       const preferred = ['apple', 'tesla', 'meta'];
@@ -210,30 +235,27 @@ final class ProductMarketSession extends ChangeNotifier {
       _applyFacts();
       _status = MarketPageStatus.ready;
       unawaited(_loadStarterCards());
-      _message = _companies.isEmpty
-          ? 'Starter picks are unavailable. Search by company or symbol.'
-          : null;
+      _issue = _companies.isEmpty ? ProductMarketIssue.noStarterPicks : null;
     } catch (_) {
       if (_disposed) return;
       final phase = controller.discoveryState.search.phase;
       _status = phase == StockResearchReadPhase.offline
           ? MarketPageStatus.offline
           : MarketPageStatus.error;
-      _message = _marketMessage(controller.discoveryState.search.errorCode);
+      _issue = _marketIssue(controller.discoveryState.search.errorCode);
     } finally {
       _loading = false;
       if (!_disposed) notifyListeners();
     }
   }
 
-  String _marketMessage(String? code) => switch (code) {
-    'STOCK_RESEARCH_RUNTIME_DISABLED' =>
-      'Market data is not configured in this build.',
-    'STOCK_RATE_LIMITED' => 'Market data is busy. Try again in a moment.',
-    'STOCK_TIMEOUT' => 'Market data took too long. Try again.',
-    'STOCK_RESEARCH_RUNTIME_OFFLINE' || 'STOCK_NETWORK_ERROR' =>
-      'You are offline. Check your connection and try again.',
-    _ => 'Stocks could not load. Try again.',
+  ProductMarketIssue _marketIssue(String? code) => switch (code) {
+    'STOCK_RESEARCH_RUNTIME_DISABLED' => ProductMarketIssue.notConfigured,
+    'STOCK_RATE_LIMITED' => ProductMarketIssue.busy,
+    'STOCK_TIMEOUT' => ProductMarketIssue.timeout,
+    'STOCK_RESEARCH_RUNTIME_OFFLINE' ||
+    'STOCK_NETWORK_ERROR' => ProductMarketIssue.offline,
+    _ => ProductMarketIssue.unavailable,
   };
 
   void _applyFacts() {

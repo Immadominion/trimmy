@@ -1,3 +1,5 @@
+import '../../l10n/l10n.dart';
+
 /// Optional preferences. The first practice trade does not require answers.
 enum OnboardingGoal { learn, practice, trade, friends }
 
@@ -18,18 +20,18 @@ extension OnboardingGoalCopy on OnboardingGoal {
     OnboardingGoal.friends => 'beat-friends',
   };
 
-  String get label => switch (this) {
-    OnboardingGoal.learn => 'Learn',
-    OnboardingGoal.practice => 'Practice',
-    OnboardingGoal.trade => 'Trade with paper',
-    OnboardingGoal.friends => 'Friends',
+  String label(AppLocalizations l10n) => switch (this) {
+    OnboardingGoal.learn => l10n.onboardingGoalLearn,
+    OnboardingGoal.practice => l10n.onboardingGoalPractice,
+    OnboardingGoal.trade => l10n.onboardingGoalTrade,
+    OnboardingGoal.friends => l10n.onboardingGoalFriends,
   };
 
-  String get description => switch (this) {
-    OnboardingGoal.learn => 'Start with the basics.',
-    OnboardingGoal.practice => 'Make calls with paper.',
-    OnboardingGoal.trade => 'Build confidence at live prices.',
-    OnboardingGoal.friends => 'Leagues are not available yet.',
+  String description(AppLocalizations l10n) => switch (this) {
+    OnboardingGoal.learn => l10n.onboardingGoalLearnDetail,
+    OnboardingGoal.practice => l10n.onboardingGoalPracticeDetail,
+    OnboardingGoal.trade => l10n.onboardingGoalTradeDetail,
+    OnboardingGoal.friends => l10n.onboardingGoalFriendsDetail,
   };
 }
 
@@ -42,12 +44,12 @@ extension TradingKnowledgeCopy on TradingKnowledge {
     TradingKnowledge.daily => 'daily-trader',
   };
 
-  String get label => switch (this) {
-    TradingKnowledge.nothing => 'Nothing yet',
-    TradingKnowledge.basics => 'I know the basics',
-    TradingKnowledge.practice => 'I have practised',
-    TradingKnowledge.traded => 'I have traded before',
-    TradingKnowledge.daily => 'I trade every day',
+  String label(AppLocalizations l10n) => switch (this) {
+    TradingKnowledge.nothing => l10n.onboardingKnowledgeNothing,
+    TradingKnowledge.basics => l10n.onboardingKnowledgeBasics,
+    TradingKnowledge.practice => l10n.onboardingKnowledgePractised,
+    TradingKnowledge.traded => l10n.onboardingKnowledgeTraded,
+    TradingKnowledge.daily => l10n.onboardingKnowledgeDaily,
   };
 }
 
@@ -58,16 +60,17 @@ extension TraderPersonaCopy on TraderPersona {
     TraderPersona.shark => 'shark',
   };
 
-  String get label => switch (this) {
-    TraderPersona.wolf => 'The Wolf',
-    TraderPersona.oracle => 'The Oracle',
-    TraderPersona.shark => 'The Shark',
+  /// The character's name. Wolf, Oracle and Shark are never translated.
+  String label(AppLocalizations l10n) => switch (this) {
+    TraderPersona.wolf => l10n.personaWolfName,
+    TraderPersona.oracle => l10n.personaOracleName,
+    TraderPersona.shark => l10n.personaSharkName,
   };
 
-  String get description => switch (this) {
-    TraderPersona.wolf => 'Bold. Fast. Loves a big move.',
-    TraderPersona.oracle => 'Patient. Reads before moving.',
-    TraderPersona.shark => 'Calm when the crowd gets loud.',
+  String description(AppLocalizations l10n) => switch (this) {
+    TraderPersona.wolf => l10n.personaWolfDetail,
+    TraderPersona.oracle => l10n.personaOracleDetail,
+    TraderPersona.shark => l10n.personaSharkDetail,
   };
 }
 
@@ -78,16 +81,16 @@ extension OnboardingDailyGoalCopy on OnboardingDailyGoal {
     OnboardingDailyGoal.threeMissions => 'three-missions',
   };
 
-  String get label => switch (this) {
-    OnboardingDailyGoal.showUp => 'Show up',
-    OnboardingDailyGoal.oneMission => 'One move',
-    OnboardingDailyGoal.threeMissions => 'Three moves',
+  String label(AppLocalizations l10n) => switch (this) {
+    OnboardingDailyGoal.showUp => l10n.onboardingDailyShowUp,
+    OnboardingDailyGoal.oneMission => l10n.onboardingDailyOneMove,
+    OnboardingDailyGoal.threeMissions => l10n.onboardingDailyThreeMoves,
   };
 
-  String get description => switch (this) {
-    OnboardingDailyGoal.showUp => 'Open Trimmy and check your desk.',
-    OnboardingDailyGoal.oneMission => 'Make one focused paper trade.',
-    OnboardingDailyGoal.threeMissions => 'Make three focused paper trades.',
+  String description(AppLocalizations l10n) => switch (this) {
+    OnboardingDailyGoal.showUp => l10n.onboardingDailyShowUpDetail,
+    OnboardingDailyGoal.oneMission => l10n.onboardingDailyOneMoveDetail,
+    OnboardingDailyGoal.threeMissions => l10n.onboardingDailyThreeMovesDetail,
   };
 }
 

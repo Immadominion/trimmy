@@ -25,7 +25,11 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         ReminderSchedule.createChannel(this)
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel("trimmy_trade_updates", "Trade updates", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(
+                "trimmy_trade_updates",
+                getString(R.string.notification_channel_trade_updates),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
         )
         if (intent?.getBooleanExtra(ReminderSchedule.OPEN_CAREER, false) == true) {
             ReminderSchedule.recordOpen(this)
@@ -44,7 +48,15 @@ class MainActivity : FlutterActivity() {
                         return@setMethodCallHandler
                     }
                     try {
-                        result.success(ReminderSchedule.replace(this, preference!!, call.argument<Number>("at")?.toLong(), call.argument<String>("body")))
+                        result.success(
+                            ReminderSchedule.replace(
+                                this,
+                                preference!!,
+                                call.argument<Number>("at")?.toLong(),
+                                call.argument<String>("title"),
+                                call.argument<String>("body"),
+                            ),
+                        )
                     } catch (_: Exception) {
                         result.error("SCHEDULE_FAILED", "The reminder could not be scheduled.", null)
                     }

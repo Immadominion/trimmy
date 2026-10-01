@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../market/market_craft.dart';
 
 /// Shared transient feedback; keeps auth/retry actions inside the soft surface.
@@ -81,7 +82,7 @@ class ProductNotice extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Dismiss message',
+            tooltip: context.l10n.designDismissMessage,
             onPressed: onDismiss,
             icon: const Icon(
               Icons.close_rounded,

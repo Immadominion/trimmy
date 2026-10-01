@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../../account/guest_session.dart';
+import '../../l10n/l10n.dart';
 
 class WorkAssignment {
   WorkAssignment(this.data);
@@ -53,7 +55,13 @@ class WorkUpcoming {
   final int ordinal;
   final DateTime opensAt;
 
-  String opensLabel({DateTime? now}) {
+  /// When this day opens, in [l10n]'s language: "Opens tomorrow", "Opens
+  /// Monday", "Opens 30/9".
+  String opensLabel(
+    AppLocalizations l10n,
+    AppFormats formats, {
+    DateTime? now,
+  }) {
     final local = opensAt.toLocal();
     final today = (now ?? DateTime.now()).toLocal();
     final days = DateTime.utc(
@@ -61,20 +69,17 @@ class WorkUpcoming {
       local.month,
       local.day,
     ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
-    if (days <= 0) return 'Opens soon';
-    if (days == 1) return 'Opens tomorrow';
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    if (days < 7) return 'Opens ${weekdays[local.weekday - 1]}';
-    return 'Opens ${local.day}/${local.month}';
+    if (days <= 0) return l10n.workdayOpensSoon;
+    if (days == 1) return l10n.workdayOpensTomorrow;
+    if (days < 7) return l10n.workdayOpensOnWeekday(_weekday(formats, local));
+    return l10n.workdayOpensOnDate(formats.numericDayMonth(local));
   }
+
+  /// The full weekday name ("Monday", "lunes", "segunda-feira", "lundi").
+  /// AppFormats only has the short form, so this reads the same locale
+  /// AppFormats uses for dates; English keeps the 'EEEE' name it always had.
+  static String _weekday(AppFormats formats, DateTime date) =>
+      DateFormat('EEEE', formats.dateLocale).format(date);
 }
 
 class WorkJourney {
@@ -125,32 +130,43 @@ class WorkdayException implements Exception {
   final String code;
   final String? feedback;
   final WorkJourney? journey;
-  String get message => switch (code) {
-    'CHECK_EVIDENCE' =>
-      'Check the source again. Those details don’t support this update.',
-    'CHECK_DECISION' => feedback ?? 'Take another look at the figures.',
-    'WORK_TOMORROW' =>
-      'Today’s assignment is done. Your next workday opens soon.',
-    'WORK_CLOSED' => 'The desk is closed today. Come back on the next workday.',
-    'WORK_CHANGED' =>
-      'Your work changed on another screen. We’ve refreshed it.',
-    'WORK_LOCKED' => 'File the earlier assignment first.',
-    'SESSION_CHANGED' => 'Your account changed. Open your desk again.',
-    _ => 'Couldn’t save yet. Your work is still here—try again.',
+
+  /// What to tell the player, in [l10n]'s language. [feedback] is written
+  /// by the server and shown as it came.
+  String message(AppLocalizations l10n) => switch (code) {
+    'CHECK_EVIDENCE' => l10n.workdayErrorCheckEvidence,
+    'CHECK_DECISION' => feedback ?? l10n.workdayErrorCheckDecision,
+    'WORK_TOMORROW' => l10n.workdayErrorTomorrow,
+    'WORK_CLOSED' => l10n.workdayErrorClosed,
+    'WORK_CHANGED' => l10n.workdayErrorChanged,
+    'WORK_LOCKED' => l10n.workdayErrorLocked,
+    'SESSION_CHANGED' => l10n.workdayErrorSession,
+    _ => l10n.workdayErrorSaveFailed,
   };
 }
 
 class WorkdayRepository {
-  WorkdayRepository(this.origin, this.authorization, {http.Client? client})
-    : _client = client ?? http.Client() {
+  WorkdayRepository(
+    this.origin,
+    this.authorization, {
+    http.Client? client,
+    this.language,
+  }) : _client = client ?? http.Client() {
     if (origin.scheme != 'https' || origin.userInfo.isNotEmpty) {
       throw ArgumentError('HTTPS required');
     }
   }
   final Uri origin;
   final Future<PaperAuthorization> Function() authorization;
+
+  /// The workday text language to ask for: es, pt or fr, or null for English
+  /// (which sends nothing, as installed apps always have).
+  final String? Function()? language;
   final http.Client _client;
   bool _closed = false;
+
+  /// Set once an API from before workday languages has refused `lang`.
+  bool _languageRefused = false;
   void close() {
     _closed = true;
     _client.close();
@@ -174,16 +190,41 @@ class WorkdayRepository {
         'revision': assignment.revision,
         'draft': draft,
       });
+
+  /// A workday request in the reader's language. An API from before workday
+  /// languages refuses `lang` while checking the request, before any work is
+  /// read or saved, so the same request is sent again without it; once that
+  /// succeeds this repository stops asking.
   Future<WorkJourney> _request(
     String path, [
     Map<String, dynamic>? body,
   ]) async {
+    final lang = _languageRefused ? null : language?.call();
+    if (lang == null) return _send(path, body, null);
+    try {
+      return await _send(path, body, lang);
+    } on WorkdayException catch (error) {
+      if (error.code != 'INVALID_REQUEST') rethrow;
+      final journey = await _send(path, body, null);
+      _languageRefused = true;
+      return journey;
+    }
+  }
+
+  Future<WorkJourney> _send(
+    String path,
+    Map<String, dynamic>? body,
+    String? lang,
+  ) async {
     final auth = await authorization();
     if (_closed) throw const WorkdayException('SESSION_CHANGED');
+    final target = origin.resolve('/v1/career/workdays$path');
     final request =
         http.Request(
             body == null ? 'GET' : 'POST',
-            origin.resolve('/v1/career/workdays$path'),
+            lang == null
+                ? target
+                : target.replace(queryParameters: {'lang': lang}),
           )
           ..followRedirects = false
           ..headers.addAll({
@@ -213,7 +254,13 @@ class WorkdayRepository {
       WorkJourney? journey;
       try {
         final error = jsonDecode(utf8.decode(bytes)) as Map;
-        code = error['code'] as String? ?? code;
+        final nested = error['error'];
+        code =
+            error['code'] as String? ??
+            (nested is Map && response.statusCode == 400
+                ? nested['code'] as String?
+                : null) ??
+            code;
         if (response.statusCode == 400 &&
             const {'CHECK_EVIDENCE', 'CHECK_DECISION'}.contains(code)) {
           final note = error['feedback'];
@@ -242,7 +289,9 @@ class WorkdayController extends ChangeNotifier {
   final WorkdayRepository repository;
   WorkJourney? journey;
   bool loading = false, closed = false;
-  String? error;
+
+  /// The last read failed. The Career map shows its own localized message.
+  bool loadFailed = false;
   Future<void> _queue = Future<void>.value();
   Future<void>? _refresh;
   Future<T> _serial<T>(Future<T> Function() operation) {
@@ -257,7 +306,7 @@ class WorkdayController extends ChangeNotifier {
   void _accept(WorkJourney next) {
     if (closed) throw const WorkdayException('SESSION_CHANGED');
     journey = next;
-    error = null;
+    loadFailed = false;
     notifyListeners();
   }
 
@@ -267,7 +316,7 @@ class WorkdayController extends ChangeNotifier {
     try {
       _accept(await repository.read());
     } catch (_) {
-      if (!closed) error = 'Your assignments couldn’t load.';
+      if (!closed) loadFailed = true;
     } finally {
       if (!closed) {
         loading = false;

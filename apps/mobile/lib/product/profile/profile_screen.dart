@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../career/career.dart';
 import '../design/product_motion_icon.dart';
 import '../design/product_theme.dart';
@@ -16,8 +17,13 @@ class ProfileScreen extends StatelessWidget {
     this.onRetryCareer,
     this.onChangePersona,
     this.onOpenCareer,
+    this.personaId,
   });
   final String handle, persona;
+
+  /// The trader's id (`wolf`, `oracle` or `shark`), which picks the portrait.
+  /// Without it the portrait is guessed from [persona], the shown name.
+  final String? personaId;
   final bool signedIn;
   final VoidCallback onSettings, onSignIn;
   final VoidCallback? onChangePersona, onOpenCareer, onRetryCareer;
@@ -25,143 +31,156 @@ class ProfileScreen extends StatelessWidget {
   final String? careerMessage;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    bottom: false,
-    child: CustomScrollView(
-      key: const PageStorageKey('product-profile'),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 32),
-          sliver: SliverList.list(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Profile',
-                      style: Theme.of(context).textTheme.headlineLarge,
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SafeArea(
+      bottom: false,
+      child: CustomScrollView(
+        key: const PageStorageKey('product-profile'),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 32),
+            sliver: SliverList.list(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.profileTitle,
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      ),
+                    ),
+                    IconButton(
+                      key: const ValueKey('profile-settings'),
+                      tooltip: l10n.commonSettings,
+                      onPressed: onSettings,
+                      icon: const ProductMotionIcon(file: 'settings-gear.png'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                if (signedIn) ...[
+                  Center(
+                    child: _Avatar(
+                      persona: persona,
+                      personaId: personaId,
+                      onEdit: onChangePersona,
                     ),
                   ),
-                  IconButton(
-                    key: const ValueKey('profile-settings'),
-                    tooltip: 'Settings',
-                    onPressed: onSettings,
-                    icon: const ProductMotionIcon(file: 'settings-gear.png'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              if (signedIn) ...[
-                Center(
-                  child: _Avatar(persona: persona, onEdit: onChangePersona),
-                ),
-                const SizedBox(height: 17),
-                Text(
-                  handle.isEmpty ? 'Your profile' : '@$handle',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                if (persona.isNotEmpty) ...[
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 17),
                   Text(
-                    persona,
+                    handle.isEmpty ? l10n.profileYourProfile : '@$handle',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                ],
-                if (career != null) ...[
-                  const SizedBox(height: 7),
-                  Text(
-                    career!.rank.label,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: ProductColor.violet,
+                  if (persona.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      persona,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  if (career != null) ...[
+                    const SizedBox(height: 7),
+                    Text(
+                      career!.rank.id.label(l10n),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: ProductColor.violet,
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  Center(
+                    child: Image.asset(
+                      'assets/images/ui_review/sal-chair-welcome-v3-still.png',
+                      width: 248,
+                      height: 174,
+                      fit: BoxFit.contain,
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  Text(
+                    l10n.profileGuestTitle,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(l10n.profileGuestBody, textAlign: TextAlign.center),
+                  const SizedBox(height: 22),
+                  FilledButton(
+                    key: const ValueKey('profile-save-desk'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ProductColor.violet,
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: productSquircle(22),
+                    ),
+                    onPressed: onSignIn,
+                    child: Text(l10n.commonSignIn),
+                  ),
                 ],
-              ] else ...[
-                Center(
-                  child: Image.asset(
-                    'assets/images/ui_review/sal-chair-welcome-v3-still.png',
-                    width: 248,
-                    height: 174,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Make it yours',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Sign in to keep your trades and career together.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 22),
-                FilledButton(
-                  key: const ValueKey('profile-save-desk'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ProductColor.violet,
-                    minimumSize: const Size(double.infinity, 54),
-                    shape: productSquircle(22),
-                  ),
-                  onPressed: onSignIn,
-                  child: const Text('Sign in'),
-                ),
-              ],
-              const SizedBox(height: 28),
-              if (careerMessage != null)
-                Padding(
-                  key: const ValueKey('profile-career-stale'),
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      const Expanded(child: Text('Progress couldn’t refresh.')),
-                      if (onRetryCareer != null)
-                        TextButton(
-                          onPressed: onRetryCareer,
-                          child: const Text('Retry'),
+                const SizedBox(height: 28),
+                if (careerMessage != null)
+                  Padding(
+                    key: const ValueKey('profile-career-stale'),
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(l10n.profileProgressRefreshFailed),
                         ),
-                    ],
+                        if (onRetryCareer != null)
+                          TextButton(
+                            onPressed: onRetryCareer,
+                            child: Text(l10n.commonRetry),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              if (career != null)
-                _Progress(career: career!, onTap: onOpenCareer)
-              else if (onRetryCareer != null)
-                TextButton(
-                  key: const ValueKey('profile-career-pending'),
-                  onPressed: onRetryCareer,
-                  child: const Text('Load progress'),
-                ),
-              const SizedBox(height: 22),
-              if (onChangePersona != null && persona.isEmpty)
-                _ProfileRow(
-                  title: persona.isEmpty ? 'Choose your trader' : 'Your trader',
-                  subtitle: persona.isEmpty ? null : persona,
-                  icon: 'nav-plumpy-profile.png',
-                  onTap: onChangePersona!,
-                ),
-            ],
+                if (career != null)
+                  _Progress(career: career!, onTap: onOpenCareer)
+                else if (onRetryCareer != null)
+                  TextButton(
+                    key: const ValueKey('profile-career-pending'),
+                    onPressed: onRetryCareer,
+                    child: Text(l10n.profileLoadProgress),
+                  ),
+                const SizedBox(height: 22),
+                if (onChangePersona != null && persona.isEmpty)
+                  _ProfileRow(
+                    title: persona.isEmpty
+                        ? l10n.profileChooseTrader
+                        : l10n.profileYourTrader,
+                    subtitle: persona.isEmpty ? null : persona,
+                    icon: 'nav-plumpy-profile.png',
+                    onTap: onChangePersona!,
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.persona, this.onEdit});
+  const _Avatar({required this.persona, this.personaId, this.onEdit});
   final String persona;
+  final String? personaId;
   final VoidCallback? onEdit;
   @override
   Widget build(BuildContext context) {
-    final id = persona.toLowerCase().contains('oracle')
-        ? 'oracle'
-        : persona.toLowerCase().contains('shark')
-        ? 'shark'
-        : 'wolf';
+    final id = switch (personaId) {
+      'wolf' || 'oracle' || 'shark' => personaId!,
+      _ =>
+        persona.toLowerCase().contains('oracle')
+            ? 'oracle'
+            : persona.toLowerCase().contains('shark')
+            ? 'shark'
+            : 'wolf',
+    };
     return SizedBox(
       width: 116,
       height: 116,
@@ -191,7 +210,7 @@ class _Avatar extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: IconButton(
-                tooltip: 'Change your trader',
+                tooltip: context.l10n.profileChangeTrader,
                 onPressed: onEdit,
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white,
@@ -214,55 +233,64 @@ class _Progress extends StatelessWidget {
   final CareerSummary career;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => Material(
-    key: const ValueKey('profile-career-record'),
-    color: const Color(0xFFF6F4FB),
-    shape: productSquircle(26),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(19),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Your progress',
-                    style: Theme.of(context).textTheme.titleMedium,
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
+    return Material(
+      key: const ValueKey('profile-career-record'),
+      color: const Color(0xFFF6F4FB),
+      shape: productSquircle(26),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(19),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.careerYourProgress,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
-                ),
-                if (onTap != null)
-                  const Icon(Icons.chevron_right_rounded, size: 20),
-              ],
-            ),
-            const SizedBox(height: 17),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _Stat(
-                    value: '${career.trims.total} Trims',
-                    label: 'Career points',
+                  if (onTap != null)
+                    const Icon(Icons.chevron_right_rounded, size: 20),
+                ],
+              ),
+              const SizedBox(height: 17),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _Stat(
+                      value: l10n.careerTrimsCount(
+                        career.trims.total,
+                        formats.number('${career.trims.total}'),
+                      ),
+                      label: l10n.careerPointsLabel,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _Stat(
-                    value:
-                        '${career.streak.days} ${career.streak.days == 1 ? 'day' : 'days'}',
-                    label: 'Streak',
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _Stat(
+                      value: l10n.profileStreakDays(
+                        career.streak.days,
+                        formats.number('${career.streak.days}'),
+                      ),
+                      label: l10n.profileStreakLabel,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _Stat extends StatelessWidget {

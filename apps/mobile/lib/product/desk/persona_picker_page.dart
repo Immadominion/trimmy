@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../design/product_components.dart';
 import '../design/product_theme.dart';
 import '../onboarding/onboarding_models.dart';
@@ -18,14 +19,14 @@ class PersonaPickerPage extends StatefulWidget {
 class _PersonaPickerPageState extends State<PersonaPickerPage> {
   TraderPersona? _selected;
   bool _saving = false;
-  String? _error;
+  bool _failed = false;
 
   Future<void> _save() async {
     final selected = _selected;
     if (selected == null || _saving) return;
     setState(() {
       _saving = true;
-      _error = null;
+      _failed = false;
     });
     try {
       await widget.onChoose(selected);
@@ -34,7 +35,7 @@ class _PersonaPickerPageState extends State<PersonaPickerPage> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'Could not save your choice. Try again.';
+          _failed = true;
         });
       }
     }
@@ -53,7 +54,7 @@ class _PersonaPickerPageState extends State<PersonaPickerPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: IconButton(
-                    tooltip: 'Close',
+                    tooltip: context.l10n.commonClose,
                     onPressed: _saving
                         ? null
                         : () => Navigator.of(context).pop(),
@@ -62,12 +63,12 @@ class _PersonaPickerPageState extends State<PersonaPickerPage> {
                 ),
                 const SizedBox(height: 30),
                 Text(
-                  'Pick your trader',
+                  context.l10n.personaPickerTitle,
                   style: Theme.of(context).textTheme.headlineLarge,
                 ),
                 const SizedBox(height: 9),
                 Text(
-                  'Who will you play as?',
+                  context.l10n.personaPickerSubtitle,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 29),
@@ -75,10 +76,10 @@ class _PersonaPickerPageState extends State<PersonaPickerPage> {
                   _option(context, persona),
                   const SizedBox(height: 11),
                 ],
-                if (_error != null) ...[
+                if (_failed) ...[
                   const SizedBox(height: 11),
                   Text(
-                    _error!,
+                    context.l10n.personaPickerSaveError,
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: ProductColor.loss),
@@ -93,7 +94,9 @@ class _PersonaPickerPageState extends State<PersonaPickerPage> {
               width: double.infinity,
               child: ProductButton(
                 key: const ValueKey('persona-choose'),
-                label: _saving ? 'Saving…' : 'Choose',
+                label: _saving
+                    ? context.l10n.commonSaving
+                    : context.l10n.personaPickerChoose,
                 onPressed: _selected == null || _saving ? null : _save,
               ),
             ),
@@ -135,12 +138,12 @@ class _PersonaPickerPageState extends State<PersonaPickerPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      persona.label,
+                      persona.label(context.l10n),
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      persona.description,
+                      persona.description(context.l10n),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],

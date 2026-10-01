@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/career/career.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/settings/settings.dart';
@@ -60,7 +61,10 @@ void main() {
         find.byKey(const ValueKey('reason-privacy-option-everyone')),
       );
       await tester.pumpAndSettle();
-      expect(find.text(reasonPrivacyConsentLine), findsOneWidget);
+      expect(
+        find.text(englishLocalizations.reasonPrivacyConsentLine),
+        findsOneWidget,
+      );
       expect(repository.writes, isEmpty);
 
       await tester.tap(find.byKey(const ValueKey('reason-privacy-confirm')));
@@ -99,7 +103,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('settings-reason-privacy')));
     await tester.pumpAndSettle();
-    expect(find.text(reasonPrivacyFriendsLine), findsOneWidget);
+    expect(
+      find.text(englishLocalizations.reasonPrivacyFriendsLine),
+      findsOneWidget,
+    );
     await tester.tap(
       find.byKey(const ValueKey('reason-privacy-option-friends')),
     );
@@ -110,7 +117,10 @@ void main() {
 
     expect(repository.writes.single.visibility, ReasonVisibility.friends);
     expect(find.text('Friends'), findsOneWidget);
-    expect(find.text('Saved. $reasonPrivacyFriendsLine'), findsOneWidget);
+    expect(
+      find.text('Saved. ${englishLocalizations.reasonPrivacyFriendsLine}'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Friends explains active sharing when the server enables it', (
@@ -128,11 +138,20 @@ void main() {
     await controller.bind(principalKey: 'account:one', repository: repository);
     await tester.pumpWidget(_app(controller));
 
-    expect(find.text(reasonPrivacyFriendsAvailableLine), findsOneWidget);
+    expect(
+      find.text(englishLocalizations.reasonPrivacyFriendsAvailableLine),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('settings-reason-privacy')));
     await tester.pumpAndSettle();
-    expect(find.text(reasonPrivacyFriendsAvailableLine), findsNWidgets(2));
-    expect(find.text(reasonPrivacyFriendsLine), findsNothing);
+    expect(
+      find.text(englishLocalizations.reasonPrivacyFriendsAvailableLine),
+      findsNWidgets(2),
+    );
+    expect(
+      find.text(englishLocalizations.reasonPrivacyFriendsLine),
+      findsNothing,
+    );
   });
 
   testWidgets('a failed save stays unsaved and retry replays the same write', (
@@ -203,7 +222,7 @@ void main() {
     expect(find.text('Friends'), findsOneWidget);
     expect(
       find.text(
-        'Changed on another device. Refreshed. $reasonPrivacyFriendsLine',
+        'Changed on another device. Refreshed. ${englishLocalizations.reasonPrivacyFriendsLine}',
       ),
       findsOneWidget,
     );
@@ -304,7 +323,6 @@ Widget _settings(ReasonPrivacyController? controller) => MaterialApp(
         hapticsEnabled: false,
         animationsEnabled: true,
         systemReduceMotionEnabled: false,
-        languageLabel: 'English',
       ),
       paper: const SettingsPaperState(limit: 10000),
       money: const SettingsMoneyState(

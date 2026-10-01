@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import 'ui_review_app.dart';
 import 'review_feedback.dart';
 
@@ -357,8 +358,8 @@ class _WelcomeContent extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Sign in or create account',
+                        child: Text(
+                          context.l10n.welcomeSignInOrCreate,
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -537,8 +538,7 @@ class _WallStreetOrbit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label:
-        'Start your Wall Street career. Tokenized stocks orbit the invitation.',
+    label: context.l10n.welcomeHeroSemantics,
     child: ExcludeSemantics(
       child: AnimatedBuilder(
         animation: Listenable.merge([entrance, idle]),
@@ -552,7 +552,7 @@ class _WallStreetOrbit extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   _filteredCoins(width, height),
-                  _buildHeadline(center),
+                  _buildHeadline(context, center),
                 ],
               ),
             );
@@ -583,11 +583,12 @@ class _WallStreetOrbit extends StatelessWidget {
           );
   }
 
-  Widget _buildHeadline(Offset center) {
+  Widget _buildHeadline(BuildContext context, Offset center) {
     final progress = Curves.easeOutBack.transform(
       _interval(entrance.value, .29, .76),
     );
     final beat = _heartbeat(idle.value);
+    final headline = _Headline.of(context);
     return Positioned(
       left: center.dx - (compact ? 117 : 125),
       top: center.dy + ((1 - progress) * 12),
@@ -612,19 +613,41 @@ class _WallStreetOrbit extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Text('Start your', textScaler: TextScaler.noScaling),
+                  if (headline.before.isNotEmpty)
+                    Text(
+                      headline.before,
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.noScaling,
+                    ),
                   Transform.translate(
                     offset: Offset(0, -(_wallStreetBeatLift * beat)),
                     child: Transform.scale(
                       scale: 1 + (_wallStreetBeatScale * beat),
-                      child: const Text(
-                        'Wall Street',
+                      child: Text.rich(
+                        TextSpan(
+                          text: _Headline.wallStreet,
+                          style: const TextStyle(color: UiReviewColor.violet),
+                          children: [
+                            if (headline.trailing.isNotEmpty)
+                              TextSpan(
+                                text: headline.trailing,
+                                style: const TextStyle(
+                                  color: UiReviewColor.ink,
+                                ),
+                              ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
                         textScaler: TextScaler.noScaling,
-                        style: TextStyle(color: UiReviewColor.violet),
                       ),
                     ),
                   ),
-                  const Text('career.', textScaler: TextScaler.noScaling),
+                  if (headline.after.isNotEmpty)
+                    Text(
+                      headline.after,
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.noScaling,
+                    ),
                 ],
               ),
             ),
@@ -687,6 +710,32 @@ class _WallStreetOrbit extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The welcome headline split around "Wall Street", which is drawn on its
+/// own beating line. Each language orders the sentence its own way; the text
+/// before and after it keep their own lines, and punctuation that directly
+/// follows "Wall Street" stays on its line.
+class _Headline {
+  const _Headline(this.before, this.trailing, this.after);
+
+  static const wallStreet = 'Wall Street';
+  static const _slot = '\uE000';
+
+  final String before, trailing, after;
+
+  static _Headline of(BuildContext context) {
+    final text = context.l10n.welcomeHeadline(_slot);
+    final at = text.indexOf(_slot);
+    if (at < 0) return _Headline(text.trim(), '', '');
+    final before = text.substring(0, at).trim();
+    final rest = text.substring(at + _slot.length).replaceAll(_slot, '');
+    final trailing = RegExp(
+      r'^[^\s\p{L}\p{N}]*',
+      unicode: true,
+    ).firstMatch(rest)!.group(0)!;
+    return _Headline(before, trailing, rest.substring(trailing.length).trim());
   }
 }
 
@@ -807,7 +856,7 @@ class _CareerButtonState extends State<_CareerButton> {
       child: Semantics(
         button: true,
         enabled: enabled,
-        label: 'Start my first day',
+        label: context.l10n.welcomeStartFirstDay,
         child: SizedBox(
           height: textScaler.scale(1) > 1.3
               ? textScaler.scale(20) * 5 + 24
@@ -846,11 +895,11 @@ class _CareerButtonState extends State<_CareerButton> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Flexible(
+                              Flexible(
                                 child: Text(
-                                  'Start my first day',
+                                  context.l10n.welcomeStartFirstDay,
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,

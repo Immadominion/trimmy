@@ -1,0 +1,9 @@
+/* Text iOS shows outside the Flutter screens. The workday reminder's title
+   and body normally arrive from Dart in the language chosen in the app; these
+   are the fallbacks, in the phone's language. */
+
+/* Title of the workday reminder notification. "Desk" is the app's home tab. */
+"reminder.title" = "Your desk is waiting";
+
+/* Body of the workday reminder when no workday title is known. */
+"reminder.body" = "Your next assignment is waiting at your desk.";

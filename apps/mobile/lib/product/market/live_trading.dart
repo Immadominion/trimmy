@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../../core/paper_decimal.dart';
 import '../../account/account_amounts.dart';
+import '../../l10n/l10n.dart';
 import 'market_models.dart';
 
 const liveUsdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
@@ -234,70 +236,97 @@ class LiveMarketState {
     );
   }
 
-  /// One short line, such as `Closed · opens Mon 1:05 AM`.
-  String label(DateTime now) {
-    final next = nextOpenAt == null ? null : liveMarketTime(nextOpenAt!, now);
+  /// One short line, such as `Closed · opens Mon 1:05 AM`. English when
+  /// [l10n] and [formats] are left out; screens pass the reader's own.
+  String label(DateTime now, [AppLocalizations? l10n, AppFormats? formats]) {
+    final words = l10n ?? englishLocalizations;
+    final next = nextOpenAt == null
+        ? null
+        : liveMarketTime(nextOpenAt!, now, words, formats);
     return switch (status) {
-      'open' when !usSessions => 'Open 24/7',
+      'open' when !usSessions => words.liveTradingOpenAlways,
       'open' =>
         sessions.contains('offhours')
-            ? 'Open now, including weekends'
-            : 'Open now',
-      'paused' when reason == 'issuer_paused' => 'Paused by the issuer',
+            ? words.liveTradingOpenWeekends
+            : words.liveTradingOpenNow,
+      'paused' when reason == 'issuer_paused' =>
+        words.liveTradingPausedByIssuer,
       'paused' when reason == 'market_paused' =>
-        next == null ? 'Paused by the market' : 'Paused · resumes $next',
-      'paused' => next == null ? 'Short pause' : 'Short pause · resumes $next',
-      _ => next == null ? 'Closed' : 'Closed · opens $next',
+        next == null
+            ? words.liveTradingPausedByMarket
+            : words.liveTradingPausedResumes(next),
+      'paused' =>
+        next == null
+            ? words.liveTradingShortPause
+            : words.liveTradingShortPauseResumes(next),
+      _ =>
+        next == null
+            ? words.liveTradingClosed
+            : words.liveTradingClosedOpens(next),
     };
   }
 
-  /// When this token trades, for tokens that follow US sessions.
-  String? get hours {
+  /// When this token trades, for tokens that follow US sessions. English
+  /// when [l10n] is left out.
+  String? hours([AppLocalizations? l10n]) {
     if (!usSessions) return null;
+    final words = l10n ?? englishLocalizations;
     final all = {'overnight', 'premarket', 'regular', 'postmarket'};
     if (sessions.toSet().containsAll(all)) {
       return sessions.contains('offhours')
-          ? 'Trades around the clock, with short pauses between US sessions.'
-          : 'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).';
+          ? words.liveTradingHoursAroundClock
+          : words.liveTradingHoursWeekdays;
     }
     if (sessions.length == 1 && sessions.single == 'regular') {
-      return 'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.';
+      return words.liveTradingHoursRegular;
     }
-    return 'Trades during US market sessions only.';
+    return words.liveTradingHoursSessions;
   }
 }
 
 /// A local time as a short phrase: `4:01 AM`, `tomorrow 9:31 AM`,
-/// `Mon 1:05 AM` or `Oct 5, 9:31 AM`.
-String liveMarketTime(DateTime at, DateTime now) {
+/// `Mon 1:05 AM` or `Oct 5, 9:31 AM` in English, and the same information in
+/// the reader's language. English when [l10n] and [formats] are left out.
+String liveMarketTime(
+  DateTime at,
+  DateTime now, [
+  AppLocalizations? l10n,
+  AppFormats? formats,
+]) {
+  final words = l10n ?? englishLocalizations;
+  final format = formats ?? AppFormats.english;
   final local = at.toLocal(), today = now.toLocal();
-  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
-  final clock =
-      '$hour:${local.minute.toString().padLeft(2, '0')} ${local.hour < 12 ? 'AM' : 'PM'}';
+  final clock = format.time12(local);
+  final hour = _clockHour(local, format);
   final days = DateTime(
     local.year,
     local.month,
     local.day,
   ).difference(DateTime(today.year, today.month, today.day)).inDays;
-  if (days <= 0) return clock;
-  if (days == 1) return 'tomorrow $clock';
-  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  if (days < 7) return '${weekdays[local.weekday - 1]} $clock';
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return '${months[local.month - 1]} ${local.day}, $clock';
+  if (days <= 0) return words.liveTradingTimeToday(hour, clock);
+  if (days == 1) return words.liveTradingTimeTomorrow(hour, clock);
+  if (days < 7) {
+    return words.liveTradingTimeWeekday(
+      hour,
+      format.weekdayShort(local),
+      clock,
+    );
+  }
+  return words.liveTradingTimeDate(hour, format.monthDay(local), clock);
+}
+
+/// The hour [AppFormats.time12] shows for [local]: 1 to 12 on a 12-hour
+/// clock, 0 to 23 on a 24-hour one. Some languages change a word at one
+/// o'clock (Spanish "a la 1:05", "a las 9:31").
+int _clockHour(DateTime local, AppFormats formats) {
+  final locale = formats.dateLocale;
+  final pattern = locale == 'en_US'
+      ? 'h:mm a'
+      : DateFormat.jm(locale).pattern ?? 'h:mm a';
+  if (pattern.contains('H')) return local.hour;
+  if (pattern.contains('k')) return local.hour == 0 ? 24 : local.hour;
+  if (pattern.contains('K')) return local.hour % 12;
+  return local.hour % 12 == 0 ? 12 : local.hour % 12;
 }
 
 /// Capabilities are supplied by the execution API, never inferred from a logo,
@@ -598,7 +627,14 @@ class LiveTradingCapabilities {
 
   /// Every token discovery lists for [company]: tradeable ones first, most
   /// liquid first, then the rest in discovery's order with their reason.
-  List<LiveVariantOption> optionsFor(MarketCompany company) {
+  /// Labels and reasons read in English when [l10n] and [formats] are left
+  /// out; screens pass the reader's own.
+  List<LiveVariantOption> optionsFor(
+    MarketCompany company, [
+    AppLocalizations? l10n,
+    AppFormats? formats,
+  ]) {
+    final words = l10n ?? englishLocalizations;
     final tradeable = variantsFor(company);
     final mints = {for (final asset in tradeable) asset.mint};
     return List.unmodifiable([
@@ -613,9 +649,9 @@ class LiveTradingCapabilities {
           LiveVariantOption(
             mint: variant.mint,
             label:
-                '${_issuerName(variant.mint) ?? variant.issuer ?? variant.label ?? 'Other issuer'}'
+                '${_issuerName(variant.mint) ?? variant.issuer ?? variant.label ?? words.liveTradingOtherIssuer}'
                 ' · ${_byMint[variant.mint]?.symbol ?? variant.symbol ?? variant.label ?? company.symbol}',
-            reason: reasonFor(variant.mint),
+            reason: reasonFor(variant.mint, words, formats),
           ),
     ]);
   }
@@ -623,37 +659,44 @@ class LiveTradingCapabilities {
   String? _issuerName(String mint) =>
       issuers[_byMint[mint]?.issuerId ?? unavailable[mint]?.issuerId]?.name;
 
-  /// Why a token cannot be traded, in one short plain sentence.
-  String reasonFor(String mint) {
-    const notOffered = 'This issuer is not offered in Trimmy.';
+  /// Why a token cannot be traded, in one short plain sentence. An issuer's
+  /// own reason comes from the server as written. English when [l10n] and
+  /// [formats] are left out; screens pass the reader's own.
+  String reasonFor(String mint, [AppLocalizations? l10n, AppFormats? formats]) {
+    final words = l10n ?? englishLocalizations;
+    final notOffered = words.liveTradingReasonIssuerNotOffered;
     final asset = _byMint[mint];
     if (asset != null) {
       final issuer = issuers[asset.issuerId];
       return issuer == null || issuer.offered
-          ? 'Not available to trade in Trimmy yet.'
+          ? words.liveTradingReasonNotYet
           : issuer.notOfferedReason ?? notOffered;
     }
     final row = unavailable[mint];
-    if (row == null) return 'Not available to trade in Trimmy yet.';
+    if (row == null) return words.liveTradingReasonNotYet;
     return switch (row.reason) {
       'issuer_not_offered' =>
         issuers[row.issuerId]?.notOfferedReason ?? notOffered,
-      'identity_unverified' =>
-        'Trimmy could not confirm who issued this token.',
-      'token_restricted' =>
-        'The issuer has restrictions on this token that Trimmy cannot accept.',
-      'low_liquidity' => 'Too little trading to buy and sell it safely.',
-      'no_reviewed_route' => 'No order route passed Trimmy’s safety checks.',
-      'price_off_market' => 'Its price is too far from the real share price.',
-      'held_back' => 'Paused while Trimmy checks this token.',
-      'not_reviewed' => 'Not checked yet.',
+      'identity_unverified' => words.liveTradingReasonIdentity,
+      'token_restricted' => words.liveTradingReasonRestricted,
+      'low_liquidity' => words.liveTradingReasonLowLiquidity,
+      'no_reviewed_route' => words.liveTradingReasonNoRoute,
+      'price_off_market' => words.liveTradingReasonPriceOff,
+      'held_back' => words.liveTradingReasonHeldBack,
+      'not_reviewed' => words.liveTradingReasonNotChecked,
       'market_closed' when row.market?.nextOpenAt != null =>
-        'Its market is closed. It opens ${liveMarketTime(row.market!.nextOpenAt!, DateTime.now())}, then Trimmy checks it.',
-      'market_closed' => 'Trades only while US markets are open.',
-      'awaiting_review' =>
-        'Its market is open. Trimmy is checking it before you can trade.',
-      'no_market_maker_quote' => 'No market maker is quoting it right now.',
-      _ => 'Not available to trade in Trimmy.',
+        words.liveTradingReasonClosedOpens(
+          liveMarketTime(
+            row.market!.nextOpenAt!,
+            DateTime.now(),
+            words,
+            formats,
+          ),
+        ),
+      'market_closed' => words.liveTradingReasonUsHours,
+      'awaiting_review' => words.liveTradingReasonAwaitingReview,
+      'no_market_maker_quote' => words.liveTradingReasonNoMarketMaker,
+      _ => words.liveTradingReasonUnavailable,
     };
   }
 
@@ -778,15 +821,18 @@ String liveGroupedDecimal(String decimal) {
   return fraction.isEmpty ? grouped : '$grouped.$fraction';
 }
 
-/// Basis points as a short percentage: 300 is 3%, 20 is 0.2%.
-String livePercent(int bps) {
+/// Basis points as a short percentage: 300 is 3%, 20 is 0.2%. Written for
+/// the reader's language with [formats] ("0,2 %" in French); English when
+/// left out.
+String livePercent(int bps, [AppFormats? formats]) {
+  final format = formats ?? AppFormats.english;
   final whole = bps ~/ 100, rest = (bps % 100).abs();
-  if (rest == 0) return '$whole%';
+  if (rest == 0) return format.percent('$whole');
   final fraction = rest
       .toString()
       .padLeft(2, '0')
       .replaceFirst(RegExp(r'0$'), '');
-  return '$whole.$fraction%';
+  return format.percent('$whole.$fraction');
 }
 
 final _decimalPattern = RegExp(r'^([0-9]+)(?:\.([0-9]+))?$');

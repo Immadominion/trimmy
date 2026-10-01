@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/market/market.dart';
 
+import '../../support/l10n_harness.dart';
 import 'market_test_support.dart';
 
 void main() {
@@ -137,6 +139,37 @@ void main() {
     expect(find.byKey(const ValueKey('paper-order-report')), findsOneWidget);
     expect(find.text('AAPL is on your desk.'), findsOneWidget);
     expect(repository.submissions.single.clientOrderId, 'client-order-1');
+  });
+
+  testWidgets('system back from the review returns to the amount', (
+    tester,
+  ) async {
+    final repository = FakePaperOrderRepository();
+    repository.onQuote = (intent) async => PaperOrderQuote(
+      quoteId: 'quote-1',
+      intent: intent,
+      unitPricePaper: '231.42',
+      estimatedShares: '2.1605',
+      feePaper: '0',
+      totalPaper: '500',
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 2)),
+    );
+    await tester.pumpWidget(app(flow(repository)));
+    await tester.tap(find.byKey(const ValueKey('paper-preset-500')));
+    await tester.tap(find.byKey(const ValueKey('paper-order-review-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const ValueKey('paper-order-review')), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const ValueKey('paper-order-review')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('paper-order-review-button')),
+      findsOneWidget,
+      reason: 'back went one step, to the amount',
+    );
+    expect(repository.submissions, isEmpty);
   });
 
   testWidgets('failed submit stays out of done state and explains it', (
@@ -543,6 +576,145 @@ void main() {
     expect(find.byKey(const ValueKey('paper-order-report')), findsOneWidget);
     expect(find.text('AAPL is on your desk.'), findsOneWidget);
     expect(find.text('The order did not go through. Try again.'), findsNothing);
+  });
+
+  group('localized', () {
+    // A phone-sized screen, as in the English tests: on the default test
+    // surface the keypad's bottom row (with the decimal key) is off screen.
+    void phone(WidgetTester tester) {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+
+    Future<void> typeAmount(WidgetTester tester, String keys) async {
+      for (final key in keys.split('')) {
+        await tester.tap(find.byKey(ValueKey('paper-key-$key')));
+      }
+      await tester.pump();
+    }
+
+    String typedAmount(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const ValueKey('order-amount-value')))
+        .data!;
+
+    testWidgets(
+      'French keypad shows a comma and orders the same exact decimal',
+      (tester) async {
+        phone(tester);
+        final repository = FakePaperOrderRepository();
+        await tester.pumpWidget(
+          localizedTestApp(home: flow(repository), locale: const Locale('fr')),
+        );
+        await tester.pumpAndSettle();
+        final decimalKey = find.byKey(const ValueKey('paper-key-.'));
+        expect(
+          find.descendant(of: decimalKey, matching: find.text(',')),
+          findsOneWidget,
+        );
+        await typeAmount(tester, '12.5');
+        expect(typedAmount(tester), '12,5');
+        await tester.tap(
+          find.byKey(const ValueKey('paper-order-review-button')),
+        );
+        await tester.pumpAndSettle();
+        expect(repository.intents.single.quantityUnit, PaperQuantityUnit.paper);
+        expect(repository.intents.single.quantity, '12.5');
+      },
+    );
+
+    testWidgets(
+      'Brazilian Portuguese groups the typed amount and orders it exactly',
+      (tester) async {
+        phone(tester);
+        final repository = FakePaperOrderRepository();
+        await tester.pumpWidget(
+          localizedTestApp(
+            home: flow(repository),
+            locale: const Locale('pt', 'BR'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await typeAmount(tester, '1234.56');
+        expect(typedAmount(tester), '1.234,56');
+        expect(find.text('Disponível: 10.000 em dinheiro de treino'), findsOne);
+        await tester.tap(
+          find.byKey(const ValueKey('paper-order-review-button')),
+        );
+        await tester.pumpAndSettle();
+        expect(repository.intents.single.quantity, '1234.56');
+      },
+    );
+
+    testWidgets('French copy and share counts read naturally', (tester) async {
+      phone(tester);
+      final repository = FakePaperOrderRepository();
+      await tester.pumpWidget(
+        localizedTestApp(
+          locale: const Locale('fr'),
+          home: PaperOrderFlow(
+            company: testCompany(),
+            side: PaperOrderSide.sell,
+            repository: repository,
+            clientOrderId: () => 'sale-1',
+            availablePaper: '9950',
+            availableShares: '0.132042',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Vendre AAPL'), findsOneWidget);
+      expect(find.text('0,132042 action disponible'), findsOneWidget);
+      expect(
+        find.text(AppFormats.forLocale(const Locale('fr')).percent('25')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('paper-unit-paper')));
+      await typeAmount(tester, '10');
+      expect(find.text('≈ 0,043212 action'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('paper-unit-shares')));
+      await tester.pump();
+      expect(find.text('≈ 10 en argent d’entraînement'), findsOneWidget);
+    });
+
+    for (final locale in longLocales) {
+      testWidgets('order, review and report fit at 320px and 130% text in '
+          '$locale', (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final repository = FakePaperOrderRepository();
+        await tester.pumpWidget(
+          localizedTestApp(
+            home: flow(repository),
+            locale: locale,
+            textScale: 1.3,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const ValueKey('paper-preset-500')));
+        await tester.tap(
+          find.byKey(const ValueKey('paper-order-review-button')),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const ValueKey('paper-order-review')), findsOne);
+        await tester.tap(
+          find.byKey(const ValueKey('paper-order-confirm-button')),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const ValueKey('paper-order-report')), findsOne);
+        final report = find.byType(ListView).first;
+        for (var index = 0; index < 3; index++) {
+          await tester.drag(report, const Offset(0, -300));
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
   });
 
   test('reason is one line and rejects control characters', () {

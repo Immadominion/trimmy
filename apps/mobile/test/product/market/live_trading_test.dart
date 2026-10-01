@@ -768,7 +768,7 @@ void main() {
         expect(meta.minBuyInputRaw, '2000000');
         expect(meta.market!.label(now), 'Closed · opens 8:05 PM');
         expect(
-          meta.market!.hours,
+          meta.market!.hours(),
           'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).',
         );
         expect(ibm.market!.label(now), 'Paused by the issuer');
@@ -843,7 +843,7 @@ void main() {
           status: 'open',
           usSessions: true,
           sessions: ['regular'],
-        ).hours,
+        ).hours(),
         'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.',
       );
       expect(

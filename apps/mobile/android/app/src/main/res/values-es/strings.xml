@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Latin American Spanish (es-419), read by Spanish phones in any region. -->
+<resources>
+    <string name="notification_channel_reminders">Recordatorios de jornada</string>
+    <string name="notification_channel_trade_updates">Avisos de operaciones</string>
+    <string name="reminder_title">Tu escritorio te espera</string>
+    <string name="reminder_body">Tu próxima tarea te espera en tu escritorio.</string>
+</resources>

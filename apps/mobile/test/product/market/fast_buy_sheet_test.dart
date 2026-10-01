@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/product/market/fast_buy_sheet.dart';
 import 'package:trimmy/product/market/market_models.dart';
+import '../../support/l10n_harness.dart';
 import 'market_test_support.dart';
 
 const _ondoMint = 'So11111111111111111111111111111111111111112';
@@ -85,7 +86,7 @@ void main() {
     }
 
     await mount(tester, load: load);
-    expect(find.text('Trading could not connect.'), findsOneWidget);
+    expect(find.text('Trading couldn’t connect.'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pump();
     expect(calls, 2);
@@ -226,5 +227,74 @@ void main() {
     expect(find.text('Paper Apple'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     gateway.dispose();
+  });
+  group('localized', () {
+    Future<void> mountLocalized(
+      WidgetTester tester, {
+      required Locale locale,
+      required Future<List<FastBuyAsset>> Function() load,
+      double textScale = 1,
+    }) async {
+      await tester.pumpWidget(
+        localizedTestApp(
+          locale: locale,
+          textScale: textScale,
+          home: Scaffold(
+            body: FastBuySheet(
+              gateway: FakeMarketSearchGateway(),
+              companies: const [],
+              loadTradeable: load,
+              openTradeable: (_) async => null,
+              orderBuilder: (company, back) => Text(company.name),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('French title, hint, empty state and notice', (tester) async {
+      await mountLocalized(
+        tester,
+        locale: const Locale('fr'),
+        load: () async => [_asset()],
+      );
+      expect(find.text('Achat rapide'), findsOneWidget);
+      expect(find.byTooltip('Fermer l’achat rapide'), findsOneWidget);
+      expect(find.text('Cherche un nom ou un symbole'), findsOneWidget);
+      await tester.tap(find.text('Apple'));
+      await tester.pump();
+      expect(
+        find.text('Impossible d’ouvrir cette action. Réessaie.'),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await search(tester, 'zzz');
+      expect(
+        find.text('Aucune action disponible ne correspond à ta recherche.'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    for (final locale in longLocales) {
+      testWidgets('connection failure fits at 320px and 130% text in $locale', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await mountLocalized(
+          tester,
+          locale: locale,
+          textScale: 1.3,
+          load: () async => throw StateError('offline'),
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.byType(TextButton), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
   });
 }

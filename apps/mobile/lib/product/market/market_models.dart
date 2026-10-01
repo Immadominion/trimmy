@@ -1,41 +1,62 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../markets/discovery.dart';
 
 enum MarketList {
-  all('All'),
-  starterPicks('Starter picks'),
-  trending('Trending'),
-  movers('Movers'),
-  mostHeld('Most held'),
-  following('Following'),
-  newOnChain('New on chain'),
-  tech('Tech'),
-  finance('Finance'),
-  energy('Energy'),
-  health('Health'),
-  consumer('Consumer'),
+  all,
+  starterPicks,
+  trending,
+  movers,
+  mostHeld,
+  following,
+  newOnChain,
+  tech,
+  finance,
+  energy,
+  health,
+  consumer,
 
   /// Exchange-traded funds and commodity funds such as S&P 500, gold and oil.
-  etfs('Funds'),
+  etfs,
 
   /// Private companies, tokenized before listing: no share price yet.
-  preIpo('Pre-IPO');
+  preIpo;
 
-  const MarketList(this.label);
-  final String label;
+  String label(AppLocalizations l10n) => switch (this) {
+    MarketList.all => l10n.marketListAll,
+    MarketList.starterPicks => l10n.marketListStarterPicks,
+    MarketList.trending => l10n.marketListTrending,
+    MarketList.movers => l10n.marketListMovers,
+    MarketList.mostHeld => l10n.marketListMostHeld,
+    MarketList.following => l10n.marketListFollowing,
+    MarketList.newOnChain => l10n.marketListNewOnChain,
+    MarketList.tech => l10n.marketListTech,
+    MarketList.finance => l10n.marketListFinance,
+    MarketList.energy => l10n.marketListEnergy,
+    MarketList.health => l10n.marketListHealth,
+    MarketList.consumer => l10n.marketListConsumer,
+    MarketList.etfs => l10n.marketListFunds,
+    MarketList.preIpo => l10n.marketListPreIpo,
+  };
 }
 
 enum MarketSort {
-  featured('Featured'),
-  name('Name'),
-  dayChange('Biggest gains'),
-  dayLoss('Biggest drops'),
-  price('Highest price'),
-  floorHolders('Most held');
+  featured,
+  name,
+  dayChange,
+  dayLoss,
+  price,
+  floorHolders;
 
-  const MarketSort(this.label);
-  final String label;
+  String label(AppLocalizations l10n) => switch (this) {
+    MarketSort.featured => l10n.marketSortFeatured,
+    MarketSort.name => l10n.marketSortName,
+    MarketSort.dayChange => l10n.marketSortBiggestGains,
+    MarketSort.dayLoss => l10n.marketSortBiggestDrops,
+    MarketSort.price => l10n.marketSortHighestPrice,
+    MarketSort.floorHolders => l10n.marketSortMostHeld,
+  };
 }
 
 @immutable

@@ -1,10 +1,37 @@
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/l10n.dart';
+
 enum CareerRank { rookie, analyst, trader, seniorTrader, partner, legend }
+
+extension CareerRankCopy on CareerRank {
+  /// The rank's name in the reader's language. The server's `label` field is
+  /// English wire data that only validates the response; show this instead.
+  String label(AppLocalizations l10n) => switch (this) {
+    CareerRank.rookie => l10n.rankRookie,
+    CareerRank.analyst => l10n.rankAnalyst,
+    CareerRank.trader => l10n.rankTrader,
+    CareerRank.seniorTrader => l10n.rankSeniorTrader,
+    CareerRank.partner => l10n.rankPartner,
+    CareerRank.legend => l10n.rankLegend,
+  };
+}
 
 enum CareerStreakStatus { notStarted, active, atRisk, grace }
 
 enum CareerMissionId { firstPaperBuy, writeAReason, holdThroughRedDay }
+
+extension CareerMissionCopy on CareerMissionId {
+  /// The mission's title in the reader's language. The server sends the same
+  /// title in English and the repository rejects any other, so the id is
+  /// enough to show it.
+  String title(AppLocalizations l10n) => switch (this) {
+    CareerMissionId.firstPaperBuy => l10n.careerMissionFirstPaperBuyTitle,
+    CareerMissionId.writeAReason => l10n.careerMissionWriteAReasonTitle,
+    CareerMissionId.holdThroughRedDay =>
+      l10n.careerMissionHoldThroughRedDayTitle,
+  };
+}
 
 enum CareerMissionStatus { locked, ready, complete }
 

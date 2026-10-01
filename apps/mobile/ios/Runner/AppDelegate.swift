@@ -40,7 +40,9 @@ import firebase_messaging
           result(FlutterError(code: "INVALID_FREQUENCY", message: "Choose a reminder frequency.", details: nil))
           return
         }
-        self.scheduleReminder(preference, at: args["at"] as? NSNumber, body: args["body"] as? String, result: result)
+        self.scheduleReminder(
+          preference, at: args["at"] as? NSNumber, title: args["title"] as? String,
+          body: args["body"] as? String, result: result)
       case "consumeOpenCareer":
         let pending = UserDefaults.standard.bool(forKey: "trimmy.open_career")
         UserDefaults.standard.removeObject(forKey: "trimmy.open_career")
@@ -61,7 +63,11 @@ import firebase_messaging
     }
   }
 
-  private func scheduleReminder(_ preference: String, at: NSNumber?, body: String?, result: @escaping FlutterResult) {
+  /// `title` and `body` arrive from Dart in the language chosen in the app.
+  /// Without them, the reminder reads in the phone's language.
+  private func scheduleReminder(
+    _ preference: String, at: NSNumber?, title: String?, body: String?, result: @escaping FlutterResult
+  ) {
     let center = UNUserNotificationCenter.current()
     center.removePendingNotificationRequests(withIdentifiers: reminderIds)
     center.removeDeliveredNotifications(withIdentifiers: reminderIds)
@@ -81,8 +87,10 @@ import firebase_messaging
       var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
       components.timeZone = calendar.timeZone
       let content = UNMutableNotificationContent()
-      content.title = "Your desk is waiting"
-      content.body = String((body ?? "Your next assignment is waiting at your desk.").prefix(240))
+      content.title = String((title ?? NSLocalizedString(
+        "reminder.title", comment: "Title of the workday reminder notification.")).prefix(120))
+      content.body = String((body ?? NSLocalizedString(
+        "reminder.body", comment: "Body of the workday reminder when no workday title is known.")).prefix(240))
       content.sound = .default
       content.userInfo = ["trimmy.open_career": true]
       let request = UNNotificationRequest(identifier: "trimmy.checkin.daily", content: content,

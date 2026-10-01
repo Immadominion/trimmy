@@ -66,9 +66,7 @@ class FirebaseTradePushDevice implements TradePushDevice {
         const Duration(seconds: 10),
       );
       if (token == null || token.isEmpty) {
-        throw const FormatException(
-          'Couldn’t connect notifications. Please try again.',
-        );
+        throw const TradePushFailure(TradePushIssue.connectFailed);
       }
       return token;
     } catch (_) {
@@ -86,9 +84,7 @@ class FirebaseTradePushDevice implements TradePushDevice {
       if (token != null && token.isNotEmpty) return;
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
-    throw const FormatException(
-      'Couldn’t connect notifications. Please try again.',
-    );
+    throw const TradePushFailure(TradePushIssue.connectFailed);
   }
 
   @override

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+
+import '../../l10n/l10n.dart';
 import '../design/product_motion_icon.dart';
 import '../design/product_notice.dart';
 import '../design/product_theme.dart';
@@ -13,18 +16,22 @@ class ProductInformationScreen extends StatelessWidget {
   final ProductInformation information;
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final contact = information == ProductInformation.contact;
     final title = switch (information) {
-      ProductInformation.contact => 'Help',
-      ProductInformation.terms => 'Terms',
-      ProductInformation.privacy => 'Privacy',
+      ProductInformation.contact => l10n.infoHelpTitle,
+      ProductInformation.terms => l10n.infoTermsTitle,
+      ProductInformation.privacy => l10n.infoPrivacyTitle,
     };
     final url = contact
         ? 'https://x.com/trimmyhq'
         : 'https://trimmy.xyz/${information.name}/';
+    final updated = l10n.infoLastUpdated(
+      _longDate(context.formats, _lastUpdated),
+    );
     final blocks = information == ProductInformation.privacy
-        ? _privacy
-        : _terms;
+        ? _privacy(l10n, updated)
+        : _terms(l10n, updated);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -43,11 +50,11 @@ class ProductInformationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             Text(
-              'Talk to us',
+              l10n.infoContactTitle,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 10),
-            const Text('Find @trimmyhq on X for help or feedback.'),
+            Text(l10n.infoContactBody),
             const SizedBox(height: 18),
           ] else ...[
             for (final block in blocks)
@@ -86,13 +93,15 @@ class ProductInformationScreen extends StatelessWidget {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     content: ProductNotice(
-                      message: 'Link copied',
+                      message: l10n.infoLinkCopied,
                       onDismiss: messenger.hideCurrentSnackBar,
                     ),
                   ),
                 );
               },
-              child: Text(contact ? 'Copy contact link' : 'Copy website link'),
+              child: Text(
+                contact ? l10n.infoCopyContactLink : l10n.infoCopyWebsiteLink,
+              ),
             ),
           ),
         ],
@@ -101,106 +110,68 @@ class ProductInformationScreen extends StatelessWidget {
   }
 }
 
-const _privacy = <(String, String)>[
-  ('h1', 'Privacy, in plain words.'),
-  ('p', 'Last updated 26 September 2026'),
+/// When the Terms and Privacy notices last changed.
+final _lastUpdated = DateTime(2026, 9, 26);
+
+/// "26 September 2026" in English, as the notices have always read; the
+/// reader's long date elsewhere ("26 de septiembre de 2026", "26 septembre
+/// 2026"). AppFormats has no long-month date, so this builds on its locale.
+String _longDate(AppFormats formats, DateTime date) => formats.isEnglish
+    ? DateFormat('d MMMM y', 'en_US').format(date)
+    : DateFormat.yMMMMd(formats.dateLocale).format(date);
+
+List<(String, String)> _privacy(AppLocalizations l10n, String updated) => [
+  ('h1', l10n.infoPrivacyHeading),
+  ('p', updated),
+  ('p', l10n.infoPrivacyIntro),
+  ('h2', l10n.infoPrivacyAccountTitle),
+  ('p', l10n.infoPrivacyAccountBody),
+  ('h2', l10n.infoPracticeAndCareerTitle),
+  ('p', l10n.infoPrivacyPracticeBody),
+  ('h2', l10n.infoPrivacyCommentsTitle),
+  ('p', l10n.infoPrivacyCommentsBody),
+  ('h2', l10n.infoPrivacyWalletsTitle),
+  ('p', l10n.infoPrivacyWalletsBody),
+  ('h2', l10n.infoPrivacyFundingTitle),
+  ('p', l10n.infoPrivacyFundingBody),
+  ('h2', l10n.settingsReminders),
+  ('p', l10n.infoPrivacyRemindersBody),
+  ('h2', l10n.infoPrivacyServicesTitle),
+  ('p', l10n.infoPrivacyServicesBody),
+  ('h2', l10n.infoPrivacyChoicesTitle),
+  ('p', l10n.infoPrivacyChoicesBody),
+  ('p', l10n.infoPrivacyRequestsBody),
+  ('h2', l10n.infoPrivacyProvidersTitle),
   (
     'p',
-    'This notice describes information handled by the Trimmy app and its supporting services.',
-  ),
-  ('h2', 'Your account or guest session'),
-  (
-    'p',
-    'Sign-in uses Privy and the email or social provider you choose. Trimmy receives account identifiers, session credentials and available linked-account details, such as your email, handle or profile image, to authenticate you and recover your progress. Continuing as a guest creates a separate session; guest activity can also be stored on our server. Signing in can link that progress to your account.',
-  ),
-  ('h2', 'Practice and Career'),
-  (
-    'p',
-    'Your practice orders, balances, activity answers, completed workdays, streaks, Trims, watchlist and trader profile support the game and your progress. Preferences and unfinished activity drafts can be saved on your device; account and progress records are also stored on our server.',
-  ),
-  ('h2', 'Comments and following'),
-  (
-    'p',
-    'Your comment-sharing choice controls which other users can see your comments with your handle, trader persona and the asset discussed. The community feed does not publish your order amounts or wallet balance. We store follows, sharing preferences, blocks and reports to provide these features and address abuse. Public blockchain activity remains visible independently of these settings.',
-  ),
-  ('h2', 'Wallets and real trades'),
-  (
-    'p',
-    'Privy supplies the embedded wallet and signing interface. Trimmy uses your public Solana address to read balances, request quotes and prepare reviewed transactions. Our server receives signed transactions for submission and stores order terms, transaction references and status. Wallet addresses, token amounts and transaction signatures are public on the blockchain. Closing Trimmy cannot erase those records.',
-  ),
-  ('h2', 'Funding'),
-  (
-    'p',
-    'When you use Crossmint checkout, Trimmy shares the email, destination wallet, requested amount and wallet-ownership proof needed to prepare the order. Crossmint handles payment and identity-verification information in its checkout. Trimmy receives order and delivery status; our onramp server does not collect card numbers or verification documents.',
-  ),
-  ('h2', 'Reminders'),
-  (
-    'p',
-    'Career reminders are scheduled on your device with your permission. You can change the reminder preference in Trimmy or disable notifications in device settings. Trade updates are optional on supported devices. If enabled, we store a device notification token and use Firebase Cloud Messaging to send a short update when a real order finishes. Amounts and balances are not included. You can turn trade updates off in Settings. Social and price alerts are not available yet.',
-  ),
-  ('h2', 'Services and technical records'),
-  (
-    'p',
-    'Hosting and database providers support the app. Market-data services receive asset queries; Jupiter and blockchain providers receive wallet or transaction queries needed for real trading. Privy, your sign-in provider and Crossmint handle information under their own policies and may process it in other countries. Network information, request times, identifiers and errors help deliver the service, limit abuse and investigate failures.',
-  ),
-  ('h2', 'Your choices and records'),
-  (
-    'p',
-    'You can change sharing and reminder preferences in Settings. Signing out does not delete server records. Closing an account disables access but does not erase its historical records, delete your provider account, move assets or remove blockchain data. Clearing app data can remove local progress and access information; make sure you can recover a funded wallet before doing so.',
+    l10n.infoProviderPolicyLink('Privy', 'https://www.privy.io/privacy-policy'),
   ),
   (
     'p',
-    'Contact @trimmyhq on X to ask about access, correction or deletion of information held by Trimmy. Ask for a private conversation and do not post credentials or personal documents publicly. We may need to verify the request. Provider records follow their own policies; blockchain records cannot be deleted by Trimmy.',
+    l10n.infoProviderPolicyLink(
+      'Crossmint',
+      'https://www.crossmint.com/legal/privacy-policy',
+    ),
   ),
-  ('h2', 'Provider privacy policies'),
-  ('p', 'Privy: https://www.privy.io/privacy-policy'),
-  ('p', 'Crossmint: https://www.crossmint.com/legal/privacy-policy'),
 ];
 
-const _terms = <(String, String)>[
-  ('h1', 'Using Trimmy.'),
-  ('p', 'Last updated 26 September 2026'),
-  (
-    'p',
-    'Trimmy combines a trading simulation with a separate real-money mode. These terms describe the app as it works today. Features remain in development.',
-  ),
-  ('h2', 'Practice and Career'),
-  (
-    'p',
-    'Paper balances and orders are simulated. Trims, streaks and Career ranks record game progress; they cannot be withdrawn as money. Practice can use sample or market reference data. Completing an activity does not establish investment suitability, and comments from other users are their own views. Educational content is not personalized investment, legal or tax advice.',
-  ),
-  ('h2', 'Real money'),
-  (
-    'p',
-    'Real mode uses a Solana mainnet wallet and supported tokenized stocks. An order can move real assets when you review and confirm it. Check the asset, amount, fees and destination before approving. A quote is an estimate that can expire; a submitted or pending order is not a confirmed trade. History currently shows reviewed quote amounts, not a complete statement of final fills, fees or external transfers.',
-  ),
-  (
-    'p',
-    'Tokenized stocks are subject to their issuer terms and do not necessarily give the same rights as directly holding company shares. Prices can fall, liquidity can disappear, and issuer, network or provider failures can cause loss. Trimmy does not promise returns or execution at a displayed price.',
-  ),
-  ('h2', 'Funding your wallet'),
-  (
-    'p',
-    'Send only supported USDC or SOL to the displayed address on the Solana network. Verify the address and network before sending; a completed blockchain transfer cannot simply be undone by Trimmy. SOL is also needed for network fees. Crossmint card checkout is currently a test environment: its test funds do not fund mainnet trades. Its production availability, payment methods, verification and fees depend on the provider.',
-  ),
-  ('h2', 'Account access'),
-  (
-    'p',
-    'Protect your sign-in method and review wallet prompts carefully. Never share a private key, recovery phrase or one-time sign-in code with support. This build does not yet provide in-app withdrawals or wallet export. Closing your account does not withdraw assets. Resolve wallet access before closing an account or removing the app from a funded device.',
-  ),
-  ('h2', 'Eligibility and other services'),
-  (
-    'p',
-    'You must meet the applicable asset issuer and service-provider requirements, including location and eligibility restrictions. Seeing an asset or obtaining a quote does not establish eligibility. Privy, Crossmint, trading providers and asset issuers have separate terms. Trimmy does not promise availability in every country.',
-  ),
-  ('h2', 'Using the community'),
-  (
-    'p',
-    'Share comments you have the right to publish. Do not impersonate others, expose private information, manipulate the market, harass users or interfere with accounts and services. Sharing settings, blocking and reporting tools are available for comments and community interactions.',
-  ),
-  ('h2', 'Availability and questions'),
-  (
-    'p',
-    'Market data, quotes, notifications and network confirmation can be delayed or unavailable. Features and these notices may change as development continues. Nothing here removes rights that cannot be excluded under applicable law. Contact @trimmyhq on X for help or questions about these terms.',
-  ),
+List<(String, String)> _terms(AppLocalizations l10n, String updated) => [
+  ('h1', l10n.infoTermsHeading),
+  ('p', updated),
+  ('p', l10n.infoTermsIntro),
+  ('h2', l10n.infoPracticeAndCareerTitle),
+  ('p', l10n.infoTermsPracticeBody),
+  ('h2', l10n.infoTermsRealMoneyTitle),
+  ('p', l10n.infoTermsRealMoneyBody),
+  ('p', l10n.infoTermsTokenizedBody),
+  ('h2', l10n.infoTermsFundingTitle),
+  ('p', l10n.infoTermsFundingBody),
+  ('h2', l10n.infoTermsAccessTitle),
+  ('p', l10n.infoTermsAccessBody),
+  ('h2', l10n.infoTermsEligibilityTitle),
+  ('p', l10n.infoTermsEligibilityBody),
+  ('h2', l10n.infoTermsCommunityTitle),
+  ('p', l10n.infoTermsCommunityBody),
+  ('h2', l10n.infoTermsAvailabilityTitle),
+  ('p', l10n.infoTermsAvailabilityBody),
 ];

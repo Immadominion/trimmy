@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/app/launch_moments.dart';
 import 'package:trimmy/product/career/career.dart';
 import 'package:trimmy/product/design/product_theme.dart';
@@ -115,6 +116,35 @@ void main() {
     await _reveal(tester, button);
     await tester.tap(button.hitTestable());
     expect(continued, 1);
+  });
+
+  testWidgets('promotion and first position read in French', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: PromotionMoment(receipt: promotion, onContinue: () {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Te voilà Analyste\u00a0!'), findsOneWidget);
+    expect(find.text('100 Trims'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: productTheme(),
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: FirstPositionMoment(data: data, onCollect: () {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1,25'), findsOneWidget);
+    expect(find.text('14:07 UTC'), findsOneWidget);
+    expect(find.text('Continuer'), findsOneWidget);
   });
 
   testWidgets('promotion remains reachable on a small large-text phone', (

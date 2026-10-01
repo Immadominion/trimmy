@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import 'review_feedback.dart';
 import 'ui_review_app.dart';
+
+/// Why a typed amount cannot be used. Worded where it is shown.
+enum _AmountIssue { empty, decimals, belowMin, aboveMax }
 
 /// A spend amount, with quick choices and a native decimal editor.
 ///
@@ -36,8 +40,11 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
   bool _editing = false;
   bool _draftEdited = false;
   late double _increment;
-  String? _error;
+  _AmountIssue? _error;
   double? _lastEmitted;
+
+  /// The reader's number formats. English until the first dependency pass.
+  AppFormats _formats = AppFormats.english;
 
   @override
   void initState() {
@@ -48,11 +55,25 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final formats = context.formats;
+    if (identical(formats, _formats)) return;
+    final previous = _formats;
+    _formats = formats;
+    // Show an untouched amount with the reader's decimal mark. A draft the
+    // player typed is left exactly as typed.
+    if (_controller.text == previous.decimalInput(_inputText(widget.value))) {
+      _controller.text = formats.decimalInput(_inputText(widget.value));
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant ReviewAmountPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Parent echoing a valid keystroke must not move the caret or drop a dot.
     if (widget.value != oldWidget.value && widget.value != _lastEmitted) {
-      _controller.text = _inputText(widget.value);
+      _controller.text = _formats.decimalInput(_inputText(widget.value));
       _error = _validation(_controller.text);
       _increment = widget.value;
       _draftEdited = false;
@@ -78,22 +99,34 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
       ? value.toStringAsFixed(0)
       : value.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
 
-  double? _parse(String text) => double.tryParse(text.replaceAll(',', '.'));
+  // English text reaches the parser unchanged, so English parsing is exactly
+  // as before. A comma decimal mark already worked and still does.
+  double? _parse(String text) => double.tryParse(
+    _formats.normalizeDecimalInput(text).replaceAll(',', '.'),
+  );
 
-  String? _validation(String text) {
+  _AmountIssue? _validation(String text) {
     final amount = _parse(text);
-    if (amount == null || !amount.isFinite) return 'Enter an amount.';
+    if (amount == null || !amount.isFinite) return _AmountIssue.empty;
     if (!RegExp(r'^(?:\d{1,7}([.,]\d{0,2})?|[.,]\d{1,2})$').hasMatch(text)) {
-      return 'Use up to 2 decimal places.';
+      return _AmountIssue.decimals;
     }
-    if (amount < widget.min) {
-      return 'Choose at least \$${_inputText(widget.min)}.';
-    }
-    if (amount > widget.max) {
-      return 'Choose up to \$${_inputText(widget.max)}.';
-    }
+    if (amount < widget.min) return _AmountIssue.belowMin;
+    if (amount > widget.max) return _AmountIssue.aboveMax;
     return null;
   }
+
+  String _issueText(AppLocalizations l10n, _AmountIssue issue) =>
+      switch (issue) {
+        _AmountIssue.empty => l10n.amountPickerErrorEmpty,
+        _AmountIssue.decimals => l10n.amountPickerErrorDecimals,
+        _AmountIssue.belowMin => l10n.amountPickerErrorMin(
+          _formats.usd(_inputText(widget.min)),
+        ),
+        _AmountIssue.aboveMax => l10n.amountPickerErrorMax(
+          _formats.usd(_inputText(widget.max)),
+        ),
+      };
 
   void _draftChanged(String text) {
     final error = _validation(text);
@@ -145,7 +178,7 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
       _editing = false;
       _draftEdited = false;
       _error = null;
-      _controller.text = _inputText(next);
+      _controller.text = _formats.decimalInput(_inputText(next));
     });
     _focus.unfocus();
     _lastEmitted = next;
@@ -222,7 +255,7 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
             child: Semantics(
               liveRegion: true,
               child: Text(
-                _error!,
+                _issueText(context.l10n, _error!),
                 style: const TextStyle(
                   color: Color(0xFF9F344E),
                   fontSize: 13,
@@ -254,7 +287,10 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
       foregroundColor: UiReviewColor.violet,
       minimumSize: const Size(64, 48),
     ),
-    child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+    child: Text(
+      context.l10n.commonDone,
+      style: const TextStyle(fontWeight: FontWeight.w700),
+    ),
   );
 
   Widget _amount(BuildContext context) {
@@ -267,6 +303,8 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
       fontWeight: FontWeight.w700,
       fontFeatures: [FontFeature.tabularFigures()],
     );
+    final formats = _formats;
+    const symbolStyle = TextStyle(color: Color(0xFF98929F), fontSize: 26);
     if (_editing) {
       return TextField(
         key: const ValueKey('review-amount-input'),
@@ -282,11 +320,17 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
         onSubmitted: (_) => _focus.unfocus(),
         onTapOutside: (_) => _focus.unfocus(),
         scrollPadding: const EdgeInsets.fromLTRB(24, 40, 24, 130),
-        decoration: const InputDecoration(
-          labelText: 'Amount in dollars',
+        decoration: InputDecoration(
+          labelText: context.l10n.amountPickerFieldLabel,
           floatingLabelBehavior: FloatingLabelBehavior.never,
-          prefixText: '\$',
-          prefixStyle: TextStyle(color: Color(0xFF98929F), fontSize: 26),
+          prefixText: formats.dollarFirst
+              ? '${formats.dollarSymbol}${formats.dollarGap}'
+              : null,
+          prefixStyle: symbolStyle,
+          suffixText: formats.dollarFirst
+              ? null
+              : '${formats.dollarGap}${formats.dollarSymbol}',
+          suffixStyle: symbolStyle,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -294,9 +338,17 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
         ),
       );
     }
+    final symbol = Text(
+      formats.dollarSymbol,
+      style: style.copyWith(color: const Color(0xFF98929F)),
+    );
+    final figure = _RollingAmount(value: widget.value, style: style);
     return Semantics(
       button: true,
-      label: 'Amount, ${widget.value.toStringAsFixed(2)} dollars. Edit amount',
+      label: context.l10n.amountPickerEditSemantics(
+        widget.value,
+        formats.number(widget.value.toStringAsFixed(2)),
+      ),
       onTap: _edit,
       excludeSemantics: true,
       child: Material(
@@ -314,14 +366,9 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
                   fit: BoxFit.scaleDown,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '\$',
-                        style: style.copyWith(color: const Color(0xFF98929F)),
-                      ),
-                      const SizedBox(width: 5),
-                      _RollingAmount(value: widget.value, style: style),
-                    ],
+                    children: formats.dollarFirst
+                        ? [symbol, const SizedBox(width: 5), figure]
+                        : [figure, const SizedBox(width: 5), symbol],
                   ),
                 ),
               ),
@@ -336,10 +383,13 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
     final enabled =
         effective == null ||
         (direction < 0 ? effective > widget.min : effective < widget.max);
+    final l10n = context.l10n;
+    final step = _effectiveIncrement;
+    final stepText = _formats.number(_inputText(step));
     return IconButton(
       tooltip: direction < 0
-          ? 'Decrease amount by ${_inputText(_effectiveIncrement)} dollars'
-          : 'Increase amount by ${_inputText(_effectiveIncrement)} dollars',
+          ? l10n.amountPickerDecreaseTooltip(step, stepText)
+          : l10n.amountPickerIncreaseTooltip(step, stepText),
       onPressed: enabled ? () => _step(direction) : null,
       constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       color: UiReviewColor.violet,
@@ -354,7 +404,10 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
     return Semantics(
       selected: selected,
       button: true,
-      label: 'Set amount to ${amount.toStringAsFixed(0)} dollars',
+      label: context.l10n.amountPickerPresetSemantics(
+        amount,
+        _formats.number(amount.toStringAsFixed(0)),
+      ),
       onTap: () => _choose(amount),
       excludeSemantics: true,
       child: Material(
@@ -370,7 +423,7 @@ class _ReviewAmountPickerState extends State<ReviewAmountPicker> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Text(
-                '\$${amount.toStringAsFixed(0)}',
+                _formats.usd(amount.toStringAsFixed(0)),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Dejanire Sans',
@@ -426,7 +479,7 @@ class _RollingAmountState extends State<_RollingAmount> {
 
   @override
   Widget build(BuildContext context) {
-    final number = widget.value.toStringAsFixed(2);
+    final number = context.formats.number(widget.value.toStringAsFixed(2));
     final duration = uiReviewDuration(context, 260);
     return Row(
       mainAxisSize: MainAxisSize.min,

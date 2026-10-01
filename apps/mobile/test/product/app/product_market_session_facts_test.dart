@@ -217,7 +217,7 @@ void main() {
       await runtime.session.loadMore();
       expect(runtime.session.companies.length, 1);
       expect(runtime.session.hasMore, true);
-      expect(runtime.session.loadMoreMessage, isNotNull);
+      expect(runtime.session.loadMoreIssue, isNotNull);
       catalog.fail = false;
       await runtime.session.loadMore();
       expect(runtime.session.companies.map((c) => c.assetId), [
@@ -225,7 +225,7 @@ void main() {
         'tesla',
       ]);
       expect(runtime.session.hasMore, false);
-      expect(runtime.session.loadMoreMessage, isNull);
+      expect(runtime.session.loadMoreIssue, isNull);
       await runtime.session.loadCatalog();
       expect(runtime.session.companies.length, 1);
     },
@@ -248,7 +248,7 @@ void main() {
       catalog.failing.add(40);
       await runtime.session.loadMore();
       expect(runtime.session.companies.length, 2);
-      expect(runtime.session.loadMoreMessage, isNotNull);
+      expect(runtime.session.loadMoreIssue, isNotNull);
       catalog.failing.clear();
       while (runtime.session.hasMore) {
         await runtime.session.loadMore();
@@ -256,7 +256,7 @@ void main() {
       expect(catalog.offsets, [0, 20, 40, 40, 60, 80, 100, 120, 140, 160, 180]);
       expect(runtime.session.companies.length, 10);
       expect(runtime.session.companies.last.assetId, 'company-180');
-      expect(runtime.session.loadMoreMessage, isNull);
+      expect(runtime.session.loadMoreIssue, isNull);
     },
   );
 

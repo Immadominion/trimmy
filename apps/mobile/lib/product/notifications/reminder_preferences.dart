@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../l10n/l10n.dart';
 import '../market/http_paper_order_repository.dart' show paperUuidV4;
 import '../onboarding/onboarding_models.dart';
 import '../workdays/workdays.dart';
@@ -26,12 +27,23 @@ class ReminderState {
 }
 
 enum ReminderPreference {
-  daily('On workdays', 'Around 7 PM, when work is waiting.'),
-  occasional('A few times a week', 'Mon, Wed and Fri, around 7 PM.'),
-  off('Keep it quiet', 'I’ll come back on my own.');
+  daily,
+  occasional,
+  off;
 
-  const ReminderPreference(this.label, this.caption);
-  final String label, caption;
+  /// The choice's name on its card, in the reader's language.
+  String label(AppLocalizations l10n) => switch (this) {
+    daily => l10n.reminderDailyLabel,
+    occasional => l10n.reminderOccasionalLabel,
+    off => l10n.reminderOffLabel,
+  };
+
+  /// The line under [label]: when the reminder comes.
+  String caption(AppLocalizations l10n) => switch (this) {
+    daily => l10n.reminderDailyCaption,
+    occasional => l10n.reminderOccasionalCaption,
+    off => l10n.reminderOffCaption,
+  };
 }
 
 class ReminderPreferences {

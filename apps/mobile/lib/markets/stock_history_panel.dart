@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../design_study/craft.dart';
+import '../l10n/l10n.dart';
 import 'history_models.dart';
 import 'stock_research_controller.dart';
 import 'validation.dart';
@@ -59,11 +60,14 @@ final class StockHistoryPlot {
     return false;
   }
 
-  String changeLabel(int index) {
+  /// "+1.25%", "-<0.01%" or "0.00%", in [formats]' language (English when
+  /// omitted).
+  String changeLabel(int index, [AppFormats? formats]) {
+    final f = formats ?? AppFormats.english;
     final change = points[index].change;
-    if (change == 0) return '0.00%';
-    if (change.abs() < .01) return '${change < 0 ? '-' : '+'}<0.01%';
-    return '${change > 0 ? '+' : ''}${change.toStringAsFixed(2)}%';
+    if (change == 0) return f.percent('0.00');
+    if (change.abs() < .01) return f.percent('${change < 0 ? '-' : '+'}<0.01');
+    return f.percent('${change > 0 ? '+' : ''}${change.toStringAsFixed(2)}');
   }
 }
 
@@ -249,8 +253,12 @@ class _StockHistoryPanelState extends State<StockHistoryPanel> {
   );
 }
 
-String _dateTime(DateTime date) =>
-    '${date.day}/${date.month} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+/// "30/9 14:05" in English; [formats] gives other languages their own
+/// day/month order and clock. The date is shown as given (UTC here).
+String _dateTime(DateTime date, [AppFormats? formats]) {
+  final f = formats ?? AppFormats.english;
+  return '${f.numericDayMonth(date)} ${f.time24(date)}';
+}
 
 class StockHistoryChart extends StatefulWidget {
   const StockHistoryChart({super.key, required this.page});
@@ -271,11 +279,13 @@ class _StockHistoryChartState extends State<StockHistoryChart> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final plot = StockHistoryPlot.fromPage(widget.page);
     if (plot == null) {
-      return const Text(
-        'These readings cannot be compared reliably.',
-        key: ValueKey('stock-history-unplottable'),
+      return Text(
+        l10n.chartReadingsNotComparable,
+        key: const ValueKey('stock-history-unplottable'),
       );
     }
     final index = (_selected ?? plot.points.length - 1).clamp(
@@ -287,7 +297,14 @@ class _StockHistoryChartState extends State<StockHistoryChart> {
       selected.time * 1000,
       isUtc: true,
     );
-    final label = plot.changeLabel(index);
+    final label = plot.changeLabel(index, formats);
+    String timeAt(int point) => _dateTime(
+      DateTime.fromMillisecondsSinceEpoch(
+        plot.points[point].time * 1000,
+        isUtc: true,
+      ),
+      formats,
+    );
     void selectAt(double x, double width) {
       final fraction = ((x - 8) / (width - 16)).clamp(0.0, 1.0);
       final time =
@@ -317,19 +334,25 @@ class _StockHistoryChartState extends State<StockHistoryChart> {
         ),
         const SizedBox(height: 4),
         Text(
-          '${_dateTime(at)} UTC · From the first reading',
+          l10n.chartReadingAt(_dateTime(at, formats)),
           style: const TextStyle(fontSize: 12, color: StudyColor.muted),
         ),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) => Semantics(
-            label: 'AAPLx relative history',
-            value: '$label at ${_dateTime(at)} UTC',
+            label: l10n.chartRelativeHistoryLabel('AAPLx'),
+            value: l10n.chartChangeAtTime(label, _dateTime(at, formats)),
             increasedValue: index < plot.points.length - 1
-                ? '${plot.changeLabel(index + 1)} at ${_dateTime(DateTime.fromMillisecondsSinceEpoch(plot.points[index + 1].time * 1000, isUtc: true))} UTC'
+                ? l10n.chartChangeAtTime(
+                    plot.changeLabel(index + 1, formats),
+                    timeAt(index + 1),
+                  )
                 : null,
             decreasedValue: index > 0
-                ? '${plot.changeLabel(index - 1)} at ${_dateTime(DateTime.fromMillisecondsSinceEpoch(plot.points[index - 1].time * 1000, isUtc: true))} UTC'
+                ? l10n.chartChangeAtTime(
+                    plot.changeLabel(index - 1, formats),
+                    timeAt(index - 1),
+                  )
                 : null,
             onIncrease: index < plot.points.length - 1
                 ? () => setState(() => _selected = index + 1)
@@ -357,24 +380,14 @@ class _StockHistoryChartState extends State<StockHistoryChart> {
           children: [
             Expanded(
               child: Text(
-                _dateTime(
-                  DateTime.fromMillisecondsSinceEpoch(
-                    plot.points.first.time * 1000,
-                    isUtc: true,
-                  ),
-                ),
+                timeAt(0),
                 style: const TextStyle(fontSize: 11, color: StudyColor.muted),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                _dateTime(
-                  DateTime.fromMillisecondsSinceEpoch(
-                    plot.points.last.time * 1000,
-                    isUtc: true,
-                  ),
-                ),
+                timeAt(plot.points.length - 1),
                 textAlign: TextAlign.end,
                 style: const TextStyle(fontSize: 11, color: StudyColor.muted),
               ),
@@ -383,9 +396,7 @@ class _StockHistoryChartState extends State<StockHistoryChart> {
         ),
         const SizedBox(height: 8),
         Text(
-          plot.hasGaps
-              ? 'Gaps mean the provider returned no reading. Drag to explore.'
-              : 'Drag across the chart to explore.',
+          plot.hasGaps ? l10n.chartGapsHint : l10n.chartDragHint,
           style: const TextStyle(fontSize: 12, color: StudyColor.muted),
         ),
       ],
