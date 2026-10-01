@@ -1999,6 +1999,8 @@ class _ProductExperienceState extends State<ProductExperience>
       // A drag closes a sheet past its PopScope, even while a send or an
       // order is being confirmed. These sheets close with their own buttons.
       enableDrag: false,
+      // A typed address and amount are not lost to a stray tap outside.
+      isDismissible: false,
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: productSquircle(30),
