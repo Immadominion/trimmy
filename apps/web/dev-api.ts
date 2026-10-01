@@ -115,17 +115,19 @@ function readBody(req: IncomingMessage, timeoutMs: number): Promise<string> {
 }
 
 export function createDevelopmentRelay(apiOrigin: string, fetcher: typeof fetch = fetch,
-  {bodyTimeoutMs = 5_000}: {bodyTimeoutMs?: number} = {}) {
+  {bodyTimeoutMs = 5_000, port = 4174}: {bodyTimeoutMs?: number; port?: number} = {}) {
   const target = new URL(apiOrigin);
   if (target.protocol !== 'https:' || target.origin !== apiOrigin || target.username || target.password) {
     throw new Error('TRIMMY_WEB_DEV_API_URL must be a canonical HTTPS origin.');
   }
   if (!Number.isInteger(bodyTimeoutMs) || bodyTimeoutMs <= 0) throw new Error('Body timeout must be a positive integer.');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Development port is invalid.');
+  const hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
   return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
     if (!req.url?.startsWith('/api/')) {next(); return;}
     const host = req.headers.host;
     const origin = req.headers.origin;
-    if (!host || !/^(127\.0\.0\.1|localhost):4174$/.test(host) ||
+    if (!host || !hosts.has(host) ||
         origin !== undefined && origin !== `http://${host}` ||
         req.headers['sec-fetch-site'] === 'cross-site' || req.headers['sec-fetch-site'] === 'same-site') {
       problem(res, 403, 'LOCAL_ORIGIN_DENIED'); return;
@@ -189,7 +191,10 @@ export function createDevelopmentRelay(apiOrigin: string, fetcher: typeof fetch 
 export function developmentApiPlugin(apiOrigin: string | undefined): Plugin {
   return {name: 'trimmy-local-practice-api', apply: 'serve', configureServer(server) {
     if (!apiOrigin) return;
-    const relay = createDevelopmentRelay(apiOrigin);
+    // Use the configured port so isolated worktrees can run side by side.
+    // Strict-port mode prevents Vite silently moving outside this boundary.
+    if (!server.config.server.strictPort) throw new Error('The development relay requires strictPort.');
+    const relay = createDevelopmentRelay(apiOrigin, fetch, {port: server.config.server.port ?? 4174});
     server.middlewares.use((req, res, next) => {void relay(req, res, next).catch(() => {
       if (!res.headersSent) problem(res, 502, 'LOCAL_API_UNAVAILABLE'); else res.end();
     });});
