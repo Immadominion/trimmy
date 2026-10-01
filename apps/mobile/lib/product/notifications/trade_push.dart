@@ -64,6 +64,7 @@ class TradePushController extends ChangeNotifier {
     required this.device,
     required this.onOpen,
     required this.onForeground,
+    this.language,
     http.Client? client,
   }) : _client = client ?? http.Client() {
     device.listen(onToken: () => unawaited(refresh()), onMessage: _message);
@@ -74,7 +75,14 @@ class TradePushController extends ChangeNotifier {
   final bool Function()? identityReady;
   final TradePushDevice device;
   final VoidCallback onOpen, onForeground;
+
+  /// The app's language for trade alerts (en, es, pt or fr), so the server
+  /// writes them in it. Null sends none, and the server keeps English.
+  final String? Function()? language;
   final http.Client _client;
+
+  /// Set once an API from before push languages refuses the field.
+  bool _languageRefused = false;
   String? _account;
   bool _bound = false;
   int _generation = 0;
@@ -258,18 +266,29 @@ class TradePushController extends ChangeNotifier {
       'authorization': 'Bearer $access',
       'content-type': 'application/json',
     };
-    final response =
-        await (token == null
-                ? _client.delete(url, headers: headers)
-                : _client.put(
-                    url,
-                    headers: headers,
-                    body: jsonEncode({
-                      'token': token,
-                      'platform': device.platform,
-                    }),
-                  ))
-            .timeout(const Duration(seconds: 10));
+    Future<http.Response> put(String? lang) => _client
+        .put(
+          url,
+          headers: headers,
+          body: jsonEncode({
+            'token': token,
+            'platform': device.platform,
+            'language': ?lang,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+    final lang = _languageRefused ? null : language?.call();
+    var response = token == null
+        ? await _client
+              .delete(url, headers: headers)
+              .timeout(const Duration(seconds: 10))
+        : await put(lang);
+    // An API from before push languages refuses the unknown field before
+    // storing anything: register again without it, and stop sending it.
+    if (token != null && lang != null && response.statusCode == 400) {
+      response = await put(null);
+      if (response.statusCode == 200) _languageRefused = true;
+    }
     if (response.statusCode != 200) {
       throw const TradePushFailure(TradePushIssue.updateFailed);
     }

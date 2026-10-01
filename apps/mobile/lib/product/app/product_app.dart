@@ -493,6 +493,7 @@ class _ProductExperienceState extends State<ProductExperience>
       _tradePush = TradePushController(
         preferences: widget.preferences,
         origin: pushOrigin,
+        language: () => _workdayLanguage ?? 'en',
         identityReady: () => !const {
           AccountPhase.initializing,
           AccountPhase.connecting,
@@ -643,6 +644,10 @@ class _ProductExperienceState extends State<ProductExperience>
         workdayLanguage != _workdayLanguage &&
         desk != null) {
       scheduleMicrotask(desk.refresh);
+    }
+    // Trade alerts are written by the server in the language last registered.
+    if (_workdayLanguageSeen && workdayLanguage != _workdayLanguage) {
+      scheduleMicrotask(() => unawaited(_tradePush?.refresh()));
     }
     _workdayLanguage = workdayLanguage;
     _workdayLanguageSeen = true;

@@ -148,6 +148,67 @@ void main() {
       );
     },
   );
+  test(
+    'the app registers its language for trade alerts, and an older API is asked again without it',
+    () async {
+      Future<List<Map<String, dynamic>>> register({
+        required bool oldApi,
+      }) async {
+        final bodies = <Map<String, dynamic>>[];
+        final french = TradePushController(
+          preferences: preferences,
+          origin: Uri.parse('https://api.example'),
+          identity: () => identity,
+          device: device,
+          onOpen: () {},
+          onForeground: () {},
+          language: () => 'fr',
+          client: MockClient((request) async {
+            if (request.method == 'GET') {
+              return http.Response(
+                jsonEncode({
+                  'tradePush': true,
+                  'platforms': ['android'],
+                }),
+                200,
+              );
+            }
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            bodies.add(body);
+            if (oldApi && body.containsKey('language')) {
+              return http.Response('{"code":"INVALID_REQUEST"}', 400);
+            }
+            return http.Response('{"enabled":true}', 200);
+          }),
+        );
+        french.bind();
+        await french.refresh();
+        await french.setEnabled(true);
+        await french.refresh();
+        expect(french.enabled, isTrue);
+        french.dispose();
+        return bodies;
+      }
+
+      final current = await register(oldApi: false);
+      expect(current.first, {
+        'token': 'a' * 24,
+        'platform': 'android',
+        'language': 'fr',
+      });
+      final older = await register(oldApi: true);
+      expect(older.take(2).toList(), [
+        {'token': 'a' * 24, 'platform': 'android', 'language': 'fr'},
+        {'token': 'a' * 24, 'platform': 'android'},
+      ]);
+      expect(
+        older.skip(2).every((body) => !body.containsKey('language')),
+        isTrue,
+        reason: 'after one refusal the field is not sent again',
+      );
+    },
+  );
+
   test('permission denial does not register or claim success', () async {
     device.nextToken = null;
     await controller.setEnabled(true);
