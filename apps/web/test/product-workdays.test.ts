@@ -200,6 +200,11 @@ test('workdays are read in the page language, and an API from before workday lan
     await session.readWorkdays();
     assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays?lang=fr', '/v1/career/workdays', '/v1/career/workdays'], 'asked once, then English for this client');
 
+    // In a browser, that API's preflight refuses the query: a network failure. A read tries again without it.
+    h = setup(call => {if (call.path.includes('?')) throw new TypeError('Failed to fetch'); return json({journey: journey()});});
+    assert.equal(first(await h.make().readWorkdays()).step, 0);
+    assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays?lang=fr', '/v1/career/workdays']);
+
     // Any other failure is the answer; nothing is sent twice.
     h = setup(() => json({code: 'WORK_UNAVAILABLE'}, 503));
     await rejects(h.make().readWorkdays(), 'WORK_UNAVAILABLE');
