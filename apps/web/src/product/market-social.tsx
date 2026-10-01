@@ -5,7 +5,10 @@ import type {PracticeStorage} from './practice-session';
 import {read} from './product-api';
 import type {ProductApiClient} from './product-api';
 import type {StockCard} from './market-client';
-import {CompanyLogo} from './ui';
+import {CompanyLogo, shares, sharesPlain} from './ui';
+import {t, type MessageKey} from '../i18n/runtime';
+import {useT, type Translator} from '../i18n/react';
+import * as fmt from '../i18n/format';
 
 /* Mobile's Market extras: Following (GET/PUT /v1/following, the real followed
  * list; /v1/watchlist is the fixed sample list), sorting, list tabs and recents. */
@@ -22,11 +25,16 @@ export function parseFollowing(value: unknown): FollowingSnapshot {
   if (revision !== 0) read.instant(v['updatedAt']);
   return Object.freeze({revision, assetIds: Object.freeze(ids)});
 }
+/** Mobile's notice after a Follow tap, kept as a choice so it reads in the page's current language. */
+export interface FollowNotice {readonly kind: 'signIn' | 'unchanged' | 'full' | 'added' | 'removed'; readonly name: string}
+const followNoticeKeys: Record<FollowNotice['kind'], MessageKey> = {signIn: 'market.follow.signIn', unchanged: 'market.follow.unchanged',
+  full: 'market.follow.full', added: 'market.follow.added', removed: 'market.follow.removed'};
+export function followNoticeText(tr: Translator, notice: FollowNotice): string {return tr(followNoticeKeys[notice.kind], {name: notice.name});}
 export interface FollowingState {
   readonly assetIds: readonly string[] | null; readonly busy: boolean; readonly signedIn: boolean;
   isFollowing(assetId: string): boolean;
   /** Returns mobile's notice for the change, and whether sign-in is the next step. */
-  toggle(assetId: string, name: string): Promise<{readonly message: string; readonly signIn: boolean}>;
+  toggle(assetId: string, name: string): Promise<{readonly notice: FollowNotice; readonly signIn: boolean}>;
 }
 /** Account-only, like mobile's followedStocksController. Guests are asked to sign in. */
 export function useFollowing(api: ProductApiClient | null, account: PracticeAccountProof | null): FollowingState {
@@ -43,32 +51,32 @@ export function useFollowing(api: ProductApiClient | null, account: PracticeAcco
       .then(value => {if (!controller.signal.aborted) setSnapshot(value);}, () => undefined);
     return () => controller.abort();
   }, [api, signedIn]);
-  const toggle = useCallback(async (assetId: string, name: string) => {
+  const toggle = useCallback(async (assetId: string, name: string): Promise<{readonly notice: FollowNotice; readonly signIn: boolean}> => {
     const current = accountRef.current;
-    if (!api || !current) return {message: 'Sign in to save your watchlist.', signIn: true};
-    if (busy) return {message: 'Following did not change. Try again.', signIn: false};
+    if (!api || !current) return {notice: {kind: 'signIn', name}, signIn: true};
+    if (busy) return {notice: {kind: 'unchanged', name}, signIn: false};
     setBusy(true);
     try {
       let base = latest.current ?? await api.request({path: '/v1/following', identity: current, parse: parseFollowing});
       const wasFollowing = base.assetIds.includes(assetId);
       for (let attempt = 0; attempt < 2; attempt++) {
         const next = wasFollowing ? base.assetIds.filter(id => id !== assetId) : base.assetIds.includes(assetId) ? [...base.assetIds] : [...base.assetIds, assetId];
-        if (!wasFollowing && next.length > MAX_FOLLOWED) return {message: 'Your watchlist is full. Remove a company first.', signIn: false};
+        if (!wasFollowing && next.length > MAX_FOLLOWED) return {notice: {kind: 'full', name}, signIn: false};
         try {
           const saved = await api.request({path: '/v1/following', method: 'PUT', identity: current, parse: parseFollowing,
             body: {schemaVersion: 1, mutationId: crypto.randomUUID(), baseRevision: base.revision, assetIds: next}});
           setSnapshot(saved);
-          return {message: wasFollowing ? `${name} removed from Following.` : `${name} added to Following.`, signIn: false};
+          return {notice: {kind: wasFollowing ? 'removed' : 'added', name}, signIn: false};
         } catch (error) {
           // Someone else changed the list first: reload and reapply once, keeping their change.
           if (!(error instanceof PracticeError && error.code === 'WATCHLIST_REVISION_CONFLICT') || attempt === 1) throw error;
           base = await api.request({path: '/v1/following', identity: current, parse: parseFollowing}); setSnapshot(base);
         }
       }
-      return {message: 'Following did not change. Try again.', signIn: false};
+      return {notice: {kind: 'unchanged', name}, signIn: false};
     } catch (error) {
-      if (error instanceof PracticeError && error.status === 401) return {message: 'Sign in to save your watchlist.', signIn: true};
-      return {message: 'Following did not change. Try again.', signIn: false};
+      if (error instanceof PracticeError && error.status === 401) return {notice: {kind: 'signIn', name}, signIn: true};
+      return {notice: {kind: 'unchanged', name}, signIn: false};
     } finally {setBusy(false);}
   }, [api, busy]);
   return {assetIds: snapshot?.assetIds ?? null, busy, signedIn, isFollowing: id => snapshot?.assetIds.includes(id) ?? false, toggle};
@@ -83,7 +91,13 @@ export function categoryOf(item: object): MarketCategory | null {
   const value = (item as {category?: unknown}).category;
   return value === 'equity' || value === 'etf' || value === 'commodity' ? value : null;
 }
-export function categoryLabel(category: MarketCategory | null): string {return category === 'etf' ? 'ETF' : category === 'commodity' ? 'Commodity' : 'Stock';}
+export function categoryLabel(category: MarketCategory | null): string {
+  return t(category === 'etf' ? 'market.category.etf' : category === 'commodity' ? 'market.category.commodity' : 'market.category.stock');
+}
+/** A share count for messages: the figure as `shares()` shows it, with the number kept for plural forms. */
+export function shareCount(quantityMicros: string): fmt.Shown {
+  return new fmt.Shown(Number(sharesPlain(quantityMicros).replaceAll(',', '')), shares(quantityMicros));
+}
 /**
  * One row's price and day change from a single source: the listed session when it
  * has a price, otherwise its primary token (funds, pre-IPO and newly listed tokens
@@ -94,7 +108,8 @@ export function marketFigures(card: StockCard): {readonly price: number | null; 
     : {price: card.primaryVariant?.priceUsd ?? null, change: card.primaryVariant?.priceUsd != null ? card.primaryVariant.changePercent24h ?? null : null};
 }
 export type MarketSort = 'featured' | 'name' | 'price' | 'gains' | 'drops';
-export const sortLabels: Record<MarketSort, string> = {featured: 'Featured', name: 'Name', price: 'Highest price', gains: 'Biggest gains', drops: 'Biggest drops'};
+export const sortLabels: Record<MarketSort, MessageKey> = {featured: 'market.sort.featured', name: 'market.sort.name', price: 'market.sort.price',
+  gains: 'market.sort.gains', drops: 'market.sort.drops'};
 export function availableSorts(cards: readonly StockCard[]): MarketSort[] {
   return ['featured', 'name', 'price', ...(cards.some(card => marketFigures(card).change !== null) ? ['gains', 'drops'] as const : [])];
 }
@@ -137,29 +152,32 @@ export function useSearchRecents(storage: PracticeStorage | null, apiBase: strin
 }
 export type SearchRecents = ReturnType<typeof useSearchRecents>;
 
-export function FollowButton({card, following, onNotice}: {card: StockCard; following: FollowingState; onNotice: (message: string, signIn: boolean) => void}) {
+export function FollowButton({card, following, onNotice}: {card: StockCard; following: FollowingState; onNotice: (notice: FollowNotice, signIn: boolean) => void}) {
+  const tr = useT();
   const followed = following.isFollowing(card.assetId), name = card.name ?? card.assetId;
   return <button className={`follow-button${followed ? ' following' : ''}`} aria-pressed={followed} disabled={following.busy}
-    aria-label={followed ? `Unfollow ${name}` : `Follow ${name}`}
-    onClick={async () => {const result = await following.toggle(card.assetId, name); onNotice(result.message, result.signIn);}}>{followed ? 'Following' : '+ Follow'}</button>;
+    aria-label={tr(followed ? 'market.follow.unfollowName' : 'market.follow.followName', {name})}
+    onClick={async () => {const result = await following.toggle(card.assetId, name); onNotice(result.notice, result.signIn);}}>{tr(followed ? 'market.follow.following' : 'market.follow.follow')}</button>;
 }
 export function RecentsStrip({recents, onOpen}: {recents: SearchRecents; onOpen: (company: RecentCompany) => void}) {
+  const tr = useT();
   if (!recents.recents.length) return null;
-  return <section className="market-recents" aria-label="Recently viewed"><div className="section-line"><h2>Recently viewed</h2><button className="text-button" onClick={recents.clear}>Clear</button></div>
+  return <section className="market-recents" aria-label={tr('market.recents.title')}><div className="section-line"><h2>{tr('market.recents.title')}</h2><button className="text-button" onClick={recents.clear}>{tr('market.recents.clear')}</button></div>
     <div className="market-recents-list">{recents.recents.map(company => <button key={company.assetId} className="market-recent" onClick={() => onOpen(company)}>
       <CompanyLogo name={company.name ?? company.assetId} url={company.imageUrl} size={30}/><span><strong>{company.name ?? company.assetId}</strong><small>{company.symbol ?? categoryLabel(company.category)}</small></span></button>)}</div></section>;
 }
 
 /** Tradeable is offered only in Real mode, from the live trading capabilities (money/market-tradeable.ts). */
 export type MarketList = 'all' | 'following' | 'tradeable';
-const listLabels: Record<MarketList, string> = {all: 'All stocks', following: 'Following', tradeable: 'Tradeable'};
+const listLabels: Record<MarketList, MessageKey> = {all: 'market.lists.all', following: 'market.lists.following', tradeable: 'market.lists.tradeable'};
 export function MarketControls({list, lists = ['all', 'following'], onList, sort, sorts, onSort}: {list: MarketList; lists?: readonly MarketList[]; onList: (list: MarketList) => void;
   sort: MarketSort; sorts: readonly MarketSort[]; onSort: (sort: MarketSort) => void}) {
+  const tr = useT();
   return <div className="market-controls">
-    <div className="market-lists" role="tablist" aria-label="Stock lists">{lists.map(item => <button key={item} role="tab" aria-selected={list === item}
-      className={list === item ? 'active' : ''} onClick={() => onList(item)}>{listLabels[item]}</button>)}</div>
-    {sorts.length > 0 && <label className="market-sort"><span>Sort: </span><select aria-label="Sort stocks" value={sorts.includes(sort) ? sort : 'featured'} onChange={event => onSort(event.target.value as MarketSort)}>
-      {sorts.map(item => <option key={item} value={item}>{sortLabels[item]}</option>)}</select></label>}
+    <div className="market-lists" role="tablist" aria-label={tr('market.lists.label')}>{lists.map(item => <button key={item} role="tab" aria-selected={list === item}
+      className={list === item ? 'active' : ''} onClick={() => onList(item)}>{tr(listLabels[item])}</button>)}</div>
+    {sorts.length > 0 && <label className="market-sort"><span>{tr('market.sort.label')} </span><select aria-label={tr('market.sort.select')} value={sorts.includes(sort) ? sort : 'featured'} onChange={event => onSort(event.target.value as MarketSort)}>
+      {sorts.map(item => <option key={item} value={item}>{tr(sortLabels[item])}</option>)}</select></label>}
   </div>;
 }
 /** Followed companies not on a loaded page are read once from public facts (never invented). */

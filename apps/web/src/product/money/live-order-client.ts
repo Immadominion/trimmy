@@ -7,39 +7,50 @@
 import {USDC_MINT} from './amounts.js';
 import {MoneyHttpError, moneyApiBase, requestJson, responseCode, validBearer, type BearerSource} from './http.js';
 import {CAPABILITIES_MAX_BYTES, parseTradingCapabilities, type TradingCapabilities} from './live-trading.js';
+import {t, type MessageKey, type MessageParams} from '../../i18n/runtime.js';
+
+/** Person-facing copy kept as its catalog key and values, so it reads in the page's language whenever it is shown. */
+export interface MoneyCopy {readonly key: MessageKey; readonly params?: MessageParams}
+/** The copy in the current language. */
+export function copyText(copy: MoneyCopy): string {return t(copy.key, copy.params);}
 
 /** Carries a bounded code; its message is the person-facing copy for that code. */
 export class LiveOrderError extends Error {
   constructor(readonly code: string, readonly retryAfterSeconds: number | null = null) {
     super(liveOrderMessage(code, retryAfterSeconds)); this.name = 'LiveOrderError';
   }
+  /** The message as copy, for screens that show it later. */
+  get copy(): MoneyCopy {return liveOrderCopy(this.code, this.retryAfterSeconds);}
 }
 
 /** Mobile's copy for every code the API can return, plus local signing outcomes. */
 export function liveOrderMessage(code: string, retryAfterSeconds: number | null = null): string {
+  return copyText(liveOrderCopy(code, retryAfterSeconds));
+}
+export function liveOrderCopy(code: string, retryAfterSeconds: number | null = null): MoneyCopy {
   switch (code) {
     case 'LIVE_BUSY': return retryAfterSeconds !== null && retryAfterSeconds > 0
-      ? `Quotes are busy. Try again in ${retryAfterSeconds} ${retryAfterSeconds === 1 ? 'second' : 'seconds'}.` : 'Quotes are busy. Try again in a moment.';
-    case 'ADD_USDC': return 'Add USDC to your Solana wallet first.';
-    case 'ADD_SOL': return 'Add SOL to cover network and account fees.';
-    case 'INSUFFICIENT_HOLDINGS': return 'You don’t have enough of this token to sell.';
-    case 'TRADE_LIMIT': return 'This order is above the current trade limit.';
-    case 'APP_UPDATE_REQUIRED': return 'Update Trimmy to review the issuer terms before trading.';
-    case 'TERMS_REQUIRED': return 'Confirm the issuer terms to continue.';
-    case 'WALLET_REQUIRED': return 'Create your wallet to continue.';
-    case 'ORDER_PENDING': return 'Your previous trade is still confirming.';
-    case 'QUOTE_EXPIRED': return 'That price expired. Get a fresh quote.';
-    case 'NO_ROUTE': return 'No route for this order right now. Try another amount.';
-    case 'MARKET_CLOSED': return 'This stock trades while US markets are open. Try again then.';
-    case 'BELOW_MINIMUM': return 'This order is under the market maker’s minimum. Try a larger amount.';
-    case 'PRICE_OFF_MARKET': return 'That price is too far from the market right now. Try again shortly or a smaller amount.';
-    case 'FEE_TOO_HIGH': return 'The fees are too high for this order. Try later.';
-    case 'ACCOUNT_REQUIRED': return 'Sign in again to use your wallet.';
-    case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': return 'This order needs a fresh quote.';
+      ? {key: 'money.orderError.busySeconds', params: {seconds: retryAfterSeconds}} : {key: 'money.orderError.busy'};
+    case 'ADD_USDC': return {key: 'money.orderError.addUsdc'};
+    case 'ADD_SOL': return {key: 'money.orderError.addSol'};
+    case 'INSUFFICIENT_HOLDINGS': return {key: 'money.orderError.insufficientHoldings'};
+    case 'TRADE_LIMIT': return {key: 'money.orderError.tradeLimit'};
+    case 'APP_UPDATE_REQUIRED': return {key: 'money.orderError.updateApp'};
+    case 'TERMS_REQUIRED': return {key: 'money.orderError.termsRequired'};
+    case 'WALLET_REQUIRED': return {key: 'money.orderError.walletRequired'};
+    case 'ORDER_PENDING': return {key: 'money.orderError.orderPending'};
+    case 'QUOTE_EXPIRED': return {key: 'money.orderError.quoteExpired'};
+    case 'NO_ROUTE': return {key: 'money.orderError.noRoute'};
+    case 'MARKET_CLOSED': return {key: 'money.orderError.marketClosed'};
+    case 'BELOW_MINIMUM': return {key: 'money.orderError.belowMinimum'};
+    case 'PRICE_OFF_MARKET': return {key: 'money.orderError.priceOffMarket'};
+    case 'FEE_TOO_HIGH': return {key: 'money.orderError.feeTooHigh'};
+    case 'ACCOUNT_REQUIRED': return {key: 'money.error.signInAgain'};
+    case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': return {key: 'money.orderError.freshQuote'};
     // The API checks the company and token pair on the spot and refuses one that does not qualify.
-    case 'MARKET_INPUT_INVALID': return 'Trimmy can’t trade this token right now. Choose another version or company.';
-    case 'LIVE_UNAVAILABLE': return 'Trading couldn’t connect. Try again.';
-    default: return 'Couldn’t complete this step. Try again.';
+    case 'MARKET_INPUT_INVALID': return {key: 'money.orderError.marketInputInvalid'};
+    case 'LIVE_UNAVAILABLE': return {key: 'money.orderError.liveUnavailable'};
+    default: return {key: 'money.orderError.generic'};
   }
 }
 

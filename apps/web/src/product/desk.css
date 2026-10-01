@@ -9,6 +9,8 @@
 .desk-screen .balance-label{font-size:13px;color:#e3d9ff}
 .desk-screen .balance-amount{font-size:clamp(34px,3.4vw,49px);font-weight:600;letter-spacing:-1.7px;line-height:1.05;margin:17px 0 0;font-variant-numeric:tabular-nums;white-space:nowrap}
 .desk-screen .balance-amount small{display:inline-block;font-size:12px;font-weight:400;color:#e3d9ff;margin-left:9px;letter-spacing:0}
+/* The practice unit is longer outside English ("d’entraînement"): it may drop below the amount rather than overflow the card. */
+.desk-screen .balance-amount:not(:lang(en)){white-space:normal}
 .desk-screen .balance-details{margin-top:24px;padding-top:18px;border-top:1px solid #ffffff29;gap:32px}
 .desk-screen .balance-details>div{font-size:11px;color:#e3d9ff;gap:6px}
 .desk-screen .balance-details strong{font-size:16px;color:#fff;font-variant-numeric:tabular-nums}

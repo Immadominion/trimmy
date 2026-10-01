@@ -5,9 +5,31 @@ import {PendingMutations, ambiguous, careerApi, newMutationId} from './career-ac
 import type {PromotionReceipt, PromotionWrite, TradeReasonReceipt, TradeReasonWrite} from './career-actions';
 import type {ProductApiClient, ProductIdentity} from './product-api';
 import type {JourneyPrincipal} from './journey-store';
-import {art, shares} from './ui';
+import {art, shares, sharesPlain} from './ui';
+import {t, type MessageKey} from '../i18n/runtime';
+import {useT} from '../i18n/react';
+import * as fmt from '../i18n/format';
 
-export const rankLabel = (rank: CareerRank) => ({rookie: 'Rookie', analyst: 'Analyst', trader: 'Trader', 'senior-trader': 'Senior Trader', partner: 'Partner', legend: 'Legend'})[rank];
+const RANK_KEYS: Readonly<Record<CareerRank, MessageKey>> = {rookie: 'career.rank.rookie', analyst: 'career.rank.analyst', trader: 'career.rank.trader',
+  'senior-trader': 'career.rank.seniorTrader', partner: 'career.rank.partner', legend: 'career.rank.legend'};
+/** A rank's name in the page's language. */
+export const rankLabel = (rank: CareerRank) => t(RANK_KEYS[rank]);
+/**
+ * A rank the API sent with its English label: English shows the API's label
+ * exactly as before, other languages the client's name for that rank.
+ */
+export function rankName(rank: {readonly id: CareerRank; readonly label: string}): string {
+  return fmt.isEnglish() || !Object.hasOwn(RANK_KEYS, rank.id) ? rank.label : rankLabel(rank.id);
+}
+const MISSION_KEYS: Readonly<Record<string, readonly [MessageKey, MessageKey]>> = {
+  'first-paper-buy': ['career.mission.firstPaperBuy', 'career.mission.firstPaperBuyHow'],
+  'write-a-reason': ['career.mission.writeAReason', 'career.mission.writeAReasonHow'],
+  'hold-through-red-day': ['career.mission.holdThroughRedDay', 'career.mission.holdThroughRedDayHow']};
+/** A mission's title and instruction: English shows the API's text exactly, other languages the client's, by mission id. */
+export function missionText(mission: Pick<CareerMission, 'id' | 'title' | 'instruction'>): {readonly title: string; readonly instruction: string} {
+  const keys = Object.hasOwn(MISSION_KEYS, mission.id) ? MISSION_KEYS[mission.id] : undefined;
+  return fmt.isEnglish() || !keys ? {title: mission.title, instruction: mission.instruction} : {title: t(keys[0]), instruction: t(keys[1])};
+}
 
 /** Mobile's eligibleCareerPromotion: a coherent board, the threshold met and its promotion mission complete. */
 export function eligiblePromotion(summary: CareerSummary | null, board: CareerMissionBoard | null): CareerMission | null {
@@ -42,20 +64,21 @@ export function selectReasonTarget(portfolio: PaperPortfolio | null, first: Care
   return null;
 }
 
-function reasonFailure(error: unknown): string {
+/** The copy for a failed reason save, by error code. Kept as a key so it follows a language change. */
+function reasonFailure(error: unknown): MessageKey {
   const code = error instanceof PracticeError ? error.code : '';
-  if (code === 'CAREER_INVALID_INPUT') return 'Use one line and 180 characters or fewer.';
-  if (code === 'PRACTICE_NETWORK_ERROR') return 'You are offline. Your reason was not saved. Try again.';
-  if (code === 'PRACTICE_TIMEOUT') return 'Saving took too long. Try again.';
-  if (error instanceof PracticeError && error.status === 401) return 'Refresh your session before saving this reason.';
-  if (code === 'CAREER_PROFILE_REQUIRED') return 'Finish setting up your profile before saving this reason.';
-  if (code === 'CAREER_ORDER_NOT_FOUND') return 'This paper buy was not found. Refresh your desk.';
-  if (code === 'CAREER_BUY_ORDER_REQUIRED') return 'A reason can be added only to a confirmed paper buy.';
-  if (code === 'CAREER_POSITION_REQUIRED') return 'You need to still hold this stock before saving a reason.';
-  if (code === 'CAREER_REASON_EXISTS') return 'This paper buy already has a reason. Refresh your Career.';
-  if (code === 'CAREER_IDEMPOTENCY_CONFLICT') return 'This retry could not be matched. Refresh your Career.';
-  if (error instanceof PracticeError && error.status === 429) return 'Reasons are busy right now. Try again shortly.';
-  return 'Your reason was not saved. Try again.';
+  if (code === 'CAREER_INVALID_INPUT') return 'career.reason.error.invalid';
+  if (code === 'PRACTICE_NETWORK_ERROR') return 'career.reason.error.offline';
+  if (code === 'PRACTICE_TIMEOUT') return 'career.reason.error.timeout';
+  if (error instanceof PracticeError && error.status === 401) return 'career.reason.error.session';
+  if (code === 'CAREER_PROFILE_REQUIRED') return 'career.reason.error.profile';
+  if (code === 'CAREER_ORDER_NOT_FOUND') return 'career.reason.error.orderMissing';
+  if (code === 'CAREER_BUY_ORDER_REQUIRED') return 'career.reason.error.buyRequired';
+  if (code === 'CAREER_POSITION_REQUIRED') return 'career.reason.error.positionRequired';
+  if (code === 'CAREER_REASON_EXISTS') return 'career.reason.error.exists';
+  if (code === 'CAREER_IDEMPOTENCY_CONFLICT') return 'career.reason.error.conflict';
+  if (error instanceof PracticeError && error.status === 429) return 'career.reason.error.busy';
+  return 'career.reason.error.default';
 }
 
 /** Mobile's PaperReasonFlow: one line, 180 characters, saved once with a durable mutation ID. */
@@ -64,7 +87,8 @@ export function ReasonComposer({target, companyName, pending, onSave, onClose}: 
   onSave: (note: string) => Promise<TradeReasonReceipt>; onClose: (saved: boolean) => void;
 }) {
   const [note, setNote] = useState(pending?.orderId === target.orderId ? pending.note : '');
-  const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [exists, setExists] = useState(false);
+  const tr = useT();
+  const [busy, setBusy] = useState(false), [error, setError] = useState<MessageKey | null>(null), [exists, setExists] = useState(false);
   const [receipt, setReceipt] = useState<TradeReasonReceipt | null>(null);
   // Mobile's _pendingReason: an unconfirmed save is retried with the same command.
   const [retrying, setRetrying] = useState(pending?.orderId === target.orderId);
@@ -83,22 +107,23 @@ export function ReasonComposer({target, companyName, pending, onSave, onClose}: 
   }
   return <div className="settings-modal-backdrop" onClick={event => {if (event.target === event.currentTarget && !busy) onClose(receipt !== null);}}>
     <div className="settings-modal reason-composer" role="dialog" aria-modal="true" aria-labelledby="reason-composer-title">
-      <button className="rank-close" aria-label="Close" disabled={busy} onClick={() => onClose(receipt !== null)}>×</button>
-      <p className="daily-label">{companyName ?? target.symbol} · {shares(target.heldQuantityMicros)} shares held</p>
-      <h2 id="reason-composer-title">{receipt ? 'Reason saved' : 'Write your reason'}</h2>
+      <button className="rank-close" aria-label={tr('career.reason.close')} disabled={busy} onClick={() => onClose(receipt !== null)}>×</button>
+      <p className="daily-label">{tr('career.reason.held', {name: companyName ?? target.symbol,
+        shares: new fmt.Shown(Number(sharesPlain(target.heldQuantityMicros).replaceAll(',', '')), shares(target.heldQuantityMicros))})}</p>
+      <h2 id="reason-composer-title">{receipt ? tr('career.reason.savedTitle') : tr('career.reason.title')}</h2>
       {receipt ? <>
         <blockquote className="reason-saved-note">{receipt.note}</blockquote>
-        <p className="reason-reward">{receipt.trimsAwarded > 0 ? `+${receipt.trimsAwarded} Trims` : 'Mission recorded'}</p>
-        <button className="primary full" onClick={() => onClose(true)}>Done</button>
+        <p className="reason-reward">{receipt.trimsAwarded > 0 ? tr('career.trimsGained', {count: receipt.trimsAwarded}) : tr('career.reason.missionRecorded')}</p>
+        <button className="primary full" onClick={() => onClose(true)}>{tr('common.done')}</button>
       </> : <>
-        <label className="settings-phrase" htmlFor="reason-note"><span>What made you buy?</span></label>
-        <input ref={field} id="reason-note" className="reason-note" maxLength={180} autoComplete="off" placeholder="Your take on this stock…" value={note} disabled={busy}
+        <label className="settings-phrase" htmlFor="reason-note"><span>{tr('career.reason.prompt')}</span></label>
+        <input ref={field} id="reason-note" className="reason-note" maxLength={180} autoComplete="off" placeholder={tr('career.reason.placeholder')} value={note} disabled={busy}
           onChange={event => {setNote(event.target.value.replace(/[\r\n]/gu, ' ')); setError(null);}} onKeyDown={event => {if (event.key === 'Enter') {event.preventDefault(); void save();}}}/>
         <p className="reason-count" aria-live="polite">{[...note].length} / 180</p>
-        {error && <p className="intro-error" role="alert">{error}</p>}
-        {exists ? <button className="primary full" onClick={() => onClose(true)}>Close and refresh</button>
-          : <button className="primary full" disabled={busy || !valid} onClick={() => void save()}>{busy ? 'Saving…' : retrying ? 'Retry reason' : 'Save reason'}</button>}
-        <p className="intro-disclosure">Paper trade comment. {`Who can see it follows your comment privacy in Settings.`}</p>
+        {error && <p className="intro-error" role="alert">{tr(error)}</p>}
+        {exists ? <button className="primary full" onClick={() => onClose(true)}>{tr('career.reason.closeRefresh')}</button>
+          : <button className="primary full" disabled={busy || !valid} onClick={() => void save()}>{busy ? tr('career.saving') : retrying ? tr('career.reason.retry') : tr('career.reason.save')}</button>}
+        <p className="intro-disclosure">{tr('career.reason.disclosure')}</p>
       </>}
     </div>
   </div>;
@@ -107,13 +132,14 @@ export function ReasonComposer({target, companyName, pending, onSave, onClose}: 
 /** Mobile's PromotionMoment after a confirmed promotion. */
 export function PromotionMoment({receipt, onContinue}: {receipt: PromotionReceipt; onContinue: () => void}) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const tr = useT();
   useEffect(() => {heading.current?.focus();}, []);
   return <div className="settings-modal-backdrop"><div className="settings-modal promotion-moment" role="dialog" aria-modal="true" aria-labelledby="promotion-title">
     <img src={art('career-world/trophy.png')} alt="" className="promotion-art"/>
-    <h2 id="promotion-title" ref={heading} tabIndex={-1}>You’re {receipt.toRank === 'analyst' ? 'an' : 'a'} {rankLabel(receipt.toRank)}!</h2>
-    <p>A new chapter on the floor.</p>
-    <dl className="promotion-facts"><div><dt>From</dt><dd>{rankLabel(receipt.fromRank)}</dd></div><div><dt>New rank</dt><dd>{rankLabel(receipt.toRank)}</dd></div><div><dt>Earned</dt><dd>{receipt.trimsAwarded} Trims</dd></div></dl>
-    <button className="primary full" onClick={onContinue}>Back to Career</button>
+    <h2 id="promotion-title" ref={heading} tabIndex={-1}>{tr('career.promotion.title', {rank: receipt.toRank, name: rankLabel(receipt.toRank)})}</h2>
+    <p>{tr('career.promotion.subtitle')}</p>
+    <dl className="promotion-facts"><div><dt>{tr('career.promotion.from')}</dt><dd>{rankLabel(receipt.fromRank)}</dd></div><div><dt>{tr('career.promotion.newRank')}</dt><dd>{rankLabel(receipt.toRank)}</dd></div><div><dt>{tr('career.promotion.earned')}</dt><dd>{tr('career.trims', {count: receipt.trimsAwarded})}</dd></div></dl>
+    <button className="primary full" onClick={onContinue}>{tr('career.backToCareer')}</button>
   </div></div>;
 }
 
@@ -128,7 +154,8 @@ export function useCareerMilestones(options: {
   const {api, identity, principal, pending} = options;
   const latest = useRef(options); latest.current = options;
   const [promoting, setPromoting] = useState(false), [promotion, setPromotion] = useState<PromotionReceipt | null>(null), [moment, setMoment] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  /** A message key, so the copy follows a language change. */
+  const [message, setMessage] = useState<MessageKey | null>(null);
   const [composer, setComposer] = useState<ReasonTarget | null>(null);
   const reasoned = useRef(new Set<string>());
   const eligible = eligiblePromotion(options.career, options.missions);
@@ -137,11 +164,11 @@ export function useCareerMilestones(options: {
     const {career, missions, refresh} = latest.current;
     if (promoting || !api || !identity || !principal || !pending) return false;
     const current = eligiblePromotion(career, missions);
-    if (!current || current.id !== mission.id || !current.promotesToRank) {setMessage('Refresh Career before claiming this promotion.'); void refresh(); return false;}
+    if (!current || current.id !== mission.id || !current.promotesToRank) {setMessage('career.milestones.refreshBeforePromotion'); void refresh(); return false;}
     const target = current.promotesToRank as PromotionWrite['targetRank'];
     const saved = pending.read<PromotionWrite>('promotion', principal);
     const body: PromotionWrite = saved?.targetRank === target ? saved : {schemaVersion: 1, mutationId: newMutationId(), targetRank: target};
-    try {if (saved !== body) pending.save('promotion', principal, body);} catch {setMessage('Your promotion could not be prepared. Try again.'); return false;}
+    try {if (saved !== body) pending.save('promotion', principal, body);} catch {setMessage('career.milestones.promotionNotPrepared'); return false;}
     setPromoting(true); setMessage(null);
     try {
       const receipt = await careerApi.promote(api, identity, body);
@@ -151,7 +178,7 @@ export function useCareerMilestones(options: {
       return true;
     } catch (error) {
       if (!ambiguous(error)) pending.clear('promotion', principal);
-      setMessage(error instanceof PracticeError && error.status === 409 ? 'Your career changed. Refresh Career and try again.' : 'Your promotion could not be saved. Try again.');
+      setMessage(error instanceof PracticeError && error.status === 409 ? 'career.milestones.careerChanged' : 'career.milestones.promotionNotSaved');
       void refresh();
       return false;
     } finally {setPromoting(false);}
@@ -160,7 +187,7 @@ export function useCareerMilestones(options: {
   const openComment = useCallback(() => {
     const {portfolio, career} = latest.current;
     const target = selectReasonTarget(portfolio, career?.firstConfirmedBuy ?? null, reasoned.current);
-    if (!target) {setMessage('This mission needs a confirmed paper buy you still hold. Choose a stock when you are ready.'); return false;}
+    if (!target) {setMessage('career.milestones.needsHeldBuy'); return false;}
     setMessage(null); setComposer(target); return true;
   }, []);
 

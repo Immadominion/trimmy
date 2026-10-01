@@ -1,7 +1,8 @@
 import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import type {CSSProperties} from 'react';
 import {Loading, art} from './ui';
-import {opensLabel} from './workday-schedule';
+import {opensWhen} from './workday-schedule';
+import {useT} from '../i18n/react';
 
 export interface CareerWorldAssignment {
   readonly id: string;
@@ -65,6 +66,7 @@ export function CareerWorld({assignments: listed, upcoming = null, loading = fal
   const [geometry, setGeometry] = useState({width: 400, rowHeight: 300});
   const [futureCount, setFutureCount] = useState(10);
   const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
+  const tr = useT();
   const current = assignments?.find(item => !item.completedAt && !item.opensAt);
   const focus = current ?? assignments?.find(item => item.opensAt);
   const count = (assignments?.length ?? 0) + futureCount;
@@ -94,13 +96,13 @@ export function CareerWorld({assignments: listed, upcoming = null, loading = fal
     return () => observer.disconnect();
   }, [assignments?.length]);
 
-  if (!assignments?.length) return <section className="career-world-empty" aria-label="Your career path">{loading
-    ? <Loading>Opening your assignments…</Loading>
-    : <><img src={careerSceneryUrl('exchange')} alt="" width="160" height="160"/><p>{error ?? 'Your assignments couldn’t load.'}</p>{onRetry && <button className="text-button" onClick={onRetry}>Try again</button>}</>}</section>;
+  if (!assignments?.length) return <section className="career-world-empty" aria-label={tr('career.world.label')}>{loading
+    ? <Loading>{tr('career.assignments.loading')}</Loading>
+    : <><img src={careerSceneryUrl('exchange')} alt="" width="160" height="160"/><p>{error ?? tr('career.assignments.loadFailed')}</p>{onRetry && <button className="text-button" onClick={onRetry}>{tr('common.tryAgain')}</button>}</>}</section>;
 
   return <div className="career-world" data-motion={motion && pageVisible ? 'on' : 'off'}>
-    {error && <div className="career-world-error" role="status"><span>{error}</span>{onRetry && <button className="text-button" onClick={onRetry}>Retry</button>}</div>}
-    <div className="career-world-scroll" role="region" aria-label="Your career path" tabIndex={0} ref={viewport}
+    {error && <div className="career-world-error" role="status"><span>{error}</span>{onRetry && <button className="text-button" onClick={onRetry}>{tr('career.retry')}</button>}</div>}
+    <div className="career-world-scroll" role="region" aria-label={tr('career.world.label')} tabIndex={0} ref={viewport}
       onScroll={event => {
         const element = event.currentTarget;
         if (element.scrollHeight > element.clientHeight && element.scrollHeight - element.clientHeight - element.scrollTop < 600)
@@ -111,26 +113,28 @@ export function CareerWorld({assignments: listed, upcoming = null, loading = fal
         {Array.from({length: count}, (_, index) => {
           const assignment = assignments[index];
           const done = !!assignment?.completedAt, active = !!assignment && assignment.id === current?.id;
-          const waiting = assignment?.opensAt ? opensLabel(assignment.opensAt) : null;
+          const waiting = assignment?.opensAt ? opensWhen(assignment.opensAt) : null;
           const x = nodeX(index, geometry.width), artSize = Math.min(178, geometry.width * .41);
           const sceneryLeft = x < geometry.width / 2 ? geometry.width - artSize - 12 : 12;
           const titleLeft = Math.max(12, Math.min(geometry.width - 202, x - 95));
           const style = {'--world-node-x': `${x}px`, '--world-label-left': `${titleLeft}px`,
             '--world-art-left': `${sceneryLeft}px`, '--world-art-size': `${artSize}px`} as CSSProperties;
           const scenery = assignment?.art ?? careerScenery[index % careerScenery.length]!;
-          const label = assignment ? `Day ${assignment.ordinal}, ${assignment.title}, ${done ? 'filed' : active ? 'current assignment' : waiting ? `opens ${waiting}` : 'locked'}` : 'Coming later';
+          const named = assignment ? {day: assignment.ordinal, title: assignment.title} : null;
+          const label = named ? done ? tr('career.world.nodeFiled', named) : active ? tr('career.world.nodeCurrent', named)
+            : waiting ? tr('career.world.nodeOpens', {...named, ...waiting}) : tr('career.world.nodeLocked', named) : tr('career.world.comingLater');
           const nodeContents = done ? <Seal/> : active ? assignment!.ordinal : assignment ? <Lock/> : <span aria-hidden="true">···</span>;
           return <li className={`career-world-row${active ? ' current' : ''}${done ? ' filed' : ''}${!assignment ? ' future' : ''}`}
             key={assignment?.id ?? `future-${index}`} data-current={assignment && assignment.id === focus?.id ? 'true' : undefined} data-assignment-id={assignment?.id} style={style}>
-            {(index % 5 === 0) && <p className="career-world-district">{assignment?.district ?? (index === assignments.length ? 'Beyond the first month' : 'The city keeps growing')}</p>}
+            {(index % 5 === 0) && <p className="career-world-district">{assignment?.district ?? (index === assignments.length ? tr('career.world.beyondFirstMonth') : tr('career.world.cityGrows'))}</p>}
             <img className="career-world-scenery" src={careerSceneryUrl(scenery)} width="178" height="178" loading="lazy" decoding="async" alt=""/>
             {index % 2 === 0 && <img className="career-world-small-scenery" src={careerSceneryUrl(careerScenery[(index * 7 + 3) % careerScenery.length]!)} width="64" height="64" loading="lazy" decoding="async" alt=""/>}
             {assignment && !active && !done ? <details className="career-world-locked">
-              <summary className="career-world-node" aria-label={`${label}. Preview assignment.`}>{nodeContents}</summary>
-              <div className="career-world-preview"><strong>{assignment.title}</strong>{assignment.brief && <p>{assignment.brief}</p>}<small>{waiting ? `Opens ${waiting}. One new assignment each weekday.` : `Complete day ${assignment.ordinal - 1} to open this desk.`}</small></div>
+              <summary className="career-world-node" aria-label={tr('career.world.previewLabel', {label})}>{nodeContents}</summary>
+              <div className="career-world-preview"><strong>{assignment.title}</strong>{assignment.brief && <p>{assignment.brief}</p>}<small>{waiting ? tr('career.world.opensPreview', waiting) : tr('career.world.completeEarlier', {day: assignment.ordinal - 1})}</small></div>
             </details> : assignment ? <button className="career-world-node" type="button" aria-label={label} aria-current={active ? 'step' : undefined} onClick={() => onOpen(assignment.id)}>{nodeContents}</button>
               : <div className="career-world-node" aria-label={label}>{nodeContents}</div>}
-            <div className="career-world-label">{active && <span className="career-world-current-label">{(assignment?.step ?? 0) > 0 ? 'Continue' : 'Start here'}</span>}{waiting && <span className="career-world-current-label">Opens {waiting}</span>}<strong>{assignment?.title ?? 'Coming later'}</strong>{done && <span className="career-world-filed-label">Filed</span>}</div>
+            <div className="career-world-label">{active && <span className="career-world-current-label">{(assignment?.step ?? 0) > 0 ? tr('career.world.continue') : tr('career.world.startHere')}</span>}{waiting && <span className="career-world-current-label">{tr('career.world.opens', waiting)}</span>}<strong>{assignment?.title ?? tr('career.world.comingLater')}</strong>{done && <span className="career-world-filed-label">{tr('career.world.filed')}</span>}</div>
           </li>;
         })}
       </ol>

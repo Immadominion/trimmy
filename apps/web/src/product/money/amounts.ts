@@ -2,7 +2,13 @@
  * Exact own-money amounts. Raw integer strings never pass through floating
  * point, and nothing here invents a price for a balance. Ported from mobile's
  * account_amounts.dart and live_trading.dart so both apps round the same way.
+ *
+ * `formatRawUnits`, `rawDecimal`, `groupedDecimal` and `ShareScale.shares` are
+ * English figures for logic and amount fields. The labels (`usdcLabel`,
+ * `solLabel`, `usdcDollars`, `percentFromBps`, `ShareScale.label`, `approx`,
+ * `exact`) are for reading, in the page's language.
  */
+import * as fmt from '../../i18n/format.js';
 export const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 export const USDC_DECIMALS = 6;
 export const SOL_DECIMALS = 9;
@@ -32,9 +38,9 @@ export function rawDecimal(raw: string, decimals: number): string {
   return value.replace(/\.?0+$/, '');
 }
 
-/** Exact typed amount to raw units. Null when invalid, too precise or zero. */
+/** Exact typed amount to raw units. Null when invalid, too precise or zero. Either decimal mark is accepted outside English. */
 export function amountRaw(text: string, decimals: number): string | null {
-  const value = text.trim();
+  const value = fmt.normalizeDecimalInput(text).trim();
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 18 || value.length > 40 ||
       !/^[0-9]+(?:\.[0-9]*)?$/.test(value)) return null;
   const [whole = '0', fraction = ''] = value.split('.');
@@ -56,8 +62,8 @@ export function groupedDecimal(decimal: string): string {
 /** Basis points as a short percentage: 300 is 3%, 20 is 0.2%. */
 export function percentFromBps(bps: number): string {
   const whole = Math.trunc(bps / 100), rest = Math.abs(bps % 100);
-  if (rest === 0) return `${whole}%`;
-  return `${whole}.${rest.toString().padStart(2, '0').replace(/0$/, '')}%`;
+  if (rest === 0) return fmt.percent(`${whole}%`);
+  return fmt.percent(`${whole}.${rest.toString().padStart(2, '0').replace(/0$/, '')}%`);
 }
 
 /** USDC cash as dollars, truncated to cents, like mobile's cash card. */
@@ -65,11 +71,11 @@ export function usdcDollars(raw: string): string | null {
   if (!isRawAmount(raw)) return null;
   const cents = BigInt(raw) / 10_000n;
   const whole = (cents / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return `$${whole}.${(cents % 100n).toString().padStart(2, '0')}`;
+  return fmt.usd(`$${whole}.${(cents % 100n).toString().padStart(2, '0')}`);
 }
 
-export function usdcLabel(raw: string): string {return `${formatRawUnits(raw, USDC_DECIMALS) ?? rawDecimal(raw, USDC_DECIMALS)} USDC`;}
-export function solLabel(lamports: string): string {return `${formatRawUnits(lamports, SOL_DECIMALS) ?? rawDecimal(lamports, SOL_DECIMALS)} SOL`;}
+export function usdcLabel(raw: string): string {return `${fmt.number(formatRawUnits(raw, USDC_DECIMALS) ?? rawDecimal(raw, USDC_DECIMALS))} USDC`;}
+export function solLabel(lamports: string): string {return `${fmt.number(formatRawUnits(lamports, SOL_DECIMALS) ?? rawDecimal(lamports, SOL_DECIMALS))} SOL`;}
 
 /** Signed lamports (a simulation may return SOL) as an unsigned SOL amount and its sign. */
 export function signedLamports(value: string): {negative: boolean; lamports: string} | null {
@@ -134,8 +140,9 @@ export class ShareScale {
     return short[0] > 0n ? short : at(this.decimals);
   }
 
+  /** For reading, in the page's language. */
   private static read([units, digits]: [bigint, number]): string {
-    return formatRawUnits(units.toString(), digits) ?? rawDecimal(units.toString(), digits);
+    return fmt.number(formatRawUnits(units.toString(), digits) ?? rawDecimal(units.toString(), digits));
   }
 
   /** Shares for an amount field: rounded down, no separators. */

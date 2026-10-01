@@ -10,9 +10,12 @@ import {shortenAddress} from './amounts.js';
 import {requestRealAfterSignIn, useMoney} from './money-api.js';
 import {qrMatrix} from './qr-matrix.js';
 import {walletAddress} from './wallet-controller.js';
+import {useT} from '../../i18n/react.js';
+import type {MessageKey} from '../../i18n/runtime.js';
 
 /** The receive address as a QR code: square finder eyes, round modules, like mobile. */
 export function AddressQr({address}: {address: string}) {
+  const tr = useT();
   const matrix = useMemo(() => {try {return qrMatrix(address);} catch {return null;}}, [address]);
   if (!matrix) return null;
   const {size, modules} = matrix;
@@ -23,7 +26,7 @@ export function AddressQr({address}: {address: string}) {
     if (dark && !finder(row, col)) dots.push(`M${col + .5},${row + .08}a.42,.42 0 1,0 .001,0`);
   });
   const eyes = [[0, 0], [0, size - 7], [size - 7, 0]] as const;
-  return <svg className="money-qr" viewBox={`-2 -2 ${size + 4} ${size + 4}`} role="img" aria-label={`Solana deposit address ${address}`} data-qr-size={size}>
+  return <svg className="money-qr" viewBox={`-2 -2 ${size + 4} ${size + 4}`} role="img" aria-label={tr('money.fund.qrLabel', {address})} data-qr-size={size}>
     <rect x="-2" y="-2" width={size + 4} height={size + 4} fill="#fff"/>
     {eyes.map(([row, col]) => <g key={`${row}-${col}`} fill="none" stroke="currentColor">
       <rect x={col + .5} y={row + .5} width="6" height="6" rx="1.2" strokeWidth="1"/>
@@ -35,9 +38,10 @@ export function AddressQr({address}: {address: string}) {
 
 export function FundWalletSheet({onClose}: {onClose(): void}) {
   const money = useMoney();
+  const tr = useT();
   const titleId = useId();
   const [method, setMethod] = useState<'crypto' | 'card'>('crypto');
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState<MessageKey | null>(null);
   const [copied, setCopied] = useState(false), [refreshing, setRefreshing] = useState(false);
   const closeButton = useRef<HTMLButtonElement>(null), opener = useRef<Element | null>(null);
   const refreshRef = useRef(money.refreshWallet); refreshRef.current = money.refreshWallet;
@@ -65,59 +69,59 @@ export function FundWalletSheet({onClose}: {onClose(): void}) {
   }, [copied]);
 
   const state = money.wallet, address = walletAddress(state);
-  const walletIssue = state.context?.embeddedSolanaWallet.status === 'ambiguous' ? 'We couldn’t confirm your wallet.'
-    : state.phase === 'offline' && !navigator.onLine ? 'You’re offline. Reconnect to load your wallet.'
-    : state.checked && !refreshing && state.context === null ? 'Couldn’t load your wallet.' : null;
+  const walletIssue = state.context?.embeddedSolanaWallet.status === 'ambiguous' ? tr('money.fund.walletUnconfirmed')
+    : state.phase === 'offline' && !navigator.onLine ? tr('money.fund.offline')
+    : state.checked && !refreshing && state.context === null ? tr('money.fund.walletFailed') : null;
   async function create() {
     setBusy(true); setMessage(null);
     try {
       const outcome = await money.setUpWallet();
-      setMessage(outcome === 'ready' || outcome === 'awaiting-server' ? null : 'Couldn’t create your wallet. Try again.');
+      setMessage(outcome === 'ready' || outcome === 'awaiting-server' ? null : 'money.fund.createFailed');
       void money.refreshWallet();
-    } catch {setMessage('Couldn’t create your wallet. Try again.');}
+    } catch {setMessage('money.fund.createFailed');}
     finally {setBusy(false);}
   }
   async function copy(value: string) {
     try {await navigator.clipboard.writeText(value); setCopied(true);}
-    catch {setMessage('Couldn’t copy the address. Select it and copy it instead.');}
+    catch {setMessage('money.fund.copyFailed');}
   }
   function signIn() {requestRealAfterSignIn(); onClose(); window.location.hash = 'sign-in';}
 
   return <div className="money-sheet-backdrop" onMouseDown={event => {if (event.target === event.currentTarget) onClose();}}>
     <section className="money-sheet fund-wallet" role="dialog" aria-modal="true" aria-labelledby={titleId}
       onKeyDown={event => {if (event.key === 'Escape') {event.stopPropagation(); onClose();}}}>
-      <header className="money-sheet-head"><h2 id={titleId}>Add money</h2>
-        <button ref={closeButton} className="money-close" aria-label="Close" onClick={onClose}>×</button></header>
-      <div className="fund-methods" role="radiogroup" aria-label="How to add money">
+      <header className="money-sheet-head"><h2 id={titleId}>{tr('money.fund.title')}</h2>
+        <button ref={closeButton} className="money-close" aria-label={tr('money.close')} onClick={onClose}>×</button></header>
+      <div className="fund-methods" role="radiogroup" aria-label={tr('money.fund.methods')}>
         <button role="radio" aria-checked={method === 'crypto'} className={method === 'crypto' ? 'selected' : ''} onClick={() => setMethod('crypto')}>
-          <span>Crypto</span><small className="fund-tag recommended">Recommended</small></button>
+          <span>{tr('money.fund.crypto')}</span><small className="fund-tag recommended">{tr('money.fund.recommended')}</small></button>
         <button role="radio" aria-checked={method === 'card'} aria-disabled="true" className={`unavailable${method === 'card' ? ' selected' : ''}`} onClick={() => setMethod('card')}>
-          <span>Card</span><small className="fund-tag">Coming soon</small></button>
+          <span>{tr('money.fund.card')}</span><small className="fund-tag">{tr('money.fund.comingSoon')}</small></button>
       </div>
-      {method === 'card' ? <div className="fund-card-soon" role="status"><h3>Card payments are coming soon.</h3>
-        <p>For now, add money with crypto: send USDC to your wallet on Solana.</p>
-        <button className="secondary" onClick={() => setMethod('crypto')}>Use crypto</button></div>
+      {method === 'card' ? <div className="fund-card-soon" role="status"><h3>{tr('money.fund.cardSoonTitle')}</h3>
+        <p>{tr('money.fund.cardSoonBody')}</p>
+        <button className="secondary" onClick={() => setMethod('crypto')}>{tr('money.fund.useCrypto')}</button></div>
       : !money.available ? <div className="fund-state"><img src={art('career-world/safe.png')} alt="" loading="lazy"/>
-        <h3>A wallet for your money</h3><p>Sign in to create your own Solana wallet and add money.</p>
-        <button className="primary" onClick={signIn}>Sign in</button></div>
+        <h3>{tr('money.fund.walletTitle')}</h3><p>{tr('money.fund.signInBody')}</p>
+        <button className="primary" onClick={signIn}>{tr('common.signIn')}</button></div>
       : address === null ? state.context?.embeddedSolanaWallet.status === 'missing' ? <div className="fund-state">
-          <img src={art('career-world/safe.png')} alt="" loading="lazy"/><h3>A wallet for your money</h3>
-          <button className="primary" disabled={busy || state.setupBusy || !money.canSetUpWallet} onClick={() => void create()}>{busy || state.setupBusy ? 'Creating…' : 'Create wallet'}</button>
-          {money.walletSdk === 'unavailable' && <p className="fund-note">Wallet setup isn’t available in this browser right now.</p>}
+          <img src={art('career-world/safe.png')} alt="" loading="lazy"/><h3>{tr('money.fund.walletTitle')}</h3>
+          <button className="primary" disabled={busy || state.setupBusy || !money.canSetUpWallet} onClick={() => void create()}>{busy || state.setupBusy ? tr('money.fund.creating') : tr('money.fund.createWallet')}</button>
+          {money.walletSdk === 'unavailable' && <p className="fund-note">{tr('money.fund.setupUnavailable')}</p>}
         </div>
         : walletIssue !== null ? <div className="fund-state"><h3 data-testid="fund-wallet-unavailable">{walletIssue}</h3>
-          <button className="text-button" disabled={refreshing} onClick={() => {setRefreshing(true); void money.refreshWallet().finally(() => setRefreshing(false));}}>{refreshing ? 'Checking…' : 'Try again'}</button></div>
-        : <div className="fund-state" role="status"><span className="loading-dot" aria-hidden="true"/>Checking your wallet…</div>
+          <button className="text-button" disabled={refreshing} onClick={() => {setRefreshing(true); void money.refreshWallet().finally(() => setRefreshing(false));}}>{refreshing ? tr('common.checking') : tr('common.tryAgain')}</button></div>
+        : <div className="fund-state" role="status"><span className="loading-dot" aria-hidden="true"/>{tr('money.checkingWallet')}</div>
       : <div className="fund-deposit">
         <div className="money-qr-frame"><AddressQr address={address}/></div>
         <h3>Solana</h3>
         <p className="fund-address" aria-label={address}>{shortenAddress(address)}</p>
-        <p className="fund-note">Send only USDC or SOL to this account on the Solana network.</p>
-        <p className="fund-note subtle">USDC is your cash for trades. A little SOL pays network fees.</p>
-        <button className="primary" onClick={() => void copy(address)}>{copied ? 'Copied' : 'Copy address'}</button>
-        <details className="fund-full-address"><summary>Show full address</summary><code>{address}</code></details>
+        <p className="fund-note">{tr('money.fund.sendOnly')}</p>
+        <p className="fund-note subtle">{tr('money.fund.cashNote')}</p>
+        <button className="primary" onClick={() => void copy(address)}>{copied ? tr('money.fund.copied') : tr('money.fund.copy')}</button>
+        <details className="fund-full-address"><summary>{tr('money.fund.showAddress')}</summary><code>{address}</code></details>
       </div>}
-      {message && <p className="fund-message" role="alert">{message}</p>}
+      {message && <p className="fund-message" role="alert">{tr(message)}</p>}
     </section>
   </div>;
 }

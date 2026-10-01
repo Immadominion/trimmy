@@ -4,7 +4,7 @@
  * id → execute → reconcile. A lost reply after dispatch is reconciled by the
  * order id and never resent. Rendering lives in live-order-panel.tsx.
  */
-import {LiveOrderError, uncertainNetwork, type LiveOrder, type LiveOrderClient} from './live-order-client.js';
+import {copyText, LiveOrderError, uncertainNetwork, type LiveOrder, type LiveOrderClient, type MoneyCopy} from './live-order-client.js';
 import {USDC_MINT} from './amounts.js';
 import type {TradingAsset, TradingIssuer} from './live-trading.js';
 import type {PendingOrderStore} from './stores.js';
@@ -16,8 +16,10 @@ export interface OrderSessionState {
   readonly phase: OrderPhase;
   /** The reviewed or submitted order this screen is about. */
   readonly order: LiveOrder | null;
-  /** Person-facing copy for the last problem, if any. */
+  /** Person-facing copy for the last problem, if any, in the language of the moment it was set. */
   readonly notice: string | null;
+  /** The same notice as copy: screens show this, so it follows a language change. */
+  readonly noticeCopy: MoneyCopy | null;
   readonly noticeCode: string | null;
   /** The last refusal asked for USDC or SOL: offer Add money. */
   readonly fundingNeeded: boolean;
@@ -41,8 +43,10 @@ export interface OrderSessionOptions {
 /** Refusals the API returns before it dispatches anything; they cannot leave an order in flight. */
 const REFUSED_BEFORE_DISPATCH = new Set(['INVALID_REVIEW', 'INVALID_SIGNATURE', 'QUOTE_EXPIRED', 'WALLET_REQUIRED', 'ACCOUNT_REQUIRED']);
 const TERMINAL = new Set(['confirmed', 'failed', 'expired']);
-const initial: OrderSessionState = Object.freeze({phase: 'checking', order: null, notice: null, noticeCode: null,
+const initial: OrderSessionState = Object.freeze({phase: 'checking', order: null, notice: null, noticeCopy: null, noticeCode: null,
   fundingNeeded: false, termsRequired: false});
+/** A state change; a notice is given as copy and kept both as copy and as text. */
+type Patch = Partial<Omit<OrderSessionState, 'notice' | 'noticeCopy'>> & {readonly notice?: MoneyCopy | null};
 
 export class LiveOrderSession {
   readonly #options: OrderSessionOptions; readonly #now: () => number;
@@ -64,22 +68,22 @@ export class LiveOrderSession {
     if (this.#expiry) clearTimeout(this.#expiry);
     this.#listeners.clear();
   }
-  #set(patch: Partial<OrderSessionState>): void {
+  #set({notice, ...patch}: Patch): void {
     if (this.#disposed) return;
-    this.#state = Object.freeze({...this.#state, ...patch});
+    this.#state = Object.freeze({...this.#state, ...patch, ...notice === undefined ? {} : {notice: notice && copyText(notice), noticeCopy: notice}});
     for (const listener of [...this.#listeners]) listener();
   }
   #guard(): boolean {
     if (this.current) return true;
     this.#stopTimers();
-    this.#set({phase: 'account-changed', order: null, notice: 'Sign in again to use your wallet.', noticeCode: 'ACCOUNT_REQUIRED'});
+    this.#set({phase: 'account-changed', order: null, notice: {key: 'money.error.signInAgain'}, noticeCode: 'ACCOUNT_REQUIRED'});
     return false;
   }
   #stopTimers(): void {
     if (this.#poll) {clearTimeout(this.#poll); this.#poll = null;}
     if (this.#expiry) {clearTimeout(this.#expiry); this.#expiry = null;}
   }
-  notice(message: string | null, code: string | null = null): void {this.#set({notice: message, noticeCode: code});}
+  notice(message: MoneyCopy | null, code: string | null = null): void {this.#set({notice: message, noticeCode: code});}
 
   /** Shows an order as the person should read it: an uncertain reviewed order is still being checked. */
   #display(order: LiveOrder): LiveOrder {
@@ -145,7 +149,7 @@ export class LiveOrderSession {
       const code = error instanceof LiveOrderError ? error.code : 'PREVIEW_FAILED';
       this.#set({phase: 'entry', fundingNeeded: code === 'ADD_USDC' || code === 'ADD_SOL', termsRequired: code === 'TERMS_REQUIRED',
         notice: error instanceof LiveOrderError && code !== 'NETWORK_UNCERTAIN' && code !== 'NETWORK_TIMEOUT'
-          ? error.message : 'Couldn’t get a verified quote. Try again.', noticeCode: code});
+          ? error.copy : {key: 'money.notice.verifiedQuote'}, noticeCode: code});
       if (code === 'ORDER_PENDING') {this.#busy = false; await this.restore();}
     } finally {this.#busy = false;}
   }
@@ -208,22 +212,22 @@ export class LiveOrderSession {
         this.#options.pending.clear(order.id); this.#uncertainId = null;
         const expired = error.code === 'QUOTE_EXPIRED';
         this.#set({phase: expired ? 'expired' : 'entry', order: expired ? {...order, status: 'expired'} : null,
-          notice: error.message, noticeCode: error.code});
+          notice: error.copy, noticeCode: error.code});
       } else if (dispatched) {
-        this.#set({phase: 'pending', order: {...order, status: 'pending'}, notice: 'Checking the result. Your order won’t be sent twice.',
+        this.#set({phase: 'pending', order: {...order, status: 'pending'}, notice: {key: 'money.notice.checkingResult'},
           noticeCode: error instanceof LiveOrderError ? error.code : 'UNKNOWN'});
         this.#schedule();
       } else {
         const code = error instanceof WalletSignError || error instanceof LiveOrderError ? error.code : 'SIGNING_FAILED';
         const expired = code === 'QUOTE_EXPIRED' || this.#now() >= Date.parse(order.expiresAt);
         this.#set({phase: expired ? 'expired' : 'reviewed', order: expired ? {...order, status: 'expired'} : order, noticeCode: code,
-          notice: code === 'STORAGE_REQUIRED' ? 'Allow browser storage so Trimmy can keep track of this order. No order was sent.'
-            : expired ? 'That price expired. Get a fresh quote. No order was sent.'
-            : code === 'ACCOUNT_CHANGED' ? 'Your account changed. No order was sent.'
-            : code === 'WALLET_UNAVAILABLE' ? 'Your wallet is still connecting. Try again in a moment. No order was sent.'
-            : code === 'WALLET_CHANGED' ? 'Your wallet changed. Get a fresh quote. No order was sent.'
-            : code === 'SIGNING_TIMEOUT' ? 'Your wallet didn’t answer in time. No order was sent.'
-            : 'Signing didn’t finish. No order was sent.'});
+          notice: {key: code === 'STORAGE_REQUIRED' ? 'money.notice.storage'
+            : expired ? 'money.notice.priceExpired'
+            : code === 'ACCOUNT_CHANGED' ? 'money.notice.accountChanged'
+            : code === 'WALLET_UNAVAILABLE' ? 'money.notice.walletConnecting'
+            : code === 'WALLET_CHANGED' ? 'money.notice.walletChanged'
+            : code === 'SIGNING_TIMEOUT' ? 'money.notice.signingTimeout'
+            : 'money.notice.signingFailed'}});
       }
     } finally {this.#busy = false;}
   }
@@ -249,7 +253,7 @@ export class LiveOrderSession {
       this.#set({phase: this.#phaseFor(result), order: shown, notice: null, noticeCode: null});
       if (shown.status !== 'pending') await this.#settled(result);
     } catch {
-      if (this.#guard()) this.#set({notice: 'Reconnecting to check your order…', noticeCode: 'RECONNECTING'});
+      if (this.#guard()) this.#set({notice: {key: 'money.notice.reconnecting'}, noticeCode: 'RECONNECTING'});
     } finally {
       this.#polling = false;
       if (this.#state.phase === 'pending') this.#schedule();

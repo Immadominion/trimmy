@@ -7,6 +7,8 @@
 import type {MoneyStorage} from './stores.js';
 import {USDC_MINT} from './amounts.js';
 import {moneyApiBase, requestJson, validBearer, type BearerSource} from './http.js';
+import {copyText, type MoneyCopy} from './live-order-client.js';
+import * as fmt from '../../i18n/format.js';
 
 const ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const RAW = /^(?:0|[1-9][0-9]{0,19})$/;
@@ -14,35 +16,41 @@ const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 
 export class TransferError extends Error {
   constructor(readonly code: string) {super(transferMessage(code)); this.name = 'TransferError';}
+  /** The message as copy, for screens that show it later. */
+  get copy(): MoneyCopy {return transferCopy(this.code);}
 }
 
 /** Mobile's copy for every code the API can return, plus local signing outcomes. */
-export function transferMessage(code: string): string {
+export function transferMessage(code: string): string {return copyText(transferCopy(code));}
+/** The smallest SOL amounts the API names, formatted when shown. */
+const minimumSol = {get amount() {return fmt.number('0.001');}};
+export function transferCopy(code: string): MoneyCopy {
   switch (code) {
-    case 'DESTINATION_INVALID': case 'TRANSFER_INPUT_INVALID': return 'Check the address and the amount.';
-    case 'DESTINATION_SELF': return 'That’s your own wallet. Enter another address.';
-    case 'DESTINATION_NOT_WALLET': return 'That address isn’t a wallet. It may be a token account or a program. Ask for the wallet address instead.';
-    case 'DESTINATION_FROZEN': return 'That wallet can’t receive this token right now.';
-    case 'ASSET_UNSUPPORTED': return 'This token can’t be sent from Trimmy.';
-    case 'ASSET_NOT_TRANSFERABLE': return 'This token has transfer rules Trimmy can’t send with.';
-    case 'ASSET_PAUSED': return 'Its issuer has paused transfers for now.';
-    case 'ASSET_FROZEN': return 'This token is frozen in your wallet. Contact its issuer.';
-    case 'INSUFFICIENT_BALANCE': return 'You don’t have that much ready to send.';
-    case 'ADD_SOL': return 'Add a little SOL to cover the network fee.';
-    case 'LEAVES_TOO_LITTLE_SOL': return 'Leave at least 0.001 SOL, or send all of it.';
-    case 'AMOUNT_TOO_SMALL': return 'A new wallet needs at least 0.001 SOL to open.';
-    case 'SIMULATION_FAILED': case 'SIMULATION_MISMATCH': return 'This send didn’t pass its check. Nothing was sent.';
-    case 'REVIEW_EXPIRED': case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': case 'QUOTE_EXPIRED': return 'This review expired. Review it again.';
-    case 'TRANSFER_NOT_SENT': case 'TRANSFER_PENDING': return 'Check your previous send before starting another.';
-    case 'INVALID_TRANSACTION': return 'This transaction doesn’t match your review. Nothing was signed.';
-    case 'SIGNATURE_MISMATCH': return 'Your wallet returned a different transaction. Nothing was sent.';
-    case 'TRANSFER_STORAGE': return 'Allow device storage to keep your send recoverable.';
-    case 'TRANSFER_BUSY': return 'One moment, then try again.';
-    case 'ACCOUNT_REQUIRED': case 'WALLET_REQUIRED': case 'ACCOUNT_CHANGED': case 'WALLET_CHANGED': return 'Sign in again to use your wallet.';
-    case 'SIGNING_CANCELLED': case 'SIGNING_TIMEOUT': return 'Signing was cancelled. Nothing was sent.';
-    case 'WALLET_BUSY': return 'Your wallet is busy. Try again in a moment.';
-    case 'TRANSFER_UNAVAILABLE': return 'Sending is paused right now. Try again later.';
-    default: return 'Sending couldn’t connect. Try again.';
+    case 'DESTINATION_INVALID': case 'TRANSFER_INPUT_INVALID': return {key: 'money.sendError.checkInput'};
+    case 'DESTINATION_SELF': return {key: 'money.sendError.destinationSelf'};
+    case 'DESTINATION_NOT_WALLET': return {key: 'money.sendError.notWallet'};
+    case 'DESTINATION_FROZEN': return {key: 'money.sendError.destinationFrozen'};
+    case 'ASSET_UNSUPPORTED': return {key: 'money.sendError.assetUnsupported'};
+    case 'ASSET_NOT_TRANSFERABLE': return {key: 'money.sendError.notTransferable'};
+    case 'ASSET_PAUSED': return {key: 'money.sendError.assetPaused'};
+    case 'ASSET_FROZEN': return {key: 'money.sendError.assetFrozen'};
+    case 'INSUFFICIENT_BALANCE': return {key: 'money.sendError.insufficient'};
+    case 'ADD_SOL': return {key: 'money.sendError.addSol'};
+    case 'LEAVES_TOO_LITTLE_SOL': return {key: 'money.sendError.leaveSol', params: minimumSol};
+    case 'AMOUNT_TOO_SMALL': return {key: 'money.sendError.tooSmall', params: minimumSol};
+    case 'SIMULATION_FAILED': case 'SIMULATION_MISMATCH': return {key: 'money.sendError.simulation'};
+    case 'REVIEW_EXPIRED': case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': case 'QUOTE_EXPIRED': return {key: 'money.sendError.reviewExpired'};
+    case 'TRANSFER_NOT_SENT': case 'TRANSFER_PENDING': return {key: 'money.sendError.previousSend'};
+    case 'INVALID_TRANSACTION': return {key: 'money.sendError.invalidTransaction'};
+    case 'SIGNATURE_MISMATCH': return {key: 'money.sendError.signatureMismatch'};
+    case 'TRANSFER_STORAGE': return {key: 'money.sendError.storage'};
+    case 'TRANSFER_BUSY': return {key: 'money.sendError.busy'};
+    case 'ACCOUNT_REQUIRED': case 'WALLET_REQUIRED': case 'ACCOUNT_CHANGED': case 'WALLET_CHANGED': return {key: 'money.error.signInAgain'};
+    case 'SIGNING_CANCELLED': return {key: 'money.sendError.cancelled'};
+    case 'SIGNING_TIMEOUT': return {key: 'money.sendError.signingTimeout'};
+    case 'WALLET_BUSY': return {key: 'money.sendError.walletBusy'};
+    case 'TRANSFER_UNAVAILABLE': return {key: 'money.sendError.paused'};
+    default: return {key: 'money.sendError.connection'};
   }
 }
 

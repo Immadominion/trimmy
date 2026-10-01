@@ -4,29 +4,34 @@ import type {PracticeSession} from './practice-session';
 import type {PaperPortfolio, PaperPreview, PaperReceipt} from './practice-client';
 import {CompanyLogo, Failure, Loading, change, compactUsd, errorCopy, micros, paperPlain, shares, toPaperMicros, usd} from './ui';
 import * as fmt from '../i18n/format';
+import {useT} from '../i18n/react';
+import type {MessageKey} from '../i18n/runtime';
 import {useMoney} from './money/money-api';
 import {discoveryRefs} from './money/market-tradeable';
 import {LiveOrderPanel} from './money/live-order-panel';
 import {marketLabel, type VariantOption} from './money/live-trading';
 import {CompanyFollow, CompanySections, type CompanySocial} from './company-social';
+import {shareCount} from './market-social';
 
-const ranges: readonly [StockInsightPeriod, string][] = [['day', '1D'], ['week', '1W'], ['month', '1M'], ['year', '1Y']];
+const ranges: readonly [StockInsightPeriod, MessageKey][] = [['day', 'market.stock.period.day'], ['week', 'market.stock.period.week'],
+  ['month', 'market.stock.period.month'], ['year', 'market.stock.period.year']];
 
 function TokenChart({insight}: {insight: StockInsight}) {
+  const tr = useT();
   const [active, setActive] = useState<number | null>(null);
   const points = insight.points;
   useEffect(() => setActive(null), [insight]);
-  if (points.length < 2) return <div className="chart-empty"><p>{insight.chartStatus === 'unavailable' ? 'Price history is unavailable right now.' : 'There isn’t enough price history for this period yet.'}</p></div>;
+  if (points.length < 2) return <div className="chart-empty"><p>{tr(insight.chartStatus === 'unavailable' ? 'market.stock.chartUnavailable' : 'market.stock.chartTooShort')}</p></div>;
   const values = points.map(point => point.close), low = Math.min(...values), high = Math.max(...values);
   const span = high === low ? Math.max(high * .02, .01) : high - low;
   const coords = points.map((point, index) => ({x: index / (points.length - 1) * 600, y: 192 - (point.close - low) / span * 165}));
   const path = coords.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
   const selected = Math.min(active ?? points.length - 1, points.length - 1);
   const point = points[selected]!, xy = coords[selected]!;
-  const label = (seconds: number) => new Date(seconds * 1000).toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+  const label = (seconds: number) => fmt.date(seconds * 1000, 'en-US', {month: 'short', day: 'numeric'});
   return <>
-    <div className="chart-selected" aria-live="polite">{active === null ? 'Selected token price in USD' : `${usd(point.close)} · ${new Date(point.unixSeconds * 1000).toLocaleString()}`}</div>
-    <div className="token-chart" tabIndex={0} role="slider" aria-label="Token price history" aria-valuemin={0} aria-valuemax={points.length - 1} aria-valuenow={selected} aria-valuetext={`${usd(point.close)}, ${label(point.unixSeconds)}`}
+    <div className="chart-selected" aria-live="polite">{active === null ? tr('market.stock.chartHint') : tr('market.stock.chartPoint', {price: usd(point.close), time: fmt.dateTime(point.unixSeconds * 1000, undefined)})}</div>
+    <div className="token-chart" tabIndex={0} role="slider" aria-label={tr('market.stock.chartLabel')} aria-valuemin={0} aria-valuemax={points.length - 1} aria-valuenow={selected} aria-valuetext={tr('market.stock.chartValue', {price: usd(point.close), date: label(point.unixSeconds)})}
       onPointerMove={event => {const rect = event.currentTarget.getBoundingClientRect(); setActive(Math.max(0, Math.min(points.length - 1, Math.round((event.clientX - rect.left) / rect.width * (points.length - 1)))));}}
       onPointerLeave={() => setActive(null)} onBlur={() => setActive(null)} onKeyDown={event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -55,15 +60,17 @@ export interface StockScreenProps {
 
 /** Every Market version of the company in Real mode: tradeable ones first, the rest with the reason. */
 function LiveVersions({options, selected, onSelect}: {options: readonly VariantOption[]; selected: string | null; onSelect(mint: string): void}) {
-  return <fieldset className="live-versions"><legend>Versions</legend>{options.map(option => <label key={option.mint} className={`live-version${option.asset ? '' : ' refused'}`}>
+  const tr = useT();
+  return <fieldset className="live-versions"><legend>{tr('market.stock.versions')}</legend>{options.map(option => <label key={option.mint} className={`live-version${option.asset ? '' : ' refused'}`}>
     <input type="radio" name="live-version" value={option.mint} checked={selected === option.mint} disabled={!option.asset} onChange={() => onSelect(option.mint)}/>
     <span><strong>{option.label}</strong><small className={option.tradeable ? 'tradeable' : ''}>{option.tradeable
-      ? option.asset?.market?.usSessions ? marketLabel(option.asset.market) : 'Tradeable' : option.reason ?? 'Not available to trade.'}</small></span>
+      ? option.asset?.market?.usSessions ? marketLabel(option.asset.market) : tr('market.stock.versionTradeable') : option.reason ?? tr('market.stock.versionUnavailable')}</small></span>
   </label>)}</fieldset>;
 }
 
 export function StockScreen(props: StockScreenProps) {
   const {assetId, card, selectedMint, market} = props;
+  const tr = useT();
   const [facts, setFacts] = useState<StockFacts | null>(null);
   const [variants, setVariants] = useState<readonly StockVariant[]>([]);
   const [mint, setMint] = useState<string | null>(selectedMint ?? card?.primaryVariant?.mint ?? null);
@@ -109,36 +116,40 @@ export function StockScreen(props: StockScreenProps) {
     liveOptions.find(option => option.tradeable)?.mint ?? liveOptions.find(option => option.asset)?.mint ?? null : null;
   useEffect(() => {if (liveMint && liveMint !== mint) setMint(liveMint);}, [liveMint]);
   return <>
-    <button className="company-back" onClick={props.onBack}>← Back to Market</button>
+    <button className="company-back" onClick={props.onBack}>{tr('market.stock.back')}</button>
     <div className="company-layout"><section className="company-reading">
-      <div className="company-heading"><CompanyLogo name={name} url={facts?.imageUrl ?? card?.imageUrl ?? null} large/><div><h1>{name}</h1><p>{facts?.symbol ?? card?.symbol ?? 'Company'}{variant ? ` / ${variant.label ?? variant.symbol ?? 'Selected token'}` : ''}</p></div>
+      <div className="company-heading"><CompanyLogo name={name} url={facts?.imageUrl ?? card?.imageUrl ?? null} large/><div><h1>{name}</h1><p>{facts?.symbol ?? card?.symbol ?? tr('market.stock.symbolFallback')}{variant ? ` / ${variant.label ?? variant.symbol ?? tr('market.stock.tokenFallback')}` : ''}</p></div>
         {props.social && <CompanyFollow card={card ?? {assetId, name, symbol: facts?.symbol ?? null, imageUrl: facts?.imageUrl ?? null, stock: facts?.stock ?? null, primaryVariant: null}} social={props.social}/>}</div>
       <div className="company-price">{chartBusy ? '…' : usd(insight?.priceUsd)}</div>
-      <p className="company-price-caption">{insight?.changePercent24h != null && <span className={insight.changePercent24h < 0 ? 'negative' : 'positive'}>{change(insight.changePercent24h)} today</span>}Selected token · USD reference</p>
-      <div className="range-picker" aria-label="Chart period">{ranges.map(([value, label]) => <button key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>)}<button aria-label="Refresh chart" onClick={() => setChartRevision(n => n + 1)}>↻</button></div>
-      {chartBusy ? <div className="chart-empty"><Loading>Getting price history…</Loading></div> : insight ? <TokenChart insight={insight}/> : <div className="chart-empty"><p>Price history is unavailable right now.</p>{chartError !== null && <button className="text-button" onClick={() => setChartRevision(n => n + 1)}>Try again</button>}</div>}
-      {busy && <Loading>Getting company details…</Loading>}
+      <p className="company-price-caption">{insight?.changePercent24h != null && <span className={insight.changePercent24h < 0 ? 'negative' : 'positive'}>{tr('market.stock.changeToday', {change: change(insight.changePercent24h)})}</span>}{tr('market.stock.priceCaption')}</p>
+      <div className="range-picker" aria-label={tr('market.stock.periodLabel')}>{ranges.map(([value, label]) => <button key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{tr(label)}</button>)}<button aria-label={tr('market.stock.refreshChart')} onClick={() => setChartRevision(n => n + 1)}>↻</button></div>
+      {chartBusy ? <div className="chart-empty"><Loading>{tr('market.stock.chartLoading')}</Loading></div> : insight ? <TokenChart insight={insight}/> : <div className="chart-empty"><p>{tr('market.stock.chartUnavailable')}</p>{chartError !== null && <button className="text-button" onClick={() => setChartRevision(n => n + 1)}>{tr('common.tryAgain')}</button>}</div>}
+      {busy && <Loading>{tr('market.stock.detailsLoading')}</Loading>}
       {error !== null && <Failure message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}
       {liveOptions && liveOptions.length > 0 ? <LiveVersions options={liveOptions} selected={liveMint} onSelect={setMint}/>
-      : variants.length > 0 && <><label className="sr-only" htmlFor="token-version">Token version</label><select id="token-version" className="token-select" value={mint ?? ''} onChange={event => setMint(event.target.value)}>{variants.map(v => <option key={v.mint} value={v.mint}>{v.symbol ?? v.name ?? v.variantId} · {v.label ?? v.issuer ?? 'Token'}</option>)}</select></>}
-      {variant?.advisory && <div className="notice warning"><strong>Token caution</strong><p>{variant.advisory.reason}</p></div>}
-      <div className="company-section"><h2>About {name}</h2><p>{facts?.description ?? insight?.description ?? 'A company description is not available right now.'}</p></div>
-      {insight && <dl className="company-metrics"><div><dt>Token trading volume · 24h</dt><dd>{compactUsd(insight.volume24hUsd)}</dd></div><div><dt>Token liquidity</dt><dd>{compactUsd(insight.liquidityUsd)}</dd></div><div><dt>Token holders</dt><dd>{insight.holders?.toLocaleString() ?? 'Unavailable'}</dd></div><div><dt>Company market cap</dt><dd>{compactUsd(insight.stockMarketCapUsd)}</dd></div></dl>}
+      : variants.length > 0 && <><label className="sr-only" htmlFor="token-version">{tr('market.stock.versionLabel')}</label><select id="token-version" className="token-select" value={mint ?? ''} onChange={event => setMint(event.target.value)}>{variants.map(v => <option key={v.mint} value={v.mint}>{v.symbol ?? v.name ?? v.variantId} · {v.label ?? v.issuer ?? tr('market.stock.versionFallback')}</option>)}</select></>}
+      {variant?.advisory && <div className="notice warning"><strong>{tr('market.stock.cautionTitle')}</strong><p>{variant.advisory.reason}</p></div>}
+      <div className="company-section"><h2>{tr('market.stock.about', {name})}</h2><p>{facts?.description ?? insight?.description ?? tr('market.stock.noDescription')}</p></div>
+      {insight && <dl className="company-metrics"><div><dt>{tr('market.stock.volume')}</dt><dd>{compactUsd(insight.volume24hUsd)}</dd></div><div><dt>{tr('market.stock.liquidity')}</dt><dd>{compactUsd(insight.liquidityUsd)}</dd></div><div><dt>{tr('market.stock.holders')}</dt><dd>{insight.holders === null ? tr('common.unavailable') : fmt.integer(insight.holders)}</dd></div><div><dt>{tr('market.stock.marketCap')}</dt><dd>{compactUsd(insight.stockMarketCapUsd)}</dd></div></dl>}
       {props.social && mint && <CompanySections assetId={assetId} mint={mint} social={props.social}/>}
-      <p className="source-note">Data from Tokens.xyz. {insight ? `Checked ${new Date(insight.observedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}. ${Date.parse(insight.refreshAfter) <= clock ? 'Prices may have changed; refresh for a new read. ' : ''}` : ''}Reference prices are for research. {money.real ? 'A real order gets its own reviewed quote.' : 'Your paper order gets its own current quote.'}{mint ? <><br/>Selected token: {mint}</> : null}</p>
+      <p className="source-note">{[tr('market.stock.source'),
+        ...(insight ? [tr('market.stock.checked', {time: fmt.time(insight.observedAt, [], {hour: '2-digit', minute: '2-digit'})}),
+          ...(Date.parse(insight.refreshAfter) <= clock ? [tr('market.stock.stale')] : [])] : []),
+        tr('market.stock.reference'), tr(money.real ? 'market.stock.realQuote' : 'market.stock.paperQuote')].join(' ')}{mint ? <><br/>{tr('market.stock.selectedToken', {mint})}</> : null}</p>
     </section>
     {money.real ? liveOptions && !liveOptions.some(option => option.asset)
-      ? <aside className="trade-panel live"><p className="money-badge real">Real money</p><h2>Not tradeable with real money yet.</h2>
-        <p className="trade-caption">{liveOptions.length === 1 ? liveOptions[0]!.reason : 'None of this company’s tokens can be traded in Trimmy right now.'}</p>
-        {props.onPracticeInPaper && <button className="secondary full" onClick={props.onPracticeInPaper}>Practice in Paper</button>}</aside>
+      ? <aside className="trade-panel live"><p className="money-badge real">{tr('market.stock.realBadge')}</p><h2>{tr('market.stock.realUnavailableTitle')}</h2>
+        <p className="trade-caption">{liveOptions.length === 1 ? liveOptions[0]!.reason : tr('market.stock.realUnavailableBody')}</p>
+        {props.onPracticeInPaper && <button className="secondary full" onClick={props.onPracticeInPaper}>{tr('market.stock.practiceInPaper')}</button>}</aside>
       : <LiveOrderPanel key={`${assetId}:${liveMint ?? ''}`} assetId={assetId} mint={liveMint} companyName={name} discovery={discovery}
         {...(props.onPracticeInPaper ? {onPracticeInPaper: props.onPracticeInPaper} : {})}/>
-    : variant ? <TradePanel key={`${assetId}:${variant.mint}`} {...props} variant={variant} name={name}/> : <aside className="trade-panel"><h2>Practice a move.</h2><p className="trade-caption">A supported token and a current quote are needed to review a paper order.</p></aside>}
+    : variant ? <TradePanel key={`${assetId}:${variant.mint}`} {...props} variant={variant} name={name}/> : <aside className="trade-panel"><h2>{tr('market.stock.noTokenTitle')}</h2><p className="trade-caption">{tr('market.stock.noTokenBody')}</p></aside>}
     </div>
   </>;
 }
 
 function TradePanel({assetId, variant, name, session, portfolio, ensureDesk, onCommitted, onPending, onDesk}: StockScreenProps & {variant: StockVariant; name: string}) {
+  const tr = useT();
   const position = portfolio?.positions.find(p => p.assetId === assetId && p.variantMint === variant.mint && BigInt(p.quantityMicros) > 0n);
   const [action, setAction] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('100');
@@ -181,16 +192,16 @@ function TradePanel({assetId, variant, name, session, portfolio, ensureDesk, onC
   }
   function mode(next: 'buy' | 'sell') {if (busy) return; setAction(next); setAmount(next === 'buy' ? '100' : position ? fmt.decimalInput(paperPlain(position.quantityMicros, 6).replaceAll(',', '')) : ''); setPreview(null); setError(null);}
   const unavailable = variant.advisory !== null;
-  return <aside className="trade-panel" aria-label="Paper order">
-    {receipt ? <><div className="receipt-mark" aria-hidden="true">✓</div><h2>{receipt.action === 'buy' ? 'Your move is made.' : 'Sale confirmed.'}</h2><p className="receipt-text">{receipt.action === 'buy' ? 'Bought' : 'Sold'} {shares(receipt.quantityMicros)} shares of {name}.</p><dl className="review-summary"><div><dt>Paper {receipt.action === 'buy' ? 'spent' : 'received'}</dt><dd>{micros(receipt.action === 'buy' ? receipt.cashDebitPaperMicros : receipt.cashCreditPaperMicros)}</dd></div><div><dt>Paper cash left</dt><dd>{micros(receipt.cashAfterPaperMicros)}</dd></div></dl><button className="primary full" onClick={onDesk}>Back to your desk</button><button className="text-button full" onClick={() => {setReceipt(null); setError(null);}}>Make another move</button><p className="trade-disclosure">Confirmed paper order. No real money was moved.</p></>
-    : preview ? <><h2>Review your {preview.action}.</h2><p className="trade-caption">{name} · {variant.symbol ?? preview.symbol}</p><dl className="review-summary"><div><dt>Shares</dt><dd>{shares(preview.quantityMicros)}</dd></div><div><dt>Price per share</dt><dd>{micros(preview.pricePaperMicros)} paper</dd></div><div><dt>Fees</dt><dd>0.00 paper</dd></div><div className="review-total"><dt>Paper {action === 'buy' ? 'to spend' : 'to receive'}</dt><dd>{micros(action === 'buy' ? preview.cashDebitPaperMicros : preview.cashCreditPaperMicros)}</dd></div><div><dt>Paper cash after</dt><dd>{micros(preview.cashAfterPaperMicros)}</dd></div></dl>
-      <button className="primary full" disabled={busy || remaining === 0 || session.pendingCommit !== null} onClick={() => void confirm()}>{busy ? 'Confirming…' : `Confirm paper ${action}`}</button><p className="quote-clock">{remaining > 0 ? `Quote expires in ${remaining}s` : 'Quote expired. Get a new review.'}</p><button className="text-button full" disabled={busy} onClick={() => {setPreview(null); setError(null);}}>{remaining ? 'Edit amount' : 'Get a new quote'}</button></>
-    : <><div className="trade-mode"><button aria-pressed={action === 'buy'} disabled={busy} onClick={() => mode('buy')}>Buy</button><button aria-pressed={action === 'sell'} disabled={busy || !position} onClick={() => mode('sell')}>Sell</button></div><h2>{action === 'buy' ? 'Make your move.' : 'Take a little back.'}</h2><p className="trade-caption">{action === 'buy' ? `Practice buying ${name}.` : `You hold ${shares(position?.quantityMicros ?? '0')} shares.`}</p>
-      <label className="amount-label" htmlFor="order-amount">{action === 'buy' ? 'Amount to spend' : 'Shares to sell'}</label><div className="amount-field"><input id="order-amount" inputMode="decimal" autoComplete="off" value={amount} maxLength={18} disabled={busy} onChange={event => setAmount(event.target.value)} aria-describedby="order-unit"/><span id="order-unit">{action === 'buy' ? 'paper' : 'shares'}</span></div>
-      <div className="amount-options">{action === 'buy' ? ['50', '100', '500'].map(value => <button key={value} disabled={busy} onClick={() => setAmount(value)}>{value}</button>) : <>{[25, 50].map(percent => <button key={percent} disabled={busy || !position} onClick={() => setAmount(fmt.decimalInput(paperPlain((BigInt(position!.quantityMicros) * BigInt(percent) / 100n).toString(), 6).replaceAll(',', '')))}>{percent}%</button>)}<button disabled={busy || !position} onClick={() => setAmount(fmt.decimalInput(paperPlain(position!.quantityMicros, 6).replaceAll(',', '')))}>Max</button></>}</div>
-      {unavailable ? <p className="trade-error">Paper orders are unavailable while this token has a provider caution.</p> : <button className="primary full" disabled={busy || !quantity || session.pendingCommit !== null} onClick={() => void review()}>{busy ? 'Getting your quote…' : `Review paper ${action}`}</button>}
-      <p className="trade-available">{portfolio ? `${micros(portfolio.cashPaperMicros)} paper available` : session.hasIdentity ? 'Paper balance unavailable. Refresh your desk.' : 'Start with 10,000 paper. No sign-in needed.'}</p></>}
+  return <aside className="trade-panel" aria-label={tr('market.trade.panelLabel')}>
+    {receipt ? <><div className="receipt-mark" aria-hidden="true">✓</div><h2>{tr(receipt.action === 'buy' ? 'market.trade.receiptBuyTitle' : 'market.trade.receiptSellTitle')}</h2><p className="receipt-text">{tr('market.trade.receiptShares', {action: receipt.action, shares: shareCount(receipt.quantityMicros), name})}</p><dl className="review-summary"><div><dt>{tr(receipt.action === 'buy' ? 'market.trade.paperSpent' : 'market.trade.paperReceived')}</dt><dd>{micros(receipt.action === 'buy' ? receipt.cashDebitPaperMicros : receipt.cashCreditPaperMicros)}</dd></div><div><dt>{tr('market.trade.cashLeft')}</dt><dd>{micros(receipt.cashAfterPaperMicros)}</dd></div></dl><button className="primary full" onClick={onDesk}>{tr('market.trade.backToDesk')}</button><button className="text-button full" onClick={() => {setReceipt(null); setError(null);}}>{tr('market.trade.another')}</button><p className="trade-disclosure">{tr('market.trade.disclosure')}</p></>
+    : preview ? <><h2>{tr('market.trade.reviewTitle', {action: preview.action})}</h2><p className="trade-caption">{name} · {variant.symbol ?? preview.symbol}</p><dl className="review-summary"><div><dt>{tr('market.trade.shares')}</dt><dd>{shares(preview.quantityMicros)}</dd></div><div><dt>{tr('market.trade.pricePerShare')}</dt><dd>{tr('common.paperAmount', {amount: micros(preview.pricePaperMicros)})}</dd></div><div><dt>{tr('market.trade.fees')}</dt><dd>{tr('common.paperAmount', {amount: fmt.number('0.00')})}</dd></div><div className="review-total"><dt>{tr(action === 'buy' ? 'market.trade.toSpend' : 'market.trade.toReceive')}</dt><dd>{micros(action === 'buy' ? preview.cashDebitPaperMicros : preview.cashCreditPaperMicros)}</dd></div><div><dt>{tr('market.trade.cashAfter')}</dt><dd>{micros(preview.cashAfterPaperMicros)}</dd></div></dl>
+      <button className="primary full" disabled={busy || remaining === 0 || session.pendingCommit !== null} onClick={() => void confirm()}>{busy ? tr('market.trade.confirming') : tr('market.trade.confirm', {action})}</button><p className="quote-clock">{remaining > 0 ? tr('market.trade.expiresIn', {seconds: remaining}) : tr('market.trade.expired')}</p><button className="text-button full" disabled={busy} onClick={() => {setPreview(null); setError(null);}}>{tr(remaining ? 'market.trade.editAmount' : 'market.trade.newQuote')}</button></>
+    : <><div className="trade-mode"><button aria-pressed={action === 'buy'} disabled={busy} onClick={() => mode('buy')}>{tr('market.trade.buy')}</button><button aria-pressed={action === 'sell'} disabled={busy || !position} onClick={() => mode('sell')}>{tr('market.trade.sell')}</button></div><h2>{tr(action === 'buy' ? 'market.trade.buyTitle' : 'market.trade.sellTitle')}</h2><p className="trade-caption">{action === 'buy' ? tr('market.trade.buyCaption', {name}) : tr('market.trade.sellCaption', {shares: shareCount(position?.quantityMicros ?? '0')})}</p>
+      <label className="amount-label" htmlFor="order-amount">{tr(action === 'buy' ? 'market.trade.amountToSpend' : 'market.trade.sharesToSell')}</label><div className="amount-field"><input id="order-amount" inputMode="decimal" autoComplete="off" value={amount} maxLength={18} disabled={busy} onChange={event => setAmount(event.target.value)} aria-describedby="order-unit"/><span id="order-unit">{tr(action === 'buy' ? 'common.paperUnit' : 'market.trade.sharesUnit')}</span></div>
+      <div className="amount-options">{action === 'buy' ? ['50', '100', '500'].map(value => <button key={value} disabled={busy} onClick={() => setAmount(value)}>{value}</button>) : <>{[25, 50].map(percent => <button key={percent} disabled={busy || !position} onClick={() => setAmount(fmt.decimalInput(paperPlain((BigInt(position!.quantityMicros) * BigInt(percent) / 100n).toString(), 6).replaceAll(',', '')))}>{fmt.percent(`${percent}%`)}</button>)}<button disabled={busy || !position} onClick={() => setAmount(fmt.decimalInput(paperPlain(position!.quantityMicros, 6).replaceAll(',', '')))}>{tr('market.trade.max')}</button></>}</div>
+      {unavailable ? <p className="trade-error">{tr('market.trade.caution')}</p> : <button className="primary full" disabled={busy || !quantity || session.pendingCommit !== null} onClick={() => void review()}>{busy ? tr('market.trade.quoting') : tr('market.trade.review', {action})}</button>}
+      <p className="trade-available">{portfolio ? tr('market.trade.available', {amount: micros(portfolio.cashPaperMicros)}) : session.hasIdentity ? tr('market.trade.balanceUnavailable') : tr('market.trade.start', {amount: fmt.number('10,000')})}</p></>}
     {error !== null && <p className="trade-error" role="alert">{errorCopy(error)}</p>}
-    {session.pendingCommit !== null && !busy && <div className="trade-error">An order still needs checking.<button className="text-button full" onClick={onDesk}>Check it from your desk</button></div>}
+    {session.pendingCommit !== null && !busy && <div className="trade-error">{tr('market.trade.pending')}<button className="text-button full" onClick={onDesk}>{tr('market.trade.pendingCheck')}</button></div>}
   </aside>;
 }

@@ -90,8 +90,8 @@ Solana, Privy, Tokens.xyz.
 - **fr “holdings”**: the core list says “vos placements”, but the app speaks
   to the player with **tu**, whose possessive is “tes”. The web uses
   **tes placements**. Confirm, or switch the whole French voice to vous.
-- **fr Rookie**: the core list says **Recrue**; the Flutter ARB currently has
-  “Débutant”. The web follows the core list.
+- **fr Rookie**: settled on **Recrue** (the core list) on the web and in the
+  Flutter app, which had “Débutant” until 1 October 2026.
 - **paper as a unit**: “de práctica / de treino / d’entraînement” after an
   amount reads naturally in Spanish and Portuguese; French “100,00
   d’entraînement” is understandable but unusual.

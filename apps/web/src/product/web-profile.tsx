@@ -2,12 +2,16 @@ import {useEffect, useId, useRef, useState} from 'react';
 import type {CareerMissionBoard, CareerSummary, ProductOnboarding, ProductProfile} from './practice-client';
 import {MobileAppPrompt} from './onboarding';
 import {art} from './ui';
+import {useT} from '../i18n/react';
+import type {MessageKey} from '../i18n/runtime';
+import * as fmt from '../i18n/format';
+import {rankName} from './career-milestones';
 
 export type TraderPersona = NonNullable<ProductOnboarding['persona']>;
-const traders: readonly {id: TraderPersona; label: string; description: string}[] = [
-  {id: 'wolf', label: 'The Wolf', description: 'Bold. Fast. Loves a big move.'},
-  {id: 'oracle', label: 'The Oracle', description: 'Patient. Reads before moving.'},
-  {id: 'shark', label: 'The Shark', description: 'Calm when the crowd gets loud.'},
+const traders: readonly {id: TraderPersona; label: MessageKey; description: MessageKey}[] = [
+  {id: 'wolf', label: 'profile.trader.wolf', description: 'profile.trader.wolfDescription'},
+  {id: 'oracle', label: 'profile.trader.oracle', description: 'profile.trader.oracleDescription'},
+  {id: 'shark', label: 'profile.trader.shark', description: 'profile.trader.sharkDescription'},
 ];
 
 export interface WebProfileProps {
@@ -41,6 +45,7 @@ function ProfileIcon({file}: {file: string}) {
 /** Uses the same optional persona and server progress as mobile; it creates no local profile. */
 export function WebProfile(props: WebProfileProps) {
   const {profile, career, missions, signedIn, hasIdentity, motion} = props;
+  const tr = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TraderPersona | null>(null);
   const [saving, setSaving] = useState(false);
@@ -82,89 +87,89 @@ export function WebProfile(props: WebProfileProps) {
   }
 
   return <section className="web-profile" aria-labelledby="web-profile-heading">
-    <div className="page-intro"><h1 id="web-profile-heading">Profile</h1>{props.onSettings && <button className="text-button web-profile-settings-link" onClick={props.onSettings}><ProfileIcon file="settings-gear.png"/>Settings</button>}</div>
+    <div className="page-intro"><h1 id="web-profile-heading">{tr('profile.page.title')}</h1>{props.onSettings && <button className="text-button web-profile-settings-link" onClick={props.onSettings}><ProfileIcon file="settings-gear.png"/>{tr('profile.page.settings')}</button>}</div>
     <div className="web-profile-overview">
-      <section className="web-profile-identity" aria-label="Your trader">
+      <section className="web-profile-identity" aria-label={tr('profile.page.identityLabel')}>
         <div className="web-profile-person">
           <div className={`web-profile-avatar${persona ? ' chosen' : ''}`}>
             <img src={art(persona ? `persona-${persona}-avatar-v1.png` : 'icons/nav-plumpy-profile.png')}
-              alt={trader ? `${trader.label}, your chosen trader` : ''} width="108" height="108"/>
+              alt={trader ? tr('profile.page.avatarAlt', {persona: trader.id}) : ''} width="108" height="108"/>
           </div>
           <div className="web-profile-name">
-            <h2>{handle ? `@${handle}` : props.accountLabel ?? (trader ? trader.label : 'Make it yours')}</h2>
-            {(handle || props.accountLabel) && trader && <p>{trader.label}</p>}
-            {!trader && <p>Choose who you play as.</p>}
-            {career && <span className="web-profile-rank">{career.rank.label}</span>}
+            <h2>{handle ? `@${handle}` : props.accountLabel ?? (trader ? tr(trader.label) : tr('profile.page.makeItYours'))}</h2>
+            {(handle || props.accountLabel) && trader && <p>{tr(trader.label)}</p>}
+            {!trader && <p>{tr('profile.page.choosePrompt')}</p>}
+            {career && <span className="web-profile-rank">{rankName(career.rank)}</span>}
           </div>
         </div>
         {hasIdentity && props.onPersona && <button ref={editButton} className="web-profile-edit" onClick={openEditor}
           aria-expanded={editing} aria-controls={editorId} disabled={saving || props.authBusy}>
-          <ProfileIcon file="profile-edit.png"/>{trader ? 'Change your trader' : 'Choose your trader'}
+          <ProfileIcon file="profile-edit.png"/>{tr(trader ? 'profile.trader.change' : 'profile.trader.choose')}
         </button>}
-        {!hasIdentity && props.onStart && <button className="text-button" onClick={props.onStart}>Start my first day <span aria-hidden="true">→</span></button>}
+        {!hasIdentity && props.onStart && <button className="text-button" onClick={props.onStart}>{tr('profile.page.start')} <span aria-hidden="true">→</span></button>}
       </section>
 
       <section className="web-profile-progress" aria-labelledby="profile-progress-heading">
-        <div className="web-profile-section-title"><h2 id="profile-progress-heading">Your progress</h2>
-          {career && <button className="text-button" onClick={props.onCareer}>Career <span aria-hidden="true">→</span></button>}
+        <div className="web-profile-section-title"><h2 id="profile-progress-heading">{tr('profile.page.progressTitle')}</h2>
+          {career && <button className="text-button" onClick={props.onCareer}>{tr('profile.page.career')} <span aria-hidden="true">→</span></button>}
         </div>
-        {props.progressError && <div className="web-profile-progress-error" role="status"><span>Progress couldn’t refresh.</span>
-          {props.onRetry && <button className="text-button" disabled={props.busy} onClick={props.onRetry}>Retry</button>}</div>}
+        {props.progressError && <div className="web-profile-progress-error" role="status"><span>{tr('profile.page.progressStale')}</span>
+          {props.onRetry && <button className="text-button" disabled={props.busy} onClick={props.onRetry}>{tr('profile.page.retry')}</button>}</div>}
         {career ? <>
           <dl className="web-profile-stats">
-            <div><dt>Trims earned</dt><dd>{career.trims.total.toLocaleString()}</dd></div>
-            <div><dt>Day{career.streak.days === 1 ? '' : 's'} in a row</dt><dd>{career.streak.days.toLocaleString()}</dd></div>
-            {missions && <div><dt>Milestones</dt><dd>{completed}<small> / {missions.missions.length}</small></dd></div>}
+            <div><dt>{tr('profile.page.trimsEarned')}</dt><dd>{fmt.integer(career.trims.total)}</dd></div>
+            <div><dt>{tr('profile.page.streakDays', {days: career.streak.days})}</dt><dd>{fmt.integer(career.streak.days)}</dd></div>
+            {missions && <div><dt>{tr('profile.page.milestones')}</dt><dd>{fmt.integer(completed ?? 0, 'raw')}<small> / {fmt.integer(missions.missions.length, 'raw')}</small></dd></div>}
           </dl>
           {career.nextRank ? <div className="web-profile-promotion">
-            <div><span>{career.rank.label}</span><span>{career.nextRank.label}</span></div>
-            <progress value={rankProgress} max="100" aria-label={`Progress toward ${career.nextRank.label}`}/>
+            <div><span>{rankName(career.rank)}</span><span>{rankName(career.nextRank)}</span></div>
+            <progress value={rankProgress} max="100" aria-label={tr('profile.page.rankProgress', {rank: rankName(career.nextRank)})}/>
             <p>{career.nextRank.trimsRemaining > 0
-              ? `${career.nextRank.trimsRemaining.toLocaleString()} more Trims to ${career.nextRank.label}.`
-              : career.nextRank.promotionRequired ? 'Finish your promotion milestone in Career.' : 'Your next rank is ready in Career.'}</p>
-          </div> : <p className="web-profile-progress-note">{career.rank.label}. Look how far you’ve come.</p>}
+              ? tr('profile.page.trimsToRank', {count: fmt.count(career.nextRank.trimsRemaining), rank: rankName(career.nextRank)})
+              : tr(career.nextRank.promotionRequired ? 'profile.page.promotionMilestone' : 'profile.page.nextRankReady')}</p>
+          </div> : <p className="web-profile-progress-note">{tr('profile.page.topRank', {rank: rankName(career.rank)})}</p>}
         </> : <div className="web-profile-progress-empty">
           <img src={art('rookie-briefcase-v1.png')} width="64" height="64" alt=""/>
-          <div><strong>{props.busy ? 'Loading your progress…' : hasIdentity ? 'Your progress is unavailable.' : 'Your career starts here.'}</strong>
-            <p>{hasIdentity ? 'Your saved progress has not changed.' : 'Make your first move and earn your first Trims.'}</p>
-            {hasIdentity && props.onRetry && !props.busy && !props.progressError && <button className="text-button" onClick={props.onRetry}>Try again</button>}
+          <div><strong>{tr(props.busy ? 'profile.page.progressLoading' : hasIdentity ? 'profile.page.progressUnavailable' : 'profile.page.careerStarts')}</strong>
+            <p>{tr(hasIdentity ? 'profile.page.progressUnchanged' : 'profile.page.firstMove')}</p>
+            {hasIdentity && props.onRetry && !props.busy && !props.progressError && <button className="text-button" onClick={props.onRetry}>{tr('common.tryAgain')}</button>}
           </div>
         </div>}
       </section>
     </div>
 
     {editing && <form className="web-profile-persona-editor" id={editorId} onSubmit={event => {event.preventDefault(); void savePersona();}} aria-busy={saving}>
-      <fieldset disabled={saving}><legend>Pick your trader</legend><p>Who will you play as?</p>
+      <fieldset disabled={saving}><legend>{tr('profile.trader.legend')}</legend><p>{tr('profile.trader.question')}</p>
         <div className="web-profile-traders">{traders.map(item => <label key={item.id} className={`web-profile-trader${draft === item.id ? ' selected' : ''}`}>
           <input type="radio" name={inputGroup} value={item.id} checked={draft === item.id} onChange={() => {setDraft(item.id); setSaveError(false);}}/>
           <img src={art(`persona-${item.id}-avatar-v1.png`)} width="64" height="64" alt=""/>
-          <span><strong>{item.label}</strong><small>{item.description}</small></span>
+          <span><strong>{tr(item.label)}</strong><small>{tr(item.description)}</small></span>
         </label>)}</div>
       </fieldset>
-      {saveError && <p className="web-profile-save-error" role="alert">Couldn’t save your trader. Your choice is still here. Try again.</p>}
-      <div className="web-profile-editor-actions"><button className="text-button" type="button" onClick={closeEditor} disabled={saving}>Cancel</button>
-        <button className="primary" type="submit" disabled={!draft || saving}>{saving ? 'Saving…' : 'Save trader'}</button></div>
+      {saveError && <p className="web-profile-save-error" role="alert">{tr('profile.trader.saveError')}</p>}
+      <div className="web-profile-editor-actions"><button className="text-button" type="button" onClick={closeEditor} disabled={saving}>{tr('common.cancel')}</button>
+        <button className="primary" type="submit" disabled={!draft || saving}>{tr(saving ? 'profile.trader.saving' : 'profile.trader.save')}</button></div>
     </form>}
 
     <div className="web-profile-settings">
       <section className="web-profile-group" aria-labelledby="profile-account-heading">
-        <h2 id="profile-account-heading">Account</h2>
+        <h2 id="profile-account-heading">{tr('profile.account.title')}</h2>
         <div className="web-profile-setting-row"><ProfileIcon file="settings-lock.png"/>
-          <div><strong>{signedIn ? 'One account, every device' : 'Keep your progress together'}</strong>
-            <p>{signedIn ? 'Use this same account on mobile for your trades, Trims and completed tasks.' : 'Sign in to pick up your trades and career on mobile.'}</p>
+          <div><strong>{tr(signedIn ? 'profile.account.signedInTitle' : 'profile.account.guestTitle')}</strong>
+            <p>{tr(signedIn ? 'profile.account.signedInBody' : 'profile.account.guestBody')}</p>
           </div>
         </div>
         <div className="web-profile-account-action">{signedIn
-          ? <button className="text-button" disabled={props.authBusy} onClick={props.onSignOut}>Sign out</button>
-          : <button className="primary" disabled={props.authBusy} onClick={props.onSignIn}>Sign in or create account</button>}</div>
+          ? <button className="text-button" disabled={props.authBusy} onClick={props.onSignOut}>{tr('profile.account.signOut')}</button>
+          : <button className="primary" disabled={props.authBusy} onClick={props.onSignIn}>{tr('profile.account.signIn')}</button>}</div>
       </section>
       <section className="web-profile-group" aria-labelledby="profile-preferences-heading">
-        <h2 id="profile-preferences-heading">Preferences</h2>
+        <h2 id="profile-preferences-heading">{tr('profile.preferences.title')}</h2>
         <div className="web-profile-setting-row"><ProfileIcon file="settings-gear.png"/>
-          <label htmlFor={motionId}><strong>Character motion</strong><span>On this browser. Your device’s reduced-motion setting always applies.</span></label>
+          <label htmlFor={motionId}><strong>{tr('profile.preferences.motion')}</strong><span>{tr('profile.preferences.motionHint')}</span></label>
           <input className="web-profile-switch" id={motionId} type="checkbox" role="switch" checked={motion} onChange={event => props.onMotion(event.target.checked)}/>
         </div>
-        <a className="web-profile-help" href="https://x.com/trimmyhq" target="_blank" rel="noopener noreferrer">Help &amp; feedback <span aria-hidden="true">↗</span></a>
+        <a className="web-profile-help" href="https://x.com/trimmyhq" target="_blank" rel="noopener noreferrer">{tr('profile.preferences.help')} <span aria-hidden="true">↗</span></a>
       </section>
     </div>
     <MobileAppPrompt/>

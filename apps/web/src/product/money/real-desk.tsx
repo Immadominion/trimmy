@@ -12,44 +12,48 @@ import {useMoney} from './money-api.js';
 import {coherentHoldings} from './wallet-controller.js';
 import type {WalletStockBalance} from './wallet-models.js';
 import {holdingValue, stocksValue, type HoldingPrices} from './holding-values.js';
+import {useT} from '../../i18n/react.js';
+import * as fmt from '../../i18n/format.js';
 
 const noPrices: HoldingPrices = new Map();
 
 export function MoneyModeSwitch({real, onSwitch}: {real: boolean; onSwitch(): void}) {
+  const tr = useT();
   return <button className={`money-mode-switch ${real ? 'real' : 'paper'}`} onClick={onSwitch}
-    aria-label={real ? 'Switch to paper mode' : 'Switch to real money mode'}><span aria-hidden="true">⇄</span>{real ? 'Real' : 'Paper'}</button>;
+    aria-label={real ? tr('money.mode.switchToPaper') : tr('money.mode.switchToReal')}><span aria-hidden="true">⇄</span>{real ? tr('money.mode.real') : tr('money.mode.paper')}</button>;
 }
 
-/** Shares for a wallet holding: the RPC's scaled display amount, else plain token units. */
+/** Shares for a wallet holding, for reading: the RPC's scaled display amount, else plain token units. */
 export function holdingShares(holding: WalletStockBalance, raw = holding.amountRaw): string {
-  if (raw === holding.amountRaw && holding.displayAmount !== null) return groupedDecimal(holding.displayAmount);
+  if (raw === holding.amountRaw && holding.displayAmount !== null) return fmt.number(groupedDecimal(holding.displayAmount));
   return ShareScale.fromDisplay(holding.decimals, holding.amountRaw, holding.displayAmount).label(raw);
 }
 
 export function RealBalanceCard({onSwitch, onFastBuy, onAddMoney, onSend, prices = noPrices}: {onSwitch(): void; onFastBuy(): void; onAddMoney(): void;
   onSend?: (() => void) | undefined; prices?: HoldingPrices}) {
   const money = useMoney();
+  const tr = useT();
   const holdings = coherentHoldings(money.wallet);
   const missing = money.wallet.context?.embeddedSolanaWallet.status === 'missing';
   const cash = holdings ? usdcDollars(holdings.usdc.amountRaw) : null;
   const spendableDiffers = holdings !== null && holdings.usdc.availableToTradeRaw !== holdings.usdc.amountRaw;
   const stocks = holdings && holdings.stockTokens.length > 0 ? stocksValue(holdings, prices) : null;
   const total = stocks !== null && cash !== null ? Number(holdings!.usdc.amountRaw) / 1_000_000 + stocks : null;
-  return <section className="balance-card real-balance" aria-label="Real money balance">
-    <div className="balance-heading"><div className="balance-label">{total !== null ? 'Total balance' : 'Cash balance'}</div><MoneyModeSwitch real onSwitch={onSwitch}/></div>
+  return <section className="balance-card real-balance" aria-label={tr('money.desk.label')}>
+    <div className="balance-heading"><div className="balance-label">{total !== null ? tr('money.desk.totalBalance') : tr('money.desk.cashBalance')}</div><MoneyModeSwitch real onSwitch={onSwitch}/></div>
     {total !== null ? <>
       <div className="balance-amount" data-testid="real-total-balance">{usd(total)}</div>
-      <p className="balance-split"><span data-testid="real-cash-balance">{cash}</span> cash · {usd(stocks)} in stocks</p>
-    </> : <div className="balance-amount" data-testid="real-cash-balance">{cash ?? '—'}<small>USDC</small></div>}
+      <p className="balance-split">{tr.rich('money.desk.split', {cash: <span data-testid="real-cash-balance">{cash}</span>, stocks: usd(stocks)})}</p>
+    </> : <div className="balance-amount" data-testid="real-cash-balance">{cash ?? tr('common.noValue')}<small>USDC</small></div>}
     <div className="balance-details real-details">
-      <div><span>{missing ? 'Create your wallet to add money.' : money.walletFresh ? 'USDC available' : 'Updating balance…'}</span>
-        <strong data-testid="real-sol-balance">{holdings ? `${formatRawUnits(holdings.nativeSolLamports, 9) ?? '0'} SOL for fees` : missing ? '' : 'Checking SOL…'}</strong></div>
-      <div className="cash-marks" aria-label="USDC and SOL" role="img"><img src={art('money/cash-usdc.png')} alt=""/><img src={art('money/cash-sol.png')} alt=""/></div>
+      <div><span>{missing ? tr('money.desk.createWallet') : money.walletFresh ? tr('money.desk.usdcAvailable') : tr('money.desk.updating')}</span>
+        <strong data-testid="real-sol-balance">{holdings ? tr('money.desk.solForFees', {amount: fmt.number(formatRawUnits(holdings.nativeSolLamports, 9) ?? '0')}) : missing ? '' : tr('money.desk.checkingSol')}</strong></div>
+      <div className="cash-marks" aria-label={tr('money.desk.cashMarks')} role="img"><img src={art('money/cash-usdc.png')} alt=""/><img src={art('money/cash-sol.png')} alt=""/></div>
     </div>
-    {spendableDiffers && <p className="checked">{usdcLabel(holdings.usdc.availableToTradeRaw)} is ready to trade. The rest is in another token account.</p>}
-    <div className="balance-actions"><button aria-label="Fast buy" onClick={onFastBuy}><span aria-hidden="true">+</span>Fast buy</button>
-      <button onClick={onAddMoney}><span aria-hidden="true">↙</span>Add money</button>
-      {onSend && <button data-testid="real-send" onClick={onSend}><span aria-hidden="true">↗</span>Send</button>}</div>
+    {spendableDiffers && <p className="checked">{tr('money.desk.readyToTrade', {amount: usdcLabel(holdings.usdc.availableToTradeRaw)})}</p>}
+    <div className="balance-actions"><button aria-label={tr('money.desk.fastBuy')} onClick={onFastBuy}><span aria-hidden="true">+</span>{tr('money.desk.fastBuy')}</button>
+      <button onClick={onAddMoney}><span aria-hidden="true">↙</span>{tr('money.addMoney')}</button>
+      {onSend && <button data-testid="real-send" onClick={onSend}><span aria-hidden="true">↗</span>{tr('money.desk.send')}</button>}</div>
   </section>;
 }
 
@@ -58,19 +62,20 @@ export function RealHoldings({identities, onOpen, onExplore, onAddMoney, onHisto
   onExplore(): void; onAddMoney(): void; onHistory(): void; prices?: HoldingPrices;
 }) {
   const money = useMoney();
+  const tr = useT();
   const holdings = coherentHoldings(money.wallet);
   const caps = money.capabilities;
-  const heading = <div className="section-line"><h2>Holdings{holdings && holdings.stockTokens.length > 0 && <span className="desk-count">{holdings.stockTokens.length}</span>}</h2>
-    <button className="text-button" onClick={onHistory}>History<span aria-hidden="true">↗</span></button></div>;
+  const heading = <div className="section-line"><h2>{tr('money.holdings.title')}{holdings && holdings.stockTokens.length > 0 && <span className="desk-count">{fmt.integer(holdings.stockTokens.length, 'raw')}</span>}</h2>
+    <button className="text-button" onClick={onHistory}>{tr('money.holdings.history')}<span aria-hidden="true">↗</span></button></div>;
   if (!holdings) {
     const checking = money.wallet.context?.embeddedSolanaWallet.status === 'candidate' || !money.wallet.checked;
     return <section className="desk-section desk-positions real-holdings">{heading}<div className="empty-positions"><img src={art('career-world/safe.png')} alt=""/>
-      <div><h3>{checking ? 'Checking your wallet…' : 'Your wallet starts here'}</h3>
-        {!checking && <button className="text-button" onClick={onAddMoney}>Add money</button>}</div></div></section>;
+      <div><h3>{checking ? tr('money.checkingWallet') : tr('money.holdings.walletStartsHere')}</h3>
+        {!checking && <button className="text-button" onClick={onAddMoney}>{tr('money.addMoney')}</button>}</div></div></section>;
   }
   if (!holdings.stockTokens.length) {
     return <section className="desk-section desk-positions real-holdings">{heading}<div className="empty-positions"><img src={art('rookie-briefcase-v1.png')} alt=""/>
-      <div><h3>No stocks yet</h3><p>Your first stock starts here.</p><button className="text-button" onClick={onExplore}>Explore stocks</button></div></div></section>;
+      <div><h3>{tr('money.holdings.emptyTitle')}</h3><p>{tr('money.holdings.emptyBody')}</p><button className="text-button" onClick={onExplore}>{tr('money.holdings.explore')}</button></div></div></section>;
   }
   return <section className="desk-section desk-positions real-holdings">{heading}
     {holdings.stockTokens.map(holding => {
@@ -80,9 +85,9 @@ export function RealHoldings({identities, onOpen, onExplore, onAddMoney, onHisto
       const value = holdingValue(holding, prices);
       return <button className="position-row" key={holding.mint} onClick={() => onOpen(holding)}>
         <CompanyLogo name={identity?.name ?? name} url={identity?.imageUrl ?? null}/>
-        <span className="position-main"><strong>{name}</strong><small>{holdingShares(holding)} {holding.symbol}{partial ? ` · ${holdingShares(holding, holding.availableToTradeRaw)} ready to sell` : ''}</small></span>
+        <span className="position-main"><strong>{name}</strong><small>{holdingShares(holding)} {holding.symbol}{partial ? ` · ${tr('money.holdings.readyToSell', {amount: holdingShares(holding, holding.availableToTradeRaw)})}` : ''}</small></span>
         {/* The token's own price times the tokens held (display amount), never a share price times raw units. */}
-        <span className="position-value">{value !== null ? <>{usd(value)}<small>Market value</small></> : <>—<small>Value unavailable</small></>}</span><span className="position-open" aria-hidden="true">↗</span>
+        <span className="position-value">{value !== null ? <>{usd(value)}<small>{tr('money.holdings.marketValue')}</small></> : <>{tr('common.noValue')}<small>{tr('money.holdings.valueUnavailable')}</small></>}</span><span className="position-open" aria-hidden="true">↗</span>
       </button>;
     })}
   </section>;

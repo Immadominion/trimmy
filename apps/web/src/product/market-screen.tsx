@@ -1,8 +1,9 @@
 import {useEffect, useRef, useState} from 'react';
 import type {ProductMarketClient, StockCard} from './market-client';
 import {CompanyLogo, Failure, Loading, change, errorCopy, usd} from './ui';
-import {FollowButton, MarketControls, RecentsStrip, availableSorts, marketFigures, sortCards, useFollowedCards} from './market-social';
-import type {FollowingState, MarketList, MarketSort, SearchRecents} from './market-social';
+import {FollowButton, MarketControls, RecentsStrip, availableSorts, followNoticeText, marketFigures, sortCards, useFollowedCards} from './market-social';
+import type {FollowNotice, FollowingState, MarketList, MarketSort, SearchRecents} from './market-social';
+import {useT} from '../i18n/react';
 import type {TradingCapabilities} from './money/live-trading';
 import {companyMarketNote, companyTradeable, discoveryRefs, tradeableCompanies, type DiscoveryIndex} from './money/market-tradeable';
 
@@ -30,7 +31,8 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
   const moreController = useRef<AbortController | null>(null);
   const status = useRef({busy, query}); status.current = {busy, query};
   const [list, setList] = useState<MarketList>('all'), [sort, setSort] = useState<MarketSort>('featured');
-  const [notice, setNotice] = useState<{message: string; signIn: boolean} | null>(null);
+  const [notice, setNotice] = useState<{notice: FollowNotice; signIn: boolean} | null>(null);
+  const tr = useT();
   useEffect(() => {if (list === 'tradeable' && !(real && capabilities?.enabled === true)) setList('all');}, [list, real, capabilities]);
   const followed = useFollowedCards(client, social?.following.assetIds ?? null, cards, Boolean(social) && list === 'following');
   // Nothing claims to be tradeable without a live capabilities read, or while trading is paused.
@@ -130,35 +132,35 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
     return () => {active = false; observer.disconnect();};
   }, [offset, busy, error, moreError, query, list, online, client]);
   const stale = freshness !== null && clock >= Date.parse(freshness.refreshAfter);
-  return <section className={`market-screen${social ? ' has-follow' : ''}`} aria-label="Market">
+  return <section className={`market-screen${social ? ' has-follow' : ''}`} aria-label={tr('market.screen.title')}>
     <header className="market-heading">
-      <div className="page-intro"><h1>Market</h1>{(!online || stale) && <span className="market-status" role="status">{!online ? 'Offline' : 'Updating prices…'}</span>}</div>
+      <div className="page-intro"><h1>{tr('market.screen.title')}</h1>{(!online || stale) && <span className="market-status" role="status">{tr(!online ? 'market.screen.offline' : 'market.screen.updating')}</span>}</div>
       <div className="market-tools"><div className="market-search">
         <svg className="market-search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
-        <label className="sr-only" htmlFor="company-search">Search companies</label><input id="company-search" type="search" autoComplete="off" placeholder="Search companies or symbols" maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>{query && <button aria-label="Clear search" onClick={() => setQuery('')}>×</button>}
+        <label className="sr-only" htmlFor="company-search">{tr('market.screen.searchLabel')}</label><input id="company-search" type="search" autoComplete="off" placeholder={tr('market.screen.searchPlaceholder')} maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>{query && <button aria-label={tr('market.screen.clearSearch')} onClick={() => setQuery('')}>×</button>}
       </div></div>
     </header>
     {/* No separate Tradeable list: every listed company can be bought, and each row says when its market is closed. */}
     {social && <MarketControls list={list} lists={['all', 'following']} onList={next => {setList(next); setNotice(null);}} sort={sort} sorts={availableSorts(cards)} onSort={setSort}/>}
-    {notice && <div className="notice market-notice" role="status">{notice.message}{notice.signIn && social && <button className="text-button" onClick={social.onSignIn}>Sign in</button>}<button className="text-button" onClick={() => setNotice(null)}>Dismiss</button></div>}
+    {notice && <div className="notice market-notice" role="status">{followNoticeText(tr, notice.notice)}{notice.signIn && social && <button className="text-button" onClick={social.onSignIn}>{tr('common.signIn')}</button>}<button className="text-button" onClick={() => setNotice(null)}>{tr('common.dismiss')}</button></div>}
     {social && !query && list === 'all' && <RecentsStrip recents={social.recents} onOpen={company => onSelect({assetId: company.assetId, name: company.name, symbol: company.symbol,
       imageUrl: company.imageUrl, stock: null, primaryVariant: null})}/>}
-    <div className="stock-list-head" aria-hidden="true"><span>Company</span><span>Stock price</span><span>24h change</span><span/></div>
-    <div ref={results} className="market-results" role="region" aria-label="Companies" tabIndex={0}>
-      {error !== null && <Failure title="Market is taking a moment." message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}
-      {rows.length > 0 && <div className="stock-list">{rows.map(card => <div key={card.assetId} className={social ? 'stock-row-shell' : 'stock-row-plain'}><button className="stock-row" onClick={() => choose(card)} aria-label={`Open ${card.name ?? card.assetId}`} aria-describedby={`market-price-${card.assetId} market-change-${card.assetId}`}>
-        <span className="stock-company"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl}/><span className="stock-company-text"><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? 'Stock'}{tradeable(card) ? <span className="market-tradeable" data-testid={`market-tradeable-${card.assetId}`}>Tradeable</span>
+    <div className="stock-list-head" aria-hidden="true"><span>{tr('market.screen.headCompany')}</span><span>{tr('market.screen.headPrice')}</span><span>{tr('market.screen.headChange')}</span><span/></div>
+    <div ref={results} className="market-results" role="region" aria-label={tr('market.screen.resultsLabel')} tabIndex={0}>
+      {error !== null && <Failure title={tr('market.screen.failureTitle')} message={errorCopy(error)} onRetry={() => setRevision(n => n + 1)}/>}
+      {rows.length > 0 && <div className="stock-list">{rows.map(card => <div key={card.assetId} className={social ? 'stock-row-shell' : 'stock-row-plain'}><button className="stock-row" onClick={() => choose(card)} aria-label={tr('market.screen.openCompany', {name: card.name ?? card.assetId})} aria-describedby={`market-price-${card.assetId} market-change-${card.assetId}`}>
+        <span className="stock-company"><CompanyLogo name={card.name ?? card.assetId} url={card.imageUrl}/><span className="stock-company-text"><strong>{card.name ?? card.assetId}</strong><small>{card.symbol ?? tr('market.category.stock')}{tradeable(card) ? <span className="market-tradeable" data-testid={`market-tradeable-${card.assetId}`}>{tr('market.screen.tradeable')}</span>
           : marks && companyMarketNote(capabilities, card.assetId, known) && <span className="market-tradeable waiting">{companyMarketNote(capabilities, card.assetId, known)}</span>}</small></span></span>
-        <span className="stock-price" id={`market-price-${card.assetId}`}><span className="sr-only">Stock price </span>{usd(marketFigures(card).price)}</span><span id={`market-change-${card.assetId}`} className={`stock-change ${!marketFigures(card).change ? 'neutral' : marketFigures(card).change! < 0 ? 'negative' : 'positive'}`}><span className="sr-only">24 hour change </span>{marketFigures(card).change === null ? <><span aria-hidden="true">{change(null)}</span><span className="sr-only">unavailable</span></> : change(marketFigures(card).change!)}</span><span className="stock-open" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="m8 5 5 5-5 5"/></svg></span>
-      </button>{social && <FollowButton card={card} following={social.following} onNotice={(message, signIn) => setNotice({message, signIn})}/>}</div>)}</div>}
-      {social && list === 'following' && !followed.loading && !rows.length && <div className="empty-page"><h2>Your watchlist starts here.</h2><p>Tap Follow on a company to keep it here.</p><button className="text-button" onClick={() => setList('all')}>Find a company</button></div>}
-      {busy && <Loading>Finding companies…</Loading>}
-      {marks && list === 'tradeable' && !rows.length && !busy && <div className="empty-page"><h2>No tradeable stocks here yet.</h2><p>Try searching for a company.</p></div>}
-      {!busy && !error && !cards.length && list === 'all' && <div className="empty-page"><h2>No companies found.</h2><p>Try a company name or stock symbol.</p><button className="text-button" onClick={() => setQuery('')}>Browse the market</button></div>}
+        <span className="stock-price" id={`market-price-${card.assetId}`}><span className="sr-only">{tr('market.screen.srPrice')} </span>{usd(marketFigures(card).price)}</span><span id={`market-change-${card.assetId}`} className={`stock-change ${!marketFigures(card).change ? 'neutral' : marketFigures(card).change! < 0 ? 'negative' : 'positive'}`}><span className="sr-only">{tr('market.screen.srChange')} </span>{marketFigures(card).change === null ? <><span aria-hidden="true">{change(null)}</span><span className="sr-only">{tr('market.screen.srChangeUnavailable')}</span></> : change(marketFigures(card).change!)}</span><span className="stock-open" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="m8 5 5 5-5 5"/></svg></span>
+      </button>{social && <FollowButton card={card} following={social.following} onNotice={(next, signIn) => setNotice({notice: next, signIn})}/>}</div>)}</div>}
+      {social && list === 'following' && !followed.loading && !rows.length && <div className="empty-page"><h2>{tr('market.screen.followingEmptyTitle')}</h2><p>{tr('market.screen.followingEmptyBody')}</p><button className="text-button" onClick={() => setList('all')}>{tr('market.screen.findCompany')}</button></div>}
+      {busy && <Loading>{tr('market.screen.finding')}</Loading>}
+      {marks && list === 'tradeable' && !rows.length && !busy && <div className="empty-page"><h2>{tr('market.screen.noTradeableTitle')}</h2><p>{tr('market.screen.noTradeableBody')}</p></div>}
+      {!busy && !error && !cards.length && list === 'all' && <div className="empty-page"><h2>{tr('market.screen.noResultsTitle')}</h2><p>{tr('market.screen.noResultsBody')}</p><button className="text-button" onClick={() => setQuery('')}>{tr('market.screen.browse')}</button></div>}
       {offset !== null && !query && list === 'all' && <div ref={sentinel} style={{minHeight: 1}}>
-        {moreError !== null && <p role="status">Couldn’t load more stocks. Your list is still here.</p>}
+        {moreError !== null && <p role="status">{tr('market.screen.moreFailed')}</p>}
         {!busy && (moreError !== null || typeof window.IntersectionObserver !== 'function') &&
-          <button className="secondary load-more" onClick={() => void more()}>{moreError ? 'Try again' : 'More companies'}</button>}
+          <button className="secondary load-more" onClick={() => void more()}>{tr(moreError ? 'common.tryAgain' : 'market.screen.more')}</button>}
       </div>}
     </div>
   </section>;

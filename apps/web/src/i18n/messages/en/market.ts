@@ -1,4 +1,320 @@
 import type {AreaMessages} from '../types';
 
+/**
+ * The Market tab, company pages, the paper order panel, the practice Fast buy
+ * sheet, company Holders and Comments, and Community. Company names, tickers,
+ * token symbols, handles, addresses and server notes arrive as values.
+ */
 export default {
+  // Market tab (market-screen.tsx).
+  'market.screen.title': 'Market',
+  'market.screen.offline': 'Offline',
+  'market.screen.updating': 'Updating prices…',
+  /** Screen-reader label of the search field. */
+  'market.screen.searchLabel': 'Search companies',
+  'market.screen.searchPlaceholder': 'Search companies or symbols',
+  'market.screen.clearSearch': 'Clear search',
+  /** Column headings over the company list. */
+  'market.screen.headCompany': 'Company',
+  'market.screen.headPrice': 'Stock price',
+  'market.screen.headChange': '24h change',
+  /** Screen-reader name of the scrolling list of companies. */
+  'market.screen.resultsLabel': 'Companies',
+  'market.screen.failureTitle': 'Market is taking a moment.',
+  /** Screen-reader name of a company row. {name} is the company. */
+  'market.screen.openCompany': 'Open {name}',
+  /** Small mark on a row that can be traded with real money. */
+  'market.screen.tradeable': 'Tradeable',
+  /** Read before a row's price and day change by screen readers. */
+  'market.screen.srPrice': 'Stock price',
+  'market.screen.srChange': '24 hour change',
+  'market.screen.srChangeUnavailable': 'unavailable',
+  'market.screen.followingEmptyTitle': 'Your watchlist starts here.',
+  /** "Follow" is the row button (market.follow.follow). */
+  'market.screen.followingEmptyBody': 'Tap Follow on a company to keep it here.',
+  'market.screen.findCompany': 'Find a company',
+  'market.screen.finding': 'Finding companies…',
+  'market.screen.noTradeableTitle': 'No tradeable stocks here yet.',
+  'market.screen.noTradeableBody': 'Try searching for a company.',
+  'market.screen.noResultsTitle': 'No companies found.',
+  'market.screen.noResultsBody': 'Try a company name or stock symbol.',
+  'market.screen.browse': 'Browse the market',
+  'market.screen.moreFailed': 'Couldn’t load more stocks. Your list is still here.',
+  'market.screen.more': 'More companies',
+
+  /** Shown in place of a ticker when a company has none. */
+  'market.category.stock': 'Stock',
+  'market.category.etf': 'ETF',
+  'market.category.commodity': 'Commodity',
+
+  // List tabs and sorting (market-social.tsx).
+  'market.lists.label': 'Stock lists',
+  'market.lists.all': 'All stocks',
+  'market.lists.following': 'Following',
+  'market.lists.tradeable': 'Tradeable',
+  'market.sort.label': 'Sort:',
+  'market.sort.select': 'Sort stocks',
+  'market.sort.featured': 'Featured',
+  'market.sort.name': 'Name',
+  'market.sort.price': 'Highest price',
+  'market.sort.gains': 'Biggest gains',
+  'market.sort.drops': 'Biggest drops',
+
+  // Following a company. {name} is the company.
+  'market.follow.follow': '+ Follow',
+  /** The button once the company is followed. */
+  'market.follow.following': 'Following',
+  'market.follow.followName': 'Follow {name}',
+  'market.follow.unfollowName': 'Unfollow {name}',
+  'market.follow.signIn': 'Sign in to save your watchlist.',
+  'market.follow.unchanged': 'Following did not change. Try again.',
+  'market.follow.full': 'Your watchlist is full. Remove a company first.',
+  'market.follow.added': '{name} added to Following.',
+  'market.follow.removed': '{name} removed from Following.',
+
+  'market.recents.title': 'Recently viewed',
+  'market.recents.clear': 'Clear',
+
+  // Company page (stock-screen.tsx).
+  'market.stock.back': '← Back to Market',
+  /** Under the company name when no ticker is known. */
+  'market.stock.symbolFallback': 'Company',
+  /** After the ticker when the token has no label: "AAPL / Selected token". */
+  'market.stock.tokenFallback': 'Selected token',
+  /** {change} is a percent such as "+1.23%". */
+  'market.stock.changeToday': '{change} today',
+  'market.stock.priceCaption': 'Selected token · USD reference',
+  'market.stock.periodLabel': 'Chart period',
+  /** Chart period buttons: one day, week, month, year. Keep them very short. */
+  'market.stock.period.day': '1D',
+  'market.stock.period.week': '1W',
+  'market.stock.period.month': '1M',
+  'market.stock.period.year': '1Y',
+  'market.stock.refreshChart': 'Refresh chart',
+  'market.stock.chartLoading': 'Getting price history…',
+  'market.stock.chartUnavailable': 'Price history is unavailable right now.',
+  'market.stock.chartTooShort': 'There isn’t enough price history for this period yet.',
+  /** Above the chart until a point is chosen. */
+  'market.stock.chartHint': 'Selected token price in USD',
+  /** The chosen chart point: price, then date and time. */
+  'market.stock.chartPoint': '{price} · {time}',
+  'market.stock.chartLabel': 'Token price history',
+  /** What a screen reader says for the chosen chart point. */
+  'market.stock.chartValue': '{price}, {date}',
+  'market.stock.detailsLoading': 'Getting company details…',
+  'market.stock.versionLabel': 'Token version',
+  'market.stock.versionFallback': 'Token',
+  'market.stock.cautionTitle': 'Token caution',
+  'market.stock.about': 'About {name}',
+  'market.stock.noDescription': 'A company description is not available right now.',
+  'market.stock.volume': 'Token trading volume · 24h',
+  'market.stock.liquidity': 'Token liquidity',
+  'market.stock.holders': 'Token holders',
+  'market.stock.marketCap': 'Company market cap',
+  /** The source note under the company: one sentence per key. */
+  'market.stock.source': 'Data from Tokens.xyz.',
+  'market.stock.checked': 'Checked {time}.',
+  'market.stock.stale': 'Prices may have changed; refresh for a new read.',
+  'market.stock.reference': 'Reference prices are for research.',
+  'market.stock.realQuote': 'A real order gets its own reviewed quote.',
+  'market.stock.paperQuote': 'Your paper order gets its own current quote.',
+  /** {mint} is a token address. */
+  'market.stock.selectedToken': 'Selected token: {mint}',
+  'market.stock.realBadge': 'Real money',
+  'market.stock.realUnavailableTitle': 'Not tradeable with real money yet.',
+  'market.stock.realUnavailableBody': 'None of this company’s tokens can be traded in Trimmy right now.',
+  /** Button: switch to Practice mode ("Paper") for this company. */
+  'market.stock.practiceInPaper': 'Practice in Paper',
+  'market.stock.noTokenTitle': 'Practice a move.',
+  'market.stock.noTokenBody': 'A supported token and a current quote are needed to review a paper order.',
+  /** Real mode: the company's tokens to choose from. */
+  'market.stock.versions': 'Versions',
+  'market.stock.versionTradeable': 'Tradeable',
+  'market.stock.versionUnavailable': 'Not available to trade.',
+
+  // Paper order panel on the company page, also used by Fast buy.
+  'market.trade.panelLabel': 'Paper order',
+  'market.trade.receiptBuyTitle': 'Your move is made.',
+  'market.trade.receiptSellTitle': 'Sale confirmed.',
+  /** {shares} is a share count, {name} the company. */
+  'market.trade.receiptShares': '{action, select, buy {{shares, plural, one {Bought # share of {name}.} other {Bought # shares of {name}.}}} sell {{shares, plural, one {Sold # share of {name}.} other {Sold # shares of {name}.}}} other {{shares, plural, one {Sold # share of {name}.} other {Sold # shares of {name}.}}}}',
+  'market.trade.paperSpent': 'Paper spent',
+  'market.trade.paperReceived': 'Paper received',
+  'market.trade.cashLeft': 'Paper cash left',
+  'market.trade.backToDesk': 'Back to your desk',
+  'market.trade.another': 'Make another move',
+  'market.trade.disclosure': 'Confirmed paper order. No real money was moved.',
+  'market.trade.reviewTitle': '{action, select, buy {Review your buy.} sell {Review your sell.} other {Review your {action}.}}',
+  'market.trade.shares': 'Shares',
+  'market.trade.pricePerShare': 'Price per share',
+  'market.trade.fees': 'Fees',
+  'market.trade.toSpend': 'Paper to spend',
+  'market.trade.toReceive': 'Paper to receive',
+  'market.trade.cashAfter': 'Paper cash after',
+  'market.trade.confirming': 'Confirming…',
+  'market.trade.confirm': '{action, select, buy {Confirm paper buy} sell {Confirm paper sell} other {Confirm paper {action}}}',
+  /** {seconds} counts down. */
+  'market.trade.expiresIn': 'Quote expires in {seconds}s',
+  'market.trade.expired': 'Quote expired. Get a new review.',
+  'market.trade.editAmount': 'Edit amount',
+  'market.trade.newQuote': 'Get a new quote',
+  'market.trade.buy': 'Buy',
+  'market.trade.sell': 'Sell',
+  'market.trade.buyTitle': 'Make your move.',
+  'market.trade.sellTitle': 'Take a little back.',
+  'market.trade.buyCaption': 'Practice buying {name}.',
+  'market.trade.sellCaption': '{shares, plural, one {You hold # share.} other {You hold # shares.}}',
+  'market.trade.amountToSpend': 'Amount to spend',
+  'market.trade.sharesToSell': 'Shares to sell',
+  /** Unit beside the share amount field. */
+  'market.trade.sharesUnit': 'shares',
+  'market.trade.max': 'Max',
+  'market.trade.caution': 'Paper orders are unavailable while this token has a provider caution.',
+  'market.trade.quoting': 'Getting your quote…',
+  'market.trade.review': '{action, select, buy {Review paper buy} sell {Review paper sell} other {Review paper {action}}}',
+  /** {amount} is already formatted: "10,000.00". */
+  'market.trade.available': '{amount} paper available',
+  'market.trade.balanceUnavailable': 'Paper balance unavailable. Refresh your desk.',
+  'market.trade.start': 'Start with {amount} paper. No sign-in needed.',
+  'market.trade.pending': 'An order still needs checking.',
+  'market.trade.pendingCheck': 'Check it from your desk',
+
+  // Practice Fast buy sheet (fast-buy.tsx).
+  'market.fastBuy.title': 'Fast buy',
+  'market.fastBuy.confirmedTitle': 'Buy confirmed',
+  /** Heading and result buttons. {name} is the company. */
+  'market.fastBuy.buyName': 'Buy {name}',
+  'market.fastBuy.buyUnknown': 'Buy this company',
+  'market.fastBuy.close': 'Close fast buy',
+  'market.fastBuy.pending': 'An order still needs checking. Check it from your desk first.',
+  'market.fastBuy.search': 'Search a name or ticker',
+  'market.fastBuy.finding': 'Finding companies…',
+  'market.fastBuy.searchFailed': 'Search did not finish. Try again.',
+  'market.fastBuy.retry': 'Retry',
+  'market.fastBuy.noMatches': 'No matches yet.',
+  'market.fastBuy.tokenFallback': 'Token',
+  /** {symbol} is a token symbol such as AAPLx. */
+  'market.fastBuy.practiceBuy': '{symbol} · practice buy',
+  'market.fastBuy.checkingPrice': 'Checking price…',
+  'market.fastBuy.reviewBuy': 'Review buy',
+  'market.fastBuy.another': 'Choose another company',
+  'market.fastBuy.total': 'Total',
+  'market.fastBuy.confirming': 'Confirming buy…',
+  'market.fastBuy.confirm': 'Confirm buy',
+  'market.fastBuy.boughtUnknown': '{shares, plural, one {Bought # share of this company.} other {Bought # shares of this company.}}',
+  'market.fastBuy.why': 'Why did you buy?',
+  'market.fastBuy.reasonPlaceholder': 'One clear line',
+  'market.fastBuy.saving': 'Saving…',
+  'market.fastBuy.retryReason': 'Retry reason',
+  'market.fastBuy.saveReason': 'Save reason',
+  'market.fastBuy.skip': 'Skip',
+  'market.fastBuy.reasonSaved': 'Reason saved',
+  'market.fastBuy.reasonSavedTrims': 'Reason saved · +{count} Trims',
+  'market.fastBuy.noVersion': 'This company has no available version.',
+  /** Saving the reason failed. {max} is the character limit. */
+  'market.fastBuy.reason.invalid': 'Use one line and {max} characters or fewer.',
+  'market.fastBuy.reason.offline': 'Trade confirmed. You are offline, so your reason was not saved. Try again.',
+  'market.fastBuy.reason.timeout': 'Trade confirmed. Saving the reason took too long. Try again.',
+  'market.fastBuy.reason.exists': 'This trade already has a saved reason. Refresh your career.',
+  'market.fastBuy.reason.position': 'Trade confirmed. Hold this stock before saving a reason.',
+  'market.fastBuy.reason.failed': 'Trade confirmed. Your reason was not saved. Try again.',
+
+  // Company page Comments and Holders (company-social.tsx).
+  'market.social.label': 'Community',
+  'market.social.sections': 'Company sections',
+  'market.social.comments': 'Comments',
+  'market.social.holders': 'Holders',
+  'market.holders.failedTitle': 'Holders couldn’t load',
+  'market.holders.failedBody': 'Try again in a moment.',
+  'market.holders.retry': 'Retry',
+  'market.holders.loading': 'Loading holders…',
+  'market.holders.empty': 'No holders to show',
+  'market.holders.headHolder': 'Holder',
+  'market.holders.headTokens': 'Tokens',
+  /** {address} is a wallet address. */
+  'market.holders.copy': 'Copy address {address}',
+  'market.holders.copied': 'Address copied',
+  /** {count} is how many token accounts were sampled (up to 20). */
+  'market.holders.note': 'Balances from the largest {count} token accounts. Not the full holder list. Owners may be pools or custodians, not people.',
+  'market.comments.error.session': 'Your session needs a refresh before comments can load.',
+  'market.comments.error.offline': 'You are offline. Comments couldn’t load.',
+  'market.comments.error.timeout': 'Comments took too long to load.',
+  'market.comments.error.rateLimited': 'Comments are refreshing too quickly. Try again shortly.',
+  'market.comments.error.failed': 'Comments couldn’t load.',
+  'market.comments.audience': 'Choose whose comments to see',
+  'market.comments.everyone': 'Everyone',
+  'market.comments.friends': 'Friends',
+  'market.comments.private': 'Your comment is private.',
+  'market.comments.settings': 'Settings',
+  'market.comments.reported': 'Report received.',
+  'market.comments.actionFailed': 'That action could not be completed. Try again.',
+  'market.comments.loading': 'Loading comments…',
+  'market.comments.emptyFriends': 'No comments from friends yet',
+  'market.comments.empty': 'No comments yet',
+  /** Tag on the viewer's own comment. */
+  'market.comments.you': 'You',
+  /** {date} is a date and time. */
+  'market.comments.saved': 'Saved {date}',
+  'market.comments.report': 'Report',
+  'market.comments.loadingMore': 'Loading…',
+  'market.comments.more': 'Show more',
+  'market.comments.guestTitle': 'See what traders think',
+  'market.comments.guestBody': 'Start practicing or sign in to read comments on this company.',
+  'market.report.title': 'Why are you reporting this?',
+  'market.report.body': 'Choose the closest reason. The author will not see who reported it.',
+  'market.report.reasons': 'Report reason',
+  'market.report.category.spam': 'Spam',
+  'market.report.category.harassment': 'Harassment',
+  'market.report.category.impersonation': 'Impersonation',
+  'market.report.category.unsafe': 'Unsafe content',
+  'market.report.category.other': 'Something else',
+  /** {handle} is the author's handle without "@". One branch per report reason above. */
+  'market.report.summary': '{category, select, spam {Trimmy will review @{handle}’s comment as spam. It will leave this page after the report is received.} harassment {Trimmy will review @{handle}’s comment as harassment. It will leave this page after the report is received.} impersonation {Trimmy will review @{handle}’s comment as impersonation. It will leave this page after the report is received.} unsafe {Trimmy will review @{handle}’s comment as unsafe content. It will leave this page after the report is received.} other {Trimmy will review @{handle}’s comment as something else. It will leave this page after the report is received.}}',
+  'market.report.submit': 'Report',
+
+  // Community screen and Home's Community block (community-screen.tsx).
+  'market.community.loadFailed': 'Couldn’t load activity. Try again.',
+  'market.community.saveFailed': 'That change didn’t save. Try again.',
+  'market.community.updatesEmptyTitle': 'You’re all caught up',
+  'market.community.updatesEmptyBody': 'New comments from people you follow appear here.',
+  'market.community.followingEmptyTitle': 'Your people, here',
+  /** "Everyone" is the tab (market.community.everyone). */
+  'market.community.followingEmptyBody': 'Follow a trader from Everyone.',
+  'market.community.everyoneEmptyTitle': 'No shared comments yet',
+  'market.community.everyoneEmptyBody': 'Public comments will appear here.',
+  'market.community.back': '← Back to my desk',
+  /** The notifications inbox. */
+  'market.community.updates': 'Updates',
+  'market.community.title': 'Community',
+  'market.community.lists': 'Community lists',
+  'market.community.everyone': 'Everyone',
+  'market.community.following': 'Following',
+  'market.community.retry': 'Retry',
+  'market.community.opening': 'Opening community…',
+  /** A post author without a handle. */
+  'market.community.trader': 'Trader',
+  /** Follow a trader. */
+  'market.community.follow': '+ Follow',
+  'market.community.followingButton': 'Following',
+  'market.community.options': 'Comment options',
+  'market.community.mute': 'Mute updates',
+  'market.community.unmute': 'Turn on updates',
+  'market.community.report': 'Report',
+  'market.community.block': 'Block trader',
+  'market.community.reported': 'Report received.',
+  /** {handle} is the trader's handle without "@". */
+  'market.community.blocked': '@{handle} is blocked.',
+  'market.community.blockedUnknown': 'This trader is blocked.',
+  'market.community.loadMore': 'Load more',
+  'market.community.preview.title': 'Community',
+  'market.community.preview.open': 'Open',
+  'market.community.preview.guestTitle': 'See what traders are saying',
+  'market.community.preview.guestBody': 'Sign in to join the conversation.',
+  /** {handle} without "@"; {symbol} is a token symbol shown after "$": "@mia on $AAPLx". */
+  'market.community.preview.post': '@{handle} on ${symbol}',
+  'market.community.preview.postUnknown': 'A trader on ${symbol}',
+  'market.community.preview.failed': 'Community couldn’t load',
+  'market.community.preview.opening': 'Opening community…',
+  'market.community.preview.start': 'Start a conversation',
+  'market.community.preview.body': 'Public comments from other traders.',
 } as const satisfies AreaMessages<'market'>;

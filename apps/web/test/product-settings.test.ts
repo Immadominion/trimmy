@@ -31,7 +31,7 @@ test('comment privacy saves through the server and shows only what it confirmed'
     const dialog = () => h.dom.window.document.querySelector('[role="dialog"]');
     assert.ok(dialog()); assert.match(dialog()!.textContent ?? '', /Now: Nobody\./);
     await h.pick('Everyone');
-    assert.match(h.text(), /Your comments and your handle will show on that stock's page for anyone in Trimmy\. Money never shows\./);
+    assert.match(h.text(), /Your comments and your handle will show on that stock’s page for anyone in Trimmy\. Money never shows\./);
     await h.click('Save');
     const put = h.api.calls.find(call => call.path === '/v1/career/reason-privacy' && call.method === 'PUT');
     assert.equal(put?.body?.['visibility'], 'everyone'); assert.equal(put?.body?.['baseRevision'], 1); assert.equal(put?.body?.['schemaVersion'], 1);

@@ -7,6 +7,8 @@
  * Contract: apps/api/src/live-stock-orders.ts, mobile live_trading.dart.
  */
 import {USDC_MINT} from './amounts.js';
+import * as fmt from '../../i18n/format.js';
+import {t, type MessageKey} from '../../i18n/runtime.js';
 
 /** Bounds for one read. The API admits tokens automatically, so these sit well above today's list (as mobile's do). */
 export const CAPABILITIES_MAX_ASSETS = 10_000;
@@ -147,7 +149,7 @@ function parseIssuer(value: unknown, legacyOffered: (issuerId: string) => boolea
 const LEGACY_XSTOCKS: TradingIssuer = Object.freeze({
   issuerId: 'xstocks', name: 'xStocks', legalName: 'Backed Assets (JE) Limited', productType: '', summary: '',
   holderRights: '', warning: '', excludedRegions: Object.freeze([]), termsUrl: 'https://assets.backed.fi/legal-documentation',
-  attestation: Object.freeze({version: 'legacy', text: 'I’m eligible under the issuer’s terms.'}),
+  attestation: Object.freeze({version: 'legacy', get text() {return t('money.issuer.legacyAttestation');}}),
   offered: true, notOfferedReason: null, route: 'aggregator',
 });
 
@@ -166,30 +168,38 @@ export function parseMarketState(value: unknown): MarketState | null {
     nextOpenAt: instant(fields['nextOpenAt']), closesAt: instant(fields['closesAt'])});
 }
 
-/** A local time as a short phrase: `4:01 AM`, `tomorrow 9:31 AM`, `Mon 1:05 AM` or `Oct 5, 9:31 AM` (mobile liveMarketTime). */
+/**
+ * A local time as a short phrase: `4:01 AM`, `tomorrow 9:31 AM`, `Mon 1:05 AM` or `Oct 5, 9:31 AM` (mobile liveMarketTime).
+ * English keeps mobile's words; other languages write the clock, weekday and date as the reader's region does.
+ */
 export function marketTime(at: string, now = Date.now()): string {
-  const local = new Date(at), today = new Date(now);
+  const local = new Date(at), today = new Date(now), english = fmt.isEnglish();
   const hour = local.getHours() % 12 === 0 ? 12 : local.getHours() % 12;
-  const clock = `${hour}:${String(local.getMinutes()).padStart(2, '0')} ${local.getHours() < 12 ? 'AM' : 'PM'}`;
+  const clock = english ? `${hour}:${String(local.getMinutes()).padStart(2, '0')} ${local.getHours() < 12 ? 'AM' : 'PM'}`
+    : fmt.time(local, 'en-US', {hour: 'numeric', minute: '2-digit'});
+  // The hour as shown also picks words, as in Spanish "a la 1:05" and "a las 9:30".
+  const time = new fmt.Shown(Number(/[0-9]+/u.exec(clock)?.[0] ?? hour), clock);
   const days = Math.round((new Date(local.getFullYear(), local.getMonth(), local.getDate()).getTime() -
     new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000);
-  if (days <= 0) return clock;
-  if (days === 1) return `tomorrow ${clock}`;
-  if (days < 7) return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][local.getDay()]} ${clock}`;
-  return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][local.getMonth()]} ${local.getDate()}, ${clock}`;
+  if (days <= 0) return t('money.market.when.today', {time});
+  if (days === 1) return t('money.market.when.tomorrow', {time});
+  if (days < 7) return t('money.market.when.weekday', {time, day: english ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][local.getDay()]
+    : fmt.date(local, 'en-US', {weekday: 'short'})});
+  return t('money.market.when.date', {time, date: english ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][local.getMonth()]} ${local.getDate()}`
+    : fmt.date(local, 'en-US', {month: 'short', day: 'numeric'})});
 }
 
 /** One short line, such as `Closed · opens Mon 1:05 AM`, in mobile's words. */
 export function marketLabel(state: MarketState, now = Date.now()): string {
   const next = state.nextOpenAt === null ? null : marketTime(state.nextOpenAt, now);
-  if (state.status === 'open') return !state.usSessions ? 'Open 24/7' : state.sessions.includes('offhours') ? 'Open now, including weekends' : 'Open now';
+  if (state.status === 'open') return t(!state.usSessions ? 'money.market.open247' : state.sessions.includes('offhours') ? 'money.market.openWeekends' : 'money.market.openNow');
   if (state.status === 'paused') {
-    if (state.reason === 'issuer_paused') return 'Paused by the issuer';
-    if (state.reason === 'market_paused') return next === null ? 'Paused by the market' : `Paused · resumes ${next}`;
-    return next === null ? 'Short pause' : `Short pause · resumes ${next}`;
+    if (state.reason === 'issuer_paused') return t('money.market.issuerPaused');
+    if (state.reason === 'market_paused') return next === null ? t('money.market.marketPaused') : t('money.market.pausedResumes', {when: next});
+    return next === null ? t('money.market.shortPause') : t('money.market.shortPauseResumes', {when: next});
   }
-  if (state.status === 'closed') return next === null ? 'Closed' : `Closed · opens ${next}`;
-  return 'Not trading right now';
+  if (state.status === 'closed') return next === null ? t('money.market.closed') : t('money.market.closedOpens', {when: next});
+  return t('money.market.notTrading');
 }
 
 /** When a token that follows US sessions trades, in one sentence; null for tokens that trade around the clock. */
@@ -197,11 +207,10 @@ export function marketHours(state: MarketState): string | null {
   if (!state.usSessions) return null;
   const sessions = new Set(state.sessions);
   if (['overnight', 'premarket', 'regular', 'postmarket'].every(session => sessions.has(session))) {
-    return sessions.has('offhours') ? 'Trades around the clock, with short pauses between US sessions.'
-      : 'Trades 24 hours a day, Sunday evening to Friday evening (US Eastern).';
+    return t(sessions.has('offhours') ? 'money.market.hours.aroundClock' : 'money.market.hours.weekdays');
   }
-  if (sessions.size === 1 && sessions.has('regular')) return 'Trades during US market hours only, 9:30 AM to 4 PM Eastern on weekdays.';
-  return 'Trades during US market sessions only.';
+  if (sessions.size === 1 && sessions.has('regular')) return t('money.market.hours.regular');
+  return t('money.market.hours.sessions');
 }
 
 function parseAsset(value: unknown, legacy: boolean): TradingAsset {
@@ -249,18 +258,18 @@ function parseUnavailable(value: unknown): Map<string, UnavailableVariant> {
   return rows;
 }
 
-const NOT_OFFERED = 'This issuer is not offered in Trimmy.';
-const REASONS: Readonly<Record<string, string>> = Object.freeze({
-  identity_unverified: 'Trimmy could not confirm who issued this token.',
-  token_restricted: 'The issuer has restrictions on this token that Trimmy cannot accept.',
-  low_liquidity: 'Too little trading to buy and sell it safely.',
-  no_reviewed_route: 'No order route passed Trimmy’s safety checks.',
-  price_off_market: 'Its price is too far from the real share price.',
-  held_back: 'Paused while Trimmy checks this token.',
-  not_reviewed: 'Not checked yet.',
-  market_closed: 'Trades only while US markets are open.',
-  awaiting_review: 'Its market is open. Trimmy is checking it before you can trade.',
-  no_market_maker_quote: 'No market maker is quoting it right now.',
+const NOT_OFFERED: MessageKey = 'money.reason.notOffered';
+const REASONS: Readonly<Record<string, MessageKey>> = Object.freeze({
+  identity_unverified: 'money.reason.identityUnverified',
+  token_restricted: 'money.reason.tokenRestricted',
+  low_liquidity: 'money.reason.lowLiquidity',
+  no_reviewed_route: 'money.reason.noReviewedRoute',
+  price_off_market: 'money.reason.priceOffMarket',
+  held_back: 'money.reason.heldBack',
+  not_reviewed: 'money.reason.notReviewed',
+  market_closed: 'money.reason.marketClosed',
+  awaiting_review: 'money.reason.awaitingReview',
+  no_market_maker_quote: 'money.reason.noMarketMakerQuote',
 });
 
 
@@ -295,7 +304,7 @@ export class TradingCapabilities {
   tradeableNow(asset: TradingAsset): boolean {
     return this.enabled && this.issuers.get(asset.issuerId)?.offered === true && (asset.market === null || asset.market.status === 'open');
   }
-  variantLabel(asset: TradingAsset): string {return `${this.issuers.get(asset.issuerId)?.name ?? 'Issuer'} · ${asset.symbol}`;}
+  variantLabel(asset: TradingAsset): string {return `${this.issuers.get(asset.issuerId)?.name ?? t('money.issuer.fallbackName')} · ${asset.symbol}`;}
 
   /**
    * Every offered token of a company, most liquid first. With discovery's own
@@ -331,7 +340,7 @@ export class TradingCapabilities {
         const issuerId = this.#byMint.get(variant.mint)?.issuerId ?? this.unavailable.get(variant.mint)?.issuerId ?? null;
         const issuer = issuerId ? this.issuers.get(issuerId) ?? null : null;
         return Object.freeze({mint: variant.mint,
-          label: `${issuer?.name ?? variant.issuer ?? variant.label ?? 'Other issuer'} · ${this.#byMint.get(variant.mint)?.symbol ?? variant.symbol ?? this.unavailable.get(variant.mint)?.symbol ?? variant.label ?? fallbackSymbol}`,
+          label: `${issuer?.name ?? variant.issuer ?? variant.label ?? t('money.issuer.otherName')} · ${this.#byMint.get(variant.mint)?.symbol ?? variant.symbol ?? this.unavailable.get(variant.mint)?.symbol ?? variant.label ?? fallbackSymbol}`,
           asset: null, issuer, reason: this.reasonFor(variant.mint, now), tradeable: false});
       }),
     ];
@@ -339,20 +348,20 @@ export class TradingCapabilities {
 
   /** Why a token cannot be traded right now, in one short plain sentence. */
   reasonFor(mint: string, now = Date.now()): string {
-    if (!this.enabled) return 'Trading is temporarily paused.';
+    if (!this.enabled) return t('money.reason.tradingPaused');
     const asset = this.#byMint.get(mint);
     if (asset) {
       const issuer = this.issuers.get(asset.issuerId);
-      if (issuer && !issuer.offered) return issuer.notOfferedReason ?? NOT_OFFERED;
-      if (asset.market && asset.market.status !== 'open') return `${marketLabel(asset.market, now)}.`;
+      if (issuer && !issuer.offered) return issuer.notOfferedReason ?? t(NOT_OFFERED);
+      if (asset.market && asset.market.status !== 'open') return t('money.market.sentence', {status: marketLabel(asset.market, now)});
       // Offered, but discovery does not list this token for the company shown.
-      return 'Not available to trade in Trimmy yet.';
+      return t('money.reason.notYet');
     }
     const row = this.unavailable.get(mint);
-    if (!row) return 'Not available to trade in Trimmy yet.';
-    if (row.reason === 'issuer_not_offered') return (row.issuerId && this.issuers.get(row.issuerId)?.notOfferedReason) || NOT_OFFERED;
-    if (row.reason === 'market_closed' && row.market?.nextOpenAt) return `Its market is closed. It opens ${marketTime(row.market.nextOpenAt, now)}, then Trimmy checks it.`;
-    return REASONS[row.reason] ?? 'Not available to trade in Trimmy.';
+    if (!row) return t('money.reason.notYet');
+    if (row.reason === 'issuer_not_offered') return (row.issuerId && this.issuers.get(row.issuerId)?.notOfferedReason) || t(NOT_OFFERED);
+    if (row.reason === 'market_closed' && row.market?.nextOpenAt) return t('money.reason.opensThenChecks', {when: marketTime(row.market.nextOpenAt, now)});
+    return t(Object.hasOwn(REASONS, row.reason) ? REASONS[row.reason]! : 'money.reason.unavailable');
   }
 
   /** Whether Real mode can trade some token of this company right now. */

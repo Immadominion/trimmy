@@ -4,6 +4,10 @@ import type {FirstTradeEvidence} from './journey';
 import type {ReminderChoice, ReminderRecord} from './journey-store';
 import {downloadReminderCalendar} from './reminder-calendar';
 import {CompanyLogo, Loading, art, micros, shares} from './ui';
+import {useT} from '../i18n/react';
+import type {MessageKey} from '../i18n/runtime';
+import * as fmt from '../i18n/format';
+import {rankName} from './career-milestones';
 
 /**
  * Back and Escape run each screen's named action, as mobile's PopScope does.
@@ -33,7 +37,8 @@ export interface CelebrationProps {
 }
 /** The confirmed first order. Continue records it; it never places another order. */
 export function FirstOrderCelebration({evidence, name, logoUrl, career, loading, onContinue, onRetry}: CelebrationProps) {
-  const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
+  const tr = useT();
+  const [busy, setBusy] = useState(false), [error, setError] = useState<MessageKey | null>(null);
   const locked = useRef(false), mounted = useRef(true);
   const heading = useHeadingFocus<HTMLHeadingElement>();
   useEffect(() => {mounted.current = true; return () => {mounted.current = false;};}, []);
@@ -41,40 +46,41 @@ export function FirstOrderCelebration({evidence, name, logoUrl, career, loading,
     if (locked.current || !evidence) return;
     locked.current = true; setBusy(true); setError(null);
     try {await onContinue();}
-    catch {if (mounted.current) setError('Couldn’t continue. Try again.');}
+    catch {if (mounted.current) setError('firstDay.order.continueError');}
     finally {locked.current = false; if (mounted.current) setBusy(false);}
   }
   useBackAction(() => void next());
-  if (!evidence) return <section className="first-day journey-screen journey-state" aria-label="Your first order">
+  if (!evidence) return <section className="first-day journey-screen journey-state" aria-label={tr('firstDay.order.label')}>
     <img className="journey-state-art" src={art('career-world/trophy.png')} alt=""/>
-    <h1 ref={heading} tabIndex={-1}>{loading ? 'Opening your trade' : 'Couldn’t load your trade'}</h1>
-    {loading ? <Loading>Opening your first stock…</Loading> : <><p>Try again to see your confirmed order.</p><button className="primary" onClick={onRetry}>Try again</button></>}
+    <h1 ref={heading} tabIndex={-1}>{loading ? tr('firstDay.order.opening') : tr('firstDay.order.loadFailed')}</h1>
+    {loading ? <Loading>{tr('firstDay.order.loading')}</Loading> : <><p>{tr('firstDay.order.retryLede')}</p><button className="primary" onClick={onRetry}>{tr('common.tryAgain')}</button></>}
   </section>;
   const company = name ?? evidence.symbol;
   const reward = career?.firstConfirmedBuy?.orderId === evidence.orderId ? career : null;
-  return <section className="first-day journey-screen first-order" aria-label="Your first order">
+  return <section className="first-day journey-screen first-order" aria-label={tr('firstDay.order.label')}>
     <div className="intro-receipt-mark" aria-hidden="true">✓</div>
-    <h1 ref={heading} tabIndex={-1}>You’ve placed your first order!</h1>
-    <p className="journey-lede">Now let’s create your trader profile.</p>
+    <h1 ref={heading} tabIndex={-1}>{tr('firstDay.order.title')}</h1>
+    <p className="journey-lede">{tr('firstDay.order.lede')}</p>
     <div className="first-order-ticket">
       <div className="first-order-ticket-upper">
-        <div className="first-order-company"><CompanyLogo name={company} url={logoUrl} size={46}/><strong>{company}</strong><span className="first-order-check" aria-label="Buy confirmed">✓</span></div>
-        {evidence.cashDebitPaperMicros !== null && <><span className="first-order-label">Invested</span><span className="first-order-amount">{micros(evidence.cashDebitPaperMicros)}<small>paper</small></span></>}
-        <span className="first-order-shares">Shares <strong>{shares(evidence.quantityMicros)}</strong></span>
+        <div className="first-order-company"><CompanyLogo name={company} url={logoUrl} size={46}/><strong>{company}</strong><span className="first-order-check" aria-label={tr('firstDay.order.buyConfirmed')}>✓</span></div>
+        {evidence.cashDebitPaperMicros !== null && <><span className="first-order-label">{tr('firstDay.order.invested')}</span><span className="first-order-amount">{micros(evidence.cashDebitPaperMicros)}<small>{tr('common.paperUnit')}</small></span></>}
+        <span className="first-order-shares">{tr.rich('firstDay.order.shares', {shares: shares(evidence.quantityMicros)})}</span>
       </div>
-      <div className="first-order-ticket-lower"><span className="first-order-confirmed">Buy confirmed</span>
-        {reward && <span className="first-order-reward">{reward.rank.label} · {reward.trims.total.toLocaleString()} Trims total</span>}</div>
+      <div className="first-order-ticket-lower"><span className="first-order-confirmed">{tr('firstDay.order.buyConfirmed')}</span>
+        {reward && <span className="first-order-reward">{tr('firstDay.order.reward', {rank: rankName(reward.rank), trims: fmt.count(reward.trims.total)})}</span>}</div>
     </div>
-    <button className="primary full" disabled={busy} onClick={() => void next()}>{busy ? 'Saving…' : 'Continue'}</button>
-    {error && <p className="intro-error" role="alert">{error}</p>}
-    <p className="intro-disclosure">Confirmed paper order. No real money moved.</p>
+    <button className="primary full" disabled={busy} onClick={() => void next()}>{busy ? tr('firstDay.saving') : tr('common.continue')}</button>
+    {error && <p className="intro-error" role="alert">{tr(error)}</p>}
+    <p className="intro-disclosure">{tr('firstDay.order.disclosure')}</p>
   </section>;
 }
 
-const reminderChoices: readonly {id: ReminderChoice; label: string; caption: string}[] = [
-  {id: 'daily', label: 'Once a day', caption: 'Around 7 PM, your time.'},
-  {id: 'occasional', label: 'A few times a week', caption: 'Mon, Wed and Fri, around 7 PM.'},
-  {id: 'off', label: 'Keep it quiet', caption: 'I’ll come back on my own.'},
+/** The schedule is the calendar file's (reminder-calendar.ts): daily, or Monday, Wednesday and Friday, at 7 PM local time. */
+const reminderChoices: readonly {id: ReminderChoice; label: MessageKey; caption: MessageKey}[] = [
+  {id: 'daily', label: 'firstDay.reminders.daily', caption: 'firstDay.reminders.dailyCaption'},
+  {id: 'occasional', label: 'firstDay.reminders.occasional', caption: 'firstDay.reminders.occasionalCaption'},
+  {id: 'off', label: 'firstDay.reminders.off', caption: 'firstDay.reminders.offCaption'},
 ];
 export interface ReminderPageProps {
   readonly saved: ReminderRecord | null;
@@ -87,15 +93,16 @@ export interface ReminderPageProps {
 }
 /** Mobile's "A little nudge?" page with an honest browser delivery: a calendar event. */
 export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar = downloadReminderCalendar, onClose}: ReminderPageProps) {
+  const tr = useT();
   const [selected, setSelected] = useState<ReminderChoice | null>(saved?.choice ?? null);
   const [confirmed, setConfirmed] = useState<ReminderChoice | null>(null);
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState<string | null>(null), [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState<MessageKey | null>(null), [error, setError] = useState<MessageKey | null>(null);
   const locked = useRef(false), mounted = useRef(true);
   const heading = useHeadingFocus<HTMLHeadingElement>();
   useEffect(() => {mounted.current = true; return () => {mounted.current = false;};}, []);
   async function run(task: () => Promise<void>) {
     if (locked.current) return; locked.current = true; setBusy(true); setError(null);
-    try {await task();} catch {if (mounted.current) setError('Couldn’t save that. Try again.');}
+    try {await task();} catch {if (mounted.current) setError('firstDay.reminders.saveError');}
     finally {locked.current = false; if (mounted.current) setBusy(false);}
   }
   const save = (skip = false) => run(async () => {
@@ -105,66 +112,68 @@ export function ReminderPreferencePage({saved, onSave, onDone, downloadCalendar 
     await onSave(choice);
     if (choice === 'off') {await onDone(); return;}
     // A browser tab cannot wake itself; keep the choice and offer the calendar.
-    if (mounted.current) {setConfirmed(choice); setMessage('Your preference is saved. Browsers can’t send Trimmy reminders while it’s closed, so add it to your calendar.');}
+    if (mounted.current) {setConfirmed(choice); setMessage('firstDay.reminders.saved');}
   });
   useBackAction(() => {if (onClose) onClose(); else void save(true);});
-  return <section className="first-day journey-screen reminder-page" aria-label="Reminders">
-    <button className="intro-close" aria-label={onClose ? 'Close reminders' : 'Skip reminders'} disabled={busy} onClick={() => {if (onClose) onClose(); else void save(true);}}>×</button>
+  return <section className="first-day journey-screen reminder-page" aria-label={tr('firstDay.reminders.label')}>
+    <button className="intro-close" aria-label={onClose ? tr('firstDay.reminders.close') : tr('firstDay.reminders.skip')} disabled={busy} onClick={() => {if (onClose) onClose(); else void save(true);}}>×</button>
     <img className="journey-icon" src={art('icons/asset-bell.png')} alt="" width="52" height="52"/>
-    <h1 ref={heading} tabIndex={-1}>A little nudge?</h1>
-    <p className="journey-lede">How often would you like a reminder?</p>
-    <div className="setup-choices" role="radiogroup" aria-label="Reminder frequency">{reminderChoices.map(choice => <button key={choice.id}
+    <h1 ref={heading} tabIndex={-1}>{tr('firstDay.reminders.title')}</h1>
+    <p className="journey-lede">{tr('firstDay.reminders.lede')}</p>
+    <div className="setup-choices" role="radiogroup" aria-label={tr('firstDay.reminders.frequency')}>{reminderChoices.map(choice => <button key={choice.id}
       className="setup-choice" role="radio" aria-checked={selected === choice.id} disabled={busy}
       onClick={() => {setSelected(choice.id); setConfirmed(null); setMessage(null); setError(null);}}>
-      <span><strong>{choice.label}</strong><small>{choice.caption}</small></span></button>)}</div>
-    {message && confirmed && confirmed !== 'off' && <div className="journey-message" role="status"><p>{message}</p>
-      <button className="secondary" disabled={busy} onClick={() => {if (!downloadCalendar(confirmed)) setError('Couldn’t create the calendar file. Try again.');}}>Add to calendar</button></div>}
-    {error && <p className="intro-error" role="alert">{error}</p>}
-    <button className="primary full" disabled={busy || selected === null} onClick={() => void save()}>{busy ? 'Saving…' : 'Continue'}</button>
+      <span><strong>{tr(choice.label)}</strong><small>{tr(choice.caption)}</small></span></button>)}</div>
+    {message && confirmed && confirmed !== 'off' && <div className="journey-message" role="status"><p>{tr(message)}</p>
+      <button className="secondary" disabled={busy} onClick={() => {if (!downloadCalendar(confirmed)) setError('firstDay.reminders.calendarError');}}>{tr('firstDay.reminders.addToCalendar')}</button></div>}
+    {error && <p className="intro-error" role="alert">{tr(error)}</p>}
+    <button className="primary full" disabled={busy || selected === null} onClick={() => void save()}>{busy ? tr('firstDay.saving') : tr('common.continue')}</button>
   </section>;
 }
 
 export interface MoneyChoiceProps {readonly onFinish: (addMoney: boolean) => Promise<void>}
 /** Practice money or fund the wallet. Both finish the saved introduction first. */
 export function MoneyChoicePage({onFinish}: MoneyChoiceProps) {
-  const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
+  const tr = useT();
+  const [busy, setBusy] = useState(false), [error, setError] = useState(false);
   const locked = useRef(false), mounted = useRef(true);
   const heading = useHeadingFocus<HTMLHeadingElement>();
   useEffect(() => {mounted.current = true; return () => {mounted.current = false;};}, []);
   async function finish(addMoney: boolean) {
-    if (locked.current) return; locked.current = true; setBusy(true); setError(null);
+    if (locked.current) return; locked.current = true; setBusy(true); setError(false);
     try {await onFinish(addMoney);}
-    catch {if (mounted.current) setError('Your trade is safe. Try continuing again.');}
+    catch {if (mounted.current) setError(true);}
     finally {locked.current = false; if (mounted.current) setBusy(false);}
   }
   useBackAction(() => void finish(false));
-  return <section className="first-day journey-screen money-choice" aria-label="Your next move">
-    <button className="intro-close" aria-label="Keep using free money" disabled={busy} onClick={() => void finish(false)}>×</button>
+  return <section className="first-day journey-screen money-choice" aria-label={tr('firstDay.money.label')}>
+    <button className="intro-close" aria-label={tr('firstDay.money.keepFree')} disabled={busy} onClick={() => void finish(false)}>×</button>
     <img className="journey-state-art" src={art('career-world/safe.png')} alt=""/>
-    <h1 ref={heading} tabIndex={-1}>Your next move.</h1>
-    <p className="journey-lede">Keep finding your feet, or fund your wallet.</p>
+    <h1 ref={heading} tabIndex={-1}>{tr('firstDay.money.title')}</h1>
+    <p className="journey-lede">{tr('firstDay.money.lede')}</p>
     <div className="setup-choices">
       <button className="setup-choice" disabled={busy} onClick={() => void finish(false)}><img src={art('icons/goal-goal-animated.png')} alt="" width="34" height="34"/>
-        <span><strong>Keep using free money</strong><small>Build your confidence on the desk.</small></span></button>
+        <span><strong>{tr('firstDay.money.keepFree')}</strong><small>{tr('firstDay.money.keepFreeCaption')}</small></span></button>
       <button className="setup-choice" disabled={busy} onClick={() => void finish(true)}><span className="setup-choice-plus" aria-hidden="true">+</span>
-        <span><strong>Add money</strong><small>See your deposit options.</small></span></button>
+        <span><strong>{tr('firstDay.money.add')}</strong><small>{tr('firstDay.money.addCaption')}</small></span></button>
     </div>
-    <p className="journey-footnote">You can add money from your desk any time.</p>
-    {busy && <p className="journey-footnote" role="status">Saving…</p>}
-    {error && <p className="intro-error" role="alert">{error}</p>}
+    <p className="journey-footnote">{tr('firstDay.money.footnote')}</p>
+    {busy && <p className="journey-footnote" role="status">{tr('firstDay.saving')}</p>}
+    {error && <p className="intro-error" role="alert">{tr('firstDay.money.error')}</p>}
   </section>;
 }
 
 /** An existing account keeps its own desk; guest trades are never merged here. */
 export function GuestDeskPreserved({expired, onContinue}: {expired: boolean; onContinue: () => void}) {
+  const tr = useT();
   const heading = useHeadingFocus<HTMLHeadingElement>();
-  return <section className="first-day journey-screen journey-state" aria-label="Welcome back">
+  return <section className="first-day journey-screen journey-state" aria-label={tr('firstDay.preserved.title')}>
     <div className="journey-preserved-art"><img src={art('career-world/desk.png')} alt=""/><span aria-hidden="true">✓</span></div>
-    <h1 ref={heading} tabIndex={-1}>Welcome back</h1>
-    <p className="journey-lede">Your saved trades and progress are ready.</p>
+    <h1 ref={heading} tabIndex={-1}>{tr('firstDay.preserved.title')}</h1>
+    <p className="journey-lede">{tr('firstDay.preserved.lede')}</p>
     <div className="journey-card"><img src={art('icons/settings-lock.png')} alt="" width="26" height="26"/>
-      <p>{expired ? 'Your expired guest desk is preserved separately. It can no longer trade or merge.' : 'Your guest trades stay separate. Sign out to return to that desk.'}</p></div>
-    <button className="primary full" onClick={onContinue}>Go to my desk</button>
+      <p>{expired ? tr('firstDay.preserved.expired') : tr('firstDay.preserved.separate')}</p></div>
+    <button className="primary full" onClick={onContinue}>{tr('firstDay.preserved.go')}</button>
   </section>;
 }
 

@@ -5,6 +5,8 @@ import type {PracticeAccountProof} from './practice-client';
 import {newMutationId} from './career-actions';
 import {reasonSavedAt} from './company-social';
 import {Loading, art} from './ui';
+import {useT} from '../i18n/react';
+import type {MessageKey, MessageParams} from '../i18n/runtime';
 
 /* Mobile's community.dart: GET /v1/community (everyone, following, notifications)
  * and PUT /v1/community/following/:socialId. Accounts only, as on mobile. */
@@ -52,11 +54,12 @@ export const communityApi = {
 export function CommunityScreen({api, account, initialScope, onOpenAsset, onBack}: {
   api: ProductApiClient; account: PracticeAccountProof; initialScope: CommunityScope; onOpenAsset: (assetId: string) => void; onBack: () => void;
 }) {
+  const tr = useT();
   const [scope, setScope] = useState<CommunityScope>(initialScope);
   const [posts, setPosts] = useState<readonly CommunityPost[]>([]), [next, setNext] = useState<CommunityPage['next']>(null);
-  const [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true), [error, setError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set()), [menu, setMenu] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set()), [notice, setNotice] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set()), [notice, setNotice] = useState<{key: MessageKey; params?: MessageParams} | null>(null);
   const heading = useRef<HTMLHeadingElement>(null), generation = useRef(0);
   useEffect(() => {heading.current?.focus();}, [scope]);
   const load = useCallback(async (more = false) => {
@@ -66,52 +69,54 @@ export function CommunityScreen({api, account, initialScope, onOpenAsset, onBack
       const page = await communityApi.read(api, account, scope, more ? next : null);
       if (turn !== generation.current) return;
       setPosts(prior => more ? [...prior, ...page.posts.filter(post => !prior.some(item => item.reasonId === post.reasonId))] : page.posts); setNext(page.next);
-    } catch {if (turn === generation.current) setError('Couldn’t load activity. Try again.');}
+    } catch {if (turn === generation.current) setError('market.community.loadFailed');}
     finally {if (turn === generation.current) setLoading(false);}
   }, [api, account, scope, next]);
   useEffect(() => {setPosts([]); setNext(null); void load(false);
     // Reload only when the scope changes; paging uses the stored cursor.
   }, [scope, api, account]);
-  async function change(post: CommunityPost, work: () => Promise<unknown>, done?: string) {
+  async function change(post: CommunityPost, work: () => Promise<unknown>, done?: {key: MessageKey; params?: MessageParams}) {
     if (busy.has(post.socialId)) return;
     setBusy(prior => new Set([...prior, post.socialId])); setMenu(null); setNotice(null);
     try {await work(); if (done) setNotice(done); await load(false);}
-    catch {setError('That change didn’t save. Try again.');}
+    catch {setError('market.community.saveFailed');}
     finally {setBusy(prior => {const nextSet = new Set(prior); nextSet.delete(post.socialId); return nextSet;});}
   }
   const visible = posts.filter(post => !hidden.has(post.reasonId) && !hidden.has(post.socialId));
-  const empty = scope === 'notifications' ? ['You’re all caught up', 'New comments from people you follow appear here.']
-    : scope === 'following' ? ['Your people, here', 'Follow a trader from Everyone.'] : ['No shared comments yet', 'Public comments will appear here.'];
+  const empty: readonly [MessageKey, MessageKey] = scope === 'notifications' ? ['market.community.updatesEmptyTitle', 'market.community.updatesEmptyBody']
+    : scope === 'following' ? ['market.community.followingEmptyTitle', 'market.community.followingEmptyBody'] : ['market.community.everyoneEmptyTitle', 'market.community.everyoneEmptyBody'];
   return <section className="community-screen" aria-labelledby="community-heading">
-    <button className="company-back" onClick={onBack}>← Back to my desk</button>
-    <div className="page-intro"><h1 id="community-heading" ref={heading} tabIndex={-1}>{scope === 'notifications' ? 'Updates' : 'Community'}</h1></div>
-    {scope !== 'notifications' && <div className="market-lists" role="tablist" aria-label="Community lists">{(['everyone', 'following'] as const).map(item =>
-      <button key={item} role="tab" aria-selected={scope === item} className={scope === item ? 'active' : ''} onClick={() => setScope(item)}>{item === 'everyone' ? 'Everyone' : 'Following'}</button>)}</div>}
-    {notice && <p className="company-social-note" role="status">{notice}</p>}
-    {error && <div className="company-social-state" role="alert"><p>{error}</p><button className="text-button" onClick={() => void load(false)}>Retry</button></div>}
-    {loading && !posts.length && !error && <Loading>Opening community…</Loading>}
-    {!loading && !error && !visible.length && <div className="company-social-state"><img src={art('icons/career-comments.png')} alt="" width="32" height="32"/><strong>{empty[0]}</strong><p>{empty[1]}</p></div>}
+    <button className="company-back" onClick={onBack}>{tr('market.community.back')}</button>
+    <div className="page-intro"><h1 id="community-heading" ref={heading} tabIndex={-1}>{tr(scope === 'notifications' ? 'market.community.updates' : 'market.community.title')}</h1></div>
+    {scope !== 'notifications' && <div className="market-lists" role="tablist" aria-label={tr('market.community.lists')}>{(['everyone', 'following'] as const).map(item =>
+      <button key={item} role="tab" aria-selected={scope === item} className={scope === item ? 'active' : ''} onClick={() => setScope(item)}>{tr(item === 'everyone' ? 'market.community.everyone' : 'market.community.following')}</button>)}</div>}
+    {notice && <p className="company-social-note" role="status">{tr(notice.key, notice.params)}</p>}
+    {error && <div className="company-social-state" role="alert"><p>{tr(error)}</p><button className="text-button" onClick={() => void load(false)}>{tr('market.community.retry')}</button></div>}
+    {loading && !posts.length && !error && <Loading>{tr('market.community.opening')}</Loading>}
+    {!loading && !error && !visible.length && <div className="company-social-state"><img src={art('icons/career-comments.png')} alt="" width="32" height="32"/><strong>{tr(empty[0])}</strong><p>{tr(empty[1])}</p></div>}
     <div className="community-posts">{visible.map(post => <article key={post.reasonId} className="comment-card community-post">
-      <header><strong>{post.handle ? `@${post.handle}` : 'Trader'}</strong>
+      <header><strong>{post.handle ? `@${post.handle}` : tr('market.community.trader')}</strong>
         {!post.isViewer && <button className={`follow-button${post.following ? ' following' : ''}`} disabled={busy.has(post.socialId)} aria-pressed={post.following}
-          onClick={() => void change(post, () => communityApi.follow(api, account, post.socialId, !post.following, true))}>{post.following ? 'Following' : '+ Follow'}</button>}
-        {!post.isViewer && <button className="community-more" aria-label="Comment options" aria-expanded={menu === post.reasonId} onClick={() => setMenu(menu === post.reasonId ? null : post.reasonId)}>⋯</button>}
+          onClick={() => void change(post, () => communityApi.follow(api, account, post.socialId, !post.following, true))}>{tr(post.following ? 'market.community.followingButton' : 'market.community.follow')}</button>}
+        {!post.isViewer && <button className="community-more" aria-label={tr('market.community.options')} aria-expanded={menu === post.reasonId} onClick={() => setMenu(menu === post.reasonId ? null : post.reasonId)}>⋯</button>}
       </header>
       {menu === post.reasonId && <div className="community-menu" role="menu">
-        {post.following && <button role="menuitem" onClick={() => void change(post, () => communityApi.follow(api, account, post.socialId, true, !post.notifications))}>{post.notifications ? 'Mute updates' : 'Turn on updates'}</button>}
-        <button role="menuitem" onClick={() => void change(post, async () => {await communityApi.report(api, account, post.reasonId, 'other'); setHidden(prior => new Set([...prior, post.reasonId]));}, 'Report received.')}>Report</button>
-        <button role="menuitem" onClick={() => void change(post, async () => {await communityApi.block(api, account, post.socialId); setHidden(prior => new Set([...prior, post.socialId]));}, `${post.handle ? `@${post.handle}` : 'This trader'} is blocked.`)}>Block trader</button>
+        {post.following && <button role="menuitem" onClick={() => void change(post, () => communityApi.follow(api, account, post.socialId, true, !post.notifications))}>{tr(post.notifications ? 'market.community.mute' : 'market.community.unmute')}</button>}
+        <button role="menuitem" onClick={() => void change(post, async () => {await communityApi.report(api, account, post.reasonId, 'other'); setHidden(prior => new Set([...prior, post.reasonId]));}, {key: 'market.community.reported'})}>{tr('market.community.report')}</button>
+        <button role="menuitem" onClick={() => void change(post, async () => {await communityApi.block(api, account, post.socialId); setHidden(prior => new Set([...prior, post.socialId]));},
+          post.handle ? {key: 'market.community.blocked', params: {handle: post.handle}} : {key: 'market.community.blockedUnknown'})}>{tr('market.community.block')}</button>
       </div>}
       <button className="community-symbol text-button" onClick={() => onOpenAsset(post.assetId)}>${post.symbol}</button>
       <p>{post.note}</p>
       <footer><span>{reasonSavedAt(post.savedAt)}</span></footer>
     </article>)}</div>
-    {next && <button className="secondary" disabled={loading} onClick={() => void load(true)}>Load more</button>}
+    {next && <button className="secondary" disabled={loading} onClick={() => void load(true)}>{tr('market.community.loadMore')}</button>}
   </section>;
 }
 
 /** Home's Community block: two recent public comments, or an invitation to look. */
 export function CommunityPreview({api, account, onOpen}: {api: ProductApiClient | null; account: PracticeAccountProof | null; onOpen: () => void}) {
+  const tr = useT();
   const [posts, setPosts] = useState<readonly CommunityPost[] | null>(null), [failed, setFailed] = useState(false);
   const accountRef = useRef(account); accountRef.current = account;
   const signedIn = account !== null;
@@ -123,10 +128,10 @@ export function CommunityPreview({api, account, onOpen}: {api: ProductApiClient 
     return () => controller.abort();
   }, [api, signedIn]);
   return <section className="desk-section home-community" aria-labelledby="home-community-heading">
-    <div className="section-line"><h2 id="home-community-heading">Community</h2><button className="text-button" onClick={onOpen}>Open<span aria-hidden="true">↗</span></button></div>
-    {!signedIn ? <button className="home-community-row" onClick={onOpen}><img src={art('icons/career-comments.png')} alt=""/><span><strong>See what traders are saying</strong><small>Sign in to join the conversation.</small></span></button>
+    <div className="section-line"><h2 id="home-community-heading">{tr('market.community.preview.title')}</h2><button className="text-button" onClick={onOpen}>{tr('market.community.preview.open')}<span aria-hidden="true">↗</span></button></div>
+    {!signedIn ? <button className="home-community-row" onClick={onOpen}><img src={art('icons/career-comments.png')} alt=""/><span><strong>{tr('market.community.preview.guestTitle')}</strong><small>{tr('market.community.preview.guestBody')}</small></span></button>
       : posts && posts.length ? posts.slice(0, 2).map(post => <button key={post.reasonId} className="home-community-row" onClick={onOpen}><img src={art('icons/career-comments.png')} alt=""/>
-        <span><strong>{post.handle ? `@${post.handle}` : 'A trader'} on ${post.symbol}</strong><small>{post.note}</small></span></button>)
-      : <button className="home-community-row" onClick={onOpen}><img src={art('icons/career-comments.png')} alt=""/><span><strong>{failed ? 'Community couldn’t load' : posts === null ? 'Opening community…' : 'Start a conversation'}</strong><small>Public comments from other traders.</small></span></button>}
+        <span><strong>{post.handle ? tr('market.community.preview.post', {handle: post.handle, symbol: post.symbol}) : tr('market.community.preview.postUnknown', {symbol: post.symbol})}</strong><small>{post.note}</small></span></button>)
+      : <button className="home-community-row" onClick={onOpen}><img src={art('icons/career-comments.png')} alt=""/><span><strong>{tr(failed ? 'market.community.preview.failed' : posts === null ? 'market.community.preview.opening' : 'market.community.preview.start')}</strong><small>{tr('market.community.preview.body')}</small></span></button>}
   </section>;
 }
