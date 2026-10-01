@@ -9,6 +9,7 @@ import {CompanyLogo} from '../ui.js';
 import {marketLabel} from './live-trading.js';
 import {useMoney} from './money-api.js';
 import {useT} from '../../i18n/react.js';
+import {useBackCloses} from '../use-back-closes';
 
 export interface FastBuyChoice {readonly assetId: string; readonly mint: string | null; readonly card?: StockCard}
 
@@ -22,6 +23,7 @@ export function FastBuySheet({market, knownCards, onOpen, onClose}: {
   const [cards, setCards] = useState<readonly StockCard[] | null>(null);
   const [paperFailed, setPaperFailed] = useState(false), [revision, setRevision] = useState(0);
   const input = useRef<HTMLInputElement>(null), opener = useRef<Element | null>(null);
+  useBackCloses(onClose);
   useEffect(() => {opener.current = document.activeElement; input.current?.focus();
     return () => {if (opener.current instanceof HTMLElement) opener.current.focus();};}, []);
   useEffect(() => {if (money.real) void money.refreshCapabilities();}, [money.real, money.refreshCapabilities]);

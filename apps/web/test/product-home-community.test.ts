@@ -113,3 +113,17 @@ test('community follow and block paths always carry a lowercase socialId, with n
   assert.deepEqual(urls, [`PUT https://api.example/v1/community/following/${upper.toLowerCase()}`,
     `GET https://api.example/v1/social/blocks/${upper.toLowerCase()}`, `PUT https://api.example/v1/social/blocks/${upper.toLowerCase()}`]);
 });
+
+test('browser Back closes an open Fast buy sheet and leaves the page where it was', async () => {
+  const h = await harness({checkpoint: 'app', savedGuest: true, storage: chosenGuest(), traded: false});
+  try {
+    await h.app();
+    const page = h.dom.window.location.hash;
+    await h.click('Fast buy'); await h.flush(50);
+    assert.ok(h.button('Buy Apple'), 'the sheet is open');
+    await h.back(); await h.flush(50);
+    assert.equal(h.button('Buy Apple'), undefined, 'Back closed the sheet');
+    assert.match(h.text(), /Your desk\./, 'the page under it did not change');
+    assert.equal(h.dom.window.location.hash, page);
+  } finally {await h.close();}
+});

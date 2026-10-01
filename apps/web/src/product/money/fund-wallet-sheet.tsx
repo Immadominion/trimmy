@@ -12,6 +12,7 @@ import {qrMatrix} from './qr-matrix.js';
 import {walletAddress} from './wallet-controller.js';
 import {useT} from '../../i18n/react.js';
 import type {MessageKey} from '../../i18n/runtime.js';
+import {useBackCloses} from '../use-back-closes';
 
 /** The receive address as a QR code: square finder eyes, round modules, like mobile. */
 export function AddressQr({address}: {address: string}) {
@@ -43,6 +44,7 @@ export function FundWalletSheet({onClose}: {onClose(): void}) {
   const [method, setMethod] = useState<'crypto' | 'card'>('crypto');
   const [busy, setBusy] = useState(false), [message, setMessage] = useState<MessageKey | null>(null);
   const [copied, setCopied] = useState(false), [refreshing, setRefreshing] = useState(false);
+  useBackCloses(onClose);
   const closeButton = useRef<HTMLButtonElement>(null), opener = useRef<Element | null>(null);
   const refreshRef = useRef(money.refreshWallet); refreshRef.current = money.refreshWallet;
   useEffect(() => {

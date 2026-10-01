@@ -7,6 +7,7 @@ import type {TradeReasonReceipt} from './career-actions';
 import {CompanyLogo, Loading, errorCopy, micros, shares, toPaperMicros, usd} from './ui';
 import {categoryLabel, categoryOf, marketFigures, shareCount} from './market-social';
 import {useT, type Translator} from '../i18n/react';
+import {useBackCloses} from './use-back-closes';
 
 /**
  * Mobile's compact Fast buy (practice): find a company, choose an amount,
@@ -41,6 +42,7 @@ export function FastBuySheet(props: FastBuyProps) {
   const [note, setNote] = useState(''), [reason, setReason] = useState<TradeReasonReceipt | null>(null), [reasonError, setReasonError] = useState<{failure: unknown} | null>(null);
   const heading = useRef<HTMLHeadingElement>(null), locked = useRef(false), mounted = useRef(true);
   useEffect(() => {mounted.current = true; return () => {mounted.current = false;};}, []);
+  useBackCloses(props.onClose, busy);
   useEffect(() => {heading.current?.focus();}, [step]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {if (event.key === 'Escape' && !locked.current) {event.preventDefault(); props.onClose();}};

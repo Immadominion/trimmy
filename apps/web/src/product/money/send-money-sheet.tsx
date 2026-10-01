@@ -14,6 +14,7 @@ import type {MoneyCopy} from './live-order-client.js';
 import {useT} from '../../i18n/react.js';
 import {t} from '../../i18n/runtime.js';
 import * as fmt from '../../i18n/format.js';
+import {useBackCloses} from '../use-back-closes';
 
 const ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 /**
@@ -76,6 +77,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
   const [review, setReview] = useState<TransferReview | null>(null);
   const [stage, setStage] = useState<Stage>('details');
   const [busy, setBusy] = useState(true), [message, setMessage] = useState<MoneyCopy | null>(null);
+  useBackCloses(onClose, busy);
   const [signature, setSignature] = useState<string | null>(null), [status, setStatus] = useState<'pending' | 'confirmed' | 'failed' | 'expired'>('pending');
   const closeButton = useRef<HTMLButtonElement>(null), opener = useRef<Element | null>(null), active = useRef(true);
   useEffect(() => {
