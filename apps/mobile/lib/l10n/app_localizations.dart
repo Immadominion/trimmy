@@ -7642,6 +7642,18 @@ abstract class AppLocalizations {
   /// **'Your account was not closed. Try again.'**
   String get appCloseAccountFailed;
 
+  /// Under a reviewed real-money quote, counting down each second until the quote expires. {seconds} is a whole number; keep the unit short.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote expires in {seconds}s'**
+  String liveOrderQuoteExpiresIn(int seconds);
+
+  /// Button under the shortened deposit address that shows the whole address, so the player can check every character before sending money to it.
+  ///
+  /// In en, this message translates to:
+  /// **'Show full address'**
+  String get fundShowFullAddress;
+
   /// Settings switch that turns first-party usage counting on or off. On by default; off forgets anything not yet sent.
   ///
   /// In en, this message translates to:

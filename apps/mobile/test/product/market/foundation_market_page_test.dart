@@ -339,6 +339,44 @@ void main() {
     },
   );
 
+  testWidgets('the sort sheet scrolls on a small phone at large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 480);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 3;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    // Day changes add Biggest gains and Biggest drops: five options.
+    final company = testCompany();
+    final gateway = FakeMarketSearchGateway();
+    addTearDown(gateway.dispose);
+    await tester.pumpWidget(
+      app(
+        home: FoundationMarketPage(
+          companies: [company],
+          searchGateway: gateway,
+          recents: MarketRecentsController(),
+          onOpenCompany: (_) {},
+        ),
+      ),
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('market-sort-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('market-sort-button')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'no overflow');
+    await tester.ensureVisible(find.text('Name'));
+    await tester.tap(find.text('Name'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Featured'),
+      findsNothing,
+      reason: 'the last option was reachable',
+    );
+  });
+
   testWidgets('full-screen search searches while typing and records recents', (
     tester,
   ) async {
@@ -373,6 +411,37 @@ void main() {
     await tester.pump();
     expect(recents.companies.single.assetId, 'apple');
   });
+
+  testWidgets(
+    'a search that cannot start offers a retry instead of loading forever',
+    (tester) async {
+      final gateway = FakeMarketSearchGateway(
+        results: {
+          'apple': [testCompany()],
+        },
+      )..refuse = true;
+      addTearDown(gateway.dispose);
+      await tester.pumpWidget(
+        app(
+          home: MarketSearchPage(
+            gateway: gateway,
+            recents: MarketRecentsController(),
+          ),
+        ),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('market-search-field')),
+        'apple',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(find.text('Search did not finish. Try again.'), findsOneWidget);
+      gateway.refuse = false;
+      await tester.tap(find.text('Try again').hitTestable().first);
+      await tester.pumpAndSettle();
+      expect(find.text('Apple'), findsWidgets);
+    },
+  );
 
   testWidgets('search shows its honest empty and recovery states', (
     tester,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -145,6 +147,33 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
     super.dispose();
   }
 
+  bool _leaving = false;
+
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.workdayLeaveTitle),
+        content: Text(dialogContext.l10n.workdayLeaveBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(dialogContext.l10n.workdayLeaveKeepWriting),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(dialogContext.l10n.workdayLeaveWithoutSaving),
+          ),
+        ],
+      ),
+    );
+    if (leave != true || !mounted) return;
+    setState(() => _leaving = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   Future<void> _save() async {
     if (_saving || _receipt != null) return;
     late final PaperOrderReason reason;
@@ -233,139 +262,156 @@ class _PaperReasonFlowState extends State<PaperReasonFlow> {
     final receipt = _receipt;
     final saved = receipt != null;
     final failure = _failure;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          key: const ValueKey('paper-reason-close'),
-          tooltip: l10n.commonClose,
-          onPressed: _saving ? null : () => Navigator.maybePop(context),
-          icon: const Icon(Icons.close_rounded),
-        ),
+    // A typed, unsaved reason is not thrown away by Back or the close button
+    // without asking (the workday note's wording).
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _note,
+      builder: (context, note, child) => PopScope<Object?>(
+        canPop: saved || _leaving || note.text.trim().isEmpty,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && !_saving) unawaited(_confirmLeave());
+        },
+        child: child!,
       ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
-          children: [
-            if (saved) ...[
-              const SizedBox(height: 12),
-              const Center(child: ProductSuccessMark(size: 86)),
-              const SizedBox(height: 22),
-            ],
-            Text(
-              saved ? l10n.reasonWriteSavedTitle : l10n.reasonWriteTitle,
-              textAlign: saved ? TextAlign.center : TextAlign.start,
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-            if (!saved) ...[
-              const SizedBox(height: 8),
-              Text(
-                l10n.reasonWritePrompt,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-            const SizedBox(height: 26),
-            _HeldBuyCard(target: widget.target, company: widget.company),
-            const SizedBox(height: 20),
-            if (!saved) ...[
-              TextField(
-                key: const ValueKey('paper-reason-note'),
-                controller: _note,
-                readOnly: _pendingReason != null,
-                autofocus: true,
-                maxLength: 180,
-                minLines: 3,
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),
-                ],
-                decoration: InputDecoration(
-                  hintText: l10n.reasonWriteHint,
-                  filled: true,
-                  fillColor: const Color(0xFFF6F4FA),
-                  contentPadding: const EdgeInsets.all(20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onSubmitted: (_) => _save(),
-              ),
-              if (failure != null) ...[
-                const SizedBox(height: 8),
-                _ReasonMessage(_failureMessage(failure, l10n)),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            key: const ValueKey('paper-reason-close'),
+            tooltip: l10n.commonClose,
+            onPressed: _saving ? null : () => Navigator.maybePop(context),
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ),
+        body: SafeArea(
+          top: false,
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+            children: [
+              if (saved) ...[
+                const SizedBox(height: 12),
+                const Center(child: ProductSuccessMark(size: 86)),
+                const SizedBox(height: 22),
               ],
-              const SizedBox(height: 18),
-              if (_reasonAlreadyExists)
-                MarketPrimaryButton(
-                  key: const ValueKey('paper-reason-close-existing'),
-                  color: MarketPalette.violet,
-                  label: l10n.reasonWriteCloseRefresh,
-                  onPressed: () => Navigator.maybePop(context),
-                )
-              else
-                MarketPrimaryButton(
-                  key: const ValueKey('paper-reason-save'),
-                  color: MarketPalette.violet,
-                  label: _pendingReason == null
-                      ? l10n.reasonWriteSave
-                      : l10n.reasonWriteRetry,
-                  onPressed: _saving ? null : _save,
-                  busy: _saving,
+              Text(
+                saved ? l10n.reasonWriteSavedTitle : l10n.reasonWriteTitle,
+                textAlign: saved ? TextAlign.center : TextAlign.start,
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
+              if (!saved) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.reasonWritePrompt,
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFF4F0FC),
-                  shape: marketSquircle(25),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _pendingReason?.note ?? _note.text,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(height: 1.5),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      receipt.trimsAwarded > 0
-                          ? l10n.reasonWriteRewardTrims(
-                              context.formats.number('${receipt.trimsAwarded}'),
-                            )
-                          : l10n.reasonWriteMissionRecorded,
-                      key: const ValueKey('paper-reason-reward'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: MarketPalette.violet,
-                      ),
-                    ),
+              ],
+              const SizedBox(height: 26),
+              _HeldBuyCard(target: widget.target, company: widget.company),
+              const SizedBox(height: 20),
+              if (!saved) ...[
+                TextField(
+                  key: const ValueKey('paper-reason-note'),
+                  controller: _note,
+                  readOnly: _pendingReason != null,
+                  autofocus: true,
+                  maxLength: 180,
+                  minLines: 3,
+                  maxLines: 5,
+                  // One line of text that wraps: return saves, as the field's
+                  // submit already meant to (a newline would be removed anyway).
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.done,
+                  textCapitalization: TextCapitalization.sentences,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.deny(RegExp(r'[\r\n]')),
                   ],
+                  decoration: InputDecoration(
+                    hintText: l10n.reasonWriteHint,
+                    filled: true,
+                    fillColor: const Color(0xFFF6F4FA),
+                    contentPadding: const EdgeInsets.all(20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onSubmitted: (_) => _save(),
                 ),
-              ),
-              const SizedBox(height: 28),
-              MarketPrimaryButton(
-                key: const ValueKey('paper-reason-done'),
-                color: MarketPalette.violet,
-                label: l10n.commonDone,
-                onPressed: () => Navigator.of(context).pop(receipt),
-              ),
+                if (failure != null) ...[
+                  const SizedBox(height: 8),
+                  _ReasonMessage(_failureMessage(failure, l10n)),
+                ],
+                const SizedBox(height: 18),
+                if (_reasonAlreadyExists)
+                  MarketPrimaryButton(
+                    key: const ValueKey('paper-reason-close-existing'),
+                    color: MarketPalette.violet,
+                    label: l10n.reasonWriteCloseRefresh,
+                    onPressed: () => Navigator.maybePop(context),
+                  )
+                else
+                  MarketPrimaryButton(
+                    key: const ValueKey('paper-reason-save'),
+                    color: MarketPalette.violet,
+                    label: _pendingReason == null
+                        ? l10n.reasonWriteSave
+                        : l10n.reasonWriteRetry,
+                    onPressed: _saving ? null : _save,
+                    busy: _saving,
+                  ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFF4F0FC),
+                    shape: marketSquircle(25),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _pendingReason?.note ?? _note.text,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(height: 1.5),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        receipt.trimsAwarded > 0
+                            ? l10n.reasonWriteRewardTrims(
+                                context.formats.number(
+                                  '${receipt.trimsAwarded}',
+                                ),
+                              )
+                            : l10n.reasonWriteMissionRecorded,
+                        key: const ValueKey('paper-reason-reward'),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: MarketPalette.violet),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 28),
+                MarketPrimaryButton(
+                  key: const ValueKey('paper-reason-done'),
+                  color: MarketPalette.violet,
+                  label: l10n.commonDone,
+                  onPressed: () => Navigator.of(context).pop(receipt),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

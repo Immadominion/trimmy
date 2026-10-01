@@ -5,6 +5,7 @@ import 'package:trimmy/product/career/career_activity_week.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/floor/floor_screen.dart';
 import 'package:trimmy/product/profile/profile_screen.dart';
+import 'package:trimmy/ui_review/review_animated_splash.dart';
 
 Future<void> _reveal(WidgetTester tester, Finder finder) async {
   final scrollable = find.byType(Scrollable).first;
@@ -135,6 +136,25 @@ void main() {
     await tester.tap(find.text('Retry'));
     expect(retried, 1);
   });
+
+  testWidgets(
+    'before Career is read, Floor waits rather than reporting a failure',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          home: FloorScreen(
+            signedIn: false,
+            onSignIn: () {},
+            onOpenMarket: () {},
+          ),
+        ),
+      );
+      expect(find.text('Career couldn’t load'), findsNothing);
+      expect(find.byType(TrimmyLiquidMark), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('Profile uses the same confirmed Career snapshot', (
     tester,

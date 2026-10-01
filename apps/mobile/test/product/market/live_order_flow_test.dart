@@ -426,6 +426,11 @@ void main() {
       await tap(tester, 'live-order-review');
       expect(previews, 1);
       expect(find.text('Edit amount'), findsOneWidget);
+      expect(
+        find.textContaining(RegExp(r'^Quote expires in \d+s$')),
+        findsOneWidget,
+        reason: 'the review says how long the quote lasts',
+      );
       expect(find.byKey(const ValueKey('live-order-amount')), findsNothing);
       await tester.binding.handlePopRoute();
       await pump(tester);
@@ -540,6 +545,25 @@ void main() {
     expect(find.text('Frais de réseau et de compte'), findsOneWidget);
     expect(find.text('Confirmer l’achat'), findsOneWidget);
     expect(account.signatures, 0);
+    await clean(tester);
+  });
+
+  testWidgets('a tap in the amount box padding puts the cursor in the amount', (
+    tester,
+  ) async {
+    await mount(tester, defaults);
+    final amount = find.byKey(const ValueKey('live-order-amount'));
+    final box = find.ancestor(of: amount, matching: find.byType(Container));
+    bool focused() => tester
+        .widget<EditableText>(
+          find.descendant(of: amount, matching: find.byType(EditableText)),
+        )
+        .focusNode
+        .hasFocus;
+    expect(focused(), isFalse);
+    await tester.tapAt(tester.getTopRight(box.first) + const Offset(-8, 8));
+    await tester.pump();
+    expect(focused(), isTrue);
     await clean(tester);
   });
 

@@ -80,12 +80,16 @@ final class FakeMarketSearchGateway extends ChangeNotifier
   final List<String> queries = [];
   MarketSearchSnapshot _snapshot = const MarketSearchSnapshot.idle();
 
+  /// Like a closed or backgrounded search service: the search never starts.
+  bool refuse = false;
+
   @override
   MarketSearchSnapshot get snapshot => _snapshot;
 
   @override
   Future<void> search(String query) async {
     queries.add(query);
+    if (refuse) throw StateError('STOCK_RESEARCH_RUNTIME_BACKGROUND');
     _snapshot = MarketSearchSnapshot(
       phase: MarketSearchPhase.loading,
       query: query,

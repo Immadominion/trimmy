@@ -1794,7 +1794,9 @@ class _ProductExperienceState extends State<ProductExperience>
       );
     }
     final generation = _portfolioGeneration;
-    final finished = await Navigator.of(context).push<bool>(
+    // A filed workday says "Back to the street": closing it returns to
+    // Career, as the button promises.
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => WorkdayScreen(
           assignmentId: assignmentId,
@@ -1806,9 +1808,6 @@ class _ProductExperienceState extends State<ProductExperience>
         ),
       ),
     );
-    if (finished == true && mounted && generation == _portfolioGeneration) {
-      _shellKey.currentState?.select(ProductTab.desk);
-    }
   }
 
   Widget _shell(OnboardingProfile profile) {
@@ -2097,6 +2096,8 @@ class _ProductExperienceState extends State<ProductExperience>
       // A drag closes a sheet past its PopScope, even while a send or an
       // order is being confirmed. These sheets close with their own buttons.
       enableDrag: false,
+      // A typed address and amount are not lost to a stray tap outside.
+      isDismissible: false,
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: productSquircle(30),

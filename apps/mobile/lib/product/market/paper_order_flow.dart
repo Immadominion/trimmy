@@ -1135,6 +1135,9 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
               maxLength: 180,
               maxLines: 1,
               textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              // Room for the Save button below the field above the keyboard.
+              scrollPadding: const EdgeInsets.fromLTRB(20, 20, 20, 160),
               decoration: InputDecoration(
                 labelText: l10n.paperOrderReasonLabel,
                 hintText: l10n.paperOrderReasonHint,

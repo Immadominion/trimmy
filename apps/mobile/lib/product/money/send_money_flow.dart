@@ -862,6 +862,9 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       const SizedBox(height: 16),
       TextField(
         key: const ValueKey('send-destination'),
+        onChanged: (_) {
+          if (_error != null) setState(() => _error = null);
+        },
         controller: _to,
         enabled: !_working,
         autocorrect: false,
@@ -882,7 +885,10 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
                       'text/plain',
                     ))?.text?.trim();
                     if (text != null && mounted) {
-                      setState(() => _to.text = text);
+                      setState(() {
+                        _to.text = text;
+                        _error = null;
+                      });
                     }
                   },
           ),
@@ -891,6 +897,9 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       const SizedBox(height: 16),
       TextField(
         key: const ValueKey('send-amount'),
+        onChanged: (_) {
+          if (_error != null) setState(() => _error = null);
+        },
         controller: _amount,
         enabled: !_working,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),

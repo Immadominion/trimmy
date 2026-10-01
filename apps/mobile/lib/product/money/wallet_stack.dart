@@ -281,6 +281,8 @@ class _WalletStackState extends State<WalletStack>
                   color: Colors.white,
                   fontSize: 44,
                   letterSpacing: -1.6,
+                  // Digits keep their width, so the balance does not shift as it updates.
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ),

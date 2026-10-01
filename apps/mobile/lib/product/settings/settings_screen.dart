@@ -589,8 +589,9 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           final l10n = dialogContext.l10n;
-          // The phrase is typed in the reader's language and compared
-          // exactly, as the English phrase always was.
+          // The phrase is typed in the reader's language. Capitals, extra
+          // spaces and apostrophe styles are forgiven (phones capitalize the
+          // first word); the server always receives the fixed phrase.
           final phrase = l10n.settingsResetPaperPhrase;
           return AlertDialog(
             backgroundColor: Colors.white,
@@ -641,7 +642,7 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
               ),
               FilledButton(
                 key: const ValueKey('confirm-reset-paper'),
-                onPressed: confirmation == phrase
+                onPressed: _samePhrase(confirmation, phrase)
                     ? () => Navigator.pop(dialogContext, true)
                     : null,
                 style: FilledButton.styleFrom(
@@ -1032,3 +1033,14 @@ SnackBar _settingsNotice(BuildContext context, String message) => SnackBar(
     onDismiss: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
   ),
 );
+
+/// The reset phrase as typed, forgiving capitals, extra spaces and the
+/// apostrophe a keyboard happens to use.
+bool _samePhrase(String typed, String phrase) {
+  String loose(String text) => text
+      .replaceAll(RegExp(r"[’‘`´]"), "'")
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim()
+      .toLowerCase();
+  return loose(typed) == loose(phrase);
+}

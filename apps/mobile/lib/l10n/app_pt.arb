@@ -1255,6 +1255,8 @@
   "signInResendIn": "Reenviar em {seconds} s",
   "appCloseAccountClosing": "Encerrando sua conta…",
   "appCloseAccountFailed": "Sua conta não foi encerrada. Tente de novo.",
+  "liveOrderQuoteExpiresIn": "A cotação expira em {seconds} s",
+  "fundShowFullAddress": "Ver endereço completo",
   "settingsUsage": "Compartilhar dados de uso",
   "settingsUsageDetail": "Contagens de quais telas abrem e quais etapas são concluídas, para melhorar o Trimmy. Sem nomes, valores nem mensagens.",
   "infoPrivacyUsageTitle": "Contagens de uso",

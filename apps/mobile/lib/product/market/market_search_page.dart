@@ -99,7 +99,10 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
     final query = _query.text.trim();
     final snapshot = widget.gateway.snapshot;
     final matching = snapshot.query.toLowerCase() == query.toLowerCase();
+    // A search that could not start (service closed, app in background)
+    // says so with a retry instead of loading forever.
     final searching =
+        !_searchFailed &&
         query.isNotEmpty &&
         (!matching || snapshot.phase == MarketSearchPhase.loading);
     final results = matching ? snapshot.companies : const <MarketCompany>[];
@@ -199,7 +202,9 @@ class _MarketSearchPageState extends State<MarketSearchPage> {
                             : matching
                             ? snapshot.noticeText(l10n)
                             : null,
-                        phase: matching
+                        phase: _searchFailed
+                            ? MarketSearchPhase.error
+                            : matching
                             ? snapshot.phase
                             : MarketSearchPhase.loading,
                         onChoose: _choose,

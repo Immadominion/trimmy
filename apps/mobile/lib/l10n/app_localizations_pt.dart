@@ -4756,6 +4756,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Sua conta não foi encerrada. Tente de novo.';
 
   @override
+  String liveOrderQuoteExpiresIn(int seconds) {
+    return 'A cotação expira em $seconds s';
+  }
+
+  @override
+  String get fundShowFullAddress => 'Ver endereço completo';
+
+  @override
   String get settingsUsage => 'Compartilhar dados de uso';
 
   @override

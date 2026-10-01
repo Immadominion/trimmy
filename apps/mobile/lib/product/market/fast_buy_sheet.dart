@@ -84,6 +84,9 @@ class _FastBuySheetState extends State<FastBuySheet> {
   /// follows the current language.
   bool _openFailed = false;
 
+  /// The last paper search could not start; shown with a retry, not a spinner.
+  String? _searchFailedFor;
+
   bool get _real => widget.loadTradeable != null;
 
   Future<void> _loadTradeable() async {
@@ -128,13 +131,22 @@ class _FastBuySheetState extends State<FastBuySheet> {
     setState(() {});
     // Real mode already holds every tradeable token and filters locally.
     if (_real || text.trim().isEmpty) return;
-    _debounce = Timer(const Duration(milliseconds: 280), () async {
-      try {
-        await widget.gateway.search(text.trim());
-      } catch (_) {
-        _changed();
+    _searchFailedFor = null;
+    _debounce = Timer(
+      const Duration(milliseconds: 280),
+      () => _runSearch(text.trim()),
+    );
+  }
+
+  Future<void> _runSearch(String query) async {
+    if (mounted) setState(() => _searchFailedFor = null);
+    try {
+      await widget.gateway.search(query);
+    } catch (_) {
+      if (mounted && _query.text.trim() == query) {
+        setState(() => _searchFailedFor = query);
       }
-    });
+    }
   }
 
   void _choose(MarketCompany company) {
@@ -218,6 +230,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
                 controller: _query,
                 textInputAction: TextInputAction.search,
                 autocorrect: false,
+                enableSuggestions: false,
                 onChanged: _search,
                 onSubmitted: _search,
                 decoration: InputDecoration(
@@ -342,7 +355,9 @@ class _FastBuySheetState extends State<FastBuySheet> {
     final query = _query.text.trim();
     final state = widget.gateway.snapshot;
     final matching = state.query.toLowerCase() == query.toLowerCase();
+    final failed = _searchFailedFor == query && query.isNotEmpty;
     final searching =
+        !failed &&
         query.isNotEmpty &&
         (!matching || state.phase == MarketSearchPhase.loading);
     final rows = query.isEmpty
@@ -351,12 +366,18 @@ class _FastBuySheetState extends State<FastBuySheet> {
         ? state.companies
         : <MarketCompany>[];
     if (searching) return const Center(child: TrimmyLiquidMark(size: 52));
+    if (failed) {
+      return _message(
+        context.l10n.marketSearchDidNotFinish,
+        retry: () => _runSearch(query),
+      );
+    }
     if (rows.isEmpty) {
       return _message(
         query.isEmpty
             ? context.l10n.fastBuyNoneAvailable
             : state.noticeText(context.l10n) ?? context.l10n.fastBuyNoMatches,
-        retry: state.notice == null ? null : () => widget.gateway.search(query),
+        retry: state.notice == null ? null : () => _runSearch(query),
       );
     }
     return ListView.builder(

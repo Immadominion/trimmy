@@ -150,13 +150,14 @@ void main() {
     expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
     await tester.enterText(
       find.byKey(const ValueKey('paper-reset-confirmation')),
-      'Reset my paper desk',
+      'reset my desk',
     );
     await tester.pump();
     expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+    // Phones capitalize the first word and keyboards add a space.
     await tester.enterText(
       find.byKey(const ValueKey('paper-reset-confirmation')),
-      'reset my paper desk',
+      'Reset my paper desk ',
     );
     await tester.pump();
     expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);

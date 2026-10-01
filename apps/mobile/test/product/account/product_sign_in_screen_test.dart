@@ -335,6 +335,10 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('sign-in-send-code')));
     expect(h.auth.sentCodes, isEmpty);
     await _expectError(tester);
+    // The message is about the last try: editing the address clears it.
+    await tester.enterText(email, 'not-an-email.');
+    await tester.pump();
+    expect(find.byKey(const ValueKey('sign-in-error')), findsNothing);
 
     await tester.enterText(email, '  person@example.test  ');
     final lateEmailSubmit = tester.widget<TextField>(email).onSubmitted!;
@@ -356,6 +360,9 @@ void main() {
     await _tap(tester, find.byKey(const ValueKey('sign-in-verify')));
     expect(h.auth.codeLogins, isEmpty);
     await _expectError(tester);
+    await tester.enterText(code, 'bad-cod');
+    await tester.pump();
+    expect(find.byKey(const ValueKey('sign-in-error')), findsNothing);
     await tester.enterText(code, '12 34-56');
     final lateCodeSubmit = tester.widget<TextField>(code).onSubmitted!;
     await _tap(tester, find.byKey(const ValueKey('sign-in-verify')));

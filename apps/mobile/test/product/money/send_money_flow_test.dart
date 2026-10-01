@@ -305,6 +305,13 @@ void main() {
       find.text('That’s your own wallet. Enter another address.'),
       findsOneWidget,
     );
+    // Editing either field clears the message about the last try.
+    await tester.enterText(
+      find.byKey(const ValueKey('send-destination')),
+      _friend,
+    );
+    await tester.pump();
+    expect(find.byKey(const ValueKey('send-notice')), findsNothing);
     await fill(tester, _friend, '81');
     expect(find.textContaining('ready to send.'), findsWidgets);
     expect(requests, isEmpty);

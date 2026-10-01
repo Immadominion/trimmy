@@ -164,6 +164,70 @@ void main() {
     },
   );
 
+  testWidgets('the return key saves the reason', (tester) async {
+    final repository = FakePaperOrderRepository();
+    await _pumpFlow(
+      tester,
+      repository: repository,
+      mutationId: () => testReasonMutationId,
+      onSaved: (_) {},
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('paper-reason-note')),
+      'Demand looks durable.',
+    );
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('paper-reason-note')),
+    );
+    expect(field.textInputAction, TextInputAction.done);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(repository.reasons.single.note, 'Demand looks durable.');
+  });
+
+  testWidgets('a typed reason is not discarded by Back without asking', (
+    tester,
+  ) async {
+    final repository = FakePaperOrderRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => PaperReasonFlow(
+                  target: _target,
+                  repository: repository,
+                  mutationId: () => testReasonMutationId,
+                ),
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('paper-reason-note')),
+      'Demand looks durable.',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('paper-reason-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('Leave this note?'), findsOneWidget);
+    await tester.tap(find.text('Keep writing'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('paper-reason-note')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('paper-reason-close')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leave without saving'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('paper-reason-note')), findsNothing);
+    expect(repository.reasons, isEmpty);
+  });
+
   testWidgets('a retry reuses the same mutation and normalized reason', (
     tester,
   ) async {

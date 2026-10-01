@@ -4757,6 +4757,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get appCloseAccountFailed => 'Ton compte n’a pas été fermé. Réessaie.';
 
   @override
+  String liveOrderQuoteExpiresIn(int seconds) {
+    return 'La cotation expire dans $seconds s';
+  }
+
+  @override
+  String get fundShowFullAddress => 'Afficher l’adresse complète';
+
+  @override
   String get settingsUsage => 'Partager les données d’utilisation';
 
   @override

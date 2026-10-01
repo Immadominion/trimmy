@@ -27,6 +27,9 @@ class _FundWalletSheetState extends State<FundWalletSheet>
   /// Creating the wallet failed; the message is built in the app language.
   bool _setupFailed = false;
   bool _card = false;
+
+  /// The whole deposit address, to check every character before sending.
+  bool _fullAddress = false;
   bool _checked = false, _refreshFailed = false;
   Timer? _poll, _copyTimer;
   @override
@@ -43,13 +46,16 @@ class _FundWalletSheetState extends State<FundWalletSheet>
         widget.account.phase != AccountPhase.active) {
       return;
     }
+    // The last outcome stays on screen while a poll runs; it changes only
+    // when the poll finishes, so a failing wallet does not flicker every 8s.
     _refreshing = true;
-    if (mounted) setState(() => _refreshFailed = false);
+    var failed = false;
     try {
       await widget.account.refreshPortfolio();
     } catch (_) {
-      _refreshFailed = true;
+      failed = true;
     } finally {
+      _refreshFailed = failed;
       _refreshing = false;
       _checked = true;
       if (mounted) setState(() {});
@@ -116,8 +122,7 @@ class _FundWalletSheetState extends State<FundWalletSheet>
           : portfolio?.phase == AccountPortfolioPhase.offline
           ? l10n.fundWalletOffline
           : _refreshFailed ||
-                (portfolio?.issue != null && !_refreshing) ||
-                (_checked && !_refreshing && wallet == null)
+                (_checked && (portfolio?.issue != null || wallet == null))
           ? l10n.fundWalletLoadFailed
           : null;
       final type = Theme.of(context).textTheme;
@@ -282,14 +287,30 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                   style: type.titleLarge,
                 ),
                 const SizedBox(height: 5),
-                Semantics(
-                  label: address,
-                  child: Text(
-                    shortenAddress(address),
+                if (_fullAddress)
+                  SelectableText(
+                    address,
+                    key: const ValueKey('deposit-address-full'),
                     textAlign: TextAlign.center,
-                    style: type.bodyMedium,
+                    style: type.bodyMedium?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  )
+                else ...[
+                  Semantics(
+                    label: address,
+                    child: Text(
+                      shortenAddress(address),
+                      textAlign: TextAlign.center,
+                      style: type.bodyMedium,
+                    ),
                   ),
-                ),
+                  TextButton(
+                    key: const ValueKey('show-deposit-address'),
+                    onPressed: () => setState(() => _fullAddress = true),
+                    child: Text(l10n.fundShowFullAddress),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Text(
                   l10n.fundSendOnlyWarning,
