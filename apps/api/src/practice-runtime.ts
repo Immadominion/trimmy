@@ -1,5 +1,6 @@
 import {postgresPush, type PushStore} from './push-notifications.js';
 import {postgresOrderRecovery, type OrderRecoveryStore} from './order-recovery-worker.js';
+import {PostgresWalletTransferStore} from './wallet-transfer-store.js';
 import {PostgresLiveOrderStore} from './live-stock-orders.js';
 import {PostgresLiveTradeHistory} from './live-trade-history.js';
 import {postgresDailyDesk} from './daily-desk-routes.js';
@@ -153,6 +154,7 @@ export interface PracticeRuntime {
   readonly paperTradingRepository?: PostgresPaperTradingRepository;
   readonly guestSessionRepository?: PostgresGuestSessionRepository;
   readonly liveOrderStore?: PostgresLiveOrderStore;
+  readonly walletTransferStore?: PostgresWalletTransferStore;
   readonly pushStore?: PushStore;
   readonly orderRecoveryStore?: OrderRecoveryStore;
   readonly close: () => Promise<void>;
@@ -194,6 +196,7 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
     paperTradingRepository: new PostgresPaperTradingRepository(pool),
     guestSessionRepository,
     liveOrderStore: new PostgresLiveOrderStore(pool),
+    walletTransferStore: new PostgresWalletTransferStore(pool),
     pushStore: postgresPush(pool),
     orderRecoveryStore: postgresOrderRecovery(pool),
     options: {
@@ -231,7 +234,7 @@ export function createPracticeRuntime(config: PracticeRuntimeConfig | null): Pra
       invitations: {repository: invitationsRepository, authenticate, newId: () => randomUUID()},
       accountClosure: {repository: accountClosureRepository, authenticate},
       // Readiness checks this pool only. Providers stay out of it by design.
-      readiness: new PostgresReadinessProbe(pool, {requiredVersion: '0036_weekday_workdays'}),
+      readiness: new PostgresReadinessProbe(pool, {requiredVersion: '0037_durable_wallet_transfers'}),
     },
     close: () => pool.end(),
   };

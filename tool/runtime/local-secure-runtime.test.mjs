@@ -271,7 +271,7 @@ test('the public manifest names ports, roles and migrations but no secret', () =
 
 test('the migration list is ordered and ends at the newest released migration', () => {
   assert.deepEqual([...MIGRATIONS], [...MIGRATIONS].sort());
-  assert.equal(MIGRATIONS.at(-1), '0036_weekday_workdays');
+  assert.equal(MIGRATIONS.at(-1), '0037_durable_wallet_transfers');
   assert.equal(new Set(MIGRATIONS).size, MIGRATIONS.length);
 });
 

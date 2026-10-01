@@ -4,6 +4,7 @@
  * The server reviews and simulates the transfer; the wallet signs it here;
  * nothing is sent without that signature. Nothing in this file signs.
  */
+import type {MoneyStorage} from './stores.js';
 import {USDC_MINT} from './amounts.js';
 import {moneyApiBase, requestJson, validBearer, type BearerSource} from './http.js';
 
@@ -32,7 +33,8 @@ export function transferMessage(code: string): string {
     case 'AMOUNT_TOO_SMALL': return 'A new wallet needs at least 0.001 SOL to open.';
     case 'SIMULATION_FAILED': case 'SIMULATION_MISMATCH': return 'This send didn’t pass its check. Nothing was sent.';
     case 'REVIEW_EXPIRED': case 'INVALID_REVIEW': case 'INVALID_SIGNATURE': case 'QUOTE_EXPIRED': return 'This review expired. Review it again.';
-    case 'TRANSFER_NOT_SENT': return 'It wasn’t sent, so nothing left your wallet. Try again.';
+    case 'TRANSFER_NOT_SENT': case 'TRANSFER_PENDING': return 'Check your previous send before starting another.';
+    case 'TRANSFER_STORAGE': return 'Allow device storage to keep your send recoverable.';
     case 'TRANSFER_BUSY': return 'One moment, then try again.';
     case 'ACCOUNT_REQUIRED': case 'WALLET_REQUIRED': case 'ACCOUNT_CHANGED': case 'WALLET_CHANGED': return 'Sign in again to use your wallet.';
     case 'SIGNING_CANCELLED': case 'SIGNING_TIMEOUT': return 'Signing was cancelled. Nothing was sent.';
@@ -43,6 +45,7 @@ export function transferMessage(code: string): string {
 }
 
 export interface TransferReview {
+  readonly id?: string;
   /** `USDC`, `SOL` or the token's mint, as the server takes it. */
   readonly assetId: string; readonly symbol: string; readonly decimals: number; readonly uiMultiplier: string;
   readonly from: string; readonly destination: string;
@@ -74,7 +77,7 @@ export function parseTransferReview(value: unknown): TransferReview {
       typeof expires !== 'string' || !Number.isFinite(Date.parse(expires)) ||
       typeof wire !== 'string' || wire.length > 1644 || !/^[A-Za-z0-9+/]+={0,2}$/.test(wire) ||
       typeof token !== 'string' || token.length > 1200 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) return invalid();
-  return Object.freeze({assetId: kind === 'sol' ? 'SOL' : mint === USDC_MINT ? 'USDC' : mint as string,
+  return Object.freeze({...(typeof body?.['id']==='string' && /^[0-9a-f-]{36}$/.test(body['id']) ? {id:body['id']} : {}),assetId: kind === 'sol' ? 'SOL' : mint === USDC_MINT ? 'USDC' : mint as string,
     symbol: asset['symbol'] as string, decimals: decimals as number, uiMultiplier: asset['uiMultiplier'] as string,
     from: review['from'] as string, destination: review['destination'] as string,
     amountRaw: review['amountRaw'] as string, receivedRaw: review['receivedRaw'] as string,
@@ -84,14 +87,18 @@ export function parseTransferReview(value: unknown): TransferReview {
 
 export interface WalletTransferClientOptions {
   readonly baseUrl: string; readonly bearer: BearerSource;
+  readonly storage?: MoneyStorage | null; readonly accountId?: string;
   readonly fetch?: typeof fetch; readonly signal?: AbortSignal; readonly timeoutMs?: number;
 }
 
 export class WalletTransferClient {
   readonly #base: string; readonly #bearer: BearerSource; readonly #fetch: typeof fetch;
+  readonly #storage: MoneyStorage | null; readonly #storageKey: string;
   readonly #signal: AbortSignal | undefined; readonly #timeout: number;
   constructor(options: WalletTransferClientOptions) {
     this.#base = moneyApiBase(options.baseUrl);
+    this.#storage=options.storage??null;
+    this.#storageKey=`trimmy.pending-send.v1.${encodeURIComponent(this.#base)}.${options.accountId??''}`;
     this.#bearer = options.bearer;
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.#signal = options.signal;
@@ -123,14 +130,35 @@ export class WalletTransferClient {
   }
 
   async execute(review: TransferReview, signedTransaction: string): Promise<string> {
+    if(!review.id || !this.#storage)throw new TransferError('TRANSFER_STORAGE');
+    try {this.#storage.setItem(this.#storageKey,review.id);if(this.#storage.getItem(this.#storageKey)!==review.id)throw Error();}
+    catch {throw new TransferError('TRANSFER_STORAGE');}
     const value = await this.#call('execute', {reviewToken: review.reviewToken, signedTransaction});
     const signature = value['signature'];
     return typeof signature === 'string' && SIGNATURE.test(signature) ? signature : invalid();
   }
 
-  async status(signature: string): Promise<'pending' | 'confirmed' | 'failed'> {
+  async recovery():Promise<{review:TransferReview;status:'reviewed'|'pending'|'confirmed'|'failed'|'expired';signature:string|null}|null> {
+    let id:string|null;
+    try {id=this.#storage?.getItem(this.#storageKey)??null;}catch {throw new TransferError('TRANSFER_STORAGE');}
+    if(id!==null && !/^[0-9a-f-]{36}$/.test(id))throw new TransferError('TRANSFER_STORAGE');
+    const row=record((await this.#call(`recovery${id?`?id=${id}`:''}`))['transfer']);
+    if(!row) {if(id)throw new TransferError('TRANSFER_UNAVAILABLE');return null;}
+    const status=row['status'], signature=row['signature'];
+    if(!['reviewed','pending','confirmed','failed','expired'].includes(String(status)) ||
+      signature!==null && (typeof signature!=='string' || !SIGNATURE.test(signature)) ||
+      ['pending','confirmed','failed'].includes(String(status)) && signature===null) return invalid();
+    const review=parseTransferReview(row);
+    if(!review.id || id && review.id!==id)return invalid();
+    return {review,status:status as 'reviewed'|'pending'|'confirmed'|'failed'|'expired',signature:signature as string|null};
+  }
+  acknowledge():void {
+    try {this.#storage?.removeItem(this.#storageKey);}catch {throw new TransferError('TRANSFER_STORAGE');}
+  }
+
+  async status(signature: string): Promise<'pending' | 'confirmed' | 'failed' | 'expired'> {
     if (!SIGNATURE.test(signature)) throw new TransferError('TRANSFER_INPUT_INVALID');
     const status = (await this.#call(`status?signature=${signature}`))['status'];
-    return status === 'pending' || status === 'confirmed' || status === 'failed' ? status : invalid();
+    return status === 'pending' || status === 'confirmed' || status === 'failed' || status === 'expired' ? status : invalid();
   }
 }

@@ -70,7 +70,7 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     const wallet = new MoneyWallet({access: account, embedded: () => holder.current,
       client: new AccountWalletClient({baseUrl: apiBase, accountId: account.accountId, bearer, fetch: request})});
     return {wallet, orders: new LiveOrderClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal}),
-      transfers: new WalletTransferClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal}),
+      transfers: new WalletTransferClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal, storage, accountId:account.accountId}),
       mode: new MoneyModeStore(storage, apiBase, account.accountId), terms: new IssuerTermsStore(storage, account.accountId),
       pending: new PendingOrderStore(storage, apiBase, account.accountId)};
   }, [apiBase, account, fetch, storage]);
@@ -152,6 +152,8 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
         return setup.transfers.execute(review, signed);
       },
       status: signature => setup.transfers.status(signature),
+      recovery: () => setup.transfers.recovery(),
+      acknowledge: () => setup.transfers.acknowledge(),
     } : null,
     sendOpen, openSend: () => {if (setup) setSendOpen(true);}, closeSend: () => setSendOpen(false),
   };

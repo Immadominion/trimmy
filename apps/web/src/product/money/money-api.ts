@@ -9,14 +9,16 @@ import type {TradingCapabilities} from './live-trading.js';
 import type {LiveOrderSession} from './order-session.js';
 import type {IssuerTermsStore} from './stores.js';
 import type {WalletSetupOutcome, WalletState} from './wallet-controller.js';
-import type {TransferReview} from './wallet-transfer-client.js';
+import type {TransferReview, WalletTransferClient} from './wallet-transfer-client.js';
 
 /** Sending money out of the account's wallet (wallet-transfer-client.ts). */
 export interface TransferPort {
   preview(input: {readonly asset: string; readonly destination: string; readonly amountRaw: string}): Promise<TransferReview>;
   /** Signs exactly the reviewed transfer with the embedded wallet, then sends it. Returns the transaction signature. */
   send(review: TransferReview): Promise<string>;
-  status(signature: string): Promise<'pending' | 'confirmed' | 'failed'>;
+  status(signature: string): Promise<'pending' | 'confirmed' | 'failed' | 'expired'>;
+  recovery: WalletTransferClient['recovery'];
+  acknowledge():void;
 }
 
 export interface MoneyApi {

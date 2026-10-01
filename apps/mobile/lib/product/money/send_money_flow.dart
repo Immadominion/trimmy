@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -49,8 +50,9 @@ class SendFailure implements Exception {
     'REVIEW_EXPIRED' ||
     'INVALID_REVIEW' ||
     'INVALID_SIGNATURE' => 'This review expired. Review it again.',
-    'TRANSFER_NOT_SENT' =>
-      'It wasn’t sent, so nothing left your wallet. Try again.',
+    'TRANSFER_NOT_SENT' ||
+    'TRANSFER_PENDING' => 'Check your previous send before starting another.',
+    'TRANSFER_STORAGE' => 'Allow device storage to keep your send recoverable.',
     'TRANSFER_BUSY' => 'One moment, then try again.',
     'ACCOUNT_REQUIRED' ||
     'WALLET_REQUIRED' => 'Sign in again to use your wallet.',
@@ -143,6 +145,7 @@ List<SendAsset> sendableAssets(
 @immutable
 class SendReview {
   const SendReview._({
+    this.id,
     required this.assetId,
     required this.symbol,
     required this.decimals,
@@ -159,6 +162,7 @@ class SendReview {
     required this.reviewToken,
   });
 
+  final String? id;
   final String assetId, symbol, uiMultiplier, from, destination;
   final int decimals;
   final String amountRaw, receivedRaw;
@@ -204,6 +208,11 @@ class SendReview {
       invalid();
     }
     return SendReview._(
+      id:
+          value['id'] is String &&
+              RegExp(r'^[0-9a-f-]{36}$').hasMatch(value['id'] as String)
+          ? value['id'] as String
+          : null,
       assetId: kind == 'sol'
           ? 'SOL'
           : mint == 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
@@ -324,7 +333,66 @@ class WalletTransferClient {
     ),
   );
 
+  String get _pendingKey =>
+      'trimmy.pending-send.v1.${Uri.encodeComponent(origin.toString())}.$_identity';
+
+  Future<Map?> recovery() async {
+    if (!current) throw const SendFailure('ACCOUNT_REQUIRED');
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_pendingKey);
+    if (id != null && !RegExp(r'^[0-9a-f-]{36}$').hasMatch(id)) {
+      throw const SendFailure('TRANSFER_STORAGE');
+    }
+    final result = await _call(
+      'recovery',
+      query: id == null ? null : {'id': id},
+    );
+    final row = result['transfer'];
+    if (row == null) {
+      if (id != null) throw const SendFailure('TRANSFER_UNAVAILABLE');
+      return null;
+    }
+    if (row is! Map ||
+        !const {
+          'reviewed',
+          'pending',
+          'confirmed',
+          'failed',
+          'expired',
+        }.contains(row['status'])) {
+      throw const SendFailure('TRANSFER_UNAVAILABLE');
+    }
+    final review = SendReview.parse(row);
+    if (review.id == null || id != null && review.id != id) {
+      throw const SendFailure('TRANSFER_UNAVAILABLE');
+    }
+    final signature = row['signature'];
+    if (signature != null &&
+            (signature is! String ||
+                !RegExp(
+                  r'^[1-9A-HJ-NP-Za-km-z]{64,88}$',
+                ).hasMatch(signature)) ||
+        const {'pending', 'confirmed', 'failed'}.contains(row['status']) &&
+            signature == null) {
+      throw const SendFailure('TRANSFER_UNAVAILABLE');
+    }
+    return row;
+  }
+
+  Future<void> acknowledge() async {
+    if (!current) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!await prefs.remove(_pendingKey)) {
+      throw const SendFailure('TRANSFER_STORAGE');
+    }
+  }
+
   Future<String> execute(SendReview review, String signedTransaction) async {
+    if (!current) throw const SendFailure('ACCOUNT_REQUIRED');
+    final prefs = await SharedPreferences.getInstance();
+    if (review.id == null || !await prefs.setString(_pendingKey, review.id!)) {
+      throw const SendFailure('TRANSFER_STORAGE');
+    }
     final value = await _call(
       'execute',
       body: {
@@ -345,7 +413,7 @@ class WalletTransferClient {
     final value = await _call('status', query: {'signature': signature});
     final status = value['status'];
     if (status is! String ||
-        !const {'pending', 'confirmed', 'failed'}.contains(status)) {
+        !const {'pending', 'confirmed', 'failed', 'expired'}.contains(status)) {
       throw const SendFailure('TRANSFER_UNAVAILABLE');
     }
     return status;
@@ -396,7 +464,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   String? _assetId;
   SendReview? _review;
   _Stage _stage = _Stage.details;
-  bool _busy = false;
+  bool _busy = true, _recoveryFailed = false;
   String? _error, _signature, _status;
   Timer? _poll;
   int _polls = 0;
@@ -414,6 +482,53 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       if (asset.id == (_assetId ?? widget.initialAsset)) return asset;
     }
     return assets.isEmpty ? null : assets.first;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_recover());
+  }
+
+  Future<void> _recover() async {
+    if (mounted) {
+      setState(() {
+        _busy = true;
+        _error = null;
+        _recoveryFailed = false;
+      });
+    }
+    try {
+      final row = await _client.recovery();
+      if (!mounted) return;
+      if (row != null) {
+        final review = SendReview.parse(row);
+        if (_ownAddress != null && review.from != _ownAddress) {
+          throw const SendFailure('WALLET_CHANGED');
+        }
+        setState(() {
+          _review = review;
+          _signature = row['signature'] as String?;
+          _status = row['status'] as String;
+          _stage = _status == 'reviewed'
+              ? _Stage.review
+              : _status == 'pending'
+              ? _Stage.sending
+              : _Stage.done;
+        });
+        if (_status == 'pending') _watch();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _recoveryFailed = true;
+          _error =
+              'Your previous send couldn’t be checked. Try checking again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -443,7 +558,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   Future<void> _preview() async {
     final asset = _asset;
-    if (asset == null || _busy) return;
+    if (asset == null || _busy || _recoveryFailed) return;
     final problem = _check(asset);
     if (problem != null) {
       setState(() => _error = problem);
@@ -473,7 +588,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
         _stage = _Stage.review;
       });
     } on SendFailure catch (failure) {
-      if (mounted) setState(() => _error = failure.message);
+      if (mounted && failure.code == 'TRANSFER_PENDING') {
+        await _recover();
+      } else if (mounted) {
+        setState(() => _error = failure.message);
+      }
     } catch (_) {
       if (mounted) setState(() => _error = const SendFailure('').message);
     } finally {
@@ -483,7 +602,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   Future<void> _send() async {
     final review = _review;
-    if (review == null || _busy) return;
+    if (review == null || _busy || _recoveryFailed) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -513,6 +632,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       );
     } on SendFailure catch (failure) {
       if (!mounted) return;
+      if (failure.code != 'TRANSFER_STORAGE' &&
+          failure.code != 'ACCOUNT_REQUIRED') {
+        await _recover();
+        return;
+      }
       setState(() {
         _error = failure.message;
         if (const {
@@ -525,7 +649,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
         }
       });
     } catch (_) {
-      if (mounted) setState(() => _error = const SendFailure('').message);
+      if (mounted) await _recover();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -534,6 +658,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   /// Checks the sent transaction for about a minute.
   void _watch() {
     _poll?.cancel();
+    _polls = 0;
     _poll = Timer.periodic(widget.pollInterval, (_) async {
       final signature = _signature;
       if (signature == null || !mounted) return;
@@ -589,6 +714,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_recoveryFailed)
+                  ProductButton(
+                    label: 'Check previous send',
+                    onPressed: _recover,
+                  ),
                 ...switch (_stage) {
                   _Stage.details => _details(context),
                   _Stage.review => _reviewStep(context),
@@ -725,7 +855,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       ProductButton(
         key: const ValueKey('send-review'),
         label: _busy ? 'Checking…' : 'Review send',
-        onPressed: _busy ? null : _preview,
+        onPressed: _busy || _recoveryFailed ? null : _preview,
       ),
     ];
   }
@@ -788,7 +918,7 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
       ProductButton(
         key: const ValueKey('send-confirm'),
         label: _busy ? 'Sending…' : 'Send now',
-        onPressed: _busy ? null : _send,
+        onPressed: _busy || _recoveryFailed ? null : _send,
       ),
       TextButton(
         onPressed: _busy
@@ -829,7 +959,9 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
 
   List<Widget> _result(BuildContext context) {
     final type = Theme.of(context).textTheme;
-    final confirmed = _status == 'confirmed', failed = _status == 'failed';
+    final confirmed = _status == 'confirmed',
+        failed = _status == 'failed',
+        expired = _status == 'expired';
     final waiting = _stage == _Stage.sending;
     return [
       const SizedBox(height: 28),
@@ -852,6 +984,8 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
             ? 'Sending'
             : failed
             ? 'It didn’t go through'
+            : expired
+            ? 'Send expired'
             : 'Still confirming',
         key: const ValueKey('send-result'),
         textAlign: TextAlign.center,
@@ -865,7 +999,9 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
             ? 'This usually takes a few seconds.'
             : failed
             ? 'Solana refused it. Only the network fee was spent.'
-            : 'It usually lands within a minute. Check it on Solscan.',
+            : expired
+            ? 'This transaction expired without confirmation. You can review a new send.'
+            : 'We’re still checking this send. Don’t send it again.',
         textAlign: TextAlign.center,
         style: type.bodyLarge?.copyWith(color: ProductColor.muted),
       ),
@@ -882,7 +1018,17 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
         ProductButton(
           key: const ValueKey('send-done'),
           label: 'Done',
-          onPressed: widget.onBack,
+          onPressed: () async {
+            try {
+              if (_status != 'pending') await _client.acknowledge();
+              if (mounted) widget.onBack();
+            } catch (_) {
+              if (mounted)
+                setState(
+                  () => _error = 'This send is saved. Try closing it again.',
+                );
+            }
+          },
         ),
     ];
   }

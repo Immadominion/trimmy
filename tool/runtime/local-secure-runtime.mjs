@@ -52,6 +52,7 @@ export const MIGRATIONS = Object.freeze([
   '0034_live_order_confirmation_slot',
   '0035_trade_push_notifications',
   '0036_weekday_workdays',
+  '0037_durable_wallet_transfers',
 ]);
 export const OWNER_ROLE = 'trimmy_runtime_owner';
 export const RUNTIME_ROLE = 'trimmy_practice_runtime';
@@ -768,6 +769,7 @@ export function runtimeGrants(role = RUNTIME_ROLE) {
   const redDayFunctions = RED_DAY_API_DENIED_FUNCTIONS.map(signature => `trimmy.${signature}`).join(', ');
   return [
     `GRANT USAGE ON SCHEMA trimmy TO ${role}`,
+    `GRANT EXECUTE ON FUNCTION trimmy.wallet_transfer_read(uuid,uuid), trimmy.wallet_transfer_create(uuid,uuid,jsonb), trimmy.wallet_transfer_begin(uuid,uuid,text), trimmy.wallet_transfer_resolve(uuid,uuid,text) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.runtime_schema_has(text), trimmy.push_device_set(uuid,uuid,text,text), trimmy.push_device_remove(uuid,uuid), trimmy.trade_push_claim(uuid,integer), trimmy.trade_push_target(uuid,uuid), trimmy.trade_push_finish(uuid,uuid,text), trimmy.live_order_recovery_claim(), trimmy.live_order_recovery_release(uuid) TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.practice_account_exists() TO ${role}`,
     `GRANT EXECUTE ON FUNCTION trimmy.live_order_history(uuid,integer,timestamptz,uuid) TO ${role}`,
