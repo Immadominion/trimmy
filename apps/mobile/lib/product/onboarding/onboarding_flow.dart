@@ -238,7 +238,11 @@ class _QuestionScreen extends StatelessWidget {
     final index = controller.questionIndex;
     return _PageFrame(
       children: [
-        _ProgressHeader(index: index, progress: controller.progress),
+        _ProgressHeader(
+          index: index,
+          progress: controller.progress,
+          onBack: controller.goBack,
+        ),
         const SizedBox(height: 26),
         _SalQuestion(question: _questionFor(context.l10n, controller.stage)),
         const SizedBox(height: 24),
@@ -351,14 +355,27 @@ class _QuestionScreen extends StatelessWidget {
 }
 
 class _ProgressHeader extends StatelessWidget {
-  const _ProgressHeader({required this.index, required this.progress});
+  const _ProgressHeader({
+    required this.index,
+    required this.progress,
+    required this.onBack,
+  });
 
   final int index;
   final double progress;
+  // iPhones have no system Back: this is the way to an earlier answer.
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
+      IconButton(
+        key: const ValueKey('onboarding-back'),
+        tooltip: context.l10n.commonBack,
+        onPressed: onBack,
+        icon: const Icon(Icons.arrow_back_rounded),
+      ),
+      const SizedBox(width: 4),
       Expanded(
         child: Semantics(
           label: context.l10n.onboardingProgressLabel,
@@ -574,7 +591,7 @@ class _NotificationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _PageFrame(
     children: [
-      const _ProgressHeader(index: 4, progress: 1),
+      _ProgressHeader(index: 4, progress: 1, onBack: busy ? null : onReview),
       const SizedBox(height: 26),
       _SalQuestion(
         question: available
