@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createElement, useEffect} from 'react';
+import {act, createElement, useEffect} from 'react';
 import {useMoney} from '../src/product/money/money-api.js';
 import {maxRaw, sendableAssets} from '../src/product/money/send-money-sheet.js';
 import {parseTransferReview, TransferError, WalletTransferClient} from '../src/product/money/wallet-transfer-client.js';
@@ -142,4 +142,38 @@ test('send storage failures prevent submission and recovery ids stay scoped to t
   assert.ok(calls.at(-1)?.endsWith(`/recovery?id=${parsed.id}`));
   client.acknowledge();
   assert.equal(saved.size, 0);
+});
+
+
+test('wallet refreshes do not restart the pending send observation window', async () => {
+  const page = await moneyPage();
+  let poll: (() => void) | undefined, watches = 0;
+  const interval = page.dom.window.setInterval.bind(page.dom.window);
+  const clear = page.dom.window.clearInterval.bind(page.dom.window);
+  page.dom.window.setInterval = ((callback: () => void, ms: number) => {
+    if (ms !== 2000) return interval(callback, ms);
+    watches += 1; poll = callback; return -1;
+  }) as typeof page.dom.window.setInterval;
+  page.dom.window.clearInterval = (id: number | undefined) => {if (id === -1) poll = undefined; else clear(id);};
+  page.server.reply = call => {
+    if (call.path.startsWith('/v1/wallet/transfers/recovery')) return Response.json({transfer: {
+      ...review(page.user.address), status: 'pending', signature: '5'.repeat(88)}});
+    if (call.path.startsWith('/v1/wallet/transfers/status')) return Response.json({status: 'pending', slot: null});
+    return undefined;
+  };
+  function Open() {
+    const money = useMoney(); useEffect(() => money.openSend(), []);
+    return createElement('button', {onClick: () => money.setReal(!money.real)}, 'Refresh provider');
+  }
+  try {
+    await page.render(createElement(Open));
+    await page.waitFor(() => !!poll, 'pending watch');
+    for (let i = 0; i < 30; i += 1) {
+      await page.click('Refresh provider');
+      await act(async () => {poll?.();}); await page.flush();
+    }
+    assert.equal(watches, 1);
+    assert.match(page.text(), /Still confirming/);
+    assert.match(page.text(), /Don’t send it again/);
+  } finally {await page.close();}
 });

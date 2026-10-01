@@ -317,12 +317,13 @@ void main() {
     (tester) async {
       var broadcasts = 0;
       Future<http.Response> handler(http.Request request) async {
-        if (request.url.path.endsWith('/recovery'))
+        if (request.url.path.endsWith('/recovery')) {
           return _reply({
             'transfer': broadcasts == 0
                 ? null
                 : {..._review(), 'status': 'pending', 'signature': '5' * 88},
           });
+        }
         if (request.url.path.endsWith('/preview')) return _reply(_review());
         if (request.url.path.endsWith('/execute')) {
           broadcasts++;

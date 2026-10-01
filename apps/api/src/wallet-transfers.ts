@@ -337,7 +337,7 @@ export class WalletTransfers {
     if(typeof height==='number' && Number.isSafeInteger(height) && height>stored.lastValidBlockHeight) {
       const valid=record(await this.#call('isBlockhashValid',[stored.blockhash,{commitment:'finalized',minContextSlot:stored.observationSlot}]));
       const slot=record(valid?.['context'])?.['slot'];
-      if(typeof valid?.['value']!=='boolean' || typeof slot!=='number' || !Number.isSafeInteger(slot) || slot<stored.observationSlot)fail('TRANSFER_UNAVAILABLE');
+      if(typeof valid?.['value']!=='boolean' || typeof slot!=='number' || !Number.isSafeInteger(slot) || slot<stored.observationSlot)return fail('TRANSFER_UNAVAILABLE');
       if(valid!['value']===false) {
         const again=await this.status(stored.signature);
         if(again.status!=='pending')return this.#store.resolve(user,stored.id,again.status);

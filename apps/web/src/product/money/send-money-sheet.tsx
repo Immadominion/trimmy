@@ -87,19 +87,21 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
   const [recoveryFailed,setRecoveryFailed]=useState(false);
   useEffect(()=>{void recover();},[]);
 
-  // Watch a sent transfer for about a minute.
+  // Provider refreshes must not restart the observation window.
   useEffect(() => {
-    if (stage !== 'sending' || signature === null || !money.transfers) return;
-    let polls = 0;
+    if (stage !== 'sending' || signature === null || !transfersRef.current) return;
+    let polls = 0, checking = false, cancelled = false;
     const timer = window.setInterval(() => {
-      polls += 1;
-      void money.transfers!.status(signature).then(next => {
-        if (!active.current || next === 'pending' && polls < 30) return;
-        clearInterval(timer); setStatus(next); setStage('done'); void money.refreshWallet();
-      }, () => {if (polls >= 30 && active.current) {clearInterval(timer); setStage('done');}});
+      if (checking) return;
+      checking = true; polls += 1;
+      void transfersRef.current!.status(signature).then(next => {
+        if (cancelled || !active.current || next === 'pending' && polls < 30) return;
+        clearInterval(timer); setStatus(next); setStage('done'); void refreshRef.current();
+      }, () => {if (!cancelled && polls >= 30 && active.current) {clearInterval(timer); setStage('done');}})
+        .finally(() => {checking = false;});
     }, 2000);
-    return () => clearInterval(timer);
-  }, [stage, signature, money.transfers, money]);
+    return () => {cancelled = true; clearInterval(timer);};
+  }, [stage, signature]);
 
   function problem(): string | null {
     if (!asset) return null;

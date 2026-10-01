@@ -659,13 +659,15 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
   void _watch() {
     _poll?.cancel();
     _polls = 0;
-    _poll = Timer.periodic(widget.pollInterval, (_) async {
+    var checking = false;
+    _poll = Timer.periodic(widget.pollInterval, (timer) async {
       final signature = _signature;
-      if (signature == null || !mounted) return;
+      if (signature == null || !mounted || checking) return;
+      checking = true;
       _polls++;
       try {
         final status = await _client.status(signature);
-        if (!mounted) return;
+        if (!mounted || !timer.isActive) return;
         if (status != 'pending' || _polls >= 30) {
           _poll?.cancel();
           setState(() {
@@ -675,10 +677,12 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
           unawaited(widget.account.refreshPortfolio());
         }
       } catch (_) {
-        if (_polls >= 30 && mounted) {
-          _poll?.cancel();
+        if (_polls >= 30 && mounted && timer.isActive) {
+          timer.cancel();
           setState(() => _stage = _Stage.done);
         }
+      } finally {
+        checking = false;
       }
     });
   }
@@ -1023,10 +1027,11 @@ class _SendMoneyFlowState extends State<SendMoneyFlow> {
               if (_status != 'pending') await _client.acknowledge();
               if (mounted) widget.onBack();
             } catch (_) {
-              if (mounted)
+              if (mounted) {
                 setState(
                   () => _error = 'This send is saved. Try closing it again.',
                 );
+              }
             }
           },
         ),
