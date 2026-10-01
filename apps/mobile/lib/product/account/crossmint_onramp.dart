@@ -164,6 +164,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
       'trimmy.onramp.pending.v1.${widget.account.accountId}';
   final _amount = TextEditingController(text: '50');
   final _email = TextEditingController();
+  final _amountFocus = FocusNode();
   Map<String, dynamic>? _capability, _order, _challenge;
   String? _walletToken, _creationId;
 
@@ -190,6 +191,7 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
     _client.close();
     _amount.dispose();
     _email.dispose();
+    _amountFocus.dispose();
     super.dispose();
   }
 
@@ -466,41 +468,53 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
         const SizedBox(height: 22),
         Text(l10n.onrampAmountLabel, style: type.titleMedium),
         const SizedBox(height: 18),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-          decoration: ShapeDecoration(
-            color: const Color(0xFFF5F1FC),
-            shape: productSquircle(24),
-          ),
-          child: TextField(
-            key: const ValueKey('onramp-amount'),
-            controller: _amount,
-            onChanged: (_) {
-              _creationId = null;
-              if (_error != null) setState(() => _error = null);
-            },
-            enabled: !_busy,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(formats.decimalInputCharacters),
-            ],
-            style: type.headlineLarge,
-            // English keeps "$ 50 USD". Other languages show their own
-            // dollar symbol (US$ or $US) on its usual side, which already
-            // says US dollars.
-            decoration: InputDecoration(
-              filled: false,
-              prefixText: formats.dollarFirst
-                  ? '${formats.dollarSymbol} '
-                  : null,
-              suffixText: formats.isEnglish
-                  ? 'USD'
-                  : formats.dollarFirst
-                  ? null
-                  : ' ${formats.dollarSymbol}',
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
+        // A tap anywhere in the box, padding included, puts the cursor in
+        // the amount.
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTap: _amountFocus.requestFocus,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            decoration: ShapeDecoration(
+              color: const Color(0xFFF5F1FC),
+              shape: productSquircle(24),
+            ),
+            child: TextField(
+              key: const ValueKey('onramp-amount'),
+              controller: _amount,
+              focusNode: _amountFocus,
+              onChanged: (_) {
+                _creationId = null;
+                if (_error != null) setState(() => _error = null);
+              },
+              enabled: !_busy,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(
+                  formats.decimalInputCharacters,
+                ),
+              ],
+              style: type.headlineLarge,
+              // English keeps "$ 50 USD". Other languages show their own
+              // dollar symbol (US$ or $US) on its usual side, which already
+              // says US dollars.
+              decoration: InputDecoration(
+                filled: false,
+                prefixText: formats.dollarFirst
+                    ? '${formats.dollarSymbol} '
+                    : null,
+                suffixText: formats.isEnglish
+                    ? 'USD'
+                    : formats.dollarFirst
+                    ? null
+                    : ' ${formats.dollarSymbol}',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
             ),
           ),
         ),

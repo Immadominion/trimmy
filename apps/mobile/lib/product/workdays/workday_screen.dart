@@ -26,6 +26,7 @@ enum _DraftStatus { none, saving, saved, failed }
 class _WorkdayScreenState extends State<WorkdayScreen> {
   late final String _id = widget.assignmentId;
   final _number = TextEditingController(), _note = TextEditingController();
+  final _numberFocus = FocusNode(), _noteFocus = FocusNode();
   final _selected = <String>{};
   String? _choice;
 
@@ -54,6 +55,8 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
     widget.controller.removeListener(_changed);
     _number.dispose();
     _note.dispose();
+    _numberFocus.dispose();
+    _noteFocus.dispose();
     super.dispose();
   }
 
@@ -410,8 +413,10 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                             const SizedBox(height: 22),
                             if (work.decision['kind'] == 'number')
                               _surface(
+                                focus: _numberFocus,
                                 child: TextField(
                                   controller: _number,
+                                  focusNode: _numberFocus,
                                   autofocus: false,
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
@@ -503,8 +508,10 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                               ),
                             const SizedBox(height: 12),
                             _surface(
+                              focus: _noteFocus,
                               child: TextField(
                                 controller: _note,
+                                focusNode: _noteFocus,
                                 minLines: 2,
                                 maxLines: 4,
                                 maxLength: 280,
@@ -746,13 +753,26 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
       ),
     ),
   );
+
+  /// A raised box. With [focus], a tap anywhere in it, padding included,
+  /// puts the cursor in its field.
   Widget _surface({
     required Widget child,
     Color color = ProductColor.paperRaised,
-  }) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(20),
-    decoration: ShapeDecoration(color: color, shape: productSquircle(26)),
-    child: child,
-  );
+    FocusNode? focus,
+  }) {
+    final box = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(color: color, shape: productSquircle(26)),
+      child: child,
+    );
+    if (focus == null) return box;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: focus.requestFocus,
+      child: box,
+    );
+  }
 }

@@ -263,6 +263,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     client: widget.httpClient,
   );
   final _amount = TextEditingController(text: '5');
+  final _amountFocus = FocusNode();
   final _termsKey = GlobalKey();
   Map<String, dynamic>? _order;
   LiveTradingCapabilities? _capabilities;
@@ -400,6 +401,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     _quoteTimer?.cancel();
     _client.close();
     _amount.dispose();
+    _amountFocus.dispose();
     super.dispose();
   }
 
@@ -1084,73 +1086,82 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         _MarketStateNote(state: market),
       ],
       const SizedBox(height: 28),
-      Container(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-        decoration: ShapeDecoration(
-          color: const Color(0xFFF4F0FC),
-          shape: productSquircle(28),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _sell ? l10n.liveOrderYouSell : l10n.liveOrderYouPay,
-              style: type.bodyMedium,
-            ),
-            TextField(
-              key: const ValueKey('live-order-amount'),
-              controller: _amount,
-              onChanged: _typed,
-              enabled: !_busy,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(
-                  formats.decimalInputCharacters,
-                ),
-                LengthLimitingTextInputFormatter(40),
-              ],
-              style: type.displayLarge?.copyWith(fontSize: 40),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                hintText: '0',
-                // One currency mark: the buy is paid in USDC, so no "$" too.
-                suffixText: _sell ? _symbol : 'USDC',
-                suffixStyle: type.bodyMedium,
-              ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    available,
-                    key: const ValueKey('live-order-available'),
-                    style: type.bodySmall,
-                  ),
-                ),
-                TextButton(
-                  key: const ValueKey('live-order-max'),
-                  onPressed: _busy || _maxRaw == null || _maxRaw == BigInt.zero
-                      ? null
-                      : () => _selectPercent(100),
-                  child: Text(l10n.commonMax),
-                ),
-              ],
-            ),
-            // The minimum is known before the first try, as on the web.
-            if (!_sell && asset.minBuyInputRaw != '1')
+      // A tap anywhere in the box, padding included, puts the cursor in the
+      // amount. Max and the field still take their own taps.
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        onTap: _amountFocus.requestFocus,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          decoration: ShapeDecoration(
+            color: const Color(0xFFF4F0FC),
+            shape: productSquircle(28),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                l10n.liveOrderMinimum(
-                  _amountLabel(BigInt.parse(asset.minBuyInputRaw), formats),
-                ),
-                key: const ValueKey('live-order-minimum'),
-                style: type.bodySmall,
+                _sell ? l10n.liveOrderYouSell : l10n.liveOrderYouPay,
+                style: type.bodyMedium,
               ),
-          ],
+              TextField(
+                key: const ValueKey('live-order-amount'),
+                controller: _amount,
+                focusNode: _amountFocus,
+                onChanged: _typed,
+                enabled: !_busy,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    formats.decimalInputCharacters,
+                  ),
+                  LengthLimitingTextInputFormatter(40),
+                ],
+                style: type.displayLarge?.copyWith(fontSize: 40),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  hintText: '0',
+                  // One currency mark: the buy is paid in USDC, so no "$" too.
+                  suffixText: _sell ? _symbol : 'USDC',
+                  suffixStyle: type.bodyMedium,
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      available,
+                      key: const ValueKey('live-order-available'),
+                      style: type.bodySmall,
+                    ),
+                  ),
+                  TextButton(
+                    key: const ValueKey('live-order-max'),
+                    onPressed:
+                        _busy || _maxRaw == null || _maxRaw == BigInt.zero
+                        ? null
+                        : () => _selectPercent(100),
+                    child: Text(l10n.commonMax),
+                  ),
+                ],
+              ),
+              // The minimum is known before the first try, as on the web.
+              if (!_sell && asset.minBuyInputRaw != '1')
+                Text(
+                  l10n.liveOrderMinimum(
+                    _amountLabel(BigInt.parse(asset.minBuyInputRaw), formats),
+                  ),
+                  key: const ValueKey('live-order-minimum'),
+                  style: type.bodySmall,
+                ),
+            ],
+          ),
         ),
       ),
       const SizedBox(height: 12),

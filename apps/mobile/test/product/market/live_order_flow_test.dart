@@ -548,6 +548,25 @@ void main() {
     await clean(tester);
   });
 
+  testWidgets('a tap in the amount box padding puts the cursor in the amount', (
+    tester,
+  ) async {
+    await mount(tester, defaults);
+    final amount = find.byKey(const ValueKey('live-order-amount'));
+    final box = find.ancestor(of: amount, matching: find.byType(Container));
+    bool focused() => tester
+        .widget<EditableText>(
+          find.descendant(of: amount, matching: find.byType(EditableText)),
+        )
+        .focusNode
+        .hasFocus;
+    expect(focused(), isFalse);
+    await tester.tapAt(tester.getTopRight(box.first) + const Offset(-8, 8));
+    await tester.pump();
+    expect(focused(), isTrue);
+    await clean(tester);
+  });
+
   testWidgets('newly bought token fills sell Max when holdings arrive late', (
     tester,
   ) async {

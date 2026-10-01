@@ -123,4 +123,44 @@ void main() {
     // Nothing went to the server past the first look.
     expect(requests, hasLength(1));
   });
+
+  testWidgets('a tap in the amount box padding puts the cursor in the amount', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    await http.runWithClient(
+      () => tester.pumpWidget(
+        localizedTestApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: CrossmintOnrampForm(
+                account: _Account(),
+                origin: Uri.parse('https://trimmy.example'),
+                onTransfer: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+      () => MockClient(
+        (_) async => http.Response(jsonEncode({'enabled': true}), 200),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+    }
+    final amount = find.byKey(const ValueKey('onramp-amount'));
+    final box = find.ancestor(of: amount, matching: find.byType(Container));
+    bool focused() => tester
+        .widget<EditableText>(
+          find.descendant(of: amount, matching: find.byType(EditableText)),
+        )
+        .focusNode
+        .hasFocus;
+    expect(focused(), isFalse);
+    await tester.tapAt(tester.getBottomRight(box.first) - const Offset(8, 6));
+    await tester.pump();
+    expect(focused(), isTrue);
+  });
 }

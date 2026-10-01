@@ -312,6 +312,40 @@ void main() {
     },
   );
 
+  testWidgets('a tap in the note box padding puts the cursor in the note', (
+    tester,
+  ) async {
+    final data = fixture(step: 2);
+    final c = controller((_) => response(data))
+      ..journey = WorkJourney.fromJson(data);
+    addTearDown(c.dispose);
+    await tester.pumpWidget(
+      app(
+        WorkdayScreen(
+          controller: c,
+          assignmentId: 'morning-brief',
+          onCompleted: () async {},
+        ),
+      ),
+    );
+    await tester.pump();
+    final note = find.byType(TextField).last;
+    final box = find.ancestor(of: note, matching: find.byType(Container)).first;
+    await tester.ensureVisible(box);
+    await tester.pumpAndSettle();
+    bool focused() => tester
+        .widget<EditableText>(
+          find.descendant(of: note, matching: find.byType(EditableText)),
+        )
+        .focusNode
+        .hasFocus;
+    expect(focused(), isFalse);
+    await tester.tapAt(tester.getTopLeft(box) + const Offset(8, 8));
+    await tester.pump();
+    expect(focused(), isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   test('a conflicting draft refreshes before an explicit retry', () async {
     final revisions = <int>[];
     var reads = 0;
