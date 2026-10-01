@@ -1,0 +1,7 @@
+/* Latin American Spanish (es-419), read by Spanish phones in any region. */
+
+/* Title of the workday reminder notification. */
+"reminder.title" = "Tu escritorio te espera";
+
+/* Body of the workday reminder when no workday title is known. */
+"reminder.body" = "Tu próxima tarea te espera en tu escritorio.";

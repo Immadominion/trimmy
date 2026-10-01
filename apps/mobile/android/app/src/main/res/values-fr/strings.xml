@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- French, read by French phones in any region. -->
+<resources>
+    <string name="notification_channel_reminders">Rappels de journée</string>
+    <string name="notification_channel_check_in">Rappel quotidien</string>
+    <string name="notification_channel_trade_updates">Suivi des opérations</string>
+    <string name="reminder_title">Ton bureau t’attend</string>
+    <string name="reminder_body">Ta prochaine mission t’attend à ton bureau.</string>
+</resources>
