@@ -165,3 +165,31 @@ test('Back from a company page returns to the same search, list and loaded rows'
     assert.equal(h.api.calls.filter(call => call.path.includes('/stocks/search')).length, searches, 'nothing was searched again');
   } finally {await h.close();}
 });
+
+test('a second tap on the open tab goes back to its start; from a company page it returns to the list as it was', async () => {
+  const h = await harness({checkpoint: 'app', savedGuest: true, storage: chosenGuest()});
+  try {
+    await h.app(); await h.click('Market'); await h.flush(60);
+    const doc = h.dom.window.document;
+    const scrolls: string[] = [];
+    const watch = (name: string, element: HTMLElement) => Object.defineProperty(element, 'scrollTo', {configurable: true,
+      value: (options: ScrollToOptions) => {scrolls.push(name); element.scrollTop = options.top ?? 0;}});
+    const results = doc.querySelector<HTMLElement>('.market-results')!;
+    watch('market', results); watch('main', doc.querySelector<HTMLElement>('#main-content')!);
+    results.scrollTop = 240;
+    await h.click('Market');
+    assert.equal(results.scrollTop, 0); assert.ok(scrolls.includes('market'));
+
+    // From a company page the tab goes back to the list, where it was.
+    await search(h, 'tes'); results.scrollTop = 120; scrolls.length = 0;
+    await h.click('Open Tesla'); await h.flush(80);
+    assert.ok(doc.querySelector('.trade-mode'), 'the company page is open');
+    await h.click('Market'); await h.flush(20);
+    assert.equal(doc.querySelector('.trade-mode'), null);
+    assert.equal(results.scrollTop, 120); assert.ok(!scrolls.includes('market'));
+
+    await h.click('Desk'); await h.flush(20); scrolls.length = 0;
+    await h.click('Desk');
+    assert.deepEqual(scrolls, ['main'], 'Desk scrolls its page; the Market list keeps its place');
+  } finally {await h.close();}
+});

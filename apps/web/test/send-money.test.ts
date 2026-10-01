@@ -208,3 +208,19 @@ test('a pasted address is trimmed and read exactly, never cut or stripped into a
   assert.equal(recipientAddress(`${FRIEND}l`), `${FRIEND}l`, 'a character outside the address alphabet stays, so the address is refused');
   assert.equal(recipientAddress(FRIEND.toLowerCase()), FRIEND.toLowerCase());
 });
+
+test('a click outside the Send sheet does not throw away a typed address', async () => {
+  const page = await moneyPage();
+  let open = true;
+  function Open() {const money = useMoney(); useEffect(() => {money.openSend();}, []); open = money.sendOpen; return null;}
+  try {
+    await page.render(createElement(Open));
+    await page.waitFor(() => page.dom.window.document.querySelector('[data-testid="send-destination"]') !== null, 'send form');
+    await page.type('[data-testid="send-destination"]', FRIEND);
+    const backdrop = page.dom.window.document.querySelector('.money-sheet-backdrop')!;
+    await act(async () => {backdrop.dispatchEvent(new page.dom.window.MouseEvent('mousedown', {bubbles: true}));});
+    await page.flush();
+    assert.ok(page.dom.window.document.querySelector('[data-testid="send-destination"]'), 'the sheet stays open with the address');
+    assert.ok(open);
+  } finally {await page.close();}
+});

@@ -173,7 +173,8 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
   }
 
   const close = () => {if (!busy) onClose();};
-  return <div className="money-sheet-backdrop" onMouseDown={event => {if (event.target === event.currentTarget) close();}}>
+  // A typed address or amount is not lost to a stray click outside; the close button still closes.
+  return <div className="money-sheet-backdrop" onMouseDown={event => {if (event.target === event.currentTarget && !to.trim() && !amount.trim()) close();}}>
     <section className="money-sheet send-money" ref={sendMoneySheetDialog} role="dialog" aria-modal="true" aria-labelledby={titleId}
       onKeyDown={event => {if (event.key === 'Escape') {event.stopPropagation(); close();}}}>
       <header className="money-sheet-head"><h2 id={titleId}>{tr('money.send.title')}</h2>

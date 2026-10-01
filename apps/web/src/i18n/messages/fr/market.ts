@@ -142,6 +142,8 @@ const messages: Translation<typeof en> = {
   'market.trade.sharesToSell': 'Actions à vendre',
   'market.trade.sharesUnit': 'actions',
   'market.trade.max': 'Max',
+  'market.trade.amountHintBuy': 'Saisissez un montant supérieur à 0, avec 2 décimales au maximum.',
+  'market.trade.amountHintSell': 'Saisissez un nombre d’actions supérieur à 0, avec 6 décimales au maximum.',
   'market.trade.caution': 'Les ordres d’entraînement sont indisponibles tant que ce token fait l’objet d’une mise en garde du fournisseur.',
   'market.trade.quoting': 'Récupération de ta cotation…',
   'market.trade.review': '{action, select, buy {Vérifier l’achat d’entraînement} sell {Vérifier la vente d’entraînement} other {Vérifier l’ordre d’entraînement}}',

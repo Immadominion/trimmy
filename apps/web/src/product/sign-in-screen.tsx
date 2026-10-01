@@ -39,6 +39,10 @@ export function SignInScreen({motion, hasDesk, onBack, onAccount, entryGate = fa
   const [emailEntry, setEmailEntry] = useState(false), [email, setEmail] = useState(''), [code, setCode] = useState('');
   const [guestBusy, setGuestBusy] = useState(false), [guestError, setGuestError] = useState(false);
   const [resendAt, setResendAt] = useState(0), [clock, setClock] = useState(Date.now);
+  // An error is about the last try: editing the entry hides it until the next
+  // try. A bad address is refused without going busy, so each try also resets.
+  const [edited, setEdited] = useState(false);
+  useEffect(() => {if (auth.busy) setEdited(false);}, [auth.busy]);
   const heading = useRef<HTMLHeadingElement>(null);
   const codeEntry = auth.email !== null;
   useEffect(() => {heading.current?.focus();}, [emailEntry, codeEntry, auth.phase === 'account-choice']);
@@ -60,10 +64,10 @@ export function SignInScreen({motion, hasDesk, onBack, onAccount, entryGate = fa
   }
   useEffect(() => {const previous = () => {if (!entryGate) window.history.replaceState(null, '', '#sign-in'); void back();}; window.addEventListener('popstate', previous); return () => window.removeEventListener('popstate', previous);});
   useEffect(() => {const escape = (event: KeyboardEvent) => {if (event.key === 'Escape') {event.preventDefault(); void back();}}; window.addEventListener('keydown', escape); return () => window.removeEventListener('keydown', escape);});
-  function choose(method: ProductLoginMethod) {if (auth.busy) return; if (entryGate) usage.track({name: 'gate_choice', props: {choice: method}}); if (method === 'email') setEmailEntry(true); else void auth.loginWithProvider(method);}
-  async function send() {setResendAt(Date.now() + 30000); await auth.sendEmailCode(email);}
+  function choose(method: ProductLoginMethod) {if (auth.busy) return; setEdited(false); if (entryGate) usage.track({name: 'gate_choice', props: {choice: method}}); if (method === 'email') setEmailEntry(true); else void auth.loginWithProvider(method);}
+  async function send() {setEdited(false); setResendAt(Date.now() + 30000); await auth.sendEmailCode(email);}
   const preferred = auth.lastSuccessfulMethod ?? 'email';
-  const message = auth.phase === 'account-choice' ? null : authError(auth.errorCode, tr);
+  const message = auth.phase === 'account-choice' || edited ? null : authError(auth.errorCode, tr);
   const loading = auth.phase === 'restoring' || auth.phase === 'connecting' || auth.phase === 'signing-out';
   return <section className="sign-in-screen" aria-label={tr('firstDay.signIn.label')}>
     {!entryGate && <button className="sign-in-close" aria-label={tr('firstDay.signIn.close')} disabled={auth.busy} onClick={() => void back()}>×</button>}
@@ -79,16 +83,16 @@ export function SignInScreen({motion, hasDesk, onBack, onAccount, entryGate = fa
         <p role="status">{auth.phase === 'connecting' ? tr('firstDay.signIn.restoring') : tr('firstDay.signIn.moment')}</p>
       </> : codeEntry ? <>
         <h1 ref={heading} tabIndex={-1}>{tr('firstDay.signIn.code.title')}</h1><p>{tr.rich('firstDay.signIn.code.sentTo', {email: auth.email})}</p>
-        <form onSubmit={event => {event.preventDefault(); void auth.verifyEmailCode(code);}}>
-          <label htmlFor="sign-in-code">{tr('firstDay.signIn.code.label')}</label><input id="sign-in-code" className="sign-in-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} disabled={auth.busy} onChange={event => setCode(event.target.value.replace(/\D/g, ''))}/>
+        <form onSubmit={event => {event.preventDefault(); setEdited(false); void auth.verifyEmailCode(code);}}>
+          <label htmlFor="sign-in-code">{tr('firstDay.signIn.code.label')}</label><input id="sign-in-code" className="sign-in-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} disabled={auth.busy} onChange={event => {setEdited(true); setCode(event.target.value.replace(/\D/g, ''));}}/>
           <button className="primary full" disabled={auth.busy || !/^\d{6}$/.test(code)}>{auth.busy ? tr('firstDay.signIn.code.signingIn') : tr('common.continue')}</button>
         </form>
-        <button className="text-button full" disabled={auth.busy || clock < resendAt} onClick={() => {setResendAt(Date.now() + 30000); void auth.sendEmailCode(auth.email!);}}>{clock < resendAt ? tr('firstDay.signIn.code.resendIn', {seconds: Math.ceil((resendAt - clock) / 1000)}) : tr('firstDay.signIn.code.resend')}</button>
+        <button className="text-button full" disabled={auth.busy || clock < resendAt} onClick={() => {setEdited(false); setResendAt(Date.now() + 30000); void auth.sendEmailCode(auth.email!);}}>{clock < resendAt ? tr('firstDay.signIn.code.resendIn', {seconds: Math.ceil((resendAt - clock) / 1000)}) : tr('firstDay.signIn.code.resend')}</button>
         <button className="text-button full" disabled={auth.busy} onClick={() => {auth.cancel(); setCode(''); setEmailEntry(true);}}>{tr('firstDay.signIn.code.otherEmail')}</button>
       </> : emailEntry ? <>
         <h1 ref={heading} tabIndex={-1}>{tr('firstDay.signIn.email.title')}</h1><p>{tr('firstDay.signIn.email.lede')}</p>
         <form onSubmit={event => {event.preventDefault(); void send();}}>
-          <label htmlFor="sign-in-email">{tr('firstDay.signIn.email.label')}</label><input id="sign-in-email" type="email" autoComplete="email" placeholder={tr('firstDay.signIn.email.placeholder')} maxLength={254} required value={email} disabled={auth.busy} onChange={event => setEmail(event.target.value)}/>
+          <label htmlFor="sign-in-email">{tr('firstDay.signIn.email.label')}</label><input id="sign-in-email" type="email" autoComplete="email" placeholder={tr('firstDay.signIn.email.placeholder')} maxLength={254} required value={email} disabled={auth.busy} onChange={event => {setEdited(true); setEmail(event.target.value);}}/>
           <button className="primary full" disabled={auth.busy || !email.trim()}>{auth.busy ? tr('firstDay.signIn.email.sending') : tr('firstDay.signIn.continueWithEmail')}</button>
         </form><button className="text-button full" disabled={auth.busy} onClick={() => {auth.cancel(); setEmailEntry(false);}}>{tr('firstDay.signIn.email.otherWays')}</button>
       </> : <>

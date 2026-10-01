@@ -169,6 +169,8 @@ export default {
   /** Unit beside the share amount field. */
   'market.trade.sharesUnit': 'shares',
   'market.trade.max': 'Max',
+  'market.trade.amountHintBuy': 'Enter an amount above 0, with up to 2 decimals.',
+  'market.trade.amountHintSell': 'Enter a number of shares above 0, with up to 6 decimals.',
   'market.trade.caution': 'Paper orders are unavailable while this token has a provider caution.',
   'market.trade.quoting': 'Getting your quote…',
   'market.trade.review': '{action, select, buy {Review paper buy} sell {Review paper sell} other {Review paper {action}}}',

@@ -76,7 +76,8 @@ export function FundWalletSheet({onClose}: {onClose(): void}) {
   const state = money.wallet, address = walletAddress(state);
   const walletIssue = state.context?.embeddedSolanaWallet.status === 'ambiguous' ? tr('money.fund.walletUnconfirmed')
     : state.phase === 'offline' && !navigator.onLine ? tr('money.fund.offline')
-    : state.checked && !refreshing && state.context === null ? tr('money.fund.walletFailed') : null;
+    // Once checked, the last outcome stays while a poll runs, so a failing wallet does not flicker every 8 seconds.
+    : state.checked && state.context === null ? tr('money.fund.walletFailed') : null;
   async function create() {
     setBusy(true); setMessage(null);
     try {

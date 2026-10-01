@@ -14,6 +14,7 @@ import {coherentHoldings} from './wallet-controller.js';
 import {useT} from '../../i18n/react.js';
 import type {MessageKey} from '../../i18n/runtime.js';
 import * as fmt from '../../i18n/format.js';
+import {enterPresses} from '../ui.js';
 
 const idle: OrderSessionState = Object.freeze({phase: 'checking', order: null, notice: null, noticeCopy: null, noticeCode: null, fundingNeeded: false, termsRequired: false});
 
@@ -207,6 +208,7 @@ function LivePanelBody({assetId, mint, companyName, discovery, initialSide = 'bu
     <div className="amount-field live-amount">{side === 'buy' && <span aria-hidden="true">{tr('money.order.dollarSign')}</span>}
       <input id="live-amount" inputMode="decimal" autoComplete="off" maxLength={40} value={amount} disabled={busy}
         onChange={event => {touched.current = true; const value = fmt.amountCharacters(event.target.value); setAmount(value); if (capped !== null && preset?.text !== value.trim()) setCapped(null);}}
+        onKeyDown={enterPresses(!busy && !walletMissing, review)}
         aria-describedby={limited ? 'live-available live-limit' : 'live-available'}/>
       <span>{side === 'sell' ? symbol : 'USDC'}</span></div>
     <div className="live-available-row"><span id="live-available">{available}</span>

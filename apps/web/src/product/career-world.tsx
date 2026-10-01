@@ -1,6 +1,6 @@
 import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import type {CSSProperties} from 'react';
-import {Loading, art} from './ui';
+import {Loading, art, scrollBehavior} from './ui';
 import {opensWhen} from './workday-schedule';
 import {useT} from '../i18n/react';
 
@@ -27,6 +27,8 @@ export interface CareerWorldProps {
   readonly motion?: boolean;
   readonly onOpen: (id: string) => void;
   readonly onRetry?: () => void;
+  /** Counts taps on the Career tab while it is open; each goes back to today. */
+  readonly top?: number;
 }
 
 /** Existing generated mobile scenery; unknown server art never becomes an arbitrary URL. */
@@ -51,6 +53,13 @@ function streetPath(width: number, rowHeight: number, count: number): string {
   }
   return path;
 }
+/** Where the street opens: today's day, a little below the top. */
+function today(list: HTMLElement): number {
+  const firstRow = list.querySelector<HTMLElement>('.career-world-row');
+  const active = list.querySelector<HTMLElement>('[data-current="true"]');
+  return Math.max(0, (active?.offsetTop ?? 0) - (firstRow?.offsetTop ?? 0) - 24);
+}
+
 function Seal() {
   return <svg className="career-world-seal" viewBox="0 0 48 48" aria-hidden="true"><path d="m24 2 5 4 6-.5 2.5 5.5 5.5 2.5-.5 6 4 4.5-4 5 .5 6-5.5 2.5-2.5 5.5-6-.5-5 4-4.5-4-6 .5-2.5-5.5L5 35l.5-6L2 24l3.5-4.5L5 13.5l5.5-2.5L13 5.5l6 .5Z" fill="#2c956c"/><path d="m15 24 6 6 12-13" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
@@ -58,7 +67,7 @@ function Lock() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5.5" y="10" width="13" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v2"/></svg>;
 }
 
-export function CareerWorld({assignments: listed, upcoming = null, loading = false, error = null, motion = true, onOpen, onRetry}: CareerWorldProps) {
+export function CareerWorld({assignments: listed, upcoming = null, loading = false, error = null, motion = true, onOpen, onRetry, top = 0}: CareerWorldProps) {
   const assignments = useMemo(() => listed && upcoming
     ? [...listed, {...upcoming, brief: '', completedAt: null, step: 0}] as readonly CareerWorldAssignment[] : listed, [listed, upcoming]);
   const viewport = useRef<HTMLDivElement>(null), canvas = useRef<HTMLOListElement>(null);
@@ -85,8 +94,7 @@ export function CareerWorld({assignments: listed, upcoming = null, loading = fal
       const width = list.getBoundingClientRect().width, rowHeight = firstRow?.getBoundingClientRect().height ?? 0;
       if (width > 0 && rowHeight > 0) setGeometry(prior => prior.width === width && prior.rowHeight === rowHeight ? prior : {width, rowHeight});
       if (!positioned.current && width > 0) {
-        const active = list.querySelector<HTMLElement>('[data-current="true"]');
-        scroll.scrollTop = Math.max(0, (active?.offsetTop ?? 0) - (firstRow?.offsetTop ?? 0) - 24);
+        scroll.scrollTop = today(list);
         positioned.current = true;
       }
     };
@@ -95,6 +103,12 @@ export function CareerWorld({assignments: listed, upcoming = null, loading = fal
     const observer = new ResizeObserver(measure); observer.observe(list); if (firstRow) observer.observe(firstRow);
     return () => observer.disconnect();
   }, [assignments?.length]);
+
+  // A tap on the open Career tab goes back to today, as on mobile.
+  useEffect(() => {
+    const list = canvas.current;
+    if (top && list) viewport.current?.scrollTo?.({top: today(list), behavior: scrollBehavior(motion)});
+  }, [top]);
 
   if (!assignments?.length) return <section className="career-world-empty" aria-label={tr('career.world.label')}>{loading
     ? <Loading>{tr('career.assignments.loading')}</Loading>

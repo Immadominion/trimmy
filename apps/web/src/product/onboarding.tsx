@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import type {ProductMarketClient, StockDiscoveryAsset} from './market-client';
 import type {CareerSummary, PaperPortfolio, PaperPreview, PaperReceipt, ProductProfile} from './practice-client';
 import type {PracticeSession} from './practice-session';
-import {CompanyLogo, Loading, SalArt, art, errorCopy, micros, shares, toPaperMicros} from './ui';
+import {CompanyLogo, Loading, SalArt, art, enterPresses, errorCopy, micros, shares, toPaperMicros} from './ui';
 import {FirstOrderCelebration} from './first-day-followup';
 import {useT} from '../i18n/react';
 import * as fmt from '../i18n/format';
@@ -184,7 +184,8 @@ export function FirstDay(props: FirstDayProps) {
       <div className="intro-companies" aria-label={tr('firstDay.practice.companiesLabel')}>{choices.map(company => <button className="intro-company" key={company.mint} aria-label={tr('firstDay.practice.chooseCompany', {name: company.name})} aria-pressed={selected?.mint === company.mint}
         disabled={busy || pending || !ready} onClick={() => {setSelected(company); setError(null);}}><CompanyLogo name={company.name} url={tokenArt(company.symbol)}/><span className="intro-company-label"><strong>{company.name}</strong><small>{company.symbol ?? tr('firstDay.practice.symbolFallback')}</small></span></button>)}</div>
       <div className="intro-amount"><label htmlFor="first-day-amount">{tr('firstDay.practice.amountLabel')}</label><div className="intro-amount-input"><input id="first-day-amount" inputMode="decimal" autoComplete="off" maxLength={12}
-        value={amount} aria-invalid={cash !== null && !validAmount} aria-describedby="first-day-balance first-day-amount-help" disabled={busy || pending} onChange={event => {setAmount(event.target.value); setError(null);}}/><span>{tr('common.paperUnit')}</span></div>
+        value={amount} aria-invalid={cash !== null && !validAmount} aria-describedby="first-day-balance first-day-amount-help" disabled={busy || pending} onChange={event => {setAmount(event.target.value); setError(null);}}
+        onKeyDown={enterPresses(!busy && !pending && ready && selected !== null && validAmount, () => void review())}/><span>{tr('common.paperUnit')}</span></div>
         <div className="intro-amount-options">{['50', '100', '500'].map(value => <button key={value} disabled={busy || pending || maximum === null || BigInt(value) * 1_000_000n > maximum}
           aria-pressed={amount === value} onClick={() => {setAmount(value); setError(null);}}>{fmt.number(value)}</button>)}</div>
         <p className="intro-balance" id="first-day-balance">{cash === null ? tr('firstDay.practice.balanceUnavailable') : maximum! < 1_000_000n
