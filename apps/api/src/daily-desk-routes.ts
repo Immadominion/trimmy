@@ -1,6 +1,8 @@
 import type {FastifyInstance, FastifyRequest} from 'fastify';
 import type {Pool} from 'pg';
 import {GuestSessionError} from './guest-session-repository.js';
+import {DESK_STORY_LANGUAGES, localizeDeskShift} from './desk-story-localization.js';
+import type {DeskStoryLanguage} from './desk-story-texts.generated.js';
 
 export interface DailyDeskChoice {date: string; caseId: string; choiceId: string}
 export interface DailyDeskAdapters {
@@ -24,7 +26,8 @@ export function postgresDailyDesk(pool: Pool): Pick<DailyDeskAdapters, 'read' | 
   }
   return {read: userId => scoped(userId), complete: (userId, choice) => scoped(userId, choice)};
 }
-const noQuery = {type:'object', additionalProperties:false, properties:{}} as const;
+// `lang` picks the story's language; installed apps that send none keep English.
+const noQuery = {type:'object', additionalProperties:false, properties:{lang:{enum:[...DESK_STORY_LANGUAGES]}}} as const;
 const slug = {type:'string', pattern:'^[a-z][a-z0-9-]*$', maxLength:80} as const;
 export function registerDailyDeskRoutes(app: FastifyInstance, adapters?: DailyDeskAdapters) {
   async function run(request: FastifyRequest, reply: import('fastify').FastifyReply, choice?: DailyDeskChoice) {
@@ -33,7 +36,9 @@ export function registerDailyDeskRoutes(app: FastifyInstance, adapters?: DailyDe
     try {
       const account = await adapters.authenticate(request);
       if (!account) return reply.code(401).send({code:'ACCOUNT_REQUIRED'});
-      return {shift: choice ? await adapters.complete(account.userId,choice) : await adapters.read(account.userId)};
+      const language = (request.query as {lang?: DeskStoryLanguage}).lang ?? 'en';
+      const shift = choice ? await adapters.complete(account.userId,choice) : await adapters.read(account.userId);
+      return {shift: localizeDeskShift(shift, language)};
     } catch (error) {
       if (error instanceof GuestSessionError) {
         const rate = error.code==='GUEST_SESSION_RATE_LIMITED';

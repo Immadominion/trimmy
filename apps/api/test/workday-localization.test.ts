@@ -85,7 +85,8 @@ test('a browser may ask for workdays in its language: the preflight allows ?lang
   const origin = 'https://app.trimmy.example';
   const app = buildApp({logger: false, browserOrigins: [origin]});
   try {
-    for (const [url, method] of [['/v1/career/workdays?lang=fr', 'GET'], ['/v1/career/workdays/step?lang=es', 'POST'], ['/v1/career/workdays/draft?lang=pt', 'POST']] as const) {
+    for (const [url, method] of [['/v1/career/workdays?lang=fr', 'GET'], ['/v1/career/workdays/step?lang=es', 'POST'], ['/v1/career/workdays/draft?lang=pt', 'POST'],
+      ['/v1/career/daily-desk?lang=fr', 'GET'], ['/v1/career/daily-desk/complete?lang=pt', 'POST']] as const) {
       const preflight = await app.inject({method: 'OPTIONS', url, headers: {origin, 'access-control-request-method': method, 'access-control-request-headers': 'authorization,content-type'}});
       assert.equal(preflight.statusCode, 204, url);
       assert.equal(preflight.headers['access-control-allow-origin'], origin, url);

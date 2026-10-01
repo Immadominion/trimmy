@@ -173,9 +173,10 @@ export function registerBrowserOrigins(app: FastifyInstance, input: readonly str
       request.raw.url?.split('?')[0] === route;
     const communityFollowRoute = route === '/v1/community/following/:socialId' &&
       /^\/v1\/community\/following\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.raw.url ?? '');
-    // Workdays take exactly one query: `?lang=` with a language the API serves.
+    // Workdays and desk stories take exactly one query: `?lang=` with a language the API serves.
     const workdayLanguageRoute = route !== undefined &&
-      ['/v1/career/workdays', '/v1/career/workdays/step', '/v1/career/workdays/draft'].includes(route) &&
+      ['/v1/career/workdays', '/v1/career/workdays/step', '/v1/career/workdays/draft',
+        '/v1/career/daily-desk', '/v1/career/daily-desk/complete'].includes(route) &&
       request.raw.url === `${route}?${(request.raw.url ?? '').split('?')[1] ?? ''}` &&
       /^lang=(en|es|pt|fr)$/.test((request.raw.url ?? '').split('?')[1] ?? '');
     const blockRoute = route === '/v1/social/blocks/:socialId' &&
