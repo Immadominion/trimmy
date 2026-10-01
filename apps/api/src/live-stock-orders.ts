@@ -220,14 +220,12 @@ export class LiveStockOrders {
     BigInt(input.amountRaw)>BigInt(input.side==='buy'?requestedAsset.maxBuyInputRaw:requestedAsset.maxSellInputRaw))fail('TRADE_LIMIT');
   validateStockEstimateInput(input);
   // Each issuer's disclosure must be accepted at its current version before any
-  // quote. Older clients (no field) may only trade the original xStocks issuer.
+  // quote. A legacy catalog entry is never evidence of acceptance.
   const selected=findStockTradingAsset(input.assetId,input.variantMint)!;
+  if(termsAccepted===undefined)fail('APP_UPDATE_REQUIRED');
   if(!acceptsIssuerTerms(selected.issuerId,termsAccepted))fail('TERMS_REQUIRED');
-  // A legacy client cannot sign an RFQ order (a market maker co-signs), so it
-  // never receives one.
-  if(termsAccepted===undefined && selected.route!=='aggregator')fail('TERMS_REQUIRED');
   const acceptance:LiveOrderTermsAcceptance=Object.freeze({issuerId:selected.issuerId,
-   version:termsAccepted?.version??'legacy_client_checkbox',acceptedAt:new Date(this.#now()).toISOString()});
+   version:termsAccepted!.version,acceptedAt:new Date(this.#now()).toISOString()});
   if(this.#inFlight.has(user)||(this.#next.get(user)??0)>this.#now()||this.#inFlight.size>=3)fail('LIVE_BUSY');
   this.#inFlight.add(user);this.#next.set(user,this.#now()+3000);
   if(this.#next.size>1000)for(const [id,time]of this.#next)if(time<this.#now())this.#next.delete(id);
@@ -246,9 +244,8 @@ export class LiveStockOrders {
    const inputMint=buying?JUPITER_QUOTE_ASSETS.USDC.mint:stock.mint,outputMint=buying?stock.mint:JUPITER_QUOTE_ASSETS.USDC.mint;
    // Two reviewed routes: Jupiter's aggregator (metis) and JupiterZ market makers
    // (RFQ). The token's usual route goes first and the other is tried when it has no
-   // quote. Ondo's tokens trade only with market makers, and a client without issuer
-   // terms cannot sign a market maker's order.
-   const routes:readonly ('aggregator'|'rfq')[]=stock.issuerId==='ondo'?['rfq']:termsAccepted===undefined?['aggregator']:
+   // quote. Ondo's tokens trade only with market makers.
+   const routes:readonly ('aggregator'|'rfq')[]=stock.issuerId==='ondo'?['rfq']:
     stock.route==='rfq'?['rfq','aggregator']:['aggregator','rfq'];
    // A token's own transfer fee is withheld from what arrives; Jupiter quotes before it.
    const slippageBps=orderSlippageBps(stock.transferFeeBps);
@@ -480,7 +477,7 @@ export function registerLiveStockRoutes(app:FastifyInstance,adapters?:LiveStockA
    const expiredReview=['STOCK_DRAFT_EXPIRED','LOOKUP_DRAFT_EXPIRED','LIFETIME_EXPIRED','SEMANTICS_DRAFT_EXPIRED',
     'RECONCILIATION_EXPIRED','SIMULATION_DRAFT_EXPIRED','SIMULATION_BLOCKHASH_EXPIRED','REVIEW_EXPIRED'];
    const code=unavailableRoute.includes(rawCode)?'NO_ROUTE':expiredReview.includes(rawCode)?'QUOTE_EXPIRED':rawCode;
-   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','TERMS_REQUIRED','MARKET_CLOSED','BELOW_MINIMUM','PRICE_OFF_MARKET','MARKET_INPUT_INVALID'];
+   const known=['ACCOUNT_REQUIRED','WALLET_REQUIRED','ORDER_PENDING','QUOTE_EXPIRED','INVALID_REVIEW','INVALID_SIGNATURE','ADD_USDC','ADD_SOL','INSUFFICIENT_HOLDINGS','NO_ROUTE','FEE_TOO_HIGH','LIVE_BUSY','TRADE_LIMIT','APP_UPDATE_REQUIRED','TERMS_REQUIRED','MARKET_CLOSED','BELOW_MINIMUM','PRICE_OFF_MARKET','MARKET_INPUT_INVALID'];
    // Log only bounded internal reason codes, never provider payloads, tokens or signed transactions.
    const detail=error instanceof Error && 'code' in error ? error.code : null;
    const reviewCode=typeof detail==='string' && /^(?:STOCK_DRAFT|LOOKUP|LIFETIME|SEMANTICS|RECONCILIATION|SIMULATION|REVIEW)_[A-Z_]{1,64}$/.test(detail)?detail:null;

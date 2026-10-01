@@ -223,7 +223,7 @@ export function stockIssuerOffered(issuerId: StockIssuerId): boolean {
   return STOCK_ISSUERS[issuerId].offer.status === 'offered';
 }
 
-/** The only issuer an older client (no terms acceptance field) may trade, with its original disclosure. */
+/** Issuer used by the legacy catalog schema; this never substitutes for acceptance. */
 export const LEGACY_STOCK_ISSUER: StockIssuerId = 'xstocks';
 
 export interface StockTermsAcceptance {
@@ -233,6 +233,6 @@ export interface StockTermsAcceptance {
 
 /** True when the acceptance names exactly this issuer's current attestation version. */
 export function acceptsIssuerTerms(issuerId: StockIssuerId, acceptance: StockTermsAcceptance | undefined): boolean {
-  if (acceptance === undefined) return issuerId === LEGACY_STOCK_ISSUER;
+  if (acceptance === undefined) return false;
   return acceptance.issuerId === issuerId && acceptance.version === STOCK_ISSUERS[issuerId].disclosure.attestation.version;
 }
