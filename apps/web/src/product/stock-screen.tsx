@@ -2,7 +2,8 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import type {ProductMarketClient, StockCard, StockFacts, StockInsight, StockInsightPeriod, StockVariant} from './market-client';
 import type {PracticeSession} from './practice-session';
 import type {PaperPortfolio, PaperPreview, PaperReceipt} from './practice-client';
-import {CompanyLogo, Failure, Loading, change, compactUsd, errorCopy, micros, shares, toPaperMicros, usd} from './ui';
+import {CompanyLogo, Failure, Loading, change, compactUsd, errorCopy, micros, paperPlain, shares, toPaperMicros, usd} from './ui';
+import * as fmt from '../i18n/format';
 import {useMoney} from './money/money-api';
 import {discoveryRefs} from './money/market-tradeable';
 import {LiveOrderPanel} from './money/live-order-panel';
@@ -151,8 +152,9 @@ function TradePanel({assetId, variant, name, session, portfolio, ensureDesk, onC
   const remaining = preview ? Math.max(0, Math.ceil((Date.parse(preview.expiresAt) - clock) / 1000)) : 0;
   const quantity = useMemo(() => {
     if (action === 'buy') return toPaperMicros(amount);
-    if (!/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(amount)) return null;
-    const [whole, fraction = ''] = amount.split('.');
+    const typed = fmt.normalizeDecimalInput(amount);
+    if (!/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(typed)) return null;
+    const [whole, fraction = ''] = typed.split('.');
     const value = BigInt(whole!) * 1_000_000n + BigInt(fraction.padEnd(6, '0'));
     return value > 0n ? value.toString() : null;
   }, [action, amount]);
@@ -177,7 +179,7 @@ function TradePanel({assetId, variant, name, session, portfolio, ensureDesk, onC
     } catch (reason) {if (mounted.current) setError(reason); onPending();}
     finally {locked.current = false; if (mounted.current) setBusy(false);}
   }
-  function mode(next: 'buy' | 'sell') {if (busy) return; setAction(next); setAmount(next === 'buy' ? '100' : position ? micros(position.quantityMicros, 6).replaceAll(',', '') : ''); setPreview(null); setError(null);}
+  function mode(next: 'buy' | 'sell') {if (busy) return; setAction(next); setAmount(next === 'buy' ? '100' : position ? fmt.decimalInput(paperPlain(position.quantityMicros, 6).replaceAll(',', '')) : ''); setPreview(null); setError(null);}
   const unavailable = variant.advisory !== null;
   return <aside className="trade-panel" aria-label="Paper order">
     {receipt ? <><div className="receipt-mark" aria-hidden="true">✓</div><h2>{receipt.action === 'buy' ? 'Your move is made.' : 'Sale confirmed.'}</h2><p className="receipt-text">{receipt.action === 'buy' ? 'Bought' : 'Sold'} {shares(receipt.quantityMicros)} shares of {name}.</p><dl className="review-summary"><div><dt>Paper {receipt.action === 'buy' ? 'spent' : 'received'}</dt><dd>{micros(receipt.action === 'buy' ? receipt.cashDebitPaperMicros : receipt.cashCreditPaperMicros)}</dd></div><div><dt>Paper cash left</dt><dd>{micros(receipt.cashAfterPaperMicros)}</dd></div></dl><button className="primary full" onClick={onDesk}>Back to your desk</button><button className="text-button full" onClick={() => {setReceipt(null); setError(null);}}>Make another move</button><p className="trade-disclosure">Confirmed paper order. No real money was moved.</p></>
@@ -185,7 +187,7 @@ function TradePanel({assetId, variant, name, session, portfolio, ensureDesk, onC
       <button className="primary full" disabled={busy || remaining === 0 || session.pendingCommit !== null} onClick={() => void confirm()}>{busy ? 'Confirming…' : `Confirm paper ${action}`}</button><p className="quote-clock">{remaining > 0 ? `Quote expires in ${remaining}s` : 'Quote expired. Get a new review.'}</p><button className="text-button full" disabled={busy} onClick={() => {setPreview(null); setError(null);}}>{remaining ? 'Edit amount' : 'Get a new quote'}</button></>
     : <><div className="trade-mode"><button aria-pressed={action === 'buy'} disabled={busy} onClick={() => mode('buy')}>Buy</button><button aria-pressed={action === 'sell'} disabled={busy || !position} onClick={() => mode('sell')}>Sell</button></div><h2>{action === 'buy' ? 'Make your move.' : 'Take a little back.'}</h2><p className="trade-caption">{action === 'buy' ? `Practice buying ${name}.` : `You hold ${shares(position?.quantityMicros ?? '0')} shares.`}</p>
       <label className="amount-label" htmlFor="order-amount">{action === 'buy' ? 'Amount to spend' : 'Shares to sell'}</label><div className="amount-field"><input id="order-amount" inputMode="decimal" autoComplete="off" value={amount} maxLength={18} disabled={busy} onChange={event => setAmount(event.target.value)} aria-describedby="order-unit"/><span id="order-unit">{action === 'buy' ? 'paper' : 'shares'}</span></div>
-      <div className="amount-options">{action === 'buy' ? ['50', '100', '500'].map(value => <button key={value} disabled={busy} onClick={() => setAmount(value)}>{value}</button>) : <>{[25, 50].map(percent => <button key={percent} disabled={busy || !position} onClick={() => setAmount(micros((BigInt(position!.quantityMicros) * BigInt(percent) / 100n).toString(), 6).replaceAll(',', ''))}>{percent}%</button>)}<button disabled={busy || !position} onClick={() => setAmount(micros(position!.quantityMicros, 6).replaceAll(',', ''))}>Max</button></>}</div>
+      <div className="amount-options">{action === 'buy' ? ['50', '100', '500'].map(value => <button key={value} disabled={busy} onClick={() => setAmount(value)}>{value}</button>) : <>{[25, 50].map(percent => <button key={percent} disabled={busy || !position} onClick={() => setAmount(fmt.decimalInput(paperPlain((BigInt(position!.quantityMicros) * BigInt(percent) / 100n).toString(), 6).replaceAll(',', '')))}>{percent}%</button>)}<button disabled={busy || !position} onClick={() => setAmount(fmt.decimalInput(paperPlain(position!.quantityMicros, 6).replaceAll(',', '')))}>Max</button></>}</div>
       {unavailable ? <p className="trade-error">Paper orders are unavailable while this token has a provider caution.</p> : <button className="primary full" disabled={busy || !quantity || session.pendingCommit !== null} onClick={() => void review()}>{busy ? 'Getting your quote…' : `Review paper ${action}`}</button>}
       <p className="trade-available">{portfolio ? `${micros(portfolio.cashPaperMicros)} paper available` : session.hasIdentity ? 'Paper balance unavailable. Refresh your desk.' : 'Start with 10,000 paper. No sign-in needed.'}</p></>}
     {error !== null && <p className="trade-error" role="alert">{errorCopy(error)}</p>}

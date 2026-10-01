@@ -1,0 +1,38 @@
+import type en from '../en/common';
+import type {Translation} from '../types';
+
+const messages: Translation<typeof en> = {
+  'common.appTitle': 'Trimmy | Sua mesa de treino',
+  'common.tryAgain': 'Tentar de novo',
+  'common.dismiss': 'Fechar',
+  'common.signIn': 'Entrar',
+  'common.continue': 'Continuar',
+  'common.cancel': 'Cancelar',
+  'common.save': 'Salvar',
+  'common.done': 'Concluir',
+  'common.checking': 'Verificando…',
+  'common.unavailable': 'Indisponível',
+  'common.noValue': '–',
+  'common.paperUnit': 'de treino',
+  'common.paperAmount': '{amount} de treino',
+  'common.compactThousand': '{value}\u00A0mil',
+  'common.compactMillion': '{value}\u00A0mi',
+  'common.compactBillion': '{value}\u00A0bi',
+  'common.compactTrillion': '{value}\u00A0tri',
+  'common.loadingDesk': 'Carregando sua mesa…',
+  'common.loadFailed': 'Ainda não conseguimos carregar isso.',
+  'common.salArtAlt': 'Sal, seu mentor de Wall Street, ao lado de uma cadeira de escritório roxa',
+  'common.error.storage': 'Permita o armazenamento do navegador para manter esta mesa e suas ordens seguras e tente de novo.',
+  'common.error.lock': 'Use um navegador com coordenação segura entre abas, como uma versão atual do Chrome, para manter suas ordens de treino seguras.',
+  'common.error.sessionChanged': 'Sua mesa mudou em outra aba. Recarregue esta página antes de continuar.',
+  'common.error.previewExpired': 'Esta cotação expirou. Peça uma nova revisão antes de confirmar.',
+  'common.error.sessionEnded': 'Esta sessão não está mais disponível. Sua mesa salva não foi substituída.',
+  'common.error.cashInsufficient': 'Este valor é maior que o seu dinheiro de treino disponível.',
+  'common.error.positionInsufficient': 'Sua posição mudou. Atualize sua mesa antes de vender.',
+  'common.error.portfolioChanged': 'Sua mesa mudou. Atualize e revise uma nova cotação.',
+  'common.error.rateLimited': 'Muitas solicitações de uma vez. Espere um pouco e tente de novo.',
+  'common.error.pending': 'Uma ordem anterior ainda precisa ser verificada. Volte para sua mesa para recuperá-la primeiro.',
+  'common.error.price': 'Não há uma cotação de treino atual para este token. Tente outra empresa ou volte mais tarde.',
+  'common.error.network': 'Verifique sua conexão e tente de novo. Sua mesa salva não mudou.',
+};
+export default messages;

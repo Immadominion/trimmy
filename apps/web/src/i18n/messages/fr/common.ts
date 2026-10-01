@@ -1,0 +1,38 @@
+import type en from '../en/common';
+import type {Translation} from '../types';
+
+const messages: Translation<typeof en> = {
+  'common.appTitle': 'Trimmy | Ton bureau d’entraînement',
+  'common.tryAgain': 'Réessayer',
+  'common.dismiss': 'Fermer',
+  'common.signIn': 'Se connecter',
+  'common.continue': 'Continuer',
+  'common.cancel': 'Annuler',
+  'common.save': 'Enregistrer',
+  'common.done': 'Terminé',
+  'common.checking': 'Vérification…',
+  'common.unavailable': 'Indisponible',
+  'common.noValue': '–',
+  'common.paperUnit': 'd’entraînement',
+  'common.paperAmount': '{amount} d’entraînement',
+  'common.compactThousand': '{value}\u00A0k',
+  'common.compactMillion': '{value}\u00A0M',
+  'common.compactBillion': '{value}\u00A0Md',
+  'common.compactTrillion': '{value}\u00A0Bn',
+  'common.loadingDesk': 'Chargement de ton bureau…',
+  'common.loadFailed': 'Impossible de charger ça pour l’instant.',
+  'common.salArtAlt': 'Sal, ton mentor de Wall Street, à côté d’une chaise de bureau violette',
+  'common.error.storage': 'Autorise le stockage du navigateur pour garder ce bureau et ses ordres en sécurité, puis réessaie.',
+  'common.error.lock': 'Utilise un navigateur qui coordonne les onglets de façon sûre, comme une version récente de Chrome, pour protéger tes ordres d’entraînement.',
+  'common.error.sessionChanged': 'Ton bureau a changé dans un autre onglet. Recharge cette page avant de continuer.',
+  'common.error.previewExpired': 'Cette cotation a expiré. Demande un nouvel aperçu avant de confirmer.',
+  'common.error.sessionEnded': 'Cette session n’est plus disponible. Ton bureau enregistré n’a pas été remplacé.',
+  'common.error.cashInsufficient': 'Ce montant dépasse ton argent d’entraînement disponible.',
+  'common.error.positionInsufficient': 'Ta position a changé. Actualise ton bureau avant de vendre.',
+  'common.error.portfolioChanged': 'Ton bureau a changé. Actualise-le et regarde une nouvelle cotation.',
+  'common.error.rateLimited': 'Un peu trop de demandes. Attends un instant, puis réessaie.',
+  'common.error.pending': 'Un ordre précédent doit encore être vérifié. Retourne à ton bureau pour le récupérer d’abord.',
+  'common.error.price': 'Aucune cotation d’entraînement actuelle pour ce token. Essaie une autre entreprise ou reviens plus tard.',
+  'common.error.network': 'Vérifie ta connexion et réessaie. Ton bureau enregistré n’a pas changé.',
+};
+export default messages;

@@ -1,0 +1,38 @@
+import type en from '../en/common';
+import type {Translation} from '../types';
+
+const messages: Translation<typeof en> = {
+  'common.appTitle': 'Trimmy | Tu escritorio de práctica',
+  'common.tryAgain': 'Intentar de nuevo',
+  'common.dismiss': 'Cerrar',
+  'common.signIn': 'Iniciar sesión',
+  'common.continue': 'Continuar',
+  'common.cancel': 'Cancelar',
+  'common.save': 'Guardar',
+  'common.done': 'Listo',
+  'common.checking': 'Revisando…',
+  'common.unavailable': 'No disponible',
+  'common.noValue': '–',
+  'common.paperUnit': 'de práctica',
+  'common.paperAmount': '{amount} de práctica',
+  'common.compactThousand': '{value}\u00A0mil',
+  'common.compactMillion': '{value}\u00A0M',
+  'common.compactBillion': '{value}\u00A0mil\u00A0M',
+  'common.compactTrillion': '{value}\u00A0B',
+  'common.loadingDesk': 'Cargando tu escritorio…',
+  'common.loadFailed': 'Todavía no pudimos cargar esto.',
+  'common.salArtAlt': 'Sal, tu mentor de Wall Street, junto a una silla de oficina morada',
+  'common.error.storage': 'Permite el almacenamiento del navegador para mantener a salvo este escritorio y sus órdenes, y vuelve a intentarlo.',
+  'common.error.lock': 'Usa un navegador con coordinación segura entre pestañas, como una versión actual de Chrome, para mantener a salvo tus órdenes de práctica.',
+  'common.error.sessionChanged': 'Tu escritorio cambió en otra pestaña. Vuelve a cargar esta página antes de seguir.',
+  'common.error.previewExpired': 'Esta cotización venció. Pide una nueva revisión antes de confirmar.',
+  'common.error.sessionEnded': 'Esta sesión ya no está disponible. Tu escritorio guardado no se reemplazó.',
+  'common.error.cashInsufficient': 'Este monto es mayor que tu efectivo de práctica disponible.',
+  'common.error.positionInsufficient': 'Tu posición cambió. Actualiza tu escritorio antes de vender.',
+  'common.error.portfolioChanged': 'Tu escritorio cambió. Actualízalo y revisa una nueva cotización.',
+  'common.error.rateLimited': 'Demasiadas solicitudes. Espera un momento y vuelve a intentarlo.',
+  'common.error.pending': 'Una orden anterior todavía necesita revisión. Vuelve a tu escritorio para recuperarla primero.',
+  'common.error.price': 'No hay una cotización de práctica actual para este token. Prueba otra empresa o vuelve más tarde.',
+  'common.error.network': 'Revisa tu conexión y vuelve a intentarlo. Tu escritorio guardado no cambió.',
+};
+export default messages;
