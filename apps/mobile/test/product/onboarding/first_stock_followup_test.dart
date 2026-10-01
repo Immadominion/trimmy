@@ -211,6 +211,87 @@ void main() {
     },
   );
   testWidgets(
+    'an offline reminder save can continue with a pending local choice',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      var finished = 0, syncs = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          home: ReminderPreferencePage(
+            preferences: prefs,
+            principal: 'account-a',
+            onDone: () async {
+              finished++;
+            },
+            setReminder: (_) async => true,
+            syncPreferences: () async {
+              syncs++;
+              throw StateError('offline');
+            },
+          ),
+        ),
+      );
+      await tester.tap(find.text('Keep it quiet'));
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(finished, 0);
+      expect(
+        ReminderPreferences.stored(prefs, 'account-a')?.mutationId,
+        isNotNull,
+      );
+      expect(find.textContaining('Saved on this phone.'), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(finished, 1);
+      expect(syncs, 1);
+    },
+  );
+  testWidgets(
+    'a newer server opt-out cancels a schedule and visibly requests a new choice',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final schedules = <String>[];
+      var finished = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: productTheme(),
+          home: ReminderPreferencePage(
+            preferences: prefs,
+            principal: 'account-a',
+            onDone: () async {
+              finished++;
+            },
+            requestPermission: () async => OnboardingNotificationStatus.granted,
+            setReminder: (value) async {
+              schedules.add(value);
+              return true;
+            },
+            syncPreferences: () async {
+              await ReminderPreferences.write(
+                prefs,
+                'account-a',
+                const ReminderState('off', 3, null, 'granted'),
+              );
+              throw ReminderPreferenceChanged();
+            },
+          ),
+        ),
+      );
+      await tester.tap(find.text('On workdays'));
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(schedules, ['daily', 'off']);
+      expect(finished, 0);
+      expect(
+        find.text('Your preference changed on another device. Choose again.'),
+        findsOneWidget,
+      );
+    },
+  );
+  testWidgets(
     'funding choice waits for the final introduction save and blocks double taps',
     (tester) async {
       final prefs = await SharedPreferences.getInstance();

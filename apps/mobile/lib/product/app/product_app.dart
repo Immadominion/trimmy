@@ -337,6 +337,22 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   void _syncReminder() {
+    final principal = _paperPrincipalKey, account = widget.account;
+    if (principal != null && account?.reminderPreferenceSync != null) {
+      unawaited(
+        account!.syncReminderPreferences().catchError((Object _) {}).then((_) {
+          if (mounted &&
+              _paperPrincipalKey == principal &&
+              identical(widget.account, account)) {
+            _applyReminder();
+          }
+        }),
+      );
+    }
+    _applyReminder();
+  }
+
+  void _applyReminder() {
     // Restoration and temporary connection loss are not a sign-out.
     if (_paperPrincipalKey == null) return;
     final preference = ReminderPreferences.read(
@@ -1617,6 +1633,7 @@ class _ProductExperienceState extends State<ProductExperience>
           ? 1
           : 0,
       onCelebrationContinue: _startFirstStockFollowup,
+      syncPreferences: widget.account?.syncReminderPreferences,
       onFinish: (addMoney) async {
         await widget.session.finishIntroduction();
         if (mounted && addMoney) await _openFunding();
@@ -3060,6 +3077,7 @@ class _ProductExperienceState extends State<ProductExperience>
                   builder: (pageContext) => ReminderPreferencePage(
                     preferences: widget.preferences,
                     principal: principal,
+                    syncPreferences: widget.account?.syncReminderPreferences,
                     setReminder: (preference) =>
                         ProductNotificationPermission.setReminder(
                           preference,

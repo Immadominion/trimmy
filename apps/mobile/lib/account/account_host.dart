@@ -1,3 +1,4 @@
+import '../product/notifications/reminder_preference_sync.dart';
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
@@ -67,6 +68,11 @@ class _PracticeAccountHostState extends State<PracticeAccountHost>
             baseUri: config.apiUri!,
             bindingAppId: config.appId!,
             guestSessions: guestSessions,
+            reminderPreferenceSync: ReminderPreferenceSync(
+              widget.preferences,
+              _client!,
+              config.apiUri!,
+            ).sync,
             invitationCreateMutationStore:
                 PreferencesInvitationCreateMutationStore(widget.preferences),
             relationshipMutationStore: PreferencesRelationshipMutationStore(
