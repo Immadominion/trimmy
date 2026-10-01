@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {act, createElement, useEffect} from 'react';
 import {useMoney} from '../src/product/money/money-api.js';
-import {maxRaw, sendableAssets} from '../src/product/money/send-money-sheet.js';
+import {maxRaw, recipientAddress, sendableAssets} from '../src/product/money/send-money-sheet.js';
 import {parseTransferReview, TransferError, WalletTransferClient} from '../src/product/money/wallet-transfer-client.js';
 import {parseHoldings} from '../src/product/money/wallet-models.js';
 import {moneyPage} from './support/money-dom.js';
@@ -199,4 +199,12 @@ test('a send with hidden extra outflow is refused before the SDK can sign', asyn
     assert.equal(page.privy.signs, 0);
     assert.equal(page.calls.some(call => call.path.endsWith('/execute')), false);
   } finally {await page.close();}
+});
+
+test('a pasted address is trimmed and read exactly, never cut or stripped into a different address', () => {
+  assert.equal(recipientAddress(` ${FRIEND}\n`), FRIEND, 'a leading space or line break no longer costs the last character');
+  assert.equal(recipientAddress(`solana:${FRIEND}`), FRIEND, 'a plain payment link gives its address');
+  assert.equal(recipientAddress(`solana:${FRIEND}?amount=1`), `solana:${FRIEND}?amount=1`, 'a link that asks for more is refused, not half-read');
+  assert.equal(recipientAddress(`${FRIEND}l`), `${FRIEND}l`, 'a character outside the address alphabet stays, so the address is refused');
+  assert.equal(recipientAddress(FRIEND.toLowerCase()), FRIEND.toLowerCase());
 });

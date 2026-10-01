@@ -515,7 +515,7 @@ function ProductWorkspace({apiBase = productApiBase(), practiceClient, marketCli
       : <>
         {error !== null && !recoveryScreen && !guestRecovery && <Failure title={tr('shell.deskError.title')} message={errorCopy(error)} onRetry={() => void retryDesk()}/>}
         {session?.pendingCommit && <div className="pending-order" role="status"><strong>{tr('shell.pendingOrder.title')}</strong><p>{tr('shell.pendingOrder.body')}</p><button className="text-button" disabled={busy} onClick={() => void recover()}>{busy ? tr('common.checking') : tr('shell.pendingOrder.check')}</button></div>}
-        {recovered && <div className="notice" role="status">{tr('shell.recovered')}</div>}
+        {recovered && <div className="notice" role="status">{tr('shell.recovered')}<button className="text-button" onClick={() => setRecovered(false)}>{tr('common.dismiss')}</button></div>}
         {workdays.pending && !['career', 'work', 'daily'].includes(route.page) && <div className="work-recovery" role="status"><span>{tr('shell.workPending.title')}</span><button className="text-button" disabled={workdays.working} onClick={() => void workdays.recover()}>{workdays.working ? tr('common.checking') : tr('shell.workPending.check')}</button></div>}
         {oneTimeNotice && !journeyScreen && <div className="notice" role="status">{oneTimeNotice}<button className="text-button" onClick={() => setOneTimeNotice(null)}>{tr('common.dismiss')}</button></div>}
         {fundingUnavailable && !journeyScreen && !signIn && <div className="notice" role="status">{tr('shell.fundingUnavailable')}<button className="text-button" onClick={() => setFundingUnavailable(false)}>{tr('common.dismiss')}</button></div>}

@@ -74,6 +74,9 @@ test('paper reset needs the exact typed phrase and reports the fresh balance', a
     assert.equal(h.button('Reset paper desk')?.disabled, true);
     await type(h, 'Confirmation phrase. Type reset my paper desk.', 'reset my desk');
     assert.equal(h.button('Reset paper desk')?.disabled, true);
+    // Phones capitalize the first word and keyboards add a space; neither should block the reset.
+    await type(h, 'Confirmation phrase. Type reset my paper desk.', 'Reset my paper desk ');
+    assert.equal(h.button('Reset paper desk')?.disabled, false);
     await type(h, 'Confirmation phrase. Type reset my paper desk.', 'reset my paper desk');
     await h.click('Reset paper desk');
     const reset = h.api.calls.find(call => call.path === '/v1/account/paper/reset');

@@ -16,6 +16,17 @@ import {t} from '../../i18n/runtime.js';
 import * as fmt from '../../i18n/format.js';
 
 const ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+/**
+ * The address a person pasted or typed, exactly: surrounding spaces and line
+ * breaks go, and a plain `solana:` link gives its address. Nothing inside it
+ * is ever removed or cut, so a mistyped address is refused, never changed
+ * into a different valid one.
+ */
+export function recipientAddress(typed: string): string {
+  const text = typed.trim();
+  const link = /^solana:([^?]*)$/iu.exec(text);
+  return link ? link[1]! : text;
+}
 /** SOL kept back by Max, so the wallet can still pay fees afterwards. */
 const SOL_RESERVE = 2_000_000n;
 
@@ -111,7 +122,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
 
   function problem(): MoneyCopy | null {
     if (!asset) return null;
-    const destination = to.trim();
+    const destination = recipientAddress(to);
     if (!ADDRESS.test(destination)) return {key: 'money.send.needAddress'};
     if (destination === holdings?.walletAddress) return {key: 'money.sendError.destinationSelf'};
     const raw = rawFor(asset, amount);
@@ -125,7 +136,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
     if (!asset || !money.transfers || busy || recoveryFailed) return;
     const issue = problem();
     if (issue) {setMessage(issue); return;}
-    const destination = to.trim(), raw = rawFor(asset, amount)!;
+    const destination = recipientAddress(to), raw = rawFor(asset, amount)!;
     setBusy(true); setMessage(null);
     try {
       const next = await money.transfers.preview({asset: asset.id, destination, amountRaw: raw});
@@ -171,7 +182,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
             {assets.map(item => <option key={item.id} value={item.id}>{`${item.name} · ${label(item, item.availableRaw)} ${item.symbol}`}</option>)}
           </select></label>
           <label>{tr('money.send.recipient')}<input data-testid="send-destination" value={to} disabled={busy} autoComplete="off" spellCheck={false}
-            maxLength={44} onChange={event => setTo(event.target.value.replace(/[^1-9A-HJ-NP-Za-km-z]/g, ''))}/></label>
+            autoCapitalize="none" autoCorrect="off" maxLength={200} onChange={event => setTo(event.target.value)}/></label>
           <label>{isStockAsset(asset) ? tr('money.send.shares') : tr('money.send.amount', {symbol: asset.symbol})}
             <span className="send-amount"><input data-testid="send-amount" inputMode="decimal" value={amount} disabled={busy} maxLength={40}
               onChange={event => setAmount(fmt.amountCharacters(event.target.value))}/>

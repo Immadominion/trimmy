@@ -149,7 +149,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     onDone={async () => {setView('list');}} onClose={() => setView('list')}/>;
   const privacy = props.privacy;
   const resetPhrase = tr('profile.reset.phrase');
-  const phraseTyped = tr.locale === 'en' ? phrase === resetPhrase : loosePhrase(phrase) === loosePhrase(resetPhrase);
+  const phraseTyped = loosePhrase(phrase) === loosePhrase(resetPhrase);
   async function reset() {
     if (resetting) return; setResetting(true); setMessage(null);
     try {const outcome = await props.onResetPaper(); if (mounted.current) {setResetResult(outcome); setDialog('reset-done');}}

@@ -137,7 +137,7 @@ export function MarketScreen({client, onSelect, social, real = false, capabiliti
       <div className="page-intro"><h1>{tr('market.screen.title')}</h1>{(!online || stale) && <span className="market-status" role="status">{tr(!online ? 'market.screen.offline' : 'market.screen.updating')}</span>}</div>
       <div className="market-tools"><div className="market-search">
         <svg className="market-search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
-        <label className="sr-only" htmlFor="company-search">{tr('market.screen.searchLabel')}</label><input id="company-search" type="search" autoComplete="off" placeholder={tr('market.screen.searchPlaceholder')} maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>{query && <button aria-label={tr('market.screen.clearSearch')} onClick={() => setQuery('')}>×</button>}
+        <label className="sr-only" htmlFor="company-search">{tr('market.screen.searchLabel')}</label><input id="company-search" type="search" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} placeholder={tr('market.screen.searchPlaceholder')} maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>{query && <button aria-label={tr('market.screen.clearSearch')} onClick={() => setQuery('')}>×</button>}
       </div></div>
     </header>
     {/* No separate Tradeable list: every listed company can be bought, and each row says when its market is closed. */}

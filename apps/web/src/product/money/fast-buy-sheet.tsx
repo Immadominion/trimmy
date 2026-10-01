@@ -65,7 +65,7 @@ export function FastBuySheet({market, knownCards, onOpen, onClose}: {
       <header className="money-sheet-head"><h2 id={titleId}>{tr('money.fastBuy.title')}</h2><p className={`money-badge ${money.real ? 'real' : 'paper'}`}>{money.real ? tr('money.realMoney') : tr('money.mode.paper')}</p>
         <button className="money-close" aria-label={tr('money.fastBuy.close')} onClick={onClose}>×</button></header>
       <label className="sr-only" htmlFor={`${titleId}-search`}>{tr('money.fastBuy.search')}</label>
-      <input ref={input} id={`${titleId}-search`} className="fast-buy-search" type="search" autoComplete="off" maxLength={80}
+      <input ref={input} id={`${titleId}-search`} className="fast-buy-search" type="search" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} maxLength={80}
         placeholder={tr('money.fastBuy.search')} value={query} onChange={event => setQuery(event.target.value)}/>
       {body}
     </section>

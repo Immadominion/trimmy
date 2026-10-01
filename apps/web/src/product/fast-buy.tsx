@@ -96,7 +96,7 @@ export function FastBuySheet(props: FastBuyProps) {
       {pending && !busy && <p className="trade-error" role="status">{tr('market.fastBuy.pending')}</p>}
       {step === 'search' && <>
         <label className="sr-only" htmlFor="fast-buy-search">{tr('market.fastBuy.search')}</label>
-        <input id="fast-buy-search" className="reason-note" type="search" autoComplete="off" placeholder={tr('market.fastBuy.search')} maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>
+        <input id="fast-buy-search" className="reason-note" type="search" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} placeholder={tr('market.fastBuy.search')} maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>
         <div className="fast-buy-results">{searching ? <Loading>{tr('market.fastBuy.finding')}</Loading> : searchError ? <p className="trade-error">{tr('market.fastBuy.searchFailed')}<button className="text-button" onClick={() => setSearchAttempt(value => value + 1)}>{tr('market.fastBuy.retry')}</button></p>
           : !results.length ? <p className="company-social-note">{tr('market.fastBuy.noMatches')}</p>
           : results.map(card => <button key={card.assetId} className="holder-row fast-buy-company" aria-label={tr('market.fastBuy.buyName', {name: card.name ?? card.assetId})} disabled={pending}
