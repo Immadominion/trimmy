@@ -24,6 +24,7 @@ export function liveOrderMessage(code: string, retryAfterSeconds: number | null 
     case 'ADD_SOL': return 'Add SOL to cover network and account fees.';
     case 'INSUFFICIENT_HOLDINGS': return 'You don’t have enough of this token to sell.';
     case 'TRADE_LIMIT': return 'This order is above the current trade limit.';
+    case 'APP_UPDATE_REQUIRED': return 'Update Trimmy to review the issuer terms before trading.';
     case 'TERMS_REQUIRED': return 'Confirm the issuer terms to continue.';
     case 'WALLET_REQUIRED': return 'Create your wallet to continue.';
     case 'ORDER_PENDING': return 'Your previous trade is still confirming.';
@@ -44,7 +45,7 @@ export function liveOrderMessage(code: string, retryAfterSeconds: number | null 
 
 const KNOWN = new Set(['ACCOUNT_REQUIRED', 'WALLET_REQUIRED', 'ORDER_PENDING', 'QUOTE_EXPIRED', 'INVALID_REVIEW',
   'INVALID_SIGNATURE', 'ADD_USDC', 'ADD_SOL', 'INSUFFICIENT_HOLDINGS', 'NO_ROUTE', 'FEE_TOO_HIGH', 'LIVE_BUSY',
-  'TRADE_LIMIT', 'TERMS_REQUIRED', 'MARKET_CLOSED', 'BELOW_MINIMUM', 'PRICE_OFF_MARKET', 'MARKET_INPUT_INVALID', 'LIVE_UNAVAILABLE']);
+  'TRADE_LIMIT', 'APP_UPDATE_REQUIRED', 'TERMS_REQUIRED', 'MARKET_CLOSED', 'BELOW_MINIMUM', 'PRICE_OFF_MARKET', 'MARKET_INPUT_INVALID', 'LIVE_UNAVAILABLE']);
 
 export type LiveOrderStatus = 'reviewed' | 'pending' | 'confirmed' | 'failed' | 'expired';
 export interface LiveOrderTerms {

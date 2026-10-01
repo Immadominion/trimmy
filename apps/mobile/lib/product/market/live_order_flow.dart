@@ -28,6 +28,8 @@ class LiveOrderFailure implements Exception {
     'ADD_SOL' => 'Add SOL to cover network and account fees.',
     'INSUFFICIENT_HOLDINGS' => 'You don’t have enough of this token to sell.',
     'TRADE_LIMIT' => 'This order is above the current trade limit.',
+    'APP_UPDATE_REQUIRED' =>
+      'Update Trimmy to review the issuer terms before trading.',
     'TERMS_REQUIRED' => 'Confirm the issuer terms to continue.',
     'WALLET_REQUIRED' => 'Create your wallet to continue.',
     'ORDER_PENDING' => 'Your previous trade is still confirming.',
