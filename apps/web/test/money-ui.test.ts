@@ -346,3 +346,21 @@ test('a token the API does not qualify on the spot is explained, and the list is
     await page.waitFor(() => reads > before, 'the list read again');
   } finally {await page.close();}
 });
+
+test('a wallet that cannot load keeps saying so while it checks again, without flickering', async () => {
+  const page = await moneyPage();
+  let hold: Promise<Response> | null = null;
+  page.server.reply = call => call.path === '/v1/account/context' ? hold ?? Response.json({error: {code: 'INVALID_RESPONSE'}}, {status: 500}) : undefined;
+  try {
+    await page.render(createElement(FundWalletSheet, {onClose() {}}));
+    await page.waitFor(() => page.text().includes('Couldn’t load your wallet.'), 'the failure');
+    let release!: (response: Response) => void;
+    hold = new Promise(resolve => {release = resolve;});
+    page.dom.window.dispatchEvent(new page.dom.window.Event('focus'));
+    await page.flush();
+    assert.ok(page.text().includes('Couldn’t load your wallet.'), 'a check in flight does not clear the message');
+    release(Response.json({error: {code: 'INVALID_RESPONSE'}}, {status: 500})); hold = null;
+    await page.flush();
+    assert.ok(page.text().includes('Couldn’t load your wallet.'));
+  } finally {await page.close();}
+});
