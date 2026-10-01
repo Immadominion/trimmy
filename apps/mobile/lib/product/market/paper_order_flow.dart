@@ -501,8 +501,16 @@ class _PaperOrderFlowState extends State<PaperOrderFlow> {
         buying ? l10n.paperOrderReviewBuyTitle : l10n.paperOrderReviewSellTitle,
       _OrderStep.report => l10n.paperOrderConfirmedTitle,
     };
+    // System back steps back like the arrow: from the review to the amount,
+    // and from the amount to search in Fast buy, not out of the whole sheet.
+    final stepsBack =
+        _step == _OrderStep.review ||
+        (_step == _OrderStep.amount && widget.onBackToSearch != null);
     return PopScope(
-      canPop: !_busy && !_savingReason,
+      canPop: !_busy && !_savingReason && !stepsBack,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
       child: Scaffold(
         backgroundColor: MarketPalette.paper,
         appBar: AppBar(

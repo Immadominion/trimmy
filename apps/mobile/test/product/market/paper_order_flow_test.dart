@@ -141,6 +141,37 @@ void main() {
     expect(repository.submissions.single.clientOrderId, 'client-order-1');
   });
 
+  testWidgets('system back from the review returns to the amount', (
+    tester,
+  ) async {
+    final repository = FakePaperOrderRepository();
+    repository.onQuote = (intent) async => PaperOrderQuote(
+      quoteId: 'quote-1',
+      intent: intent,
+      unitPricePaper: '231.42',
+      estimatedShares: '2.1605',
+      feePaper: '0',
+      totalPaper: '500',
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 2)),
+    );
+    await tester.pumpWidget(app(flow(repository)));
+    await tester.tap(find.byKey(const ValueKey('paper-preset-500')));
+    await tester.tap(find.byKey(const ValueKey('paper-order-review-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const ValueKey('paper-order-review')), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const ValueKey('paper-order-review')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('paper-order-review-button')),
+      findsOneWidget,
+      reason: 'back went one step, to the amount',
+    );
+    expect(repository.submissions, isEmpty);
+  });
+
   testWidgets('failed submit stays out of done state and explains it', (
     tester,
   ) async {

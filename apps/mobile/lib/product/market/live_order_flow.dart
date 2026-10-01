@@ -415,6 +415,24 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     _expireQuote();
   }
 
+  bool get _reviewing =>
+      _order?['status'] == 'reviewed' &&
+      _order?['terms'] is Map &&
+      _orderAsset != null;
+
+  void _editAmount() {
+    _quoteTimer?.cancel();
+    setState(() => _order = null);
+  }
+
+  /// Back steps from a reviewed quote to the amount, keeping what was typed,
+  /// and closes the sheet from anywhere else.
+  void _back() {
+    if (_busy) return;
+    if (_reviewing) return _editAmount();
+    widget.onBack();
+  }
+
   void _notice(_NoticeText message) {
     if (!mounted) return;
     _noticeTimer?.cancel();
@@ -888,7 +906,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         widget.company?.name ??
         l10n.liveOrderTitleFallback;
     return PopScope(
-      canPop: !_busy,
+      canPop: !_busy && !_reviewing,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
@@ -896,7 +917,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
           surfaceTintColor: Colors.transparent,
           leading: IconButton(
             tooltip: l10n.commonBack,
-            onPressed: _busy ? null : widget.onBack,
+            onPressed: _busy ? null : _back,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
           title: Text(name, style: Theme.of(context).textTheme.titleLarge),
@@ -1293,12 +1314,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         onPressed: _busy ? null : _confirm,
       ),
       TextButton(
-        onPressed: _busy
-            ? null
-            : () {
-                _quoteTimer?.cancel();
-                setState(() => _order = null);
-              },
+        onPressed: _busy ? null : _editAmount,
         child: Text(l10n.liveOrderEditAmount),
       ),
     ];

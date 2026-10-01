@@ -406,6 +406,41 @@ void main() {
   );
 
   testWidgets(
+    'system back from a reviewed quote returns to the amount, keeping it',
+    (tester) async {
+      var previews = 0;
+      await mount(tester, (request) async {
+        if (request.url.path.endsWith('preview')) {
+          previews++;
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          return _reply({
+            'order': _order('reviewed', raw: body['amountRaw'] as String),
+          });
+        }
+        return defaults(request);
+      }, company: _company('nvidia', unsupportedPrimary: true));
+      await tester.enterText(
+        find.byKey(const ValueKey('live-order-amount')),
+        '2.123456',
+      );
+      await tap(tester, 'live-order-review');
+      expect(previews, 1);
+      expect(find.text('Edit amount'), findsOneWidget);
+      expect(find.byKey(const ValueKey('live-order-amount')), findsNothing);
+      await tester.binding.handlePopRoute();
+      await pump(tester);
+      expect(
+        find.text('Edit amount'),
+        findsNothing,
+        reason: 'back left the review',
+      );
+      expect(field(tester), '2.123456', reason: 'and kept the amount');
+      expect(account.signatures, 0);
+      await clean(tester);
+    },
+  );
+
+  testWidgets(
     'sell percentages and Max use only spendable ATA quantity and exact precision',
     (tester) async {
       Map<String, dynamic>? preview;
@@ -948,7 +983,11 @@ void main() {
         expect(notice, findsOneWidget);
         final rect = tester.getRect(notice);
         expect(rect.top, greaterThanOrEqualTo(0));
-        expect(rect.bottom, lessThanOrEqualTo(700), reason: 'the message is on screen');
+        expect(
+          rect.bottom,
+          lessThanOrEqualTo(700),
+          reason: 'the message is on screen',
+        );
         await clean(tester);
       },
     );
