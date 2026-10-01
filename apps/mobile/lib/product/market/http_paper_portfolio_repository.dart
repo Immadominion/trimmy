@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../core/paper_decimal.dart';
 import '../../account/guest_session.dart';
 import 'paper_order_repository.dart';
 import 'paper_portfolio.dart';
@@ -223,7 +224,7 @@ PaperPortfolioSnapshot _portfolio(
   }
   final startingCashMicros = _micros(value['startingCashPaperMicros']);
   final cashMicros = _micros(value['cashPaperMicros']);
-  final cashPaper = _fromMicros(cashMicros);
+  final cashPaper = paperDecimal(cashMicros);
   final openPositions = positions
       .where((position) => position.quantity != '0')
       .toList(growable: false);
@@ -243,7 +244,7 @@ PaperPortfolioSnapshot _portfolio(
         );
   return PaperPortfolioSnapshot(
     revision: revision,
-    startingCashPaper: _fromMicros(startingCashMicros),
+    startingCashPaper: paperDecimal(startingCashMicros),
     cashPaper: cashPaper,
     positions: positions,
     recentOrders: orders,
@@ -343,20 +344,20 @@ PaperPortfolioValuation _valuation(
             expiresAt.isAfter(acceptedAt.add(const Duration(seconds: 60)))) {
           _rejected();
         }
-        final quantityMicros = _decimalMicros(expected.quantity);
+        final quantityMicros = paperMicros(expected.quantity);
         final expectedMarket =
             quantityMicros * priceMicros ~/ BigInt.from(1000000);
         if (marketValueMicros != expectedMarket ||
             unrealizedMicros !=
-                marketValueMicros - _decimalMicros(expected.costBasisPaper)) {
+                marketValueMicros - paperMicros(expected.costBasisPaper)) {
           _rejected();
         }
         parsedRows.add(
           PaperPositionValuation.priced(
             key: key,
-            pricePaper: _fromMicros(priceMicros),
-            marketValuePaper: _fromMicros(marketValueMicros),
-            unrealizedGainPaper: _fromMicros(unrealizedMicros),
+            pricePaper: paperDecimal(priceMicros),
+            marketValuePaper: paperDecimal(marketValueMicros),
+            unrealizedGainPaper: paperDecimal(unrealizedMicros),
             observedAt: observedAt,
             acceptedAt: acceptedAt,
             expiresAt: expiresAt,
@@ -412,9 +413,9 @@ PaperPortfolioValuation _valuation(
     portfolioRevision: revision,
     openPositionCount: openPositionCount,
     pricedPositionCount: pricedPositionCount,
-    cashPaper: _fromMicros(cashMicros),
-    knownValuePaper: _fromMicros(knownMicros),
-    totalPaper: totalMicros == null ? null : _fromMicros(totalMicros),
+    cashPaper: paperDecimal(cashMicros),
+    knownValuePaper: paperDecimal(knownMicros),
+    totalPaper: totalMicros == null ? null : paperDecimal(totalMicros),
     positions: parsedRows,
   );
 }
@@ -436,15 +437,15 @@ PaperPortfolioPosition _position(Object? input) {
     assetId: _assetId(value['assetId']),
     variantMint: _mint(value['variantMint']),
     symbol: _symbol(value['symbol']),
-    quantity: _fromMicros(_micros(value['quantityMicros'])),
-    costBasisPaper: _fromMicros(_micros(value['costBasisPaperMicros'])),
-    averageCostPaper: _fromMicros(
+    quantity: paperDecimal(_micros(value['quantityMicros'])),
+    costBasisPaper: paperDecimal(_micros(value['costBasisPaperMicros'])),
+    averageCostPaper: paperDecimal(
       _micros(value['averageCostPricePaperMicros']),
     ),
-    realizedGainPaper: _fromMicros(
+    realizedGainPaper: paperDecimal(
       _signedMicros(value['realizedGainPaperMicros']),
     ),
-    lockedGainPaper: _fromMicros(_micros(value['lockedGainPaperMicros'])),
+    lockedGainPaper: paperDecimal(_micros(value['lockedGainPaperMicros'])),
     updatedAt: _utc(value['updatedAt']),
   );
 }
@@ -495,9 +496,11 @@ PaperPortfolioOrder _order(Object? input) {
     variantMint: _mint(value['variantMint']),
     symbol: _symbol(value['symbol']),
     action: action,
-    pricePaper: _fromMicros(_micros(value['pricePaperMicros'], positive: true)),
-    quantity: _fromMicros(_micros(value['quantityMicros'], positive: true)),
-    cashAfterPaper: _fromMicros(_micros(value['cashAfterPaperMicros'])),
+    pricePaper: paperDecimal(
+      _micros(value['pricePaperMicros'], positive: true),
+    ),
+    quantity: paperDecimal(_micros(value['quantityMicros'], positive: true)),
+    cashAfterPaper: paperDecimal(_micros(value['cashAfterPaperMicros'])),
     committedAt: _utc(value['committedAt']),
   );
 }
@@ -704,18 +707,6 @@ BigInt _signedDerivedMicros(Object? value) {
   return BigInt.parse(value);
 }
 
-BigInt _decimalMicros(String value) {
-  final negative = value.startsWith('-');
-  final absolute = negative ? value.substring(1) : value;
-  final parts = absolute.split('.');
-  final parsed =
-      BigInt.parse(parts[0]) * BigInt.from(1000000) +
-      BigInt.parse(
-        (parts.length == 1 ? '' : parts[1]).padRight(6, '0').padLeft(1, '0'),
-      );
-  return negative ? -parsed : parsed;
-}
-
 DateTime _utc(Object? value) {
   final text = _text(value, 24);
   if (!RegExp(
@@ -731,14 +722,3 @@ DateTime _utc(Object? value) {
 }
 
 DateTime? _nullableUtc(Object? value) => value == null ? null : _utc(value);
-
-String _fromMicros(BigInt value) {
-  final negative = value.isNegative;
-  final absolute = value.abs();
-  final whole = absolute ~/ BigInt.from(1000000);
-  final fraction = (absolute % BigInt.from(1000000))
-      .toString()
-      .padLeft(6, '0')
-      .replaceFirst(RegExp(r'0+$'), '');
-  return '${negative ? '-' : ''}$whole${fraction.isEmpty ? '' : '.$fraction'}';
-}

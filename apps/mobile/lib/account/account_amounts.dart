@@ -2,6 +2,8 @@
 /// never converted through floating point, and nothing here prices a balance.
 library;
 
+import '../core/paper_decimal.dart';
+
 /// Formats a raw integer amount with [decimals] fractional digits, grouping
 /// the whole part with commas and trimming trailing zeros. Invalid input
 /// returns null so a screen can say the amount is unavailable instead of
@@ -13,13 +15,8 @@ String? formatRawUnits(String raw, int decimals) {
   final whole = padded.substring(0, padded.length - decimals);
   var fraction = padded.substring(padded.length - decimals);
   fraction = fraction.replaceFirst(RegExp(r'0+$'), '');
-  final grouped = StringBuffer();
-  for (var index = 0; index < whole.length; index++) {
-    final remaining = whole.length - index;
-    grouped.write(whole[index]);
-    if (remaining > 1 && remaining % 3 == 1) grouped.write(',');
-  }
-  return fraction.isEmpty ? grouped.toString() : '$grouped.$fraction';
+  final grouped = groupThousands(whole);
+  return fraction.isEmpty ? grouped : '$grouped.$fraction';
 }
 
 /// Shows the start and end of a long address so a person can compare it with

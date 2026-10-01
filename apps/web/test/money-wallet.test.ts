@@ -122,7 +122,7 @@ test('a slow wallet times out without releasing the signing lock until the walle
   assert.equal(wallet.state.signing, false); assert.equal(privy.signs, 1);
 });
 
-test('the Privy boundary counts only embedded Solana wallets and signs with Privy’s modal off', async () => {
+test('the Privy boundary counts only embedded Solana wallets and confirms direct sends', async () => {
   const user = await signer();
   assert.deepEqual(embeddedSolanaWallets({linkedAccounts: [{type: 'wallet', walletClientType: 'privy', chainType: 'solana', address: user.address},
     {type: 'wallet', walletClientType: 'phantom', chainType: 'solana', address: 'So11111111111111111111111111111111111111112'},
@@ -144,6 +144,8 @@ test('the Privy boundary counts only embedded Solana wallets and signs with Priv
   await snapshot.signTransaction(user.address, new Uint8Array([1]));
   assert.deepEqual((calls[0] as {options: unknown}).options, {uiOptions: {showWalletUIs: false}});
   assert.equal((calls[0] as {wallet: unknown}).wallet, connected);
+  await snapshot.signTransaction(user.address, new Uint8Array([1]), {confirm: true});
+  assert.deepEqual((calls[1] as {options: unknown}).options, {uiOptions: {showWalletUIs: true}});
   await assert.rejects(snapshot.signTransaction(external.address, new Uint8Array([1])));
   assert.throws(() => createProductWalletSdk({}, {}));
 });

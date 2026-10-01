@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show SemanticsAction;
 
 import 'package:flutter/material.dart';
@@ -128,7 +129,11 @@ void main() {
       await tester.pumpWidget(
         app(
           home: FoundationMarketPage(
-            companies: [stock, fund],
+            companies: [
+              stock,
+              ...List.generate(20, (i) => testCompany(assetId: 'extra-$i')),
+              fund,
+            ],
             searchGateway: gateway,
             recents: MarketRecentsController(),
             onOpenCompany: (_) {},
@@ -146,7 +151,121 @@ void main() {
       expect(loads, greaterThan(0));
       expect(find.text('SP500'), findsOneWidget);
       expect(find.text('Apple'), findsNothing);
-      expect(find.text('Checking every stock…'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'near the end loads once, failure keeps rows and retry is explicit',
+    (tester) async {
+      final gateway = FakeMarketSearchGateway(),
+          recents = MarketRecentsController();
+      addTearDown(gateway.dispose);
+      addTearDown(recents.dispose);
+      final first = List.generate(
+        20,
+        (i) => testCompany(assetId: 'company-$i', name: 'Company $i'),
+      );
+      var rows = first, more = true, loading = false;
+      String? error;
+      var calls = 0;
+      final request = Completer<void>();
+      late StateSetter update;
+      await tester.pumpWidget(
+        app(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return FoundationMarketPage(
+                companies: rows,
+                searchGateway: gateway,
+                recents: recents,
+                onOpenCompany: (_) {},
+                hasMore: more,
+                loadingMore: loading,
+                loadMoreMessage: error,
+                onLoadMore: () async {
+                  calls++;
+                  update(() {
+                    loading = true;
+                    error = null;
+                  });
+                  if (calls == 1) {
+                    await request.future;
+                    update(() {
+                      loading = false;
+                      error = 'Could not load more stocks. Try again.';
+                    });
+                  } else {
+                    update(() {
+                      loading = false;
+                      more = false;
+                      rows = [
+                        ...first,
+                        testCompany(assetId: 'next', name: 'Next company'),
+                      ];
+                    });
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(calls, 0);
+      final scroll = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      scroll.jumpTo(scroll.maxScrollExtent - 400);
+      await tester.pump();
+      expect(calls, 1);
+      expect(scroll.extentAfter, greaterThan(0));
+      scroll.jumpTo(scroll.maxScrollExtent);
+      await tester.pump();
+      expect(calls, 1);
+      request.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(calls, 1);
+      expect(find.text('Try again'), findsOneWidget);
+      await tester.ensureVisible(find.text('Try again'));
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(calls, 2);
+      expect(find.text('Next company'), findsOneWidget);
+      expect(find.text('Try again'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a short page fills the viewport without a scroll or repeated request',
+    (tester) async {
+      final gateway = FakeMarketSearchGateway(),
+          recents = MarketRecentsController();
+      addTearDown(gateway.dispose);
+      addTearDown(recents.dispose);
+      var calls = 0;
+      final rows = [testCompany()];
+      await tester.pumpWidget(
+        app(
+          home: FoundationMarketPage(
+            companies: rows,
+            searchGateway: gateway,
+            recents: recents,
+            onOpenCompany: (_) {},
+            hasMore: true,
+            onLoadMore: () async {
+              calls++;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(calls, 1);
+      await tester.pump(const Duration(seconds: 1));
+      expect(calls, 1);
     },
   );
 

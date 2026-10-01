@@ -232,7 +232,7 @@ void main() {
   );
 
   test(
-    'loading more reads several pages at once and keeps their order',
+    'paging follows the returned cursor and retries the failed page without losing rows',
     () async {
       final catalog = _Catalog(total: 200);
       final runtime = _runtime(_Facts(), catalog: catalog);
@@ -240,27 +240,39 @@ void main() {
       addTearDown(runtime.facts.dispose);
       addTearDown(runtime.research.dispose);
       await runtime.session.loadCatalog();
-      catalog.failing.add(80);
-      await runtime.session.loadMore();
-      expect(catalog.offsets, [0, 20, 40, 60, 80]);
-      expect(runtime.session.companies.map((c) => c.assetId), [
-        'company-0',
-        'company-20',
-        'company-40',
-        'company-60',
+      await Future.wait([
+        runtime.session.loadMore(),
+        runtime.session.loadMore(),
       ]);
+      expect(catalog.offsets, [0, 20]);
+      catalog.failing.add(40);
+      await runtime.session.loadMore();
+      expect(runtime.session.companies.length, 2);
       expect(runtime.session.loadMoreMessage, isNotNull);
       catalog.failing.clear();
-      await runtime.session.loadMore();
-      await runtime.session.loadMore();
-      await runtime.session.loadMore();
+      while (runtime.session.hasMore) {
+        await runtime.session.loadMore();
+      }
+      expect(catalog.offsets, [0, 20, 40, 40, 60, 80, 100, 120, 140, 160, 180]);
       expect(runtime.session.companies.length, 10);
       expect(runtime.session.companies.last.assetId, 'company-180');
-      expect(runtime.session.hasMore, false);
       expect(runtime.session.loadMoreMessage, isNull);
-      expect(catalog.offsets.where((offset) => offset >= 200), isEmpty);
     },
   );
+
+  test('filtered pages follow a non-contiguous next offset', () async {
+    final catalog = _Catalog(total: 100, skip: true);
+    final runtime = _runtime(_Facts(), catalog: catalog);
+    addTearDown(runtime.session.dispose);
+    addTearDown(runtime.facts.dispose);
+    addTearDown(runtime.research.dispose);
+    await runtime.session.loadCatalog();
+    while (runtime.session.hasMore) {
+      await runtime.session.loadMore();
+    }
+    expect(catalog.offsets, [0, 40, 80]);
+    expect(runtime.session.companies.length, 3);
+  });
 
   test('starter picks use one cards read and never preload full facts', () async {
     final repository = _Facts();
@@ -317,7 +329,8 @@ void main() {
 }
 
 final class _Catalog implements MarketCatalogGateway {
-  _Catalog({this.total = 22});
+  _Catalog({this.total = 22, this.skip = false});
+  final bool skip;
 
   final int total;
   bool fail = false;
@@ -338,7 +351,7 @@ final class _Catalog implements MarketCatalogGateway {
         offset == 0 ? 20 : null,
       );
     }
-    final next = offset + 20;
+    final next = offset + (skip ? 40 : 20);
     return MarketCatalogPage(
       [testCompany(assetId: 'company-$offset')],
       total,

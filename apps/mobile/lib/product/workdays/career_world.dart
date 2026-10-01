@@ -93,7 +93,7 @@ class _CareerWorldState extends State<CareerWorld> {
     super.dispose();
   }
 
-  void _open(WorkAssignment? assignment) {
+  void _open(WorkAssignment? assignment, WorkUpcoming? upcoming) {
     final journey = widget.controller.journey!;
     ReviewFeedback.shared.workCue(WorkSound.paper);
     if (assignment != null && journey.unlocked(assignment)) {
@@ -116,7 +116,9 @@ class _CareerWorldState extends State<CareerWorld> {
                 children: [
                   Expanded(
                     child: Text(
-                      assignment?.title ?? 'The next neighbourhood',
+                      assignment?.title ??
+                          upcoming?.title ??
+                          'The next neighbourhood',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
@@ -129,7 +131,9 @@ class _CareerWorldState extends State<CareerWorld> {
               ),
               const SizedBox(height: 12),
               Text(
-                assignment?.brief ?? 'More assignments are on the way.',
+                assignment?.brief ??
+                    upcoming?.opensLabel() ??
+                    'More assignments are on the way.',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               if (assignment != null)
@@ -185,7 +189,12 @@ class _CareerWorldState extends State<CareerWorld> {
             _scroll.jumpTo(
               math.max(
                 0,
-                ((journey.current?.ordinal ?? 1) - 1) * rowHeight - 24,
+                ((journey.current?.ordinal ??
+                                journey.upcoming?.ordinal ??
+                                journey.assignments.length) -
+                            1) *
+                        rowHeight -
+                    24,
               ),
             );
           }
@@ -201,6 +210,9 @@ class _CareerWorldState extends State<CareerWorld> {
           itemBuilder: (context, index) {
             final assignment = index < journey.assignments.length
                 ? journey.assignments[index]
+                : null;
+            final upcoming = journey.upcoming?.ordinal == index + 1
+                ? journey.upcoming
                 : null;
             final active =
                 assignment != null && assignment.id == journey.current?.id;
@@ -250,7 +262,7 @@ class _CareerWorldState extends State<CareerWorld> {
                         height: 144,
                         child: ExcludeSemantics(
                           child: Image.asset(
-                            'assets/images/career_world/${assignment?.art ?? careerScenery[index % careerScenery.length]}.png',
+                            'assets/images/career_world/${assignment?.art ?? upcoming?.art ?? careerScenery[index % careerScenery.length]}.png',
                             fit: BoxFit.contain,
                             cacheWidth: 380,
                           ),
@@ -278,7 +290,7 @@ class _CareerWorldState extends State<CareerWorld> {
                           active: active,
                           done: done,
                           released: assignment != null,
-                          onTap: () => _open(assignment),
+                          onTap: () => _open(assignment, upcoming),
                         ),
                       ),
                       Positioned(
@@ -312,7 +324,9 @@ class _CareerWorldState extends State<CareerWorld> {
                                           ),
                                     ),
                                   Text(
-                                    assignment?.title ?? 'Coming later',
+                                    assignment?.title ??
+                                        upcoming?.title ??
+                                        'Coming later',
                                     textAlign: TextAlign.center,
                                     style: Theme.of(context)
                                         .textTheme
@@ -323,6 +337,14 @@ class _CareerWorldState extends State<CareerWorld> {
                                               : ProductColor.ink,
                                         ),
                                   ),
+                                  if (upcoming != null)
+                                    Text(
+                                      upcoming.opensLabel(),
+                                      style: const TextStyle(
+                                        color: ProductColor.muted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   if (done)
                                     const Text(
                                       'Filed',

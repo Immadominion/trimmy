@@ -68,6 +68,9 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
   late MarketList _list;
   MarketSort _sort = MarketSort.featured;
   final Map<String, MarketCompany> _resolved = {};
+  final _scroll = ScrollController();
+  bool _pagePending = false, _pageCheckScheduled = false;
+  List<MarketCompany>? _lastAutoPage;
   bool _resolving = false;
   bool _resolveFailed = false;
 
@@ -111,6 +114,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
   void initState() {
     super.initState();
     _list = widget.initialList;
+    _scroll.addListener(_checkForMore);
     widget.following?.addListener(_followingChanged);
   }
 
@@ -130,6 +134,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
   @override
   void dispose() {
     widget.following?.removeListener(_followingChanged);
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -165,13 +170,43 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
       widget.hasMore &&
       widget.loadMoreMessage == null;
 
-  void _continueLoadingAll() {
-    if (!_loadingAll || widget.loadingMore) return;
+  void _schedulePageCheck() {
+    if (_pageCheckScheduled) return;
+    _pageCheckScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _loadingAll && !widget.loadingMore) {
-        unawaited(widget.onLoadMore?.call());
-      }
+      _pageCheckScheduled = false;
+      if (mounted) _checkForMore();
     });
+  }
+
+  void _checkForMore() {
+    if (!mounted ||
+        !_scroll.hasClients ||
+        !widget.hasMore ||
+        widget.status != MarketPageStatus.ready ||
+        widget.loadingMore ||
+        _pagePending ||
+        widget.loadMoreMessage != null ||
+        _activeList == MarketList.following ||
+        widget.onLoadMore == null ||
+        identical(_lastAutoPage, widget.companies)) {
+      return;
+    }
+    if (_loadingAll || _scroll.position.extentAfter <= 500) {
+      _lastAutoPage = widget.companies;
+      unawaited(_requestMore());
+    }
+  }
+
+  Future<void> _requestMore() async {
+    if (_pagePending || widget.loadingMore || widget.onLoadMore == null) return;
+    _pagePending = true;
+    try {
+      await widget.onLoadMore!();
+    } finally {
+      _pagePending = false;
+      if (mounted) _schedulePageCheck();
+    }
   }
 
   MarketList get _activeList {
@@ -301,8 +336,14 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
 
   @override
   Widget build(BuildContext context) {
-    _continueLoadingAll();
-    final content = _buildBody(context);
+    _schedulePageCheck();
+    final content = NotificationListener<ScrollMetricsNotification>(
+      onNotification: (_) {
+        _schedulePageCheck();
+        return false;
+      },
+      child: _buildBody(context),
+    );
     return Scaffold(
       backgroundColor: MarketPalette.paper,
       body: SafeArea(
@@ -316,6 +357,7 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
   Widget _buildBody(BuildContext context) {
     final companies = _visibleCompanies;
     return CustomScrollView(
+      controller: _scroll,
       key: const PageStorageKey('foundation-market-scroll'),
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -560,19 +602,24 @@ class _FoundationMarketPageState extends State<FoundationMarketPage> {
                       widget.loadMoreMessage!,
                       style: const TextStyle(color: MarketPalette.loss),
                     ),
-                  TextButton(
-                    key: const ValueKey('market-load-more'),
-                    onPressed: widget.loadingMore || _loadingAll
-                        ? null
-                        : widget.onLoadMore,
-                    child: Text(
-                      _loadingAll
-                          ? 'Checking every stock…'
-                          : widget.loadingMore
-                          ? 'Loading…'
-                          : 'Load more stocks',
+                  if (widget.loadMoreMessage != null)
+                    TextButton(
+                      key: const ValueKey('market-load-more'),
+                      onPressed: widget.loadingMore ? null : _requestMore,
+                      child: const Text('Try again'),
+                    )
+                  else if (widget.loadingMore || _loadingAll)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          semanticsLabel: 'Loading more stocks',
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

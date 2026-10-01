@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -15,6 +17,18 @@ import '../../support/account_data_fixtures.dart' as fixtures;
 
 const _friend = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 const _ondoMint = 'GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd';
+final _policyFixtures =
+    jsonDecode(
+          File(
+            '../../tool/testing/fixtures/client-send-policy.json',
+          ).readAsStringSync(),
+        )
+        as List;
+String _wire(String name) =>
+    _policyFixtures.firstWhere(
+          (item) => item['name'] == name,
+        )['envelope']['unsignedTransaction']
+        as String;
 final _origin = Uri.parse('https://trimmy.example');
 
 class _Reader implements AccountPortfolioReader {
@@ -115,6 +129,7 @@ Map<String, Object?> _review({
   int decimals = 6,
   String received = '5000000',
 }) => {
+  'id': '77777777-7777-4777-8777-777777777777',
   'review': {
     'asset': {
       'kind': mint == null ? 'sol' : 'token',
@@ -135,13 +150,20 @@ Map<String, Object?> _review({
         .add(const Duration(minutes: 1))
         .toIso8601String(),
   },
-  'unsignedTransaction': 'AQ${'A' * 200}',
+  'unsignedTransaction': _wire(
+    mint == null
+        ? 'sol'
+        : mint == _ondoMint
+        ? 'stock'
+        : 'usdc',
+  ),
   'reviewToken': 'payload.mac',
 };
 
 void main() {
   late _Account account;
   setUp(() async {
+    SharedPreferences.setMockInitialValues({});
     final portfolio = AccountPortfolioRepository(
       reader: _Reader(),
       clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
@@ -161,6 +183,7 @@ void main() {
     WidgetTester tester,
     Future<http.Response> Function(http.Request) handler, {
     String? asset,
+    bool handleRecovery = false,
   }) async {
     final requests = <http.Request>[];
     await tester.pumpWidget(
@@ -172,6 +195,9 @@ void main() {
           initialAsset: asset,
           pollInterval: const Duration(milliseconds: 10),
           httpClient: MockClient((request) {
+            if (!handleRecovery && request.url.path.endsWith('/recovery')) {
+              return Future.value(_reply({'transfer': null}));
+            }
             requests.add(request);
             return handler(request);
           }),
@@ -297,6 +323,24 @@ void main() {
     expect(requests, hasLength(1));
   });
 
+  testWidgets('hidden extra transfer is rejected before the wallet signs', (
+    tester,
+  ) async {
+    final requests = await mount(
+      tester,
+      (_) async => _reply({
+        ..._review(),
+        'unsignedTransaction': _wire('usdc/extra-sol'),
+      }),
+    );
+    await fill(tester, _friend, '5');
+    await tester.tap(find.byKey(const ValueKey('send-confirm')));
+    await pump(tester);
+    expect(find.textContaining('doesn’t match your review'), findsOneWidget);
+    expect(account.signatures, 0);
+    expect(requests.length, 1);
+  });
+
   test('Max keeps SOL for fees and lists only what can be sent', () async {
     final holdings = realWalletHoldings(account)!;
     final assets = sendableAssets(holdings);
@@ -305,4 +349,40 @@ void main() {
     expect(assets[0].availableRaw, '80000000');
     expect(assets[1].maxRaw, '48000000');
   });
+  testWidgets(
+    'lost acknowledgement and reopening recover the same send without signing again',
+    (tester) async {
+      var broadcasts = 0;
+      Future<http.Response> handler(http.Request request) async {
+        if (request.url.path.endsWith('/recovery')) {
+          return _reply({
+            'transfer': broadcasts == 0
+                ? null
+                : {..._review(), 'status': 'pending', 'signature': '5' * 88},
+          });
+        }
+        if (request.url.path.endsWith('/preview')) return _reply(_review());
+        if (request.url.path.endsWith('/execute')) {
+          broadcasts++;
+          throw Exception('reply lost');
+        }
+        return _reply({'status': 'pending', 'slot': null});
+      }
+
+      await mount(tester, handler, handleRecovery: true);
+      await fill(tester, _friend, '5');
+      await tester.tap(find.byKey(const ValueKey('send-confirm')));
+      await pump(tester);
+      expect(find.text('Sending'), findsOneWidget);
+      expect(account.signatures, 1);
+      expect(broadcasts, 1);
+      await tester.pumpWidget(const SizedBox());
+      await pump(tester);
+      await mount(tester, handler, handleRecovery: true);
+      expect(find.text('Sending'), findsOneWidget);
+      expect(account.signatures, 1);
+      expect(broadcasts, 1);
+      expect(find.byKey(const ValueKey('send-confirm')), findsNothing);
+    },
+  );
 }

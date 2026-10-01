@@ -1,3 +1,4 @@
+import '../../l10n/l10n.dart';
 import '../money/money_mode.dart';
 import 'package:flutter/material.dart';
 
@@ -321,7 +322,7 @@ class _ProductSettingsScreenState extends State<ProductSettingsScreen> {
         icon: Icons.description_outlined,
         title: 'Paper limit',
         trailing: PaperAmount(
-          _formatWhole(widget.state.paper.limit),
+          context.formats.integer(widget.state.paper.limit),
           style: Theme.of(context).textTheme.titleMedium,
           markSize: 18,
         ),
@@ -919,17 +920,6 @@ class _SettingsChoiceRow extends StatelessWidget {
       ),
     ),
   );
-}
-
-String _formatWhole(int value) {
-  final digits = value.abs().toString();
-  final groups = <String>[];
-  for (var end = digits.length; end > 0; end -= 3) {
-    final start = (end - 3).clamp(0, digits.length);
-    groups.add(digits.substring(start, end));
-  }
-  final formatted = groups.reversed.join(',');
-  return value < 0 ? '-$formatted' : formatted;
 }
 
 String _shortAddress(String address) {

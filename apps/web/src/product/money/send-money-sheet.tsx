@@ -58,8 +58,8 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
   const [to, setTo] = useState(''), [amount, setAmount] = useState('');
   const [review, setReview] = useState<TransferReview | null>(null);
   const [stage, setStage] = useState<Stage>('details');
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState<string | null>(null);
-  const [signature, setSignature] = useState<string | null>(null), [status, setStatus] = useState<'pending' | 'confirmed' | 'failed'>('pending');
+  const [busy, setBusy] = useState(true), [message, setMessage] = useState<string | null>(null);
+  const [signature, setSignature] = useState<string | null>(null), [status, setStatus] = useState<'pending' | 'confirmed' | 'failed' | 'expired'>('pending');
   const closeButton = useRef<HTMLButtonElement>(null), opener = useRef<Element | null>(null), active = useRef(true);
   useEffect(() => {
     active.current = true; opener.current = document.activeElement; closeButton.current?.focus();
@@ -69,19 +69,39 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
   const refreshRef = useRef(money.refreshWallet); refreshRef.current = money.refreshWallet;
   useEffect(() => {void refreshRef.current();}, []);
 
-  // Watch a sent transfer for about a minute.
+  const transfersRef=useRef(money.transfers);transfersRef.current=money.transfers;
+  async function recover() {
+    setBusy(true);setMessage(null);setRecoveryFailed(false);
+    try {
+      const saved=await transfersRef.current?.recovery();
+      if(!active.current)return;
+      if(saved) {
+        if (holdings?.walletAddress && saved.review.from !== holdings.walletAddress) throw new TransferError('WALLET_CHANGED');
+        setReview(saved.review);setSignature(saved.signature);
+        if(saved.status==='reviewed')setStage('review');
+        else {setStatus(saved.status);setStage(saved.status==='pending'?'sending':'done');}
+      }
+      setBusy(false);
+    }catch {if(active.current){setMessage('Your previous send couldn’t be checked. Try checking again.');setBusy(false);setRecoveryFailed(true);}}
+  }
+  const [recoveryFailed,setRecoveryFailed]=useState(false);
+  useEffect(()=>{void recover();},[]);
+
+  // Provider refreshes must not restart the observation window.
   useEffect(() => {
-    if (stage !== 'sending' || signature === null || !money.transfers) return;
-    let polls = 0;
+    if (stage !== 'sending' || signature === null || !transfersRef.current) return;
+    let polls = 0, checking = false, cancelled = false;
     const timer = window.setInterval(() => {
-      polls += 1;
-      void money.transfers!.status(signature).then(next => {
-        if (!active.current || next === 'pending' && polls < 30) return;
-        clearInterval(timer); setStatus(next); setStage('done'); void money.refreshWallet();
-      }, () => {if (polls >= 30 && active.current) {clearInterval(timer); setStage('done');}});
+      if (checking) return;
+      checking = true; polls += 1;
+      void transfersRef.current!.status(signature).then(next => {
+        if (cancelled || !active.current || next === 'pending' && polls < 30) return;
+        clearInterval(timer); setStatus(next); setStage('done'); void refreshRef.current();
+      }, () => {if (!cancelled && polls >= 30 && active.current) {clearInterval(timer); setStage('done');}})
+        .finally(() => {checking = false;});
     }, 2000);
-    return () => clearInterval(timer);
-  }, [stage, signature, money.transfers, money]);
+    return () => {cancelled = true; clearInterval(timer);};
+  }, [stage, signature]);
 
   function problem(): string | null {
     if (!asset) return null;
@@ -95,7 +115,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
   }
 
   async function preview() {
-    if (!asset || !money.transfers || busy) return;
+    if (!asset || !money.transfers || busy || recoveryFailed) return;
     const issue = problem();
     if (issue) {setMessage(issue); return;}
     const destination = to.trim(), raw = rawFor(asset, amount)!;
@@ -103,11 +123,14 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
     try {
       const next = await money.transfers.preview({asset: asset.id, destination, amountRaw: raw});
       // The review must be the send that was asked for, from this wallet.
-      if (next.assetId !== asset.id || next.destination !== destination || next.amountRaw !== raw || next.from !== holdings?.walletAddress) {
+      if (next.assetId !== asset.id || next.destination !== destination || next.amountRaw !== raw || next.decimals !== asset.decimals || next.from !== holdings?.walletAddress) {
         throw new TransferError('TRANSFER_UNAVAILABLE');
       }
       if (active.current) {setReview(next); setStage('review');}
-    } catch (error) {if (active.current) setMessage(error instanceof TransferError ? error.message : transferMessage(''));}
+    } catch (error) {
+      if (active.current && error instanceof TransferError && error.code === 'TRANSFER_PENDING') await recover();
+      else if (active.current) setMessage(error instanceof TransferError ? error.message : transferMessage(''));
+    }
     finally {if (active.current) setBusy(false);}
   }
 
@@ -120,6 +143,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
     } catch (error) {
       if (!active.current) return;
       const code = error instanceof TransferError ? error.code : error instanceof Error && 'code' in error ? String(error.code) : '';
+      if(!['INVALID_TRANSACTION','SIGNATURE_MISMATCH','SIGNING_CANCELLED','SIGNING_TIMEOUT','TRANSFER_STORAGE','ACCOUNT_REQUIRED','WALLET_CHANGED','WALLET_BUSY'].includes(code)) {await recover();return;}
       setMessage(transferMessage(code));
       if (['REVIEW_EXPIRED', 'INVALID_REVIEW', 'INVALID_SIGNATURE', 'QUOTE_EXPIRED'].includes(code)) {setReview(null); setStage('details');}
     } finally {if (active.current) setBusy(false);}
@@ -148,7 +172,7 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
                 onClick={() => setAmount(isStockAsset(asset) ? asset.scale.shares(maxRaw(asset)) : rawDecimal(maxRaw(asset), asset.decimals))}>Max</button></span>
             <small>{`${label(asset, asset.availableRaw)} ${asset.symbol} ready to send`}</small></label>
           {asset.id === 'SOL' && <p className="fund-note subtle">Max keeps 0.002 SOL so you can still pay network fees.</p>}
-          <button className="primary" data-testid="send-review" disabled={busy || !money.transfers}>{busy ? 'Checking…' : 'Review send'}</button>
+          <button className="primary" data-testid="send-review" disabled={busy || recoveryFailed || !money.transfers}>{busy ? 'Checking…' : 'Review send'}</button>
         </form>
       : stage === 'review' && review ? <div className="send-review">
           <dl className="send-summary">
@@ -160,16 +184,20 @@ export function SendMoneySheet({onClose, nameFor}: {onClose(): void; nameFor?: (
           <h3>To this Solana wallet</h3>
           <code className="send-destination" data-testid="send-review-destination">{review.destination}</code>
           <p className="fund-note">Check every character. Sends can’t be undone, and Trimmy can’t get money back from a wrong address.</p>
-          <button className="primary" data-testid="send-confirm" disabled={busy} onClick={() => void send()}>{busy ? 'Sending…' : 'Send now'}</button>
+          <button className="primary" data-testid="send-confirm" disabled={busy || recoveryFailed} onClick={() => void send()}>{busy ? 'Sending…' : 'Send now'}</button>
           <button className="text-button" disabled={busy} onClick={() => {setReview(null); setStage('details');}}>Edit</button>
         </div>
       : <div className="fund-state" role="status">
-          <h3 data-testid="send-result">{stage === 'sending' ? 'Sending' : status === 'confirmed' ? 'Sent' : status === 'failed' ? 'It didn’t go through' : 'Still confirming'}</h3>
+          <h3 data-testid="send-result">{stage === 'sending' ? 'Sending' : status === 'confirmed' ? 'Sent' : status === 'failed' ? 'It didn’t go through' : status==='expired'?'Send expired':'Still confirming'}</h3>
           <p className="fund-note">{stage === 'sending' ? 'This usually takes a few seconds.' : status === 'confirmed' ? 'It’s confirmed on Solana.'
-            : status === 'failed' ? 'Solana refused it. Only the network fee was spent.' : 'It usually lands within a minute. Check it on Solscan.'}</p>
+            : status === 'failed' ? 'Solana refused it. Only the network fee was spent.' : status==='expired'?'This transaction expired without confirmation. You can review a new send.':'We’re still checking this send. Don’t send it again.'}</p>
           {signature && <a href={`https://solscan.io/tx/${signature}`} target="_blank" rel="noreferrer">View on Solscan</a>}
-          {stage === 'done' && <button className="primary" onClick={onClose}>Done</button>}
+          {stage === 'done' && <button className="primary" onClick={()=>{
+            try {if(status!=='pending')money.transfers?.acknowledge();onClose();}
+            catch {setMessage('This send is saved. Try closing it again.');}
+          }}>Done</button>}
         </div>}
+      {recoveryFailed && <button className="primary" onClick={()=>{setRecoveryFailed(false);void recover();}}>Check previous send</button>}
       {message && <p className="fund-message" role="alert" data-testid="send-message">{message}</p>}
     </section>
   </div>;

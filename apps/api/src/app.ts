@@ -1,3 +1,4 @@
+import {registerReminderRoutes, REMINDER_PREFERENCES_ROUTE, type ReminderAdapters} from './reminder-preferences.js';
 import {registerPushRoutes, type PushAdapters} from './push-notifications.js';
 import {liveStockExecutionEnabled,registerLiveStockRoutes} from './live-stock-orders.js';
 import {registerLiveTradeHistoryRoute} from './live-trade-history.js';
@@ -87,6 +88,7 @@ import {relationshipSafetyAvailable} from './relationship-safety-config.js';
 import type {RelationshipSafetyReadiness} from './relationship-safety-config.js';
 
 export interface ApiOptions {
+  readonly reminders?: ReminderAdapters;
   readonly push?: PushAdapters;
   readonly onramp?: OnrampAdapters;
   readonly logger?: boolean;
@@ -248,6 +250,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     // The cardholder completes payment at Crossmint; no charge endpoint exists here.
     const onrampWrite = request.method === 'POST' && ['/v1/funding/wallet', '/v1/funding/verify', '/v1/funding/orders', '/v1/funding/status'].includes(request.routeOptions.url ?? '');
     const workdayWrite = request.method === 'POST' && ['/v1/career/workdays/step','/v1/career/workdays/draft'].includes(request.routeOptions.url ?? '');
+    const reminderWrite = request.method === 'PUT' && request.routeOptions.url === REMINDER_PREFERENCES_ROUTE;
     const pushWrite = ['PUT','DELETE'].includes(request.method) && request.routeOptions.url === '/v1/notifications/devices/:installationId';
     const communityWrite = request.method === 'PUT' && request.routeOptions.url === '/v1/community/following/:socialId';
     const careerWrite = (request.method === 'POST' &&
@@ -265,7 +268,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
       (request.method === 'PUT' && request.routeOptions.url === SOCIAL_BLOCK_ROUTE);
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !practiceWrite && !practiceSession && !watchlistWrite &&
         !followingWrite && !walletPossessionWrite && !invitationWrite && !closureWrite && !paperWrite && !guestWrite &&
-        !pushWrite && !onrampWrite && !liveWrite && !workdayWrite && !dailyDeskWrite && !communityWrite && !productProfileWrite && !careerWrite && !careerReasonSharingWrite && !socialRelationshipWrite) {
+        !pushWrite && !reminderWrite && !onrampWrite && !liveWrite && !workdayWrite && !dailyDeskWrite && !communityWrite && !productProfileWrite && !careerWrite && !careerReasonSharingWrite && !socialRelationshipWrite) {
       return reply.code(503).send(safeError('FINANCIAL_OPERATIONS_DISABLED', 'Live operations are unavailable in this foundation build.', request.id));
     }
   });
@@ -355,6 +358,7 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
   }));
 
   registerPushRoutes(app, options.push);
+  registerReminderRoutes(app, options.reminders);
   registerPracticeRoutes(app, options.practice);
   registerPracticeSessionRoute(app, options.practiceSessions);
   registerGuestSessionRoutes(app, options.guestSessions);

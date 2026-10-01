@@ -10,7 +10,7 @@ test('financial dispatch is account-scoped, once-only and survives lost response
  const owner=new Pool({host,port:65455,database:'postgres',user:'trimmy_daily_owner'});let runtime:Pool|undefined;
  try{
   await owner.query(`CREATE ROLE live_test_runtime LOGIN NOSUPERUSER NOBYPASSRLS;GRANT USAGE ON SCHEMA trimmy TO live_test_runtime;
-   GRANT EXECUTE ON FUNCTION trimmy.live_order_read(uuid,uuid),trimmy.live_order_create(uuid,uuid,text,jsonb,bytea,timestamptz),trimmy.live_order_begin(uuid,uuid,text,text),trimmy.live_order_resolve(uuid,uuid,text),trimmy.live_order_record_fill(uuid,uuid,text,text) TO live_test_runtime`);
+   GRANT EXECUTE ON FUNCTION trimmy.live_order_read(uuid,uuid),trimmy.live_order_create(uuid,uuid,text,jsonb,bytea,timestamptz),trimmy.live_order_begin(uuid,uuid,text,text),trimmy.live_order_resolve(uuid,uuid,text),trimmy.live_order_resolve(uuid,uuid,text,bigint),trimmy.live_order_record_fill(uuid,uuid,text,text) TO live_test_runtime`);
   runtime=new Pool({host,port:65455,database:'postgres',user:'live_test_runtime'});const api=new PostgresLiveOrderStore(runtime);
   const user=randomUUID(),other=randomUUID(),wallet='FbP8bwmje245N5k3GTrx7BcKcDwbJNbfvEaEbF8eewY1';
   await owner.query('INSERT INTO trimmy.users(id) VALUES($1),($2)',[user,other]);

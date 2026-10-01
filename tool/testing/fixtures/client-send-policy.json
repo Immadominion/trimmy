@@ -1,0 +1,2472 @@
+[
+  {
+    "name": "sol",
+    "accepted": true,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/wrong-recipient",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/extra-amount",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABBS0wAAAAAAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/excess-fee",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDAOmkNQAAAAACAgABDAIAAABAS0wAAAAAAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/double-transfer",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAEAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAICAAEMAgAAAEBLTAAAAAAAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/extra-sol",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvLnwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAABFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQEAAUC0AcAAAQACQNQwwAAAAAAAAMCAAEMAgAAAEBLTAAAAAAAAwIAAgwCAAAAQEIPAAAAAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/duplicate-budget",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAEAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAMABQLQBwAAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/unknown-program",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR5FKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQDAAUC0AcAAAMACQNQwwAAAAAAAAICAAEMAgAAAEBLTAAAAAAABAABAQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/trailing-bytes",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/pre-signed",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/truncated",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/noncanonical-length",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "gQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAEAAgTXWpgBgrEKt9VL/tPJZAc6DuFy89qmIyWvAhpo9wdRGn6MCIdgv94d3c8ywX8gm4JC7lKq8TH6zYjQ6ixtCwbyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAEUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQLQBwAAAwAJA1DDAAAAAAAAAgIAAQwCAAAAQEtMAAAAAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "sol/lookup-table",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "sol",
+          "mint": null,
+          "symbol": "SOL",
+          "decimals": 9,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "5100",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACBNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EafowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAARSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvADAwAFAtAHAAADAAkDUMMAAAAAAAACAgABDAIAAABAS0wAAAAAAAEJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQEAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc",
+    "accepted": true,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/wrong-recipient",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaWPiwflbsh6NRm2G5O6jlTVqE2SLf+RiJ9rLbp+A0FdX0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAMb6evO+2606PWXzaqvJdDGxu+TC0vbg5HymAgNFL11h58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAUABQJg6gAABQAJA1DDAAAAAAAABAYAAQcGAwgBAQgEAgYBAAoMQEtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/extra-amount",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQUtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/excess-fee",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJAwDppDUAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/double-transfer",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGCAQCBwEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/extra-sol",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9znwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHvSnSyJ+z5N9BeA0EPrsO2CP8dmo7vMByNRmXHziIVTqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+jAiHYL/eHd3PMsF/IJuCQu5SqvEx+s2I0OosbQsG8oyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAADG+nrzvtutOj1l82qryXQxsbvkwtL24OR8pgIDRS9dYQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpRSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAFBwAFAmDqAAAHAAkDUMMAAAAAAAAGBgABBQgECQEBCQQDCAEACgxAS0wAAAAAAAYEAgACDAIAAABAQg8AAAAAAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/duplicate-budget",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGBgAFAmDqAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/unknown-program",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAHCtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWHnwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHgbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpRSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAFBgAFAmDqAAAGAAkDUMMAAAAAAAAFBgABBAcDCQEBCQQCBwEACgxAS0wAAAAAAAYIAAEBAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/trailing-bytes",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/pre-signed",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/truncated",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAG",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/noncanonical-length",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "gQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAEABgnXWpgBgrEKt9VL/tPJZAc6DuFy89qmIyWvAhpo9wdRGtPqjPWsrKjNBSB1EhdcQ871Sl3Znt4goWtVJTc485fc9KdLIn7Pk30F4DQQ+uw7YI/x2aju8wHI1GZcfOIhVOoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH6MCIdgv94d3c8ywX8gm4JC7lKq8TH6zYjQ6ixtCwbyjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAMb6evO+2606PWXzaqvJdDGxu+TC0vbg5HymAgNFL11hBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKlFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQGAAUCYOoAAAYACQNQwwAAAAAAAAUGAAEEBwMIAQEIBAIHAQAKDEBLTAAAAAAABgA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/lookup-table",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAGAQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/wrong-decimals",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMQEtMAAAAAAAHAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/delegate",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAHCtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWHnwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHgbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpRSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAFBgAFAmDqAAAGAAkDUMMAAAAAAAAFBgABBAcDCQEBCQMCCAAJBP/JmjsAAAAACQQCBwEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/missing-creation",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQJg6gAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/late-creation",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAACAQCBwEACgxAS0wAAAAAAAYFBgABBAcDCAEBAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing",
+    "accepted": true,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/wrong-recipient",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaWPiwflbsh6NRm2G5O6jlTVqE2SLf+RiJ9rLbp+A0FdX0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/extra-amount",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxBS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/excess-fee",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJAwDppDUAAAAABQQCBAEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/double-transfer",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYFBAIEAQAKDEBLTAAAAAAABgA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/extra-sol",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAECNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9znwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHvSnSyJ+z5N9BeA0EPrsO2CP8dmo7vMByNRmXHziIVTqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAMb6evO+2606PWXzaqvJdDGxu+TC0vbg5HymAgNFL11hBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKlFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQFAAUCIE4AAAUACQNQwwAAAAAAAAcEAwYBAAoMQEtMAAAAAAAGBAIAAgwCAAAAQEIPAAAAAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/duplicate-budget",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYDAAUCIE4AAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/unknown-program",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAEB9damAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWHnwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHgbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpRSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAEAwAFAiBOAAADAAkDUMMAAAAAAAAGBAIEAQAKDEBLTAAAAAAABgUAAQEA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/trailing-bytes",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/pre-signed",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/truncated",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAY=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/noncanonical-length",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "gQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAEAAwbXWpgBgrEKt9VL/tPJZAc6DuFy89qmIyWvAhpo9wdRGtPqjPWsrKjNBSB1EhdcQ871Sl3Znt4goWtVJTc485fc9KdLIn7Pk30F4DQQ+uw7YI/x2aju8wHI1GZcfOIhVOoDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAMb6evO+2606PWXzaqvJdDGxu+TC0vbg5HymAgNFL11hBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKlFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AMDAAUCIE4AAAMACQNQwwAAAAAAAAUEAgQBAAoMQEtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/lookup-table",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAYBCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/wrong-decimals",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWEG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAcA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc-existing/delegate",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAEB9damAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea0+qM9aysqM0FIHUSF1xDzvVKXdme3iCha1UlNzjzl9z0p0sifs+TfQXgNBD67Dtgj/HZqO7zAcjUZlx84iFU6gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAxvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWHnwEJhIxU8k5BCKNPA2Ki112OjXktoET68ldmxCupxHgbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpRSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAEAwAFAiBOAAADAAkDUMMAAAAAAAAGAwIFAAkE/8maOwAAAAAGBAIEAQAKDEBLTAAAAAAABgA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock",
+    "accepted": true,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/wrong-recipient",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFCNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EavFnczu8mo5L3bmQSuHabcgYfC0mk+VqLe3Lm4iB5a2D5mEgAijNzIWjXO6a0e+JgG5S17WzTqAbffGfRncp7lAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeBt324e51j94YQl285GzN2rYa/E2DuQ0n/r35KNihi/xFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQFAAUCYOoAAAUACQNQwwAAAAAAAAQGAAIGBgMHAQEHBAEGAgAKDADKmjsAAAAACQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/extra-amount",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAcqaOwAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/excess-fee",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJAwDppDUAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/double-transfer",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJCAQCBwEACgwAypo7AAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/extra-sol",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+jAiHYL/eHd3PMsF/IJuCQu5SqvEx+s2I0OosbQsG8oyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAG3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQcABQJg6gAABwAJA1DDAAAAAAAABgYAAQUDBAgBAQgEAgMBAAoMAMqaOwAAAAAJBAIAAwwCAAAAQEIPAAAAAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/duplicate-budget",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJBgAFAmDqAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/unknown-program",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJBwABAQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/trailing-bytes",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/pre-signed",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/truncated",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJ",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/noncanonical-length",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "gQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAEABgnXWpgBgrEKt9VL/tPJZAc6DuFy89qmIyWvAhpo9wdRGmMLdzUgv14P/B66Q/E1xk3q905Ww+OzZlibevYPvKPUvFnczu8mo5L3bmQSuHabcgYfC0mk+VqLe3Lm4iB5a2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH6MCIdgv94d3c8ywX8gm4JC7lKq8TH6zYjQ6ixtCwbyjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeBt324e51j94YQl285GzN2rYa/E2DuQ0n/r35KNihi/xFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQGAAUCYOoAAAYACQNQwwAAAAAAAAUGAAEEBwMIAQEIBAIHAQAKDADKmjsAAAAACQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/lookup-table",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAJAQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/wrong-decimals",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgEAgcBAAoMAMqaOwAAAAAKAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/delegate",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAQQHAwgBAQgDAgcACQT/yZo7AAAAAAgEAgcBAAoMAMqaOwAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/missing-creation",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQJg6gAAAwAJA1DDAAAAAAAABQQCBAEACgwAypo7AAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock/late-creation",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "1000000000",
+        "receivedRaw": "1000000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAACAQCBwEACgwAypo7AAAAAAkFBgABBAcDCAEBAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing",
+    "accepted": true,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/wrong-recipient",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EavFnczu8mo5L3bmQSuHabcgYfC0mk+VqLe3Lm4iB5a2D5mEgAijNzIWjXO6a0e+JgG5S17WzTqAbffGfRncp7lAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQBBAIACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/extra-amount",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxBS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/excess-fee",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJAwDppDUAAAAABQQCBAEACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/double-transfer",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkFBAIEAQAKDEBLTAAAAAAACQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/extra-sol",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADB9damAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAbd9uHudY/eGEJdvORszdq2GvxNg7kNJ/69+SjYoYv8RSlpmKb44qeE212fleGPwj9wRBoQOURoAQiYebCMfvAEBQAFAiBOAAAFAAkDUMMAAAAAAAAGBAIDAQAKDEBLTAAAAAAACQQCAAMMAgAAAEBCDwAAAAAAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/duplicate-budget",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkDAAUCIE4AAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/unknown-program",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkEAAEBAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/trailing-bytes",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkAAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/pre-signed",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/truncated",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAk=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/noncanonical-length",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "gQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAEAAwbXWpgBgrEKt9VL/tPJZAc6DuFy89qmIyWvAhpo9wdRGmMLdzUgv14P/B66Q/E1xk3q905Ww+OzZlibevYPvKPUvFnczu8mo5L3bmQSuHabcgYfC0mk+VqLe3Lm4iB5a2ADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeBt324e51j94YQl285GzN2rYa/E2DuQ0n/r35KNihi/xFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AMDAAUCIE4AAAMACQNQwwAAAAAAAAUEAgQBAAoMQEtMAAAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/lookup-table",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAkBCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/wrong-decimals",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQIgTgAAAwAJA1DDAAAAAAAABQQCBAEACgxAS0wAAAAAAAoA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "stock-existing/delegate",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": false,
+        "accountRentLamports": "0",
+        "networkFeeLamports": "6000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EaYwt3NSC/Xg/8HrpD8TXGTer3TlbD47NmWJt69g+8o9S8WdzO7yajkvduZBK4dptyBh8LSaT5Wot7cubiIHlrYAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh7nWP3hhCXbzkbM3athr8TYO5DSf+vfko2KGL/EUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAMABQIgTgAAAwAJA1DDAAAAAAAABQMCBAAJBP/JmjsAAAAABQQCBAEACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock",
+    "accepted": true,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/wrong-recipient",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFCNdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGWGmIEKFwSups2dRCqZiFaWUmR1LgGT2MWUftOury/9gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKlFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQFAAUCYOoAAAUACQNQwwAAAAAAAAQGAAIGBgMHAQEHBAEGAgAKDEBLTAAAAAAACQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/extra-amount",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQUtMAAAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/excess-fee",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJAwDppDUAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/double-transfer",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJCAQBBwIACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/extra-sol",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdefAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+jAiHYL/eHd3PMsF/IJuCQu5SqvEx+s2I0OosbQsG8oyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQcABQJg6gAABwAJA1DDAAAAAAAABgYAAgUDBAgBAQgEAQMCAAoMQEtMAAAAAAAJBAIAAwwCAAAAQEIPAAAAAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/duplicate-budget",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJBgAFAmDqAAAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/unknown-program",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJBwABAQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/trailing-bytes",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJAAA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/pre-signed",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/truncated",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJ",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/noncanonical-length",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "gQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAEABgnXWpgBgrEKt9VL/tPJZAc6DuFy89qmIyWvAhpo9wdRGnLijOrp01TBFfcwQlwCnKWniiBh/hnAPwuOi8ApYn3BhRZwMZv8H1lkBdH6WtzrMCHPDRTBA5LG7Ud4eUt5hXUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH6MCIdgv94d3c8ywX8gm4JC7lKq8TH6zYjQ6ixtCwbyjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FkDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAOfAQmEjFTyTkEIo08DYqLXXY6NeS2gRPryV2bEK6nEeBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKlFKWmYpvjip4TbXZ+V4Y/CP3BEGhA5RGgBCJh5sIx+8AQGAAUCYOoAAAYACQNQwwAAAAAAAAUGAAIEBwMIAQEIBAEHAgAKDEBLTAAAAAAACQA=",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/lookup-table",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAJAQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJAQAA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/wrong-decimals",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAKAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/delegate",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBQYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgDAQcACQT/yZo7AAAAAAgEAQcCAAoMQEtMAAAAAAAJAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/missing-creation",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBtdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wAwMABQJg6gAAAwAJA1DDAAAAAAAABQQBBAIACgxAS0wAAAAAAAkA",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "classic-stock/late-creation",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "GbfDNU3Mx1nHrGdDqWhk3kqVtbzbx9frxMV8Srb6vEtd",
+          "symbol": "NVDAon",
+          "decimals": 9,
+          "uiMultiplier": "1.5"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAACAQBBwIACgxAS0wAAAAAAAkFBgACBAcDCAEBAA==",
+      "reviewToken": "payload.mac"
+    }
+  },
+  {
+    "name": "usdc/wrong-mint",
+    "accepted": false,
+    "envelope": {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "review": {
+        "asset": {
+          "kind": "token",
+          "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "symbol": "USDC",
+          "decimals": 6,
+          "uiMultiplier": "1"
+        },
+        "from": "FVen3X669xLzsi6N2V91DoiyzHzg1uAgqiT8jZ9nS96Z",
+        "destination": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+        "amountRaw": "5000000",
+        "receivedRaw": "5000000",
+        "createsAccount": true,
+        "accountRentLamports": "2039280",
+        "networkFeeLamports": "8000",
+        "expiresAt": "2026-10-01T00:00:00.000Z"
+      },
+      "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCddamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1EacuKM6unTVMEV9zBCXAKcpaeKIGH+GcA/C46LwClifcGFFnAxm/wfWWQF0fpa3OswIc8NFMEDksbtR3h5S3mFdQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfowIh2C/3h3dzzLBfyCbgkLuUqrxMfrNiNDqLG0LBvKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAA58BCYSMVPJOQQijTwNiotddjo15LaBE+vJXZsQrqcR4G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqUUpaZim+OKnhNtdn5Xhj8I/cEQaEDlEaAEImHmwjH7wBAYABQJg6gAABgAJA1DDAAAAAAAABQYAAgQHAwgBAQgEAQcCAAoMQEtMAAAAAAAGAA==",
+      "reviewToken": "payload.mac"
+    }
+  }
+]

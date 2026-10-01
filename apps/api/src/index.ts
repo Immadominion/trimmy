@@ -124,9 +124,9 @@ const liveStocks = liveRpc &&
         ...(process.env['JUPITER_API_KEY'] ? {apiKey: process.env['JUPITER_API_KEY']} : {})})}
   : undefined;
 // Sending money out of the user's wallet, under the same live switch as trading.
-const walletTransfers = liveRpc && practice.authenticateContext && linkedIdentities
+const walletTransfers = liveRpc && practice.walletTransferStore && practice.authenticateContext && linkedIdentities
   ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
-      executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet', service: new WalletTransfers({rpcUrl: liveRpc})}
+      executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet', service: new WalletTransfers({rpcUrl: liveRpc, store: practice.walletTransferStore})}
   : undefined;
 const paperAuthenticate = practice.authenticate && practice.guestSessionRepository
   ? createGuestPaperAuthenticator(practice.authenticate, practice.guestSessionRepository) : practice.authenticate;

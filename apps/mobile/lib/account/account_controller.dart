@@ -1,3 +1,4 @@
+import 'reviewed_transaction.dart';
 import 'wallet_trade_signer.dart';
 import 'onramp_wallet_signer.dart';
 import 'dart:async';
@@ -66,6 +67,7 @@ class AccountController extends ChangeNotifier {
     WalletPossessionSigner? walletSigner,
     WalletSetup? walletSetup,
     this.guestSessions,
+    this.reminderPreferenceSync,
     InvitationCreateMutationStore? invitationCreateMutationStore,
     RelationshipMutationStore? relationshipMutationStore,
     bool allowLoopbackForTests = false,
@@ -112,6 +114,23 @@ class AccountController extends ChangeNotifier {
   final WalletPossessionSigner? _walletSigner;
   final WalletSetup? _walletSetup;
   final GuestSessionPort? guestSessions;
+  final Future<void> Function(
+    String,
+    Future<PaperAuthorization> Function(),
+    bool Function(),
+  )?
+  reminderPreferenceSync;
+
+  Future<void> syncReminderPreferences() async {
+    final sync = reminderPreferenceSync;
+    if (sync == null) return;
+    final generation = _generation, phase = _phase;
+    final principal = await paperPrincipalKey();
+    bool current() => _current(generation) && _phase == phase;
+    if (!current()) return;
+    await sync(principal, paperAuthorization, current);
+  }
+
   late final InvitationCreateMutationStore _invitationCreateMutationStore;
   late final RelationshipMutationStore _relationshipMutationStore;
   bool _walletSetupBusy = false;
@@ -254,6 +273,7 @@ class AccountController extends ChangeNotifier {
         !DateTime.now().toUtc().isBefore(expiresAt)) {
       throw const WalletTradeException('ACCOUNT_CHANGED');
     }
+    final plan = ReviewedTransaction.parse(transaction, wallet);
     await freshAccessToken();
     if (!_portfolioIdentityCurrent(subject, account, generation)) {
       throw const WalletTradeException('ACCOUNT_CHANGED');
@@ -265,6 +285,7 @@ class AccountController extends ChangeNotifier {
           transaction: transaction,
         )
         .timeout(const Duration(seconds: 45));
+    await plan.verifySigned(signed, wallet);
     if (!_portfolioIdentityCurrent(subject, account, generation) ||
         !DateTime.now().toUtc().isBefore(expiresAt)) {
       throw const WalletTradeException('QUOTE_EXPIRED');

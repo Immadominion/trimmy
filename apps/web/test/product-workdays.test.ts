@@ -24,8 +24,8 @@ function journey(step = 0, draft = '', revision = step): WorkdayJourney {
         answers: {...(activeStep > 0 ? {'0': {ids: [...evidenceIds].sort()}} : {}), ...(activeStep > 1 ? {'1': {value: '200'}} : {}),
           ...(activeStep > 2 ? {'2': {ids: [...fileIds].sort()}} : {})}, draft: index === 0 ? draft : '',
         completedAt: activeStep === 3 ? AT : null, artifact: activeStep === 3 ? `Sales rose. Profit fell.\n\n${draft}` : null,
-        feedback: activeStep === 3 ? feedback : null, contextNote: null};
-    })};
+        feedback: activeStep === 3 ? feedback : null, contextNote: null, misses: 0, decisionNote: null, trims: activeStep === 3 ? 20 : null};
+    }), total: null, schedule: null, upcoming: null};
 }
 function json(value: unknown, status = 200) {return new Response(JSON.stringify(value), {status, headers: {'content-type': 'application/json'}});}
 class Store implements PracticeStorage {

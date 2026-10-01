@@ -1,0 +1,119 @@
+{
+  "@@locale": "en",
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "Generic button that closes a sheet or dialog without doing anything."
+  },
+  "commonContinue": "Continue",
+  "@commonContinue": {
+    "description": "Generic button that moves to the next step."
+  },
+  "commonDone": "Done",
+  "@commonDone": {
+    "description": "Generic button that finishes a flow and closes it."
+  },
+  "commonClose": "Close",
+  "@commonClose": {
+    "description": "Generic button or tooltip that closes a sheet, page or dialog."
+  },
+  "commonBack": "Back",
+  "@commonBack": {
+    "description": "Generic button or tooltip that goes back one step."
+  },
+  "commonTryAgain": "Try again",
+  "@commonTryAgain": {
+    "description": "Generic button shown after something failed, to repeat the same action."
+  },
+  "commonRetry": "Retry",
+  "@commonRetry": {
+    "description": "Short generic button to repeat a failed action, where space is tight."
+  },
+  "commonSave": "Save",
+  "@commonSave": {
+    "description": "Generic button that saves a choice."
+  },
+  "commonSignIn": "Sign in",
+  "@commonSignIn": {
+    "description": "Generic button that opens sign-in."
+  },
+  "commonMax": "Max",
+  "@commonMax": {
+    "description": "Short button on an amount field that fills in the largest amount allowed. Keep very short."
+  },
+  "commonBuy": "Buy",
+  "@commonBuy": {
+    "description": "Button or label for buying shares of a stock."
+  },
+  "commonSell": "Sell",
+  "@commonSell": {
+    "description": "Button or label for selling shares of a stock."
+  },
+  "rankRookie": "Rookie",
+  "@rankRookie": {
+    "description": "Career rank 1 of 6, the starting rank of a new player. Shown as a title, like a job level on Wall Street."
+  },
+  "rankAnalyst": "Analyst",
+  "@rankAnalyst": {
+    "description": "Career rank 2 of 6. A Wall Street job title."
+  },
+  "rankTrader": "Trader",
+  "@rankTrader": {
+    "description": "Career rank 3 of 6. A Wall Street job title."
+  },
+  "rankSeniorTrader": "Senior Trader",
+  "@rankSeniorTrader": {
+    "description": "Career rank 4 of 6. A Wall Street job title."
+  },
+  "rankPartner": "Partner",
+  "@rankPartner": {
+    "description": "Career rank 5 of 6. A partner of the firm."
+  },
+  "rankLegend": "Legend",
+  "@rankLegend": {
+    "description": "Career rank 6 of 6, the top rank."
+  },
+  "formatCompactThousand": "{value}K",
+  "@formatCompactThousand": {
+    "description": "A shortened number in thousands, such as a market cap or a token amount. Keep the unit as short as your language's financial press writes it.",
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "12.35"
+      }
+    }
+  },
+  "formatCompactMillion": "{value}M",
+  "@formatCompactMillion": {
+    "description": "A shortened number in millions (10^6), such as a market cap.",
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "1.25"
+      }
+    }
+  },
+  "formatCompactBillion": "{value}B",
+  "@formatCompactBillion": {
+    "description": "A shortened number in billions, meaning thousands of millions (10^9), such as a market cap.",
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "2.50"
+      }
+    }
+  },
+  "formatCompactTrillion": "{value}T",
+  "@formatCompactTrillion": {
+    "description": "A shortened number in trillions, meaning millions of millions (10^12), such as a market cap.",
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "1.23"
+      }
+    }
+  },
+  "marketPriceUnavailable": "Price unavailable",
+  "@marketPriceUnavailable": {
+    "description": "Shown in place of a stock's price when no price could be read."
+  }
+}

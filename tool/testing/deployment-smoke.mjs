@@ -147,6 +147,11 @@ async function main() {
     }});
     assert.equal(guestCreation.status, 201, guestCreation.text);
     const guest = guestCreation.json.token;
+    const reminders = '/v1/notifications/reminder-preferences';
+    const guestReminder = await call(reminders, {method: 'PUT', guest,
+      body: {mutationId: randomUUID(), baseRevision: 0, frequency: 'daily'}});
+    assert.equal(guestReminder.status, 200, guestReminder.text);
+    assert.equal(guestReminder.json.frequency, 'daily');
     const accept = 'application/vnd.trimmy.product-profile.v2+json';
     const unanswered = {goal: null, knowledge: null, persona: null, dailyGoal: null, handle: null};
     const initialGuestProfile = await call('/v1/product/profile', {method: 'PUT', guest, body: {
@@ -288,6 +293,21 @@ async function main() {
     const stillOne = await call('/v1/practice/progress', {bearer});
     assert.equal(stillOne.json.revision, 1);
 
+    const initialReminders = await call(reminders, {bearer});
+    assert.equal(initialReminders.status, 200, initialReminders.text);
+    assert.deepEqual(initialReminders.json, {schemaVersion: 1, revision: 0, frequency: null, claimedGuestId: null});
+    const reminderWrite = {mutationId: randomUUID(), baseRevision: 0, frequency: 'off'};
+    const reminderSaved = await call(reminders, {method: 'PUT', bearer, body: reminderWrite});
+    assert.equal(reminderSaved.status, 200, reminderSaved.text);
+    const reminderReplay = await call(reminders, {method: 'PUT', bearer, body: reminderWrite});
+    assert.deepEqual(reminderReplay.json, reminderSaved.json);
+    const staleReminder = await call(reminders, {method: 'PUT', bearer,
+      body: {mutationId: randomUUID(), baseRevision: 0, frequency: 'daily'}});
+    assert.equal(staleReminder.status, 409, staleReminder.text);
+    assert.equal(staleReminder.json.frequency, 'off');
+    assert.equal((await call(reminders, {guest})).json.frequency, 'daily');
+    console.log('reminders: guest and account choices stay separate; stale opt-in is refused and retries are idempotent');
+
     // Closing is the last thing this account can do, so it goes last.
     const wrongWords = await call('/v1/account/closure', {
       method: 'POST', bearer, body: {schemaVersion: 1, confirm: 'yes please'},
@@ -303,6 +323,7 @@ async function main() {
 
     // A closed account cannot authenticate, so its own history is unreachable
     // and it cannot start a new session.
+    assert.equal((await call(reminders, {bearer})).status, 401);
     const afterClosure = await call('/v1/practice/progress', {bearer});
     assert.equal(afterClosure.status, 401, afterClosure.text);
     // Signing in again does not quietly create a second account: the server

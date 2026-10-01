@@ -1,3 +1,5 @@
+import '../notifications/reminder_preferences.dart';
+export '../notifications/reminder_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../ui_review/review_feedback.dart';
@@ -8,53 +10,6 @@ import '../design/product_theme.dart';
 import '../market/market_craft.dart';
 import '../notifications/notification_permission.dart';
 import 'onboarding_models.dart';
-
-enum ReminderPreference {
-  daily('Once a day', 'Around 7 PM, your time.'),
-  occasional('A few times a week', 'Mon, Wed and Fri, around 7 PM.'),
-  off('Keep it quiet', 'I’ll come back on my own.');
-
-  const ReminderPreference(this.label, this.caption);
-  final String label, caption;
-}
-
-class ReminderPreferences {
-  static String _key(String principal) => 'trimmy.reminders.v1.$principal';
-  static ReminderPreference? read(
-    SharedPreferences preferences,
-    String principal,
-  ) {
-    final value = preferences.getString(_key(principal));
-    for (final item in ReminderPreference.values) {
-      if (item.name == value) return item;
-    }
-    return null;
-  }
-
-  static Future<void> save(
-    SharedPreferences preferences,
-    String principal,
-    ReminderPreference value,
-    OnboardingNotificationStatus permission,
-  ) async {
-    if (!await preferences.setString(_key(principal), value.name) ||
-        !await preferences.setString(
-          '${_key(principal)}.permission',
-          permission.name,
-        )) {
-      throw StateError('REMINDER_PREFERENCE_NOT_SAVED');
-    }
-  }
-
-  /// Reconciles the active profile without displaying an OS permission prompt.
-  /// A previous denial may have been changed in system Settings since saving.
-  static Future<bool> sync(SharedPreferences preferences, String? principal) =>
-      ProductNotificationPermission.setReminder(
-        principal == null
-            ? ReminderPreference.off.name
-            : (read(preferences, principal) ?? ReminderPreference.off).name,
-      );
-}
 
 /// Optional preferences never submit another order. The final callback commits
 /// the existing server-verified introduction checkpoint before opening Home.
@@ -71,6 +26,7 @@ class FirstStockFollowup extends StatefulWidget {
     this.amount,
     this.initialStep = 0,
     this.onCelebrationContinue,
+    this.syncPreferences,
     this.orderId,
   });
   final SharedPreferences preferences;
@@ -79,6 +35,7 @@ class FirstStockFollowup extends StatefulWidget {
   final int initialStep;
   final Future<void> Function(bool addMoney) onFinish;
   final Future<void> Function()? onCelebrationContinue;
+  final Future<void> Function()? syncPreferences;
 
   static String stepKey(String principal) =>
       'trimmy.first-stock-setup.v1.$principal';
@@ -176,6 +133,7 @@ class _FirstStockFollowupState extends State<FirstStockFollowup> {
         preferences: widget.preferences,
         principal: widget.principal,
         onDone: _next,
+        syncPreferences: widget.syncPreferences,
       );
     }
     final theme = Theme.of(context).textTheme;
@@ -353,12 +311,14 @@ class ReminderPreferencePage extends StatefulWidget {
     required this.preferences,
     required this.principal,
     required this.onDone,
+    this.syncPreferences,
     this.requestPermission = ProductNotificationPermission.request,
     this.setReminder = ProductNotificationPermission.setReminder,
   });
   final SharedPreferences preferences;
   final String principal;
   final Future<void> Function() onDone;
+  final Future<void> Function()? syncPreferences;
   final RequestOnboardingNotificationPermission requestPermission;
   final Future<bool> Function(String preference) setReminder;
   @override
@@ -382,6 +342,8 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
       _busy = true;
       _message = null;
     });
+    var savedLocally = false;
+    var scheduledLocally = false;
     try {
       if (_saved && !skip) {
         await widget.onDone();
@@ -396,12 +358,26 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
         choice,
         permission,
       );
-      final scheduled = await widget.setReminder(
+      savedLocally = true;
+      var scheduled = await widget.setReminder(
         permission == OnboardingNotificationStatus.granted
             ? choice.name
             : ReminderPreference.off.name,
       );
+      scheduledLocally = scheduled;
+      await widget.syncPreferences?.call();
       if (!mounted) return;
+      final effective = ReminderPreferences.read(
+        widget.preferences,
+        widget.principal,
+      );
+      if (effective != choice) {
+        scheduled = await widget.setReminder(
+          (effective ?? ReminderPreference.off).name,
+        );
+        if (!mounted) return;
+        setState(() => _selected = effective);
+      }
       if (choice != ReminderPreference.off &&
           permission != OnboardingNotificationStatus.granted) {
         setState(() {
@@ -415,8 +391,38 @@ class _ReminderPreferencePageState extends State<ReminderPreferencePage> {
       } else {
         await widget.onDone();
       }
+    } on ReminderPreferenceChanged {
+      if (!mounted) return;
+      // The server may have adopted a newer opt-out. Cancel the old schedule too.
+      try {
+        await widget.setReminder(
+          (ReminderPreferences.read(widget.preferences, widget.principal) ??
+                  ReminderPreference.off)
+              .name,
+        );
+      } catch (_) {
+        /* Reconciled again when the app resumes. */
+      }
+      if (mounted) {
+        setState(() {
+          _selected = ReminderPreferences.read(
+            widget.preferences,
+            widget.principal,
+          );
+          _message = 'Your preference changed on another device. Choose again.';
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _message = 'Couldn’t save that. Try again.');
+      if (mounted) {
+        _saved = savedLocally && scheduledLocally;
+        setState(
+          () => _message = !savedLocally
+              ? 'Couldn’t save that. Try again.'
+              : !scheduledLocally
+              ? 'Saved on this phone. Couldn’t set the reminder. Try again.'
+              : 'Saved on this phone. Sync will retry when you’re online.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

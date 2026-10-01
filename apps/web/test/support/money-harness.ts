@@ -58,6 +58,7 @@ export async function moneyHarness(options: {route?: 'aggregator' | 'rfq'; usdc?
     const override = await server.reply?.(call);
     if (override !== undefined) return override;
     const path = parsed.pathname.replace(/^\/api/, '');
+    if (path === '/v1/wallet/transfers/recovery') return Response.json({transfer:null});
     if (path === '/v1/account/context') return Response.json(contextJson(user.address));
     if (path === '/v1/account/holdings') return Response.json(holdingsJson(user.address, {usdc: server.usdc, slot: server.slot}));
     if (path === '/v1/trading/capabilities') return Response.json(liveCapabilitiesJson());

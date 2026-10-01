@@ -8,6 +8,7 @@ import {createRoot} from 'react-dom/client';
 import {JSDOM} from 'jsdom';
 import {ProductApp} from '../src/product/ProductApp.js';
 import {StockScreen} from '../src/product/stock-screen.js';
+import {FastBuySheet} from '../src/product/fast-buy.js';
 import {MarketScreen} from '../src/product/market-screen.js';
 import {MobileAppPrompt} from '../src/product/onboarding.js';
 import {micros, shares} from '../src/product/ui.js';
@@ -179,6 +180,38 @@ async function firstDayPractice(h: Awaited<ReturnType<typeof harness>>) {
   await h.app(); await h.click('Start my first day'); await h.click('Continue');
   assert.ok(h.button('Choose Apple'), 'the real starter company choices are shown');
 }
+
+test('Fast buy Retry repeats the failed read without requiring a changed search', async () => {
+  let attempts = 0;
+  const h = await harness({reply: call => call.path.endsWith('/catalog') && ++attempts === 1
+    ? json({code: 'STOCK_PROVIDER_UNAVAILABLE'}, 503) : undefined});
+  try {
+    await h.render(createElement(FastBuySheet, {market: h.market, session: h.session, portfolio: null,
+      ensureDesk: async () => {}, onCommitted: async () => {}, onPending() {}, saveReason: null, onClose() {}}));
+    assert.match(h.text(), /Search did not finish/);
+    await h.click('Retry');
+    assert.equal(attempts, 2);
+    assert.ok(h.button('Buy Apple'));
+    assert.doesNotMatch(h.text(), /Search did not finish/);
+  } finally {await h.close();}
+});
+
+test('a confirming paper order shows recovery only after the attempt cannot settle', async () => {
+  const pending = deferred<Response>();
+  const h = await harness({reply: call => call.path.endsWith('/commit') ? pending.promise : undefined});
+  try {
+    await h.stock(); await h.click('Review paper buy'); await h.click('Confirm paper buy');
+    await h.stock();
+    assert.ok(h.session.pendingCommit);
+    assert.ok(h.button('Confirming…')?.disabled);
+    assert.doesNotMatch(h.text(), /An order still needs checking/);
+    pending.resolve(json({code: 'PRACTICE_UNAVAILABLE'}, 503)); await h.flush();
+    assert.ok(h.session.pendingCommit, 'failed acknowledgement retains the durable command');
+    assert.match(h.text(), /An order still needs checking/);
+    assert.ok(h.button('Check it from your desk'));
+    assert.equal(h.calls.filter(call => call.path.endsWith('/commit')).length, 1);
+  } finally {pending.resolve(json({}, 503)); await h.close();}
+});
 
 test('first-day Welcome opens the short note locally without creating a desk or profile', async () => {
   const h = await harness({profileMissing: true});
@@ -676,6 +709,42 @@ test('a late background Market refresh cannot discard a page loaded by More or r
     assert.deepEqual(h.calls.filter(call => call.path.endsWith('/catalog')).map(call => Number(call.url.searchParams.get('offset'))), [0, 0, 20, 40]);
     assert.ok(h.button('Open Meta')); assert.equal(h.dom.window.document.querySelectorAll('.stock-row').length, 3);
     assert.equal(h.button('More companies'), undefined);
+  } finally {pending.resolve(json({})); await h.close();}
+});
+
+test('Market prefetches near the viewport, serializes requests and retries pagination without clearing stocks', async () => {
+  const pending = deferred<Response>(); let attempts = 0;
+  const h = await harness({reply: call => {
+    if (!call.path.endsWith('/catalog')) return undefined;
+    const offset = Number(call.url.searchParams.get('offset'));
+    if (offset === 40 && ++attempts === 1) return pending.promise;
+    return json({discovery: h.f.discovery, cards: [h.f.card], offset, total: 61,
+      nextOffset: offset === 0 ? 40 : null});
+  }});
+  const callbacks = new Set<(entries: {isIntersecting:boolean}[]) => void>();
+  Object.defineProperty(h.dom.window, 'IntersectionObserver', {configurable: true, value: class {
+    constructor(readonly callback: (entries: {isIntersecting:boolean}[]) => void, options: {rootMargin:string;root:HTMLElement}) {
+      assert.equal(options.rootMargin, '0px 0px 500px 0px');
+      assert.equal(options.root.className, 'market-results', 'prefetch against the actual scrolling list');
+    }
+    observe() {callbacks.add(this.callback);}
+    disconnect() {callbacks.delete(this.callback);}
+  }});
+  const approach = async () => {await act(async () => {
+    for (const callback of [...callbacks]) {callback([{isIntersecting:true}]); callback([{isIntersecting:true}]);}
+  }); await h.flush();};
+  try {
+    await h.render(createElement(MarketScreen, {client: h.market, onSelect() {}}));
+    assert.ok(h.button('Open Apple')); assert.equal(h.button('More companies'), undefined);
+    assert.equal(attempts, 0);
+    await approach(); assert.equal(attempts, 1);
+    pending.resolve(json({code:'STOCK_PROVIDER_UNAVAILABLE'}, 503)); await h.flush();
+    assert.ok(h.button('Open Apple')); assert.ok(h.button('Try again'));
+    await approach(); assert.equal(attempts, 1, 'failed pages wait for an explicit retry');
+    await h.click('Try again');
+    assert.ok(h.button('Open Apple')); assert.equal(h.button('Try again'), undefined);
+    assert.deepEqual(h.calls.filter(call => call.path.endsWith('/catalog')).map(call => Number(call.url.searchParams.get('offset'))), [0, 40, 40]);
+    assert.equal(callbacks.size, 0, 'the final page stops observing');
   } finally {pending.resolve(json({})); await h.close();}
 });
 

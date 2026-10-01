@@ -337,7 +337,41 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   void _syncReminder() {
-    unawaited(ReminderPreferences.sync(widget.preferences, _paperPrincipalKey));
+    final principal = _paperPrincipalKey, account = widget.account;
+    if (principal != null && account?.reminderPreferenceSync != null) {
+      unawaited(
+        account!.syncReminderPreferences().catchError((Object _) {}).then((_) {
+          if (mounted &&
+              _paperPrincipalKey == principal &&
+              identical(widget.account, account)) {
+            _applyReminder();
+          }
+        }),
+      );
+    }
+    _applyReminder();
+  }
+
+  void _applyReminder() {
+    // Restoration and temporary connection loss are not a sign-out.
+    if (_paperPrincipalKey == null) return;
+    final preference = ReminderPreferences.read(
+      widget.preferences,
+      _paperPrincipalKey!,
+    );
+    // Do not replace a known future assignment with a guessed reminder while loading.
+    if (_dailyDesk?.journey == null &&
+        preference != null &&
+        preference != ReminderPreference.off) {
+      return;
+    }
+    unawaited(
+      ReminderPreferences.sync(
+        widget.preferences,
+        _paperPrincipalKey,
+        journey: _dailyDesk?.journey,
+      ),
+    );
   }
 
   bool get _realMoney => MoneyModeScope.isReal(context);
@@ -665,8 +699,16 @@ class _ProductExperienceState extends State<ProductExperience>
     _reasonedOrderIds.clear();
     _portfolioFailure = null;
     _guestDeskRecovery = null;
+    if (account == null ||
+        accountControllerChanged ||
+        (phase == AccountPhase.guest &&
+            _paperAccountPhase == AccountPhase.active) ||
+        (phase == AccountPhase.active &&
+            _paperPrincipalHint != null &&
+            _paperPrincipalHint != principalHint)) {
+      unawaited(ProductNotificationPermission.setReminder('off'));
+    }
     _paperPrincipalKey = null;
-    _syncReminder();
     _accountEntryFailed = false;
     _accountEntryRunning = false;
     _forgetPendingPromotion();
@@ -1354,7 +1396,7 @@ class _ProductExperienceState extends State<ProductExperience>
     _latestCompany = null;
     _reasonedOrderIds.clear();
     _paperPrincipalKey = null;
-    _syncReminder();
+    unawaited(ProductNotificationPermission.setReminder('off'));
     _accountEntryFailed = false;
     _accountEntryRunning = false;
     _forgetPendingPromotion();
@@ -1591,6 +1633,7 @@ class _ProductExperienceState extends State<ProductExperience>
           ? 1
           : 0,
       onCelebrationContinue: _startFirstStockFollowup,
+      syncPreferences: widget.account?.syncReminderPreferences,
       onFinish: (addMoney) async {
         await widget.session.finishIntroduction();
         if (mounted && addMoney) await _openFunding();
@@ -1616,6 +1659,7 @@ class _ProductExperienceState extends State<ProductExperience>
       WorkdayRepository(api, account.paperAuthorization),
     );
     _dailyDesk = controller;
+    controller.addListener(_syncReminder);
     scheduleMicrotask(controller.refresh);
   }
 
@@ -3033,7 +3077,14 @@ class _ProductExperienceState extends State<ProductExperience>
                   builder: (pageContext) => ReminderPreferencePage(
                     preferences: widget.preferences,
                     principal: principal,
+                    syncPreferences: widget.account?.syncReminderPreferences,
+                    setReminder: (preference) =>
+                        ProductNotificationPermission.setReminder(
+                          preference,
+                          journey: _dailyDesk?.journey,
+                        ),
                     onDone: () async {
+                      _syncReminder();
                       if (pageContext.mounted) Navigator.pop(pageContext);
                     },
                   ),
@@ -3143,6 +3194,7 @@ class _ProductExperienceState extends State<ProductExperience>
     _entryAccountGateOpen = true;
     _skipIntroAfterAuth = false;
     await widget.preferences.remove(guestChoiceKey);
+    await ProductNotificationPermission.setReminder('off');
     await _tradePush?.beforeSignOut();
     await widget.account?.signOut();
     if (!mounted) return;

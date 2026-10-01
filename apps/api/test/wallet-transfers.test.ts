@@ -1,3 +1,4 @@
+import {MemoryTransferStore} from './transfer-store-fixture.js';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { generateKeyPairSync, sign, type KeyObject } from 'node:crypto';
@@ -48,7 +49,7 @@ describe('wallet transfers', () => {
     const me = keypair(), friend = keypair();
     let moved = 1_000_000;
     const rpc = chain({[me.wallet]: wallet(50_000_000)}, {simulate: () => [wallet(50_000_000 - moved), wallet(moved)]});
-    const service = new WalletTransfers({rpcUrl: 'https://rpc.example', fetch: rpc.fetch, now});
+    const service = new WalletTransfers({store: new MemoryTransferStore(),rpcUrl: 'https://rpc.example', fetch: rpc.fetch, now});
     const preview = await service.preview({userId: 'u1', wallet: me.wallet, asset: 'SOL', destination: friend.wallet, amountRaw: '1000000'});
     assert.equal(preview.review.asset.symbol, 'SOL');
     assert.equal(preview.review.receivedRaw, '1000000');
@@ -64,9 +65,10 @@ describe('wallet transfers', () => {
     await assert.rejects(service.execute({userId: 'u1', wallet: me.wallet, reviewToken: preview.reviewToken,
       signedTransaction: signWire(second.unsignedTransaction, me.wallet, me.key)}), {code: 'INVALID_REVIEW'});
     assert.equal(rpc.sent.length, 0);
-    const {signature} = await service.execute({userId: 'u1', wallet: me.wallet, reviewToken: preview.reviewToken, signedTransaction: signed});
-    assert.deepEqual(rpc.sent, [signed]);
-    assert.equal(signature, verifySignedTransfer(signed, me.wallet, JSON.parse(Buffer.from(preview.reviewToken.split('.')[0]!, 'base64url').toString()).h));
+    const currentSigned=signWire(second.unsignedTransaction,me.wallet,me.key);
+    const {signature} = await service.execute({userId: 'u1', wallet: me.wallet, reviewToken: second.reviewToken, signedTransaction: currentSigned});
+    assert.deepEqual(rpc.sent, [currentSigned]);
+    assert.equal(signature, verifySignedTransfer(currentSigned, me.wallet, JSON.parse(Buffer.from(second.reviewToken.split('.')[0]!, 'base64url').toString()).h));
     assert.deepEqual(await service.status(signature), {status: 'confirmed', slot: 5});
   });
 
@@ -74,7 +76,7 @@ describe('wallet transfers', () => {
     const me = keypair(), friend = keypair();
     let clock = now();
     const rpc = chain({[me.wallet]: wallet(50_000_000)}, {height: 1001, simulate: () => [wallet(48_990_000), wallet(1_000_000)]});
-    const service = new WalletTransfers({rpcUrl: 'https://rpc.example', fetch: rpc.fetch, now: () => clock});
+    const service = new WalletTransfers({store: new MemoryTransferStore(),rpcUrl: 'https://rpc.example', fetch: rpc.fetch, now: () => clock});
     const preview = await service.preview({userId: 'u1', wallet: me.wallet, asset: 'SOL', destination: friend.wallet, amountRaw: '1000000'});
     const signed = signWire(preview.unsignedTransaction, me.wallet, me.key);
     await assert.rejects(service.execute({userId: 'u1', wallet: me.wallet, reviewToken: preview.reviewToken, signedTransaction: signed}), {code: 'REVIEW_EXPIRED'});
@@ -85,7 +87,7 @@ describe('wallet transfers', () => {
 
   it('keeps SOL rules: enough left to exist, and enough to open a new wallet', async () => {
     const me = keypair(), friend = keypair();
-    const service = new WalletTransfers({rpcUrl: 'https://rpc.example', now,
+    const service = new WalletTransfers({store: new MemoryTransferStore(),rpcUrl: 'https://rpc.example', now,
       fetch: chain({[me.wallet]: wallet(2_000_000)}, {simulate: () => [wallet(0), wallet(1)]}).fetch});
     const send = (amountRaw: string) => service.preview({userId: 'u1', wallet: me.wallet, asset: 'SOL', destination: friend.wallet, amountRaw});
     await assert.rejects(send('1500000'), {code: 'LEAVES_TOO_LITTLE_SOL'});
@@ -101,7 +103,7 @@ describe('wallet transfers', () => {
     const accounts: Record<string, unknown> = {[USDC_MINT]: mintAccount(), [me.wallet]: wallet(10_000_000), [mine]: tokenAccount(USDC_MINT, me.wallet, '5000000')};
     let delivered = '2000000';
     const rpc = chain(accounts, {simulate: () => [wallet(7_900_000), tokenAccount(USDC_MINT, me.wallet, '3000000'), tokenAccount(USDC_MINT, friend.wallet, delivered)]});
-    const service = new WalletTransfers({rpcUrl: 'https://rpc.example', fetch: rpc.fetch, now});
+    const service = new WalletTransfers({store: new MemoryTransferStore(),rpcUrl: 'https://rpc.example', fetch: rpc.fetch, now});
     const send = (destination: string, amountRaw = '2000000') => service.preview({userId: 'u1', wallet: me.wallet, asset: 'USDC', destination, amountRaw});
     const preview = await send(friend.wallet);
     assert.equal(preview.review.createsAccount, true);
@@ -129,7 +131,7 @@ describe('wallet transfers', () => {
 describe('wallet transfer routes', () => {
   it('require an account, respect the live switch and validate input', async () => {
     const me = keypair();
-    const service = new WalletTransfers({rpcUrl: 'https://rpc.example', fetch: chain({}).fetch});
+    const service = new WalletTransfers({store: new MemoryTransferStore(),rpcUrl: 'https://rpc.example', fetch: chain({}).fetch});
     const build = (account: boolean, enabled = true) => {
       // The app's own validation: unknown fields are refused, not dropped.
       const app = Fastify({ajv: {customOptions: {removeAdditional: false, coerceTypes: false, useDefaults: false}}});
@@ -147,4 +149,62 @@ describe('wallet transfer routes', () => {
     const self = await build(true).inject({method: 'POST', url: '/v1/wallet/transfers/preview', payload: {...body, destination: me.wallet}});
     assert.deepEqual([self.statusCode, self.json()], [409, {code: 'DESTINATION_SELF'}]);
   });
+});
+
+it('persists before broadcast; timeout and restart recover the same signature without rebroadcast',async()=>{
+ const me=keypair(),friend=keypair(),store=new MemoryTransferStore();
+ let broadcasts=0,confirmed=false;
+ const rpc=chain({[me.wallet]:wallet(50_000_000)},{simulate:()=>[wallet(48_994_900),wallet(1_000_000)]});
+ const fetch:typeof globalThis.fetch=async(url,init)=>{
+  const {id,method}=JSON.parse(String(init?.body));
+  if(method==='sendTransaction'){
+   broadcasts++;
+   assert.equal((await store.read('u1'))?.status,'pending');
+   assert.ok((await store.read('u1'))?.signature);
+   throw Error('lost network reply after submission');
+  }
+  if(method==='getSignatureStatuses')return Response.json({jsonrpc:'2.0',id,result:{context:{slot:10},value:[confirmed?{slot:10,err:null,confirmationStatus:'confirmed'}:null]}});
+  return rpc.fetch(url,init);
+ };
+ const service=new WalletTransfers({rpcUrl:'https://rpc.example',store,fetch});
+ const preview=await service.preview({userId:'u1',wallet:me.wallet,asset:'SOL',destination:friend.wallet,amountRaw:'1000000'});
+ const input={userId:'u1',wallet:me.wallet,reviewToken:preview.reviewToken,signedTransaction:signWire(preview.unsignedTransaction,me.wallet,me.key)};
+ const replies=await Promise.all([service.execute(input),service.execute(input)]);
+ assert.equal(replies[0]!.signature,replies[1]!.signature);assert.equal(broadcasts,1);
+ const restarted=new WalletTransfers({rpcUrl:'https://rpc.example',store,fetch});
+ assert.deepEqual(await restarted.execute(input),replies[0]);assert.equal(broadcasts,1);
+ await assert.rejects(restarted.preview({userId:'u1',wallet:me.wallet,asset:'SOL',destination:friend.wallet,amountRaw:'1000000'}),/TRANSFER_PENDING/);
+ assert.equal((await restarted.recovery('u1',me.wallet,preview.id))?.status,'pending');
+ assert.equal(await restarted.recovery('u2',me.wallet,preview.id),null);
+ confirmed=true;
+ assert.equal((await restarted.recovery('u1',me.wallet,preview.id))?.status,'confirmed');
+ assert.equal(broadcasts,1);
+});
+
+it('a failed durable write never broadcasts, and malformed expiry evidence never unlocks a send',async()=>{
+ const me=keypair(),friend=keypair(),store=new MemoryTransferStore();
+ let height=900,valid:unknown=true,slot=20,historySlot=20,entry:unknown=null;
+ const rpc=chain({[me.wallet]:wallet(50_000_000)},{simulate:()=>[wallet(48_994_900),wallet(1_000_000)]});
+ const fetch:typeof globalThis.fetch=async(url,init)=>{
+  const {id,method}=JSON.parse(String(init?.body));
+  if(method==='getBlockHeight')return Response.json({jsonrpc:'2.0',id,result:height});
+  if(method==='getSignatureStatuses')return Response.json({jsonrpc:'2.0',id,result:{context:{slot:historySlot},value:[entry]}});
+  if(method==='isBlockhashValid')return Response.json({jsonrpc:'2.0',id,result:{context:{slot},value:valid}});
+  return rpc.fetch(url,init);
+ };
+ const service=new WalletTransfers({rpcUrl:'https://rpc.example',store,fetch});
+ const preview=await service.preview({userId:'u1',wallet:me.wallet,asset:'SOL',destination:friend.wallet,amountRaw:'1000000'});
+ const input={userId:'u1',wallet:me.wallet,reviewToken:preview.reviewToken,signedTransaction:signWire(preview.unsignedTransaction,me.wallet,me.key)};
+ const begin=store.begin.bind(store);store.begin=async()=>{throw Error('database down');};
+ await assert.rejects(service.execute(input),/database down/);assert.equal(rpc.sent.length,0);
+ store.begin=begin;await service.execute(input);height=1001;
+ assert.equal((await service.recovery('u1',me.wallet,preview.id))?.status,'pending');
+ valid='false';await assert.rejects(service.recovery('u1',me.wallet,preview.id),{code:'TRANSFER_UNAVAILABLE'});
+ valid=false;slot=0;await assert.rejects(service.recovery('u1',me.wallet,preview.id),{code:'TRANSFER_UNAVAILABLE'});
+ slot=20;historySlot=19;assert.equal((await service.recovery('u1',me.wallet,preview.id))?.status,'pending');
+ historySlot=20;entry={slot:20,err:{InstructionError:[0,'InvalidArgument']},confirmationStatus:'processed'};
+ assert.equal((await service.recovery('u1',me.wallet,preview.id))?.status,'pending');
+ entry={slot:20};await assert.rejects(service.recovery('u1',me.wallet,preview.id),{code:'TRANSFER_UNAVAILABLE'});
+ entry=null;assert.equal((await service.recovery('u1',me.wallet,preview.id))?.status,'expired');
+ assert.equal((await service.statusFor('u1',me.wallet,(await store.read('u1'))!.signature!)).status,'expired');
 });

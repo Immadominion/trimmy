@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/paper_decimal.dart';
 import '../../account/account_controller.dart';
 import '../../account/account_amounts.dart';
 import '../design/product_theme.dart';
@@ -52,10 +53,7 @@ String? realCashBalance(AccountController? account) {
 }
 
 String _dollars(BigInt cents) {
-  final whole = (cents ~/ BigInt.from(100)).toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (m) => '${m[1]},',
-  );
+  final whole = groupThousands((cents ~/ BigInt.from(100)).toString());
   return '\$$whole.${(cents % BigInt.from(100)).toString().padLeft(2, '0')}';
 }
 

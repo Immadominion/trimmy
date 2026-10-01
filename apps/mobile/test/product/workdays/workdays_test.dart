@@ -62,6 +62,106 @@ Widget app(Widget child, {double scale = 1, double keyboard = 0}) =>
       ),
     );
 void main() {
+  Map<String, dynamic> filedJourney() {
+    final data = fixture(step: 3, revision: 3);
+    final first = (data['assignments'] as List).first as Map<String, dynamic>;
+    first.addAll({
+      'completedAt': '2026-09-30T12:00:00Z',
+      'artifact': 'My filed update.',
+      'feedback': 'Good work.',
+      'misses': 1,
+      'trims': 10,
+    });
+    data['assignments'] = [first];
+    data['total'] = 20;
+    data['schedule'] = {'state': 'tomorrow'};
+    data['upcoming'] = {
+      'id': 'next-day',
+      'ordinal': 2,
+      'title': 'Read the company',
+      'art': 'desk',
+      'opensAt': '2026-10-01T00:00:00Z',
+    };
+    return data;
+  }
+
+  test('a closed next day is a teaser, not an unlocked assignment', () {
+    final journey = WorkJourney.fromJson(filedJourney());
+    expect(journey.current, isNull);
+    expect(journey.upcoming!.ordinal, 2);
+    expect(journey.assignments.single.trims, 10);
+    expect(
+      journey.upcoming!.opensLabel(now: DateTime(2026, 9, 30, 12)),
+      'Opens tomorrow',
+    );
+  });
+
+  test(
+    'miss feedback and reward state come from the submission response',
+    () async {
+      final data = fixture(step: 1, revision: 1);
+      final first = (data['assignments'] as List).first as Map;
+      first['misses'] = 1;
+      final c = controller(
+        (_) => http.Response(
+          jsonEncode({
+            'code': 'CHECK_DECISION',
+            'feedback': 'Compare revenue with profit.',
+            'journey': data,
+          }),
+          400,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        ),
+      );
+      c.journey = WorkJourney.fromJson(fixture(step: 1, revision: 1));
+      addTearDown(c.dispose);
+      await expectLater(
+        c.save(c.journey!.current!, {'value': 'wrong'}),
+        throwsA(
+          isA<WorkdayException>().having(
+            (e) => e.message,
+            'feedback',
+            'Compare revenue with profit.',
+          ),
+        ),
+      );
+      expect(c.journey!.current!.misses, 1);
+      expect(c.journey!.current!.trims, 10);
+      expect(c.journey!.current!.step, 1);
+    },
+  );
+
+  testWidgets(
+    'filed work shows actual reward and next opening, without Next day',
+    (tester) async {
+      final data = filedJourney();
+      final c = controller((_) => response(data))
+        ..journey = WorkJourney.fromJson(data);
+      addTearDown(c.dispose);
+      await tester.pumpWidget(
+        app(
+          WorkdayScreen(
+            controller: c,
+            assignmentId: 'morning-brief',
+            onCompleted: () async {},
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Next day'), findsNothing);
+      expect(find.text('Back to the street'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('+10 Trims'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('+20 Trims'), findsNothing);
+      expect(find.text('Day 2: Read the company'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   test('a conflicting draft refreshes before an explicit retry', () async {
     final revisions = <int>[];
     var reads = 0;

@@ -10,11 +10,11 @@ type Reply = {status: number; headers: IncomingHttpHeaders; body: string};
 type Send = {method?: string; headers?: Record<string, string | string[] | undefined>; body?: string; incomplete?: boolean};
 
 async function fixture(t: TestContext, bodyTimeoutMs = 5_000,
-  response: () => Response = () => Response.json({ok: true})) {
+  response: () => Response = () => Response.json({ok: true}), port = 4174) {
   const calls: Call[] = [];
   const relay = createDevelopmentRelay('https://api.example', async (url, options) => {
     calls.push({url: String(url), options}); return response();
-  }, {bodyTimeoutMs});
+  }, {bodyTimeoutMs, port});
   const server = createServer((req, res) => {
     void relay(req, res, () => {res.writeHead(418); res.end('next');}).catch(error => {
       res.writeHead(500); res.end(String(error));
@@ -88,6 +88,24 @@ test('relay keeps loopback4174 and browser origin boundaries', async t => {
     {'sec-fetch-site': 'cross-site'}, {'sec-fetch-site': 'same-site'},
   ]) assert.equal((await send('/api/v1/product/profile', {headers})).status, 403);
   assert.equal(calls.length, 2);
+});
+
+test('alternate development port remains restricted to its exact loopback origin', async t => {
+  const {calls, send} = await fixture(t, 5_000, undefined, 4186);
+  assert.equal((await send('/api/v1/product/profile')).status, 403);
+  for (const host of ['127.0.0.1:4186', 'localhost:4186']) {
+    assert.equal((await send('/api/v1/product/profile', {headers: {host, origin: `http://${host}`}})).status, 200);
+  }
+  for (const headers of [
+    {host: '127.0.0.1:4186', origin: 'http://127.0.0.1:4174'},
+    {host: 'localhost:4186.evil.example', origin: 'http://localhost:4186.evil.example'},
+    {host: '192.168.1.2:4186', origin: 'http://192.168.1.2:4186'},
+    {host: '127.0.0.1:4186', origin: 'http://127.0.0.1:4186', 'sec-fetch-site': 'cross-site'},
+  ]) assert.equal((await send('/api/v1/product/profile', {headers})).status, 403);
+  assert.equal(calls.length, 2);
+  for (const port of [0, -1, 1.5, 65536, Number.NaN]) {
+    assert.throws(() => createDevelopmentRelay('https://api.example', fetch, {port}));
+  }
 });
 
 test('relay forwards explicit authorization and safe response headers without cookies or private headers', async t => {

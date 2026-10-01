@@ -1,3 +1,4 @@
+import {checkSendTransaction} from './send-transaction-policy.js';
 /**
  * Own money for the signed-in account: the account-scoped Paper/Real mode, the
  * embedded Solana wallet and its holdings, trading capabilities, live order
@@ -70,7 +71,7 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     const wallet = new MoneyWallet({access: account, embedded: () => holder.current,
       client: new AccountWalletClient({baseUrl: apiBase, accountId: account.accountId, bearer, fetch: request})});
     return {wallet, orders: new LiveOrderClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal}),
-      transfers: new WalletTransferClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal}),
+      transfers: new WalletTransferClient({baseUrl: apiBase, bearer, fetch: request, signal: account.signal, storage, accountId:account.accountId}),
       mode: new MoneyModeStore(storage, apiBase, account.accountId), terms: new IssuerTermsStore(storage, account.accountId),
       pending: new PendingOrderStore(storage, apiBase, account.accountId)};
   }, [apiBase, account, fetch, storage]);
@@ -144,14 +145,18 @@ export function MoneyProvider({apiBase, accountAccess, walletSdk, fetch, storage
     transfers: setup ? {
       preview: input => setup.transfers.preview(input),
       send: async review => {
+        try {await checkSendTransaction(review);}
+        catch {throw new TransferError('INVALID_TRANSACTION');}
         let signed: string;
         // The same checks as an order: this account's wallet fills only its own slot of the reviewed message.
         try {signed = await setup.wallet.signReviewedTransaction({wallet: review.from, transaction: review.unsignedTransaction,
-          expiresAt: review.expiresAt, route: 'aggregator'});}
+          expiresAt: review.expiresAt, route: 'aggregator', purpose: 'send'});}
         catch (error) {throw new TransferError(error instanceof Error && 'code' in error ? String(error.code) : 'SIGNING_CANCELLED');}
         return setup.transfers.execute(review, signed);
       },
       status: signature => setup.transfers.status(signature),
+      recovery: () => setup.transfers.recovery(),
+      acknowledge: () => setup.transfers.acknowledge(),
     } : null,
     sendOpen, openSend: () => {if (setup) setSendOpen(true);}, closeSend: () => setSendOpen(false),
   };

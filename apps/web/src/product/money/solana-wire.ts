@@ -72,7 +72,7 @@ function compactU16(bytes: Uint8Array, offset: number): [number, number] {
     value |= (byte! & 0x7f) << (7 * index);
     if ((byte! & 0x80) === 0) {
       // Reject non-canonical encodings such as 0x80 0x00.
-      if (index > 0 && byte === 0) invalid();
+      if (index > 0 && byte === 0 || value > 65535) invalid();
       return [value, offset + index + 1];
     }
   }
@@ -85,6 +85,10 @@ export interface ParsedTransaction {
   /** The first N static account keys, in signature slot order. */
   readonly signers: readonly string[];
   readonly version: 'legacy' | 0;
+  readonly accounts: readonly string[];
+  readonly writable: readonly boolean[];
+  readonly instructions: readonly {programIndex: number; accounts: readonly number[]; data: Uint8Array}[];
+  readonly lookupCount: number;
 }
 
 export function parseTransaction(bytes: Uint8Array): ParsedTransaction {
@@ -101,15 +105,49 @@ export function parseTransaction(bytes: Uint8Array): ParsedTransaction {
     if ((messageBytes[0]! & 0x7f) !== 0) invalid();
     version = 0; cursor = 1;
   }
-  const required = messageBytes[cursor];
-  if (required === undefined || messageBytes.length < cursor + 3) invalid();
+  const required = messageBytes[cursor], readonlySigned = messageBytes[cursor + 1], readonlyUnsigned = messageBytes[cursor + 2];
+  if (required === undefined || readonlySigned === undefined || readonlyUnsigned === undefined || readonlySigned >= required) return invalid();
   cursor += 3;
   const [keyCount, keysStart] = compactU16(messageBytes, cursor);
-  if (keyCount < required! || keysStart + keyCount * 32 + 32 > messageBytes.length) invalid();
+  if (keyCount < required || keyCount > 256 || readonlyUnsigned > keyCount - required || keysStart + keyCount * 32 + 32 > messageBytes.length) invalid();
   if (required !== count) invalid();
-  const signers = Array.from({length: required!}, (_, index) =>
+  const accounts = Array.from({length: keyCount}, (_, index) =>
     base58Encode(messageBytes.slice(keysStart + index * 32, keysStart + (index + 1) * 32)));
-  return Object.freeze({signatures: Object.freeze(signatures), messageBytes, signers: Object.freeze(signers), version});
+  if (new Set(accounts).size !== accounts.length) invalid();
+  const writable = accounts.map((_, index) => index < required ? index < required - readonlySigned : index < keyCount - readonlyUnsigned);
+  const signers = accounts.slice(0, required);
+  cursor = keysStart + keyCount * 32 + 32;
+  let instructionCount; [instructionCount, cursor] = compactU16(messageBytes, cursor);
+  if (instructionCount < 1 || instructionCount > 64) invalid();
+  const instructions: {programIndex: number; accounts: number[]; data: Uint8Array}[] = [];
+  for (let i = 0; i < instructionCount; i++) {
+    const programIndex = messageBytes[cursor++];
+    if (programIndex === undefined) return invalid();
+    let n; [n, cursor] = compactU16(messageBytes, cursor);
+    if (n > 256 || cursor + n > messageBytes.length) invalid();
+    const indexes = [...messageBytes.slice(cursor, cursor + n)]; cursor += n;
+    [n, cursor] = compactU16(messageBytes, cursor);
+    if (cursor + n > messageBytes.length) invalid();
+    const data = messageBytes.slice(cursor, cursor + n); cursor += n;
+    instructions.push({programIndex, accounts: indexes, data});
+  }
+  let lookupCount = 0, loaded = 0;
+  if (version === 0) {
+    [lookupCount, cursor] = compactU16(messageBytes, cursor);
+    if (lookupCount > 32) invalid();
+    for (let i = 0; i < lookupCount; i++) {
+      cursor += 32;
+      for (let kind = 0; kind < 2; kind++) {
+        let n; [n, cursor] = compactU16(messageBytes, cursor);
+        if (n > 256 || cursor + n > messageBytes.length) invalid();
+        cursor += n; loaded += n;
+      }
+    }
+  }
+  if (cursor !== messageBytes.length || keyCount + loaded > 256 || instructions.some(ix =>
+    ix.programIndex >= keyCount || ix.accounts.some(index => index >= keyCount + loaded))) invalid();
+  return Object.freeze({signatures: Object.freeze(signatures), messageBytes, signers: Object.freeze(signers), version,
+    accounts: Object.freeze(accounts), writable: Object.freeze(writable), instructions: Object.freeze(instructions), lookupCount});
 }
 
 const empty = (signature: Uint8Array) => signature.every(byte => byte === 0);

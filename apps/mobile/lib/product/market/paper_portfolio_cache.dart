@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/paper_decimal.dart';
 import 'paper_portfolio.dart';
 
 typedef PaperPortfolioCacheWriter =
@@ -338,7 +339,7 @@ abstract final class PaperPortfolioCache {
 
     final parsedRows = <PaperPositionValuation>[];
     var parsedPriced = 0;
-    var knownMicros = _toMicros(cashPaper);
+    var knownMicros = paperMicros(cashPaper);
     for (var index = 0; index < rows.length; index++) {
       final row = _object(rows[index], 9);
       final expected = openPositions[index];
@@ -370,13 +371,13 @@ abstract final class PaperPortfolioCache {
             _invalid();
           }
           final expectedMarket =
-              _toMicros(expected.quantity) *
-              _toMicros(pricePaper) ~/
+              paperMicros(expected.quantity) *
+              paperMicros(pricePaper) ~/
               BigInt.from(1000000);
-          final marketMicros = _toMicros(marketValuePaper);
+          final marketMicros = paperMicros(marketValuePaper);
           if (marketMicros != expectedMarket ||
-              _toMicros(unrealizedGainPaper) !=
-                  marketMicros - _toMicros(expected.costBasisPaper)) {
+              paperMicros(unrealizedGainPaper) !=
+                  marketMicros - paperMicros(expected.costBasisPaper)) {
             _invalid();
           }
           parsedRows.add(
@@ -411,7 +412,7 @@ abstract final class PaperPortfolioCache {
       }
     }
     if (parsedPriced != pricedPositionCount ||
-        _derivedAmount(value['knownValuePaper']) != _fromMicros(knownMicros)) {
+        _derivedAmount(value['knownValuePaper']) != paperDecimal(knownMicros)) {
       _invalid();
     }
     final status = switch (value['status']) {
@@ -430,7 +431,7 @@ abstract final class PaperPortfolioCache {
 
     final totalValue = value['totalPaper'];
     final totalPaper = totalValue == null ? null : _derivedAmount(totalValue);
-    final knownPaper = _fromMicros(knownMicros);
+    final knownPaper = paperDecimal(knownMicros);
     if (status == PaperPortfolioValuationStatus.complete
         ? totalPaper != knownPaper
         : totalPaper != null) {
@@ -535,10 +536,10 @@ abstract final class PaperPortfolioCache {
         ).hasMatch(value)) {
       _invalid();
     }
-    final micros = _toMicros(value);
+    final micros = paperMicros(value);
     if (micros.isNegative && !signed ||
         micros.abs() > BigInt.from(999999999999999) ||
-        _fromMicros(micros) != value ||
+        paperDecimal(micros) != value ||
         positive && micros <= BigInt.zero) {
       _invalid();
     }
@@ -552,36 +553,13 @@ abstract final class PaperPortfolioCache {
         ).hasMatch(value)) {
       _invalid();
     }
-    final micros = _toMicros(value);
+    final micros = paperMicros(value);
     if (micros.isNegative && !signed ||
         micros.abs() > BigInt.parse('999999999999999999999999999999') ||
-        _fromMicros(micros) != value) {
+        paperDecimal(micros) != value) {
       _invalid();
     }
     return value;
-  }
-
-  static BigInt _toMicros(String value) {
-    final negative = value.startsWith('-');
-    final absolute = negative ? value.substring(1) : value;
-    final parts = absolute.split('.');
-    final micros =
-        BigInt.parse(parts[0]) * BigInt.from(1000000) +
-        BigInt.parse(
-          (parts.length == 1 ? '' : parts[1]).padRight(6, '0').padLeft(1, '0'),
-        );
-    return negative ? -micros : micros;
-  }
-
-  static String _fromMicros(BigInt value) {
-    final negative = value.isNegative;
-    final absolute = value.abs();
-    final whole = absolute ~/ BigInt.from(1000000);
-    final fraction = (absolute % BigInt.from(1000000))
-        .toString()
-        .padLeft(6, '0')
-        .replaceFirst(RegExp(r'0+$'), '');
-    return '${negative ? '-' : ''}$whole${fraction.isEmpty ? '' : '.$fraction'}';
   }
 
   static DateTime _utc(Object? value) {

@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../onboarding/onboarding_models.dart';
+import '../workdays/workdays.dart';
+import 'reminder_plan.dart';
 
 abstract final class ProductNotificationPermission {
   static const _channel = MethodChannel('com.trimmy.trimmy/notifications');
@@ -31,16 +33,27 @@ abstract final class ProductNotificationPermission {
   }
 
   /// Replaces the device's reminder schedule. This never asks for permission.
-  /// Native delivery follows local wall-clock time, including timezone changes.
-  static Future<bool> setReminder(String preference) {
+  /// A fresh schedule is computed on resume, preference changes and filed work.
+  static Future<bool> setReminder(
+    String preference, {
+    WorkJourney? journey,
+    DateTime? now,
+  }) {
     if (!const {'daily', 'occasional', 'off'}.contains(preference)) {
       throw ArgumentError.value(preference, 'preference');
     }
+    final plan = ReminderPlan.next(
+      preference,
+      now: now ?? DateTime.now(),
+      journey: journey,
+    );
     final result = _scheduleQueue.then((_) async {
       if (!_supported) return preference == 'off';
       try {
         return await _channel.invokeMethod<bool>('setReminder', {
               'preference': preference,
+              'at': plan?.at.millisecondsSinceEpoch,
+              'body': plan?.body,
             }) ??
             false;
       } on PlatformException {

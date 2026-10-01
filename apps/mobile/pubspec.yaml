@@ -10,11 +10,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: 0.20.2
   shared_preferences: 2.5.5
   audioplayers: 6.6.0
   cupertino_icons: 1.0.8
   http: 1.6.0
   privy_flutter: 0.10.2
+  solana: 0.32.0+1
+  cryptography: 2.9.0
   flutter_secure_storage: 11.2.0
   url_launcher: 6.3.2
   qr_flutter: 4.1.0
@@ -31,6 +36,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   shaders:
     - shaders/coin_edge_smear.frag
   assets:

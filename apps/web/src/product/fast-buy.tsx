@@ -32,6 +32,7 @@ export function FastBuySheet(props: FastBuyProps) {
   const {market, session, portfolio} = props;
   const [step, setStep] = useState<Step>('search');
   const [query, setQuery] = useState(''), [results, setResults] = useState<readonly StockCard[]>([]), [searching, setSearching] = useState(true), [searchError, setSearchError] = useState(false);
+  const [searchAttempt, setSearchAttempt] = useState(0);
   const [company, setCompany] = useState<StockCard | null>(null), [amount, setAmount] = useState('100');
   const [preview, setPreview] = useState<PaperPreview | null>(null), [receipt, setReceipt] = useState<PaperReceipt | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<unknown>(null), [clock, setClock] = useState(Date.now());
@@ -52,7 +53,7 @@ export function FastBuySheet(props: FastBuyProps) {
         .then(rows => {if (!controller.signal.aborted) {setResults(rows); setSearching(false);}}, () => {if (!controller.signal.aborted) {setSearchError(true); setSearching(false);}});
     }, query ? 300 : 0);
     return () => {clearTimeout(timer); controller.abort();};
-  }, [market, query, step]);
+  }, [market, query, step, searchAttempt]);
   useEffect(() => {if (!preview) return; const id = window.setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(id);}, [preview]);
   const amountMicros = toPaperMicros(amount), cash = portfolio ? BigInt(portfolio.cashPaperMicros) : null;
   const valid = amountMicros !== null && cash !== null && BigInt(amountMicros) <= cash;
@@ -89,11 +90,11 @@ export function FastBuySheet(props: FastBuyProps) {
     <div className="settings-modal fast-buy" role="dialog" aria-modal="true" aria-labelledby="fast-buy-title">
       <div className="fast-buy-head"><h2 id="fast-buy-title" ref={heading} tabIndex={-1}>{step === 'search' ? 'Fast buy' : step === 'review' ? 'Review your buy.' : step === 'receipt' ? 'Buy confirmed' : `Buy ${name}`}</h2>
         <button className="rank-close" aria-label="Close fast buy" disabled={busy} onClick={props.onClose}>×</button></div>
-      {pending && <p className="trade-error" role="status">An order still needs checking. Check it from your desk first.</p>}
+      {pending && !busy && <p className="trade-error" role="status">An order still needs checking. Check it from your desk first.</p>}
       {step === 'search' && <>
         <label className="sr-only" htmlFor="fast-buy-search">Search a name or ticker</label>
         <input id="fast-buy-search" className="reason-note" type="search" autoComplete="off" placeholder="Search a name or ticker" maxLength={80} value={query} onChange={event => setQuery(event.target.value)}/>
-        <div className="fast-buy-results">{searching ? <Loading>Finding companies…</Loading> : searchError ? <p className="trade-error">Search did not finish. Try again.<button className="text-button" onClick={() => setQuery(value => `${value} `.trimEnd())}>Retry</button></p>
+        <div className="fast-buy-results">{searching ? <Loading>Finding companies…</Loading> : searchError ? <p className="trade-error">Search did not finish. Try again.<button className="text-button" onClick={() => setSearchAttempt(value => value + 1)}>Retry</button></p>
           : !results.length ? <p className="company-social-note">No matches yet.</p>
           : results.map(card => <button key={card.assetId} className="holder-row fast-buy-company" aria-label={`Buy ${card.name ?? card.assetId}`} disabled={pending}
             onClick={() => {if (!card.primaryVariant) {setError(new PracticeError('FAST_BUY_NO_VERSION', 'This company has no available version.')); return;} setCompany(card); setError(null); setStep('amount');}}>

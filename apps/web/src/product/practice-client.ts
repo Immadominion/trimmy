@@ -139,18 +139,37 @@ export interface WorkdayAssignment {
   readonly rows: readonly {readonly id: string; readonly label: string; readonly value: string; readonly detail: string}[];
   readonly evidence: {readonly prompt: string; readonly count: number};
   readonly decision: {readonly kind: 'number' | 'choice'; readonly prompt: string; readonly hint: string; readonly unit: string | null;
-    readonly choices: readonly {readonly id: string; readonly label: string; readonly feedback: string}[]};
+    /** A choice's feedback reaches the app only with a missed answer; older APIs sent it with every read. */
+    readonly choices: readonly {readonly id: string; readonly label: string; readonly feedback: string | null}[]};
   readonly file: {readonly prompt: string; readonly count: number; readonly parts: readonly {readonly id: string; readonly text: string}[]};
   readonly revision: number; readonly step: 0 | 1 | 2 | 3; readonly answers: Readonly<Partial<Record<'0' | '1' | '2', WorkdayAnswer>>>;
   readonly draft: string; readonly completedAt: string | null; readonly artifact: string | null;
   readonly feedback: string | null; readonly contextNote: string | null;
+  /** Wrong answers recorded for this assignment; filed work earns 20 Trims without one, 10 with. */
+  readonly misses: number; readonly decisionNote: string | null; readonly trims: 10 | 20 | null;
 }
-export interface WorkdayJourney {readonly contentVersion: string; readonly date: string; readonly completedCount: number; readonly assignments: readonly WorkdayAssignment[]}
+export const WORKDAY_HOLIDAYS = ['new-years-day', 'martin-luther-king-jr-day', 'washingtons-birthday', 'good-friday', 'memorial-day',
+  'juneteenth', 'independence-day', 'labor-day', 'thanksgiving-day', 'christmas-day'] as const;
+export type WorkdayHoliday = typeof WORKDAY_HOLIDAYS[number];
+/** One new assignment opens each weekday that is not a US market holiday, in the player's own time zone. */
+export interface WorkdaySchedule {
+  readonly today: string; readonly deskOpen: boolean; readonly holiday: WorkdayHoliday | null;
+  readonly state: 'available' | 'tomorrow' | 'closed' | 'done'; readonly opensAt: string | null;
+}
+export interface WorkdayUpcoming {
+  readonly id: string; readonly ordinal: number; readonly title: string; readonly speaker: WorkdayAssignment['speaker'];
+  readonly district: string; readonly art: string; readonly opensAt: string;
+}
+export interface WorkdayJourney {
+  readonly contentVersion: string; readonly date: string; readonly completedCount: number; readonly assignments: readonly WorkdayAssignment[];
+  /** Null from an API older than the weekday desk. */
+  readonly total: number | null; readonly schedule: WorkdaySchedule | null; readonly upcoming: WorkdayUpcoming | null;
+}
 
 export class PracticeError extends Error {
   readonly terminalGuest: boolean;
   constructor(readonly code: string, message: string, readonly status: number | null = null,
-    readonly retryAfterSeconds: number | null = null) {
+    readonly retryAfterSeconds: number | null = null, readonly feedback: string | null = null) {
     super(message); this.name = 'PracticeError';
     this.terminalGuest = code === 'GUEST_SESSION_EXPIRED' || code === 'GUEST_SESSION_REVOKED' || status === 401;
   }
@@ -455,7 +474,7 @@ export function parseWorkdayAssignment(value: unknown): WorkdayAssignment {
     check(new Set(rows.map(row => row.id)).size === rows.length && new Set(parts.map(part => part.id)).size === parts.length);
     const kind = oneOf(decision['kind'], ['number', 'choice']);
     const choices = array(decision['choices'], 30).map(item => {const choice = record(item); return {id: storySlug(choice['id']),
-      label: workdayText(choice['label'], 400), feedback: workdayText(choice['feedback'], 1600)};});
+      label: workdayText(choice['label'], 400), feedback: choice['feedback'] === undefined ? null : nullable(choice['feedback'], item => workdayText(item, 1600))};});
     check(kind === 'number' ? choices.length === 0 : choices.length > 0);
     check(new Set(choices.map(choice => choice.id)).size === choices.length);
     const step = integer(v['step']); check(step <= 3);
@@ -474,13 +493,29 @@ export function parseWorkdayAssignment(value: unknown): WorkdayAssignment {
     const draft = workdayText(v['draft'], 280, true), completedAt = nullable(v['completedAt'], storyInstant);
     const artifact = nullable(v['artifact'], item => workdayText(item, 12_000)), feedback = nullable(v['feedback'], item => workdayText(item, 4000));
     check(step === 3 ? completedAt !== null && artifact !== null && feedback !== null : completedAt === null && artifact === null && feedback === null);
+    const misses = v['misses'] === undefined ? 0 : integer(v['misses']);
+    const decisionNote = v['decisionNote'] == null ? null : workdayText(v['decisionNote'], 1600);
+    // An API older than recorded misses filed every workday at 20 Trims.
+    const trims = v['trims'] === undefined ? (step === 3 ? 20 : null) : v['trims'] === null ? null : v['trims'] === 10 ? 10 : v['trims'] === 20 ? 20 : invalid();
+    check((trims === null) === (step !== 3));
     return {id: storySlug(v['id']), ordinal: integer(v['ordinal'], 1), title: string(v['title'], 240), speaker: oneOf(v['speaker'], ['sal', 'wolf', 'oracle', 'shark']),
       district: string(v['district'], 240), brief: workdayText(v['brief'], 4000), sourceTitle: string(v['sourceTitle'], 400), sourceLabel: string(v['sourceLabel'], 240),
       art: storySlug(v['art']), rows, evidence: {prompt: workdayText(evidence['prompt'], 1600), count: evidenceCount},
       decision: {kind, prompt: workdayText(decision['prompt'], 1600), hint: workdayText(decision['hint'], 1600), choices, unit: nullable(decision['unit'], item => string(item, 40))},
       file: {prompt: workdayText(file['prompt'], 1600), count: fileCount, parts}, revision, step: step as 0 | 1 | 2 | 3, answers, draft, completedAt, artifact, feedback,
-      contextNote: nullable(v['contextNote'], item => workdayText(item, 4000))};
+      contextNote: nullable(v['contextNote'], item => workdayText(item, 4000)), misses, decisionNote, trims};
   });
+}
+function workdaySchedule(value: unknown): WorkdaySchedule {
+  const v = record(value), state = oneOf(v['state'], ['available', 'tomorrow', 'closed', 'done']);
+  const opensAt = nullable(v['opensAt'], storyInstant);
+  check((opensAt !== null) === (state === 'tomorrow' || state === 'closed'));
+  return {today: day(v['today']), deskOpen: boolean(v['deskOpen']), holiday: nullable(v['holiday'], item => oneOf(item, WORKDAY_HOLIDAYS)), state, opensAt};
+}
+function workdayUpcoming(value: unknown): WorkdayUpcoming {
+  const v = record(value);
+  return {id: storySlug(v['id']), ordinal: integer(v['ordinal'], 1), title: string(v['title'], 240), speaker: oneOf(v['speaker'], ['sal', 'wolf', 'oracle', 'shark']),
+    district: string(v['district'], 240), art: storySlug(v['art']), opensAt: storyInstant(v['opensAt'])};
 }
 export function parseWorkdayJourney(value: unknown): WorkdayJourney {
   return validated(() => {const v = record(value), contentVersion = string(v['contentVersion'], 100); check(/^[a-z0-9.-]+$/u.test(contentVersion));
@@ -489,7 +524,15 @@ export function parseWorkdayJourney(value: unknown): WorkdayJourney {
     const completedCount = integer(v['completedCount']); check(completedCount <= assignments.length);
     check(assignments.every((item, index) => (item.completedAt !== null) === (index < completedCount) &&
       (index <= completedCount || item.step === 0 && item.revision === 0)));
-    return {contentVersion, date: day(v['date']), completedCount, assignments};
+    const total = v['total'] == null ? null : integer(v['total'], 1);
+    const schedule = v['schedule'] == null ? null : workdaySchedule(v['schedule']);
+    const upcoming = v['upcoming'] == null ? null : workdayUpcoming(v['upcoming']);
+    check(total === null || total >= assignments.length);
+    // Unopened work stays out of the list; its teaser follows the last filed day.
+    check(upcoming === null || schedule !== null && (schedule.state === 'tomorrow' || schedule.state === 'closed') &&
+      upcoming.ordinal === assignments.length + 1 && completedCount === assignments.length && upcoming.opensAt === schedule.opensAt);
+    check(schedule === null || (schedule.state === 'done') === (total !== null && completedCount === total));
+    return {contentVersion, date: day(v['date']), completedCount, assignments, total, schedule, upcoming};
   });
 }
 function normalizedWorkdayAnswer(answer: WorkdayAnswer, kind: 'number' | 'choice'): string {
@@ -592,8 +635,10 @@ export class PracticeClient {
         const error = dailyRoute && typeof envelope['code'] === 'string' ? envelope : record(envelope['error']);
         const code = string(error['code'], 100); check(/^[A-Z][A-Z0-9_]+$/u.test(code));
         const retry = response.headers.get('retry-after');
+        // A missed workday answer carries that choice's note.
+        const note = dailyRoute && typeof error['feedback'] === 'string' && error['feedback'].trim() && Array.from(error['feedback']).length <= 1600 ? error['feedback'] : null;
         throw new PracticeError(code, 'The practice request could not be completed.', response.status,
-          retry && /^[0-9]{1,6}$/u.test(retry) ? Number(retry) : null);
+          retry && /^[0-9]{1,6}$/u.test(retry) ? Number(retry) : null, note);
       }
       check(response.status === expectedStatus); return validated(() => parse(json));
     };

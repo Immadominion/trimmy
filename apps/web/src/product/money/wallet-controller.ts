@@ -221,7 +221,7 @@ export class MoneyWallet {
    * signer slot of the same message (an RFQ maker's slot stays empty).
    */
   async signReviewedTransaction(input: {readonly wallet: string; readonly transaction: string; readonly expiresAt: string;
-    readonly route: 'aggregator' | 'rfq' | null}): Promise<string> {
+    readonly route: 'aggregator' | 'rfq' | null; readonly purpose?: 'send'}): Promise<string> {
     const {access} = this.#options, subject = access.subject;
     const expires = Date.parse(input.expiresAt);
     if (!this.current || !Number.isFinite(expires)) throw new WalletSignError('ACCOUNT_CHANGED');
@@ -245,7 +245,7 @@ export class MoneyWallet {
       const before = matching();
       if (!before.signable.includes(input.wallet)) throw new WalletSignError('WALLET_UNAVAILABLE');
       settled = false;
-      const request = before.signTransaction(input.wallet, plan.bytes.slice());
+      const request = before.signTransaction(input.wallet, plan.bytes.slice(), {confirm: input.purpose === 'send'});
       // A caller's timeout does not cancel the wallet request: stay locked until it settles.
       void request.then(() => {}, () => {}).finally(() => {settled = true; this.#sdkBusy = false; if (!this.#closed) this.#patch({signing: false});});
       let signed: Uint8Array;

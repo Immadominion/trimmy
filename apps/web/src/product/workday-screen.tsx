@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import type {WorkdayAnswer, WorkdayAssignment} from './practice-client';
+import type {ScheduleNotice} from './workday-schedule';
 import {art} from './ui';
 
 export interface WorkdayScreenProps {
@@ -13,17 +14,24 @@ export interface WorkdayScreenProps {
   readonly onBack: () => void;
   readonly registerLeaveGuard?: (guard: (() => Promise<boolean>) | null) => void;
   readonly onCue?: (cue: 'select' | 'paper' | 'saved' | 'complete') => void;
+  /** When the next assignment opens, shown once this one is filed. */
+  readonly next?: ScheduleNotice | null;
 }
 
 function errorCode(error: unknown): string {
   return error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
 }
+function missNote(error: unknown): string | null {
+  return error && typeof error === 'object' && 'feedback' in error && typeof error.feedback === 'string' ? error.feedback : null;
+}
 function workError(error: unknown, work: WorkdayAssignment, choice: string | null): string {
   switch (errorCode(error)) {
     case 'CHECK_EVIDENCE': return 'Check the source again. Those details don’t support this update.';
-    case 'CHECK_DECISION': return work.decision.choices.find(item => item.id === choice)?.feedback || 'Take another look at the figures.';
+    case 'CHECK_DECISION': return missNote(error) ?? work.decision.choices.find(item => item.id === choice)?.feedback ?? 'Take another look at the figures.';
     case 'WORK_CHANGED': return 'Your work changed on another screen. Review the refreshed assignment before continuing.';
     case 'WORK_LOCKED': return 'File the earlier assignment first.';
+    case 'WORK_TOMORROW': return 'You’ve already started today’s assignment. The next one opens on the next weekday.';
+    case 'WORK_CLOSED': return 'Wall Street is closed today. The next assignment opens on the next weekday.';
     case 'PRACTICE_SESSION_CHANGED': case 'SESSION_CHANGED': return 'Your account changed. Open your desk again.';
     default: return 'Couldn’t save yet. Your work is still here. Try again.';
   }
@@ -63,6 +71,9 @@ export function WorkdayScreen(props: WorkdayScreenProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const headingId = useId(), noteId = useId(), hintId = useId(), dialogId = useId(), errorId = useId();
   const locked = props.working || localBusy || props.pending;
+  // A hint unlocks after a missed answer, so the first try is the player's own.
+  const hintReady = work.misses > 0 || errorCode(props.error) === 'CHECK_DECISION';
+  const reward = work.trims ?? (work.misses === 0 ? 20 : 10);
 
   useEffect(() => {
     mounted.current = true;
@@ -223,16 +234,17 @@ export function WorkdayScreen(props: WorkdayScreenProps) {
   return <section className="workday-screen" aria-labelledby={headingId}>
     <div className="workday-topbar"><button className="company-back" disabled={localBusy || (props.working && !draftJob.current)} onClick={() => void back()}>← Back to Career</button><span>Day {work.ordinal}</span></div>
     <ol className="workday-stages" aria-label="Assignment progress">{['Evidence', 'Decision', 'Handoff'].map((label, index) => <li key={label} className={index < work.step ? 'complete' : index === work.step ? 'current' : ''} aria-current={index === work.step && !complete ? 'step' : undefined}><span aria-hidden="true">{index < work.step ? '✓' : index + 1}</span>{label}<small className="sr-only">{index < work.step ? ', confirmed' : index === work.step && !complete ? ', current' : ', not completed'}</small></li>)}</ol>
-    {complete ? <div className="workday-filed"><img className="workday-filed-art" src={art(`career-world/${work.art}.png`)} alt=""/><p className="workday-eyebrow">Day {work.ordinal} · {work.title}</p><h1 id={headingId} ref={heading} tabIndex={-1}>Filed.</h1><p className="workday-feedback">{work.feedback}</p><article className="workday-artifact"><h2>{work.title}</h2><p>{work.artifact}</p><p className="workday-reward"><span className="completion-seal" aria-hidden="true">✓</span>20 Trims earned</p></article><details className="workday-review"><summary>Your confirmed work</summary><dl><div><dt>Evidence</dt><dd>{work.rows.filter(row => {const answer = work.answers['0']; return answer && 'ids' in answer && answer.ids.includes(row.id);}).map(row => `${row.label}: ${row.value}`).join(' · ')}</dd></div>{savedDecision && <div><dt>Decision</dt><dd>{savedDecision}</dd></div>}</dl>{source(false)}</details></div> : <>
+    {complete ? <div className="workday-filed"><img className="workday-filed-art" src={art(`career-world/${work.art}.png`)} alt=""/><p className="workday-eyebrow">Day {work.ordinal} · {work.title}</p><h1 id={headingId} ref={heading} tabIndex={-1}>Filed.</h1><p className="workday-feedback">{work.feedback}</p><article className="workday-artifact"><h2>{work.title}</h2><p>{work.artifact}</p><p className="workday-reward"><span className="completion-seal" aria-hidden="true">✓</span>{reward} Trims earned</p></article>{props.next && <aside className="workday-context" role="status"><strong>{props.next.title}</strong> {props.next.body}</aside>}<details className="workday-review"><summary>Your confirmed work</summary><dl><div><dt>Evidence</dt><dd>{work.rows.filter(row => {const answer = work.answers['0']; return answer && 'ids' in answer && answer.ids.includes(row.id);}).map(row => `${row.label}: ${row.value}`).join(' · ')}</dd></div>{savedDecision && <div><dt>Decision</dt><dd>{savedDecision}</dd></div>}</dl>{source(false)}</details></div> : <>
       <header className="workday-heading"><div><p className="workday-eyebrow">{work.district}</p><h1 id={headingId} ref={heading} tabIndex={-1}>{work.title}</h1><p>{work.brief}</p></div><img src={art(work.speaker === 'sal' ? 'sal-teaching-v2.png' : `persona-${work.speaker}-avatar-v1.png`)} alt={work.speaker === 'sal' ? 'Sal' : `The ${work.speaker}`}/></header>
       {work.contextNote && <aside className="workday-context">{work.contextNote}</aside>}
+      {work.step === 2 && work.decisionNote && <aside className="workday-context">{work.decisionNote}</aside>}
       <div className="workday-task">
         {work.step === 0 ? <><div className="workday-task-heading"><h2>{work.evidence.prompt}</h2><span aria-live="polite">{selected.length} / {count}</span></div><p className="workday-source-caption">{work.sourceTitle} · {work.sourceLabel}</p>{source(true)}</> : <>
           <button className="workday-sources-toggle" aria-expanded={sources} onClick={() => {setSources(!sources); props.onCue?.('paper');}}><img src={art('icons/career-comments.png')} alt=""/>{work.sourceTitle}<span aria-hidden="true">{sources ? '−' : '+'}</span></button>
           {sources && <><p className="workday-source-caption">{work.sourceLabel}</p>{source(false)}</>}
           {work.step === 1 ? <><h2>{work.decision.prompt}</h2>{work.decision.kind === 'number' ? <label className="workday-number"><span className="sr-only">Your answer{work.decision.unit ? ` in ${work.decision.unit}` : ''}</span>{work.decision.unit === '$' && <span aria-hidden="true">$</span>}<input value={number} inputMode="decimal" maxLength={18} placeholder="0" disabled={locked} onChange={event => {setNumber(event.target.value); setLocalError(false); setDismissedError(props.error);}}/>{work.decision.unit && work.decision.unit !== '$' && <span aria-hidden="true">{work.decision.unit}</span>}</label>
             : <div className="workday-option-list" role="group" aria-label="Choose your decision">{work.decision.choices.map(item => <button className={`workday-choice${choice === item.id ? ' selected' : ''}`} aria-pressed={choice === item.id} disabled={locked} key={item.id} onClick={() => {setChoice(item.id); setLocalError(false); setDismissedError(props.error); props.onCue?.('select');}}><span>{item.label}</span><Pin selected={choice === item.id}/></button>)}</div>}
-            <button className="text-button workday-hint-toggle" aria-expanded={hint} aria-controls={hintId} onClick={() => setHint(!hint)}>{hint ? 'Hide hint' : 'Hint?'}</button>{hint && <aside className="workday-hint" id={hintId}>{work.decision.hint}</aside>}
+            {hintReady && <><button className="text-button workday-hint-toggle" aria-expanded={hint} aria-controls={hintId} onClick={() => setHint(!hint)}>{hint ? 'Hide hint' : 'Hint?'}</button>{hint && <aside className="workday-hint" id={hintId}>{work.decision.hint}</aside>}</>}
           </> : <><div className="workday-task-heading"><h2>{work.file.prompt}</h2><span aria-live="polite">{selected.length} / {count}</span></div><p className="workday-task-copy">Choose the {count === 2 ? 'two' : count} facts the source supports.</p><div className="workday-option-list">{orderedParts.map(item => <button key={item.id} className={`workday-choice${selected.includes(item.id) ? ' selected' : ''}`} aria-pressed={selected.includes(item.id)} disabled={locked} onClick={() => toggle(item.id)}><span>{item.text}</span><Pin selected={selected.includes(item.id)}/></button>)}</div><div className="workday-note"><label htmlFor={noteId}>Your note <span>Optional</span></label><textarea id={noteId} ref={noteInput} value={note} maxLength={280} rows={3} placeholder="Anything you’d add to the handoff?" disabled={localBusy} onChange={event => changeNote(event.target.value)}/><div><span role="status">{draftStatus || (work.draft ? 'Saved' : '')}</span><span>{note.length} / 280</span></div></div></>}
         </>}
       </div>
@@ -243,7 +255,7 @@ export function WorkdayScreen(props: WorkdayScreenProps) {
     {props.pending && <p className="workday-pending" role="status">Check your last save before making another change.</p>}
     <footer className="workday-actions">{props.pending ? <button className="primary" disabled={localBusy || props.working} onClick={() => void recover()}>{localBusy || props.working ? 'Checking…' : 'Check last save'}</button>
       : complete ? <button className="primary" onClick={() => void back()}>Back to Career</button>
-      : <><button className="primary" disabled={!ready || locked || noteConflict !== null} onClick={() => void submit()}>{localBusy || props.working ? 'Saving…' : work.step === 0 ? 'Check the evidence' : work.step === 1 ? 'Send your decision' : 'File update'}</button>{work.step === 2 && <span>20 Trims when filed</span>}</>}</footer>
+      : <><button className="primary" disabled={!ready || locked || noteConflict !== null} onClick={() => void submit()}>{localBusy || props.working ? 'Saving…' : work.step === 0 ? 'Check the evidence' : work.step === 1 ? 'Send your decision' : 'File update'}</button>{work.step === 2 && <span>{reward} Trims when filed</span>}</>}</footer>
     {leaveDialog && <div className="workday-dialog-backdrop"><div className="workday-leave-dialog" role="alertdialog" aria-modal="true" aria-labelledby={dialogId} onKeyDown={event => {if (event.key === 'Escape') {event.preventDefault(); decideLeave(false);} if (event.key === 'Tab') {event.preventDefault(); (document.activeElement === keepWriting.current ? leaveWithoutSaving.current : keepWriting.current)?.focus();}}}><h2 id={dialogId}>{retainedNote !== null ? 'Leave these edits?' : 'Leave this note?'}</h2><p>{retainedNote !== null ? 'These edits weren’t included in the filed update.' : 'Your latest edits haven’t saved yet.'}</p><div><button className="primary" ref={keepWriting} onClick={() => decideLeave(false)}>{retainedNote !== null ? 'Keep reading' : 'Keep writing'}</button><button className="text-button" ref={leaveWithoutSaving} onClick={() => decideLeave(true)}>{retainedNote !== null ? 'Discard edits and leave' : 'Leave without saving'}</button></div></div></div>}
   </section>;
 }

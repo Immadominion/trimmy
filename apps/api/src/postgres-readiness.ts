@@ -14,8 +14,9 @@ export class PostgresReadinessProbe implements ReadinessProbe {
   readonly #pool: Pool;
   readonly #connectMs: number;
   readonly #queryMs: number;
+  readonly #requiredVersion: string | undefined;
 
-  constructor(pool: Pool, options: {connectMs?: number; queryMs?: number} = {}) {
+  constructor(pool: Pool, options: {connectMs?: number; queryMs?: number; requiredVersion?: string} = {}) {
     const connectMs = options.connectMs ?? 2_000;
     const queryMs = options.queryMs ?? 2_000;
     if (typeof pool?.connect !== 'function' ||
@@ -23,6 +24,8 @@ export class PostgresReadinessProbe implements ReadinessProbe {
         !Number.isInteger(queryMs) || queryMs < 1 || queryMs > 30_000) {
       throw new Error('Readiness probe configuration is invalid.');
     }
+    if (options.requiredVersion !== undefined && !/^[0-9]{4}_[a-z0-9_]+$/.test(options.requiredVersion)) throw new Error('Readiness schema version is invalid.');
+    this.#requiredVersion = options.requiredVersion;
     this.#pool = pool;
     this.#connectMs = connectMs;
     this.#queryMs = queryMs;
@@ -32,8 +35,11 @@ export class PostgresReadinessProbe implements ReadinessProbe {
     const client = await this.#connect();
     let unfinished = true;
     try {
-      await bounded(client.query('SELECT 1'), this.#queryMs);
+      const result = await bounded(this.#requiredVersion === undefined
+        ? client.query('SELECT 1')
+        : client.query('SELECT trimmy.runtime_schema_has($1) AS ready', [this.#requiredVersion]), this.#queryMs);
       unfinished = false;
+      if (this.#requiredVersion !== undefined && result.rows[0]?.ready !== true) throw new Error('Required schema is unavailable.');
     } finally {
       client.release(unfinished);
     }

@@ -178,3 +178,24 @@ describe('GET /ready', () => {
     } finally { await app.close(); }
   });
 });
+
+// Production requires the migration, not merely an open database socket.
+describe('schema-aware storage readiness', () => {
+  it('refuses a reachable but older database and releases the completed query', async () => {
+    const {PostgresReadinessProbe} = await import('../src/postgres-readiness.js');
+    const released: boolean[] = [];
+    let ready = false;
+    const pool = {connect: async () => ({
+      query: async (sql: string, values: unknown[]) => {
+        assert.match(sql, /runtime_schema_has/);
+        assert.deepEqual(values, ['0036_weekday_workdays']);
+        return {rows: [{ready}]};
+      }, release: (destroy: boolean) => released.push(destroy),
+    })};
+    const probe = new PostgresReadinessProbe(pool as unknown as import('pg').Pool, {requiredVersion: '0036_weekday_workdays'});
+    await assert.rejects(probe.probe(), /Required schema/);
+    ready = true;
+    await probe.probe();
+    assert.deepEqual(released, [false, false]);
+  });
+});
