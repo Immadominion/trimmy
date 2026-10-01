@@ -4,22 +4,30 @@ import type {Pool} from 'pg';
 
 export interface PushJob {id:string; deviceId:string; userId:string; orderId:string; status:'confirmed'|'failed'|'expired'}
 export type PushOutcome='sent'|'retry'|'invalid_token'|'drop';
+/** The languages a device can ask for its pushes in (migration 0040). English when it asks for none. */
+export const PUSH_LANGUAGES=['en','es','pt','fr'] as const;
+export type PushLanguage=typeof PUSH_LANGUAGES[number];
 export interface PushStore {
- register(user:string,installation:string,token:string,platform:'android'|'ios'):Promise<void>;
+ register(user:string,installation:string,token:string,platform:'android'|'ios',language?:PushLanguage):Promise<void>;
+ /** The device language for a claimed job; English if the store keeps none. */
+ language?(job:string,worker:string):Promise<string|null>;
  remove(user:string,installation:string):Promise<void>;
  claim(worker:string):Promise<PushJob[]>;
  target(job:string,worker:string):Promise<string|null>;
  finish(job:string,worker:string,outcome:PushOutcome):Promise<void>;
 }
 export function postgresPush(pool:Pool):PushStore {
- async function scoped(user:string,sql:string,values:unknown[]) {
+ async function scoped(user:string,sql:string,values:unknown[],then?:{sql:string;values:unknown[]}) {
   const client=await pool.connect();
   try {await client.query('BEGIN');await client.query("SELECT set_config('trimmy.practice_user_id',$1,true)",[user]);
-   await client.query(sql,values);await client.query('COMMIT');
+   await client.query(sql,values);if(then)await client.query(then.sql,then.values);await client.query('COMMIT');
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
  }
  return {
-  register:(user,id,token,platform)=>scoped(user,'SELECT trimmy.push_device_set($1,$2,$3,$4)',[user,id,token,platform]),
+  // The token and the language change together, or neither does.
+  register:(user,id,token,platform,language)=>scoped(user,'SELECT trimmy.push_device_set($1,$2,$3,$4)',[user,id,token,platform],
+   language?{sql:'SELECT trimmy.push_device_language($1,$2,$3)',values:[user,id,language]}:undefined),
+  language:async(id,worker)=>(await pool.query('SELECT trimmy.trade_push_language($1,$2) AS language',[id,worker])).rows[0]?.language??null,
   remove:(user,id)=>scoped(user,'SELECT trimmy.push_device_remove($1,$2)',[user,id]),
   claim:async worker=>(await pool.query('SELECT trimmy.trade_push_claim($1,5) AS jobs',[worker])).rows[0].jobs,
   target:async(id,worker)=>(await pool.query('SELECT trimmy.trade_push_target($1,$2) AS token',[id,worker])).rows[0].token,
@@ -37,16 +45,20 @@ export function registerPushRoutes(app:FastifyInstance,adapters?:PushAdapters) {
   reply.header('cache-control','no-store');return {tradePush:adapters!==undefined,platforms:adapters?.platforms??[]};
  });
  const params={type:'object',required:['installationId'],additionalProperties:false,properties:{installationId:{type:'string',format:'uuid'}}};
- app.put<{Params:{installationId:string};Body:{token:string;platform:'android'|'ios'}}>('/v1/notifications/devices/:installationId',{
+ app.put<{Params:{installationId:string};Body:{token:string;platform:'android'|'ios';language?:PushLanguage}}>('/v1/notifications/devices/:installationId',{
   schema:{params,body:{type:'object',required:['token','platform'],additionalProperties:false,properties:{
-   token:{type:'string',pattern:'^[A-Za-z0-9:_-]{20,4096}$'},platform:{type:'string',enum:['android','ios']}}}},
+   token:{type:'string',pattern:'^[A-Za-z0-9:_-]{20,4096}$'},platform:{type:'string',enum:['android','ios']},
+   // Optional: the app's language for its pushes. Installed apps that send none stay English.
+   language:{type:'string',enum:[...PUSH_LANGUAGES]}}}},
  },async(request,reply)=>{
   reply.header('cache-control','no-store');
   if(!adapters)return reply.code(503).send({code:'PUSH_UNAVAILABLE'});
   try {
    const account=await adapters.authenticate(request);if(!account)return reply.code(401).send({code:'ACCOUNT_REQUIRED'});
    if(!adapters.platforms.includes(request.body.platform))return reply.code(409).send({code:'PLATFORM_UNAVAILABLE'});
-   await adapters.store.register(account.userId,request.params.installationId,request.body.token,request.body.platform);
+   const {token,platform,language}=request.body;
+   if(language)await adapters.store.register(account.userId,request.params.installationId,token,platform,language);
+   else await adapters.store.register(account.userId,request.params.installationId,token,platform);
    return {enabled:true};
   }catch{return reply.code(503).send({code:'PUSH_UNAVAILABLE'});}
  });
@@ -103,12 +115,12 @@ export class FcmPushSender {
   if(!result.ok || typeof result.body.access_token!=='string' || !Number.isFinite(result.body.expires_in) || result.body.expires_in<60)throw Error('PUSH_AUTH_UNAVAILABLE');
   this.#access={token:result.body.access_token,until:this.now()+Math.min(result.body.expires_in-30,3500)*1000};return this.#access.token;
  }
- async send(job:PushJob,token:string,validateOnly=false):Promise<PushOutcome> {
+ async send(job:PushJob,token:string,validateOnly=false,language:string|null='en'):Promise<PushOutcome> {
   try {
    const result=await this.#json(`https://fcm.googleapis.com/v1/projects/${this.account.project_id}/messages:send`,{
     method:'POST',headers:{authorization:`Bearer ${await this.#bearer()}`,'content-type':'application/json'},
     body:JSON.stringify({validate_only:validateOnly,message:{token,
-     notification:{title:'Trimmy',body:job.status==='confirmed'?'Your trade is confirmed. Open Trimmy for details.':job.status==='failed'?'Your trade did not complete. Open Trimmy for details.':'Your trade expired. Open Trimmy for details.'},
+     notification:{title:'Trimmy',body:tradePushBody(job.status,language)},
      data:{kind:'trade_update',accountId:job.userId,orderId:job.orderId,notificationId:job.id},
      android:{ttl:'86400s',collapse_key:'trade_updates',notification:{tag:job.id,channel_id:'trimmy_trade_updates',icon:'ic_stat_trimmy'}},
      apns:{headers:{'apns-collapse-id':job.id,'apns-expiration':String(Math.floor(this.now()/1000)+86400)},payload:{aps:{sound:'default'}}},
@@ -123,6 +135,17 @@ export class FcmPushSender {
   }catch{return 'retry';}
  }
 }
+/** A trade update in the device's language; English for any other. Never names an amount or a token. */
+export const TRADE_PUSH_COPY:Readonly<Record<PushLanguage,Readonly<Record<PushJob['status'],string>>>>=Object.freeze({
+ en:{confirmed:'Your trade is confirmed. Open Trimmy for details.',failed:'Your trade did not complete. Open Trimmy for details.',expired:'Your trade expired. Open Trimmy for details.'},
+ es:{confirmed:'Tu operación se confirmó. Abre Trimmy para ver los detalles.',failed:'Tu operación no se completó. Abre Trimmy para ver los detalles.',expired:'Tu operación venció. Abre Trimmy para ver los detalles.'},
+ pt:{confirmed:'Sua operação foi confirmada. Abra o Trimmy para ver os detalhes.',failed:'Sua operação não foi concluída. Abra o Trimmy para ver os detalhes.',expired:'Sua operação expirou. Abra o Trimmy para ver os detalhes.'},
+ fr:{confirmed:'Ton opération est confirmée. Ouvre Trimmy pour voir les détails.',failed:'Ton opération n’a pas abouti. Ouvre Trimmy pour voir les détails.',expired:'Ton opération a expiré. Ouvre Trimmy pour voir les détails.'},
+});
+export function tradePushBody(status:PushJob['status'],language:string|null):string {
+ const copy=(PUSH_LANGUAGES as readonly string[]).includes(language??'')?TRADE_PUSH_COPY[language as PushLanguage]:TRADE_PUSH_COPY.en;
+ return copy[status];
+}
 export class TradePushWorker {
  #active:Promise<void>|null=null; #timer:ReturnType<typeof setTimeout>|null=null; #stopped=true;
  constructor(private readonly store:PushStore,private readonly sender:Pick<FcmPushSender,'send'>,private readonly onError:()=>void=()=>{}){}
@@ -136,7 +159,8 @@ export class TradePushWorker {
   const worker=randomUUID();
   for(const job of await this.store.claim(worker)) {
    const token=await this.store.target(job.id,worker);
-   const outcome=token ? await this.sender.send(job,token) : 'drop';
+   const language=token && this.store.language ? await this.store.language(job.id,worker).catch(()=>null) : null;
+   const outcome=token ? await this.sender.send(job,token,false,language ?? 'en') : 'drop';
    await this.store.finish(job.id,worker,outcome);
    if(outcome==='retry' || (token && outcome==='drop'))this.onError();
   }

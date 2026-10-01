@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,createPublicKey,verify} from 'node:crypto';
 import {buildApp} from '../src/app.js';
-import {FcmPushSender,readPushConfig,readPushPlatforms,TradePushWorker,type PushStore,type PushJob} from '../src/push-notifications.js';
+import {FcmPushSender,readPushConfig,readPushPlatforms,TRADE_PUSH_COPY,TradePushWorker,type PushStore,type PushJob} from '../src/push-notifications.js';
 import {OrderRecoveryWorker} from '../src/order-recovery-worker.js';
 const device='cf350000-0000-4000-a000-000000000001';
 const job:PushJob={id:device,deviceId:device,userId:'user',orderId:'order',status:'confirmed'};
@@ -106,4 +106,34 @@ test('permanent provider rejection is finished and reported without device paylo
  s.finish=async(_id,_worker,outcome)=>{outcomes.push(outcome);};
  const worker=new TradePushWorker(s,{send:async()=> 'drop'},()=>{alerts++;});
  await worker.tick();assert.deepEqual(outcomes,['drop']);assert.equal(alerts,1);await worker.stop();
+});
+
+test('a device may ask for its pushes in its language; any other language is refused',async()=>{
+ const calls:unknown[][]=[];const s=store();s.register=async(...args)=>{calls.push(args);};
+ const app=buildApp({logger:false,push:{platforms:['android'],store:s,authenticate:async()=>({userId:'verified-user'})}});
+ const url=`/v1/notifications/devices/${device}`,payload={token:'a'.repeat(24),platform:'android'};
+ try {
+  assert.equal((await app.inject({method:'PUT',url,payload:{...payload,language:'fr'}})).statusCode,200);
+  assert.equal((await app.inject({method:'PUT',url,payload:{...payload,language:'de'}})).statusCode,400);
+  assert.equal((await app.inject({method:'PUT',url,payload})).statusCode,200);
+  assert.deepEqual(calls,[['verified-user',device,payload.token,'android','fr'],['verified-user',device,payload.token,'android']]);
+ } finally {await app.close();}
+});
+test('trade updates are written in the device language, English for any other',async()=>{
+ const bodies:string[]=[];
+ const sender=new FcmPushSender(credentials,async(url,init)=>{
+  if(String(url).includes('oauth2'))return Response.json({access_token:'access-token',expires_in:3600});
+  bodies.push(JSON.parse(String(init?.body)).message.notification.body);return Response.json({name:'projects/trimmy-test/messages/accepted'});
+ });
+ for(const language of ['es','pt','fr','en','de',null])await sender.send(job,'device-token',true,language);
+ assert.deepEqual(bodies,['Tu operación se confirmó. Abre Trimmy para ver los detalles.','Sua operação foi confirmada. Abra o Trimmy para ver os detalhes.',
+  'Ton opération est confirmée. Ouvre Trimmy pour voir les détails.','Your trade is confirmed. Open Trimmy for details.',
+  'Your trade is confirmed. Open Trimmy for details.','Your trade is confirmed. Open Trimmy for details.']);
+ for(const copy of Object.values(TRADE_PUSH_COPY))for(const text of Object.values(copy))assert.doesNotMatch(text,/[—–]|\d/,'no dash, no amount');
+ // The worker reads the device language for the job it holds and passes it on.
+ const seen:(string|null)[]=[];const s=store();s.language=async()=> 'pt';
+ await new TradePushWorker(s,{send:async(_job,_token,_validate,language=null)=>{seen.push(language);return 'sent';}}).tick();
+ const old=store();
+ await new TradePushWorker(old,{send:async(_job,_token,_validate,language=null)=>{seen.push(language);return 'sent';}}).tick();
+ assert.deepEqual(seen,['pt','en'],'a store without languages sends English');
 });

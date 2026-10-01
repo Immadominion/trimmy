@@ -169,11 +169,11 @@ export TRIMMY_MIGRATION_DATABASE_URL="postgresql://$owner_role:$owner_password@l
 echo '--- first run applies every migration over verified TLS'
 first="$(node tool/runtime/apply-migrations.mjs)"
 echo "$first"
-grep -q 'Applied 39 migration(s)' <<<"$first" || { echo 'FAIL: expected 39 migrations applied.' >&2; exit 1; }
+grep -q 'Applied 40 migration(s)' <<<"$first" || { echo 'FAIL: expected 40 migrations applied.' >&2; exit 1; }
 grep -q 'Red-day evidence is locked' <<<"$first" || { echo 'FAIL: red-day evidence activated without the explicit gate.' >&2; exit 1; }
 
 recorded="$(owner_psql -d trimmy -Atc "SELECT string_agg(version, ',' ORDER BY version) FROM trimmy.schema_migrations")"
-expected='0001_foundation,0002_practice_progress,0003_practice_accounts,0004_watchlists,0005_practice_payload_v4,0006_practice_payload_v5,0007_wallet_possession_and_reviews,0008_practice_payload_v6,0009_invitations,0010_account_closure,0011_wallet_possession_challenges,0012_followed_stocks,0013_paper_trading,0014_guest_sessions,0015_product_profiles,0016_guest_creation_idempotency,0017_career_core,0018_career_missions_and_promotions,0019_career_local_day,0020_guest_creation_abuse_and_retention,0021_career_red_day_evidence,0022_product_launch_evidence,0023_paper_reset,0024_career_reason_sharing,0025_relationship_safety,0026_optional_introduction,0027_career_activity_week,0028_community_following,0029_daily_desk,0030_intern_workdays,0031_live_stock_orders,0032_live_stock_order_history,0033_live_stock_order_fills,0034_live_order_confirmation_slot,0035_trade_push_notifications,0036_weekday_workdays,0037_durable_wallet_transfers,0038_reminder_preferences,0039_product_events'
+expected='0001_foundation,0002_practice_progress,0003_practice_accounts,0004_watchlists,0005_practice_payload_v4,0006_practice_payload_v5,0007_wallet_possession_and_reviews,0008_practice_payload_v6,0009_invitations,0010_account_closure,0011_wallet_possession_challenges,0012_followed_stocks,0013_paper_trading,0014_guest_sessions,0015_product_profiles,0016_guest_creation_idempotency,0017_career_core,0018_career_missions_and_promotions,0019_career_local_day,0020_guest_creation_abuse_and_retention,0021_career_red_day_evidence,0022_product_launch_evidence,0023_paper_reset,0024_career_reason_sharing,0025_relationship_safety,0026_optional_introduction,0027_career_activity_week,0028_community_following,0029_daily_desk,0030_intern_workdays,0031_live_stock_orders,0032_live_stock_order_history,0033_live_stock_order_fills,0034_live_order_confirmation_slot,0035_trade_push_notifications,0036_weekday_workdays,0037_durable_wallet_transfers,0038_reminder_preferences,0039_product_events,0040_push_language'
 [[ "$recorded" == "$expected" ]] || { echo "FAIL: recorded migrations mismatch: $recorded" >&2; exit 1; }
 [[ "$(owner_psql -d trimmy -Atc "SELECT has_function_privilege('$runtime_role','trimmy.wallet_transfer_read(uuid,uuid)','EXECUTE') AND has_function_privilege('$runtime_role','trimmy.wallet_transfer_create(uuid,uuid,jsonb)','EXECUTE') AND has_function_privilege('$runtime_role','trimmy.wallet_transfer_begin(uuid,uuid,text)','EXECUTE') AND has_function_privilege('$runtime_role','trimmy.wallet_transfer_resolve(uuid,uuid,text)','EXECUTE') AND NOT has_table_privilege('$runtime_role','trimmy.wallet_transfers','SELECT,INSERT,UPDATE,DELETE')")" == 't' ]] \
   || { echo 'FAIL: wallet transfer runtime authority is not restricted to its account-scoped functions.' >&2; exit 1; }
@@ -429,6 +429,7 @@ echo '--- relationship identity, friendship, block and closure constraints hold'
 owner_psql -d trimmy -f "$infra_dir/tests/relationship-safety-constraints.sql" >/dev/null
 owner_psql -d trimmy -f "$infra_dir/tests/live-order-confirmation-slot.sql" >/dev/null
 owner_psql -d trimmy -f "$infra_dir/tests/trade-push-notifications.sql" >/dev/null
+owner_psql -d trimmy -f "$infra_dir/tests/push-language.sql" >/dev/null
 export PGPASSWORD="$runtime_password"
 
 echo '--- the dedicated red-day login has no direct grants and the bounded CLI enters its capability over TLS'
