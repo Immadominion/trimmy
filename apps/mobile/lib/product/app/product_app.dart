@@ -3297,11 +3297,41 @@ class _ProductExperienceState extends State<ProductExperience>
         ],
       ),
     );
-    if (close != true) return;
-    await widget.account?.closeAccount();
+    final account = widget.account;
+    if (close != true || account == null || !mounted) return;
+    // Closing can take a few seconds; nothing else can be tapped meanwhile.
+    final busy = DialogRoute<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: 18),
+              Expanded(child: Text(dialogContext.l10n.appCloseAccountClosing)),
+            ],
+          ),
+        ),
+      ),
+    );
+    final navigator = Navigator.of(context);
+    unawaited(navigator.push(busy));
+    await account.closeAccount();
+    if (busy.isActive) navigator.removeRoute(busy);
     if (!mounted) return;
-    final navigator = Navigator.maybeOf(context);
-    if (navigator?.canPop() == true) navigator!.pop();
+    // A failed closure leaves the player signed in with an open account:
+    // stay in Settings and say so, instead of closing it as if it worked.
+    if (account.errorCode?.startsWith('PRACTICE_ACCOUNT_CLOSURE') == true) {
+      _message(context.l10n.appCloseAccountFailed);
+      return;
+    }
+    final settings = Navigator.maybeOf(context);
+    if (settings?.canPop() == true) settings!.pop();
   }
 
   Uri? get _walletRecoveryUri {
