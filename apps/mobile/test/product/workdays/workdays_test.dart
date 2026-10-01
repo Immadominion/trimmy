@@ -231,6 +231,50 @@ void main() {
       ], reason: 'English sends no language, as installed apps do');
     },
   );
+  testWidgets(
+    'the evidence step counts pinned facts, and says when there are too many',
+    (tester) async {
+      final data = fixture();
+      final c = controller((_) => response(data))
+        ..journey = WorkJourney.fromJson(data);
+      addTearDown(c.dispose);
+      final first = (data['assignments'] as List).first as Map;
+      final required = first['evidence']['count'] as int;
+      final rows = List<Map>.from(first['rows'] as List);
+      await tester.pumpWidget(
+        app(
+          WorkdayScreen(
+            controller: c,
+            assignmentId: 'morning-brief',
+            onCompleted: () async {},
+          ),
+        ),
+      );
+      await tester.pump();
+      String counter() => tester
+          .widget<Text>(find.byKey(const ValueKey('workday-pin-count')))
+          .data!;
+      Color? colour() => tester
+          .widget<Text>(find.byKey(const ValueKey('workday-pin-count')))
+          .style
+          ?.color;
+      expect(counter(), '0 / $required');
+      for (final row in rows.take(required + 1)) {
+        final label = find.text(row['label'] as String);
+        await tester.ensureVisible(label);
+        await tester.tap(label);
+        await tester.pump();
+      }
+      expect(counter(), '${required + 1} / $required');
+      expect(
+        colour(),
+        ProductColor.loss,
+        reason: 'too many pinned reads as a problem',
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   test('a conflicting draft refreshes before an explicit retry', () async {
     final revisions = <int>[];

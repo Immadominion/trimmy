@@ -342,9 +342,12 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                           ),
                         const SizedBox(height: 24),
                         if (work.step == 0) ...[
-                          Text(
-                            work.evidence['prompt'] as String,
-                            style: theme.titleLarge,
+                          _pinHeading(
+                            Text(
+                              work.evidence['prompt'] as String,
+                              style: theme.titleLarge,
+                            ),
+                            work.evidence['count'] as int,
                           ),
                           const SizedBox(height: 16),
                           _sourceLabel(work),
@@ -475,9 +478,12 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                                 ),
                               ),
                           ] else ...[
-                            Text(
-                              l10n.workdayFileHeading,
-                              style: theme.headlineMedium,
+                            _pinHeading(
+                              Text(
+                                l10n.workdayFileHeading,
+                                style: theme.headlineMedium,
+                              ),
+                              work.file['count'] as int,
                             ),
                             const SizedBox(height: 8),
                             Text(l10n.workdayFileBody, style: theme.bodyMedium),
@@ -585,6 +591,31 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
     }
     if (unit == '%' && !formats.percentFirst) return '${formats.percentGap}%';
     return null;
+  }
+
+  /// The prompt with "1 / 2" beside it, as on the web, so a greyed-out
+  /// button explains itself: too few or too many facts are pinned.
+  Widget _pinHeading(Widget prompt, int required) {
+    final formats = context.formats;
+    final over = _selected.length > required;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: prompt),
+        const SizedBox(width: 12),
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            '${formats.integer(_selected.length)} / ${formats.integer(required)}',
+            key: const ValueKey('workday-pin-count'),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: over ? ProductColor.loss : ProductColor.muted,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   List<Map> _orderedParts(WorkAssignment work) {
