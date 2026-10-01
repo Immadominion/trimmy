@@ -75,3 +75,19 @@ test('events record without sign-in, refuse malformed batches whole, and link on
  try {assert.equal((await bare.inject({method: 'POST', url: '/v1/events', payload: {schemaVersion: 1, events: [base()]}})).statusCode, 503);}
  finally {await bare.close();}
 });
+
+test('the web app may send events and link its install from an allowed browser origin', async () => {
+  const origin = 'https://app.trimmy.example';
+  const app = buildApp({logger: false, browserOrigins: [origin]});
+  try {
+    for (const url of ['/v1/events', '/v1/events/link']) {
+      const preflight = await app.inject({method: 'OPTIONS', url, headers: {origin,
+        'access-control-request-method': 'POST', 'access-control-request-headers': 'authorization,content-type'}});
+      assert.equal(preflight.statusCode, 204, url);
+      assert.equal(preflight.headers['access-control-allow-origin'], origin, url);
+      assert.equal(preflight.headers['access-control-allow-methods'], 'POST', url);
+      const other = await app.inject({method: 'OPTIONS', url, headers: {origin: 'https://elsewhere.example', 'access-control-request-method': 'POST'}});
+      assert.notEqual(other.headers['access-control-allow-origin'], 'https://elsewhere.example', url);
+    }
+  } finally {await app.close();}
+});

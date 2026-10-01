@@ -103,6 +103,9 @@ const methodsByRoute: Readonly<Record<string, readonly string[]>> = Object.freez
   '/v1/account/paper/orders/preview': Object.freeze(['POST']),
   '/v1/account/paper/orders/commit': Object.freeze(['POST']),
   '/v1/account/paper/reset': Object.freeze(['POST']),
+  // First-party usage events from the web app, and tying a browser to its desk.
+  '/v1/events': Object.freeze(['POST']),
+  '/v1/events/link': Object.freeze(['POST']),
 });
 const allowedHeaders = new Set(['authorization', 'content-type', 'x-trimmy-guest']);
 
