@@ -33,6 +33,12 @@ void main() {
       expect(pt.normalizeDecimalInput('12,5'), '12.5');
       expect(pt.normalizeDecimalInput('1,2,3'), '1,2,3');
       expect(AppFormats.english.normalizeDecimalInput('12.5'), '12.5');
+      // A comma keypad (set by the phone's region) on an English app.
+      expect(AppFormats.english.normalizeDecimalInput('0,5'), '0.5');
+      expect(AppFormats.english.normalizeDecimalInput('7,50'), '7.50');
+      expect(AppFormats.english.normalizeDecimalInput('1,000'), '1,000');
+      expect(AppFormats.english.normalizeDecimalInput('1,2,5'), '1,2,5');
+      expect(AppFormats.english.decimalInputCharacters.hasMatch(','), isTrue);
     },
   );
   test(
