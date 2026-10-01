@@ -183,3 +183,36 @@ test('quota or lost receipt persistence prevents reporting success while keeping
   h.storage.fail = false; await rejects(session.saveWorkdayStep(first(journey()), evidence), 'PRACTICE_STORAGE_UNAVAILABLE');
   h.storage.fail = false; assert.equal(h.make().pendingWorkdayMutation?.kind, 'step');
 });
+
+test('workdays are read in the page language, and an API from before workday languages is asked again in English', async () => {
+  const {setLocale} = await import('../src/i18n/runtime.js');
+  const workdayPaths = (calls: readonly Call[]) => calls.map(call => call.path).filter(path => path.startsWith('/v1/career/workdays'));
+  try {
+    await setLocale('fr');
+    let h = setup(() => json({journey: journey()}));
+    await h.make().readWorkdays();
+    assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays?lang=fr']);
+
+    // The API before workday languages refuses the parameter while checking the request, before reading anything.
+    h = setup(call => call.path.includes('?') ? json({error: {code: 'INVALID_REQUEST', message: 'Request parameters are invalid.', requestId: GUEST}}, 400) : json({journey: journey()}));
+    const session = h.make();
+    assert.equal(first(await session.readWorkdays()).step, 0);
+    await session.readWorkdays();
+    assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays?lang=fr', '/v1/career/workdays', '/v1/career/workdays'], 'asked once, then English for this client');
+
+    // Any other failure is the answer; nothing is sent twice.
+    h = setup(() => json({code: 'WORK_UNAVAILABLE'}, 503));
+    await rejects(h.make().readWorkdays(), 'WORK_UNAVAILABLE');
+    assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays?lang=fr']);
+
+    await setLocale('pt-BR');
+    h = setup(() => json({journey: journey()}));
+    await h.make().readWorkdays();
+    assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays?lang=pt']);
+
+    await setLocale('en');
+    h = setup(() => json({journey: journey()}));
+    await h.make().readWorkdays();
+    assert.deepEqual(workdayPaths(h.calls), ['/v1/career/workdays'], 'English sends no language, as installed apps do');
+  } finally {await setLocale('en');}
+});

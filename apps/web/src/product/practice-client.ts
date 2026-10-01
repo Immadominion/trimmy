@@ -3,6 +3,8 @@ import {
   parsePaperSignedFixed, parsePaperSymbol, parsePaperVariantMint,
 } from '@trimmy/domain';
 import type {PaperOrderAction, PaperOrderAmount} from '@trimmy/domain';
+import {getLocale} from '../i18n/runtime';
+import type {Locale} from '../i18n/locales';
 
 export type {PaperOrderAction, PaperOrderAmount};
 export type PaperAmount = PaperOrderAmount;
@@ -580,10 +582,14 @@ function missions(value: unknown): CareerMissionBoard {
 }
 
 export interface PracticeClientOptions {readonly baseUrl: string; readonly fetch?: typeof globalThis.fetch; readonly timeoutMs?: number}
+/** The workday text language the API serves for each page language; English sends none. */
+const WORKDAY_LANGUAGE: Readonly<Partial<Record<Locale, string>>> = {'es-419': 'es', 'pt-BR': 'pt', fr: 'fr'};
 export class PracticeClient {
   readonly apiBase: string;
   readonly #fetch: typeof globalThis.fetch;
   readonly #timeoutMs: number;
+  /** Set once an API from before workday languages has refused `lang`; workdays are then read in English. */
+  #workdayLanguageRefused = false;
   constructor(options: PracticeClientOptions) {
     this.apiBase = normalizePracticeApiBase(options.baseUrl); this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.#timeoutMs = options.timeoutMs ?? 15_000;
@@ -592,6 +598,7 @@ export class PracticeClient {
   async #request<T>(path: string, method: 'GET' | 'POST' | 'PUT', body: unknown, identity: PracticeIdentity | null,
     parse: (value: unknown) => T, signal?: AbortSignal, accept = 'application/json', expectedStatus = 200, claimGuest?: GuestCredential): Promise<T> {
     const account = identity && 'subject' in identity ? identity : null;
+    const route = path.split('?', 1)[0]!;
     if (signal?.aborted || account?.signal.aborted) throw new PracticeError('PRACTICE_ABORTED', 'Practice request cancelled.');
     const controller = new AbortController();
     let stop!: (reason: PracticeError) => void;
@@ -612,7 +619,7 @@ export class PracticeClient {
         }
         headers['Authorization'] = `Bearer ${token}`;
       } else if (identity) headers['Authorization'] = `Guest ${parseGuest(identity).token}`;
-      if (claimGuest) {check(path === '/v1/guest/claim' && account !== null); headers['x-trimmy-guest'] = parseGuest(claimGuest).token;}
+      if (claimGuest) {check(route === '/v1/guest/claim' && account !== null); headers['x-trimmy-guest'] = parseGuest(claimGuest).token;}
       const response = await this.#fetch(`${this.apiBase}${path}`, {method, headers,
         ...(body === undefined ? {} : {body: JSON.stringify(body)}), signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error'});
       if (response.redirected) invalid();
@@ -623,15 +630,15 @@ export class PracticeClient {
       controller.signal.addEventListener('abort', cancelBody, {once: true});
       const chunks: Uint8Array[] = []; let size = 0;
       try {while (true) {const next = await reader.read(); if (next.done) break; size += next.value.byteLength;
-        if (size > (path.startsWith('/v1/career/workdays') ? 524_288 : 262_144)) {void reader.cancel().catch(() => undefined); invalid();} chunks.push(next.value);}}
+        if (size > (route.startsWith('/v1/career/workdays') ? 524_288 : 262_144)) {void reader.cancel().catch(() => undefined); invalid();} chunks.push(next.value);}}
       finally {controller.signal.removeEventListener('abort', cancelBody); reader.releaseLock();}
       const bytes = new Uint8Array(size); let offset = 0;
       for (const chunk of chunks) {bytes.set(chunk, offset); offset += chunk.length;}
       let json: unknown; try {json = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes));} catch {return invalid();}
       if (!response.ok) {
         const envelope = record(json);
-        const dailyRoute = path === '/v1/career/daily-desk' || path === '/v1/career/daily-desk/complete' ||
-          ['/v1/career/workdays', '/v1/career/workdays/step', '/v1/career/workdays/draft'].includes(path);
+        const dailyRoute = route === '/v1/career/daily-desk' || route === '/v1/career/daily-desk/complete' ||
+          ['/v1/career/workdays', '/v1/career/workdays/step', '/v1/career/workdays/draft'].includes(route);
         const error = dailyRoute && typeof envelope['code'] === 'string' ? envelope : record(envelope['error']);
         const code = string(error['code'], 100); check(/^[A-Z][A-Z0-9_]+$/u.test(code));
         const retry = response.headers.get('retry-after');
@@ -700,18 +707,34 @@ export class PracticeClient {
   readCareerSummary(guest: PracticeIdentity, signal?: AbortSignal): Promise<CareerSummary> {
     return this.#request('/v1/career/summary', 'GET', undefined, guest, careerSummary, signal);
   }
+  /**
+   * A workday request in the page's language. An API from before workday
+   * languages refuses `lang` while checking the request, before any work is
+   * read or saved, so the same request is sent again without it.
+   */
+  async #workday<T>(route: string, method: 'GET' | 'POST', body: unknown, identity: PracticeIdentity, parse: (value: unknown) => T, signal?: AbortSignal): Promise<T> {
+    const language = this.#workdayLanguageRefused ? undefined : WORKDAY_LANGUAGE[getLocale()];
+    if (!language) return this.#request(route, method, body, identity, parse, signal);
+    try {return await this.#request(`${route}?lang=${language}`, method, body, identity, parse, signal);}
+    catch (error) {
+      if (!(error instanceof PracticeError) || error.code !== 'INVALID_REQUEST') throw error;
+      const result = await this.#request(route, method, body, identity, parse, signal);
+      this.#workdayLanguageRefused = true;
+      return result;
+    }
+  }
   readWorkdays(identity: PracticeIdentity, signal?: AbortSignal): Promise<WorkdayJourney> {
-    return this.#request('/v1/career/workdays', 'GET', undefined, identity, value => parseWorkdayJourney(record(value)['journey']), signal);
+    return this.#workday('/v1/career/workdays', 'GET', undefined, identity, value => parseWorkdayJourney(record(value)['journey']), signal);
   }
   saveWorkdayStep(identity: PracticeIdentity, request: WorkdayStepWrite, signal?: AbortSignal): Promise<WorkdayJourney> {
     const body = parseWorkdayStepWrite(request);
-    return this.#request('/v1/career/workdays/step', 'POST', body, identity, value => {
+    return this.#workday('/v1/career/workdays/step', 'POST', body, identity, value => {
       const journey = parseWorkdayJourney(record(value)['journey']); assertWorkdayMutation({kind: 'step', body}, journey); return journey;
     }, signal);
   }
   saveWorkdayDraft(identity: PracticeIdentity, request: WorkdayDraftWrite, signal?: AbortSignal): Promise<WorkdayJourney> {
     const body = parseWorkdayDraftWrite(request);
-    return this.#request('/v1/career/workdays/draft', 'POST', body, identity, value => {
+    return this.#workday('/v1/career/workdays/draft', 'POST', body, identity, value => {
       const journey = parseWorkdayJourney(record(value)['journey']); assertWorkdayMutation({kind: 'draft', body}, journey); return journey;
     }, signal);
   }

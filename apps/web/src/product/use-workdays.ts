@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {PracticeError, type WorkdayAssignment, type WorkdayJourney, type WorkdayAnswer} from './practice-client';
 import type {PracticeSession} from './practice-session';
+import {useLocale} from '../i18n/react';
 
 export type WorkAnswer = WorkdayAnswer;
 
@@ -13,6 +14,8 @@ export function useWorkdays(session: PracticeSession | null, enabled: boolean, p
   const lifecycle = useRef(0), readEpoch = useRef(0), mounted = useRef(false);
   const request = useRef<AbortController | null>(null), queue = useRef<Promise<unknown>>(Promise.resolve());
   const outstanding = useRef(0);
+  // Workday text comes in the page's language, so a language change reads it again.
+  const locale = useLocale();
   // Only this hook's acknowledged draft writes may rebase an already queued action.
   const localDraftRevisions = useRef(new Map<string, Map<number, number>>());
   const accept = useCallback((next: WorkdayJourney) => {
@@ -52,7 +55,7 @@ export function useWorkdays(session: PracticeSession | null, enabled: boolean, p
     const timer = window.setInterval(resume, 30000);
     window.addEventListener('focus', resume); window.addEventListener('online', resume); document.addEventListener('visibilitychange', resume);
     return () => {clearInterval(timer); window.removeEventListener('focus', resume); window.removeEventListener('online', resume); document.removeEventListener('visibilitychange', resume);};
-  }, [enabled, page, refresh]);
+  }, [enabled, page, refresh, locale]);
 
   const write = useCallback((operation: {kind: 'step'; assignment: WorkdayAssignment; answer: WorkAnswer; draft?: string} |
     {kind: 'draft'; assignment: WorkdayAssignment; draft: string} | {kind: 'recover'}): Promise<boolean> => {
