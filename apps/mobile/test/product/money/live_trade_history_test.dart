@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:trimmy/account/account_controller.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/practice_sync/http_transport.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import 'package:trimmy/product/market/live_trading.dart';
@@ -13,6 +14,7 @@ import 'package:trimmy/product/market/market_craft.dart';
 import 'package:trimmy/product/money/live_trade_history.dart';
 
 import '../../support/account_data_fixtures.dart' as fixtures;
+import '../../support/l10n_harness.dart';
 
 final _origin = Uri.parse('https://trimmy.example');
 String _id(int value) =>
@@ -610,5 +612,65 @@ void main() {
     expect(calls, 2);
     expect(find.byKey(ValueKey('trade-${_id(2)}')), findsOneWidget);
     await _close(tester, account);
+  });
+
+  testWidgets('history reads in French with French amounts and dates', (
+    tester,
+  ) async {
+    final account = _Account();
+    await tester.pumpWidget(
+      localizedTestApp(
+        locale: const Locale('fr'),
+        home: LiveTradeHistoryScreen(
+          account: account,
+          origin: _origin,
+          onBack: () {},
+          httpClient: MockClient(
+            (_) async => _reply(
+              _page([_trade(1), _trade(2, status: 'failed', buy: false)]),
+            ),
+          ),
+        ),
+      ),
+    );
+    await _pump(tester);
+    expect(find.text('Tes opérations'), findsOneWidget);
+    expect(find.text('Achat de NVDAx'), findsOneWidget);
+    expect(find.text('Vente de NVDAx'), findsOneWidget);
+    expect(find.text('Confirmée'), findsOneWidget);
+    expect(find.text('Non aboutie'), findsOneWidget);
+    expect(find.text('5 USDC'), findsOneWidget);
+    expect(find.text('0,12345678 NVDAx'), findsOneWidget);
+    final local = DateTime.utc(2026, 9, 25, 13).toLocal();
+    final formats = AppFormats.forLocale(const Locale('fr'));
+    expect(
+      find.text('${formats.numericDate(local)} · ${formats.time24(local)}'),
+      findsNWidgets(2),
+    );
+    await tester.tap(find.byKey(ValueKey('trade-${_id(1)}')));
+    await tester.pump();
+    expect(find.text('Montant de la cotation'), findsOneWidget);
+    expect(find.text('Voir la transaction'), findsOneWidget);
+    await _close(tester, account);
+  });
+
+  test('trade records keep English labels unless a language is given', () {
+    final page = LiveTradeHistoryPage.fromJson(_page([_trade(1)]));
+    final order = page.orders.single;
+    expect(order.quotedOutputLabel, '0.12345678 NVDAx');
+    expect(
+      order.quotedOutputLabelWith(
+        null,
+        AppFormats.forLocale(const Locale('pt', 'BR')),
+      ),
+      '0,12345678 NVDAx',
+    );
+    expect(order.statusLabel(englishLocalizations), 'Confirmed');
+    expect(
+      const LiveTradeHistoryFailure(
+        'ACCOUNT_REQUIRED',
+      ).message(englishLocalizations),
+      'Sign in again to see your trades.',
+    );
   });
 }

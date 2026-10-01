@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/account/account_controller.dart';
 import 'package:trimmy/account/account_data.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/money/real_holdings.dart';
 import 'package:trimmy/product/desk/holding_tile.dart';
 import 'package:trimmy/product/design/product_theme.dart';
 import '../../support/account_data_fixtures.dart' as fixtures;
+import '../../support/l10n_harness.dart';
 
 class Reader implements AccountPortfolioReader {
   Reader({this.envelope});
@@ -234,5 +236,53 @@ void main() {
     // 90,071,992.54741 + 2.46913578 shares at $1.
     expect(total.stocks, r'$90,071,995.02');
     expect(total.total, isNot(cash));
+  });
+
+  test('balances keep their exact cents in every language', () async {
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: fixtures.holdingsEnvelopeV2()),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    addTearDown(repository.dispose);
+    await repository.refresh();
+    final french = AppFormats.forLocale(const Locale('fr'));
+    final brazil = AppFormats.forLocale(const Locale('pt', 'BR'));
+    final english = realTotalBalance(account, (holding) => 1)!;
+    final total = realTotalBalance(account, (holding) => 1, french)!;
+    expect(english.stocks, r'$90,071,995.02');
+    expect(total.stocks, '90\u202f071\u202f995,02\u00a0\$US');
+    expect(
+      realTotalBalance(account, (holding) => 1, brazil)!.stocks,
+      'US\$\u00a090.071.995,02',
+    );
+    expect(realCashBalance(account, french), total.cash);
+    expect(realUsd(1234.5, french), '1\u202f234,50\u00a0\$US');
+    expect(realUsd(1234.5), r'$1,234.50');
+  });
+
+  testWidgets('the empty wallet reads in Portuguese', (tester) async {
+    final envelope = fixtures.holdingsEnvelopeV2();
+    ((envelope['holdings'] as Map)['balances'] as Map)['tokens'] = [];
+    final repository = AccountPortfolioRepository(
+      reader: Reader(envelope: envelope),
+      clock: () => DateTime.parse('2026-09-14T17:28:28Z'),
+    );
+    final account = Account(repository);
+    addTearDown(account.dispose);
+    await repository.refresh();
+    await tester.pumpWidget(
+      localizedTestApp(
+        locale: const Locale('pt', 'BR'),
+        home: Scaffold(
+          body: RealHoldings(account: account, onAddMoney: () {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nenhuma ação ainda'), findsOneWidget);
+    expect(find.text('Explorar ações'), findsOneWidget);
+    repository.dispose();
   });
 }

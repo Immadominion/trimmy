@@ -1688,9 +1688,9 @@ class _ProductExperienceState extends State<ProductExperience>
   }
 
   Widget _shell(OnboardingProfile profile) {
-    final l10n = context.l10n;
+    final l10n = context.l10n, formats = context.formats;
     _ensureDailyDesk();
-    final realTotal = realTotalBalance(widget.account, _holdingPrice);
+    final realTotal = realTotalBalance(widget.account, _holdingPrice, formats);
     if (_reminderCareerPending) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted ||
@@ -1722,11 +1722,12 @@ class _ProductExperienceState extends State<ProductExperience>
               snapshot: _deskSnapshot(profile),
               real: _realMoney,
               onSwitchMode: _switchMoneyMode,
-              realBalance: realTotal?.total ?? realCashBalance(widget.account),
+              realBalance:
+                  realTotal?.total ?? realCashBalance(widget.account, formats),
               realBalanceLabel: realTotal == null
                   ? null
                   : l10n.appRealBalanceLabel,
-              realSolBalance: realSolBalance(widget.account),
+              realSolBalance: realSolBalance(widget.account, formats),
               realBalanceNote:
                   widget.account?.portfolioState?.portfolioIsFresh != true
                   ? l10n.appRealBalanceUpdating

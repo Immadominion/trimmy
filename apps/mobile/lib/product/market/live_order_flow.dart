@@ -24,33 +24,39 @@ import '../../l10n/l10n.dart';
 class LiveOrderFailure implements Exception {
   const LiveOrderFailure(this.code);
   final String code;
-  String get message => switch (code) {
-    'ADD_USDC' => 'Add USDC to your Solana wallet first.',
-    'ADD_SOL' => 'Add SOL to cover network and account fees.',
-    'INSUFFICIENT_HOLDINGS' => 'You don’t have enough of this token to sell.',
-    'TRADE_LIMIT' => 'This order is above the current trade limit.',
-    'APP_UPDATE_REQUIRED' =>
-      'Update Trimmy to review the issuer terms before trading.',
-    'TERMS_REQUIRED' => 'Confirm the issuer terms to continue.',
-    'WALLET_REQUIRED' => 'Create your wallet to continue.',
-    'ORDER_PENDING' => 'Your previous trade is still confirming.',
-    'QUOTE_EXPIRED' => 'That price expired. Get a fresh quote.',
-    'LIVE_BUSY' => 'Quotes are busy. Try again in a moment.',
-    'NO_ROUTE' => 'No route for this order right now. Try another amount.',
-    'MARKET_CLOSED' =>
-      'This stock trades while US markets are open. Try again then.',
-    'BELOW_MINIMUM' =>
-      'This order is under the market maker’s minimum. Try a larger amount.',
-    'PRICE_OFF_MARKET' =>
-      'That price is too far from the market right now. Try again shortly or a smaller amount.',
-    'FEE_TOO_HIGH' => 'The fees are too high for this order. Try later.',
-    'ACCOUNT_REQUIRED' => 'Sign in again to use your wallet.',
-    'INVALID_REVIEW' ||
-    'INVALID_SIGNATURE' => 'This order needs a fresh quote.',
-    'LIVE_UNAVAILABLE' => 'Trading couldn’t connect. Try again.',
-    _ => 'Couldn’t complete this step. Try again.',
+
+  /// What went wrong, in the reader's language. The server's code stays the
+  /// same in every language.
+  String message(AppLocalizations l10n) => switch (code) {
+    'ADD_USDC' => l10n.liveOrderErrorAddUsdc,
+    'ADD_SOL' => l10n.liveOrderErrorAddSol,
+    'INSUFFICIENT_HOLDINGS' => l10n.liveOrderErrorInsufficientHoldings,
+    'TRADE_LIMIT' => l10n.liveOrderErrorTradeLimit,
+    'APP_UPDATE_REQUIRED' => l10n.liveOrderErrorAppUpdate,
+    'TERMS_REQUIRED' => l10n.liveOrderErrorTermsRequired,
+    'WALLET_REQUIRED' => l10n.liveOrderErrorWalletRequired,
+    'ORDER_PENDING' => l10n.liveOrderErrorOrderPending,
+    'QUOTE_EXPIRED' => l10n.liveOrderErrorQuoteExpired,
+    'LIVE_BUSY' => l10n.liveOrderErrorBusy,
+    'NO_ROUTE' => l10n.liveOrderErrorNoRoute,
+    'MARKET_CLOSED' => l10n.liveOrderErrorMarketClosed,
+    'BELOW_MINIMUM' => l10n.liveOrderErrorBelowMinimum,
+    'PRICE_OFF_MARKET' => l10n.liveOrderErrorPriceOffMarket,
+    'FEE_TOO_HIGH' => l10n.liveOrderErrorFeeTooHigh,
+    'ACCOUNT_REQUIRED' => l10n.liveOrderErrorAccountRequired,
+    'INVALID_REVIEW' || 'INVALID_SIGNATURE' => l10n.liveOrderErrorFreshQuote,
+    'LIVE_UNAVAILABLE' => l10n.liveOrderErrorUnavailable,
+    _ => l10n.liveOrderErrorGeneric,
   };
 }
+
+/// A notice on the order screen, written when it is shown so it follows the
+/// current language.
+typedef _NoticeText =
+    String Function(AppLocalizations l10n, AppFormats formats);
+
+_NoticeText _failureNotice(LiveOrderFailure failure) =>
+    (l10n, _) => failure.message(l10n);
 
 /// Eligibility ticks per account, issuer and terms version. They are held for
 /// the app session and saved, so the same terms are not asked for again. A
@@ -265,14 +271,15 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
   bool _restoring = false, _recoveryFailed = false, _capabilitiesFailed = false;
   bool _foreground = true, _polling = false, _initialAmountSet = false;
   bool _fundingNeeded = false;
-  String? _error, _uncertainId;
+  _NoticeText? _error;
+  String? _uncertainId;
 
   /// A preset writes rounded shares into the field. Its exact raw amount is
   /// kept, so Max sells everything without leaving dust behind.
   ({String text, String raw})? _preset;
 
-  /// The preset that the order limit cut down, such as Max or 75%.
-  String? _cappedPreset;
+  /// The preset that the order limit cut down: 100 for Max, or 25, 50, 75.
+  int? _cappedPercent;
   late final _pendingKey =
       'trimmy.pending-live-order.${widget.account.accountId}';
 
@@ -334,10 +341,11 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
   LiveShareScale get _scale =>
       liveShareScale(widget.account, _asset!.mint, _asset!.decimals);
 
-  /// USDC for buys, shares of the token for sells, grouped for reading.
-  String _amountLabel(BigInt raw) => _sell
-      ? '${_scale.label(raw.toString())} $_symbol'
-      : '${_usdc(raw.toString())} USDC';
+  /// USDC for buys, shares of the token for sells, grouped for reading in
+  /// the reader's language.
+  String _amountLabel(BigInt raw, AppFormats formats) => _sell
+      ? '${formats.number(_scale.label(raw.toString()))} $_symbol'
+      : '${formats.number(_usdc(raw.toString()))} USDC';
 
   static String _usdc(String raw) =>
       formatRawUnits(raw, 6) ?? liveDecimal(raw, 6);
@@ -348,7 +356,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     final text = _amount.text.trim();
     final preset = _preset;
     if (preset != null && preset.text == text) return preset.raw;
-    return _sell ? _scale.raw(text) : liveAmountRaw(text, 6);
+    // A comma typed as the decimal mark reads as the same exact amount.
+    final plain = context.formats.normalizeDecimalInput(text);
+    return _sell ? _scale.raw(plain) : liveAmountRaw(plain, 6);
   }
 
   bool get _pending => _order?['status'] == 'pending';
@@ -370,7 +380,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         _quoteTimer?.cancel();
         setState(() {
           _order = null;
-          _error = 'Sign in again to use your wallet.';
+          _error = _failureNotice(const LiveOrderFailure('ACCOUNT_REQUIRED'));
         });
         return;
       }
@@ -403,7 +413,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     _expireQuote();
   }
 
-  void _notice(String message) {
+  void _notice(_NoticeText message) {
     if (!mounted) return;
     _noticeTimer?.cancel();
     setState(() => _error = message);
@@ -511,11 +521,12 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     _restoring = false;
   }
 
-  /// Writes [raw] into the field as USDC or shares and keeps it exact.
+  /// Writes [raw] into the field as USDC or shares, in the reader's decimal
+  /// mark, and keeps it exact.
   void _fill(BigInt raw) {
-    _amount.text = _sell
-        ? _scale.shares(raw.toString())
-        : liveDecimal(raw.toString(), 6);
+    _amount.text = context.formats.decimalInput(
+      _sell ? _scale.shares(raw.toString()) : liveDecimal(raw.toString(), 6),
+    );
     _preset = (text: _amount.text, raw: raw.toString());
   }
 
@@ -528,7 +539,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     _initialAmountSet = true;
     if (_sell) {
       _fill(max);
-      _cappedPreset = _balanceRaw! > _limitRaw ? 'Max' : null;
+      _cappedPercent = _balanceRaw! > _limitRaw ? 100 : null;
     } else if (max < BigInt.from(5000000)) {
       _fill(max);
     }
@@ -542,14 +553,14 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     _initialAmountSet = true;
     setState(() {
       _fill(capped ? _limitRaw : portion);
-      _cappedPreset = capped ? (percent == 100 ? 'Max' : '$percent%') : null;
+      _cappedPercent = capped ? percent : null;
     });
   }
 
   void _typed(String _) {
     _initialAmountSet = true;
-    if (_cappedPreset != null && _preset?.text != _amount.text.trim()) {
-      setState(() => _cappedPreset = null);
+    if (_cappedPercent != null && _preset?.text != _amount.text.trim()) {
+      setState(() => _cappedPercent = null);
     }
   }
 
@@ -560,7 +571,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       _fundingNeeded = false;
       _initialAmountSet = false;
       _preset = null;
-      _cappedPreset = null;
+      _cappedPercent = null;
       _amount.text = _sell ? '' : '5';
       _setInitialAmount();
     });
@@ -626,27 +637,40 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       return;
     }
     if (!_termsAccepted) {
-      _notice('Confirm the issuer terms first.');
+      _notice((l10n, _) => l10n.liveOrderConfirmTermsFirst);
       _showTerms();
       return;
     }
     final raw = _enteredRaw;
     if (raw == null) {
-      _notice('Enter a valid ${_sell ? 'share amount' : 'USDC amount'}.');
+      _notice(
+        (l10n, _) =>
+            _sell ? l10n.liveOrderInvalidShares : l10n.liveOrderInvalidUsdc,
+      );
       return;
     }
-    if (BigInt.parse(raw) > _limitRaw) {
-      _notice('Up to ${_amountLabel(_limitRaw)} per order.');
+    final limit = _limitRaw;
+    if (BigInt.parse(raw) > limit) {
+      _notice(
+        (l10n, formats) =>
+            l10n.liveOrderUpToPerOrder(_amountLabel(limit, formats)),
+      );
       return;
     }
     final minimum = BigInt.parse(asset.minBuyInputRaw);
     if (!_sell && BigInt.parse(raw) < minimum) {
-      _notice('Orders for this token start at ${_amountLabel(minimum)}.');
+      _notice(
+        (l10n, formats) =>
+            l10n.liveOrderMinimum(_amountLabel(minimum, formats)),
+      );
       return;
     }
     if (!asset.marketOpen) {
+      final market = asset.market!;
       _notice(
-        '${asset.market!.label(DateTime.now(), context.l10n, context.formats)}.',
+        (l10n, formats) => l10n.liveOrderMarketNotice(
+          market.label(DateTime.now(), l10n, formats),
+        ),
       );
       return;
     }
@@ -697,11 +721,11 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       if (mounted && (error.code == 'ADD_USDC' || error.code == 'ADD_SOL')) {
         setState(() => _fundingNeeded = true);
       }
-      _notice(error.message);
+      _notice(_failureNotice(error));
       if (error.code == 'TERMS_REQUIRED') await _termsRequired(issuer);
       if (error.code == 'ORDER_PENDING') await _restore();
     } catch (_) {
-      _notice('Couldn’t get a verified quote. Try again.');
+      _notice((l10n, _) => l10n.liveOrderQuoteFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -776,10 +800,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       if (!mounted) return;
       if (dispatchStarted) {
         setState(() => _order = {...order, 'status': 'pending'});
-        _notice('Checking the result. Your order won’t be sent twice.');
+        _notice((l10n, _) => l10n.liveOrderCheckingResult);
         _schedule();
       } else {
-        _notice('Signing didn’t finish. No order was sent.');
+        _notice((l10n, _) => l10n.liveOrderSigningFailed);
       }
     } finally {
       if (mounted) {
@@ -819,7 +843,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         }
       }
     } catch (_) {
-      _notice('Reconnecting to check your order…');
+      _notice((l10n, _) => l10n.liveOrderReconnecting);
     } finally {
       _polling = false;
       if (mounted && _pending) _schedule();
@@ -832,20 +856,24 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         issuer.termsUrl,
         mode: LaunchMode.externalApplication,
       )) {
-        _notice('Couldn’t open the issuer’s terms. Try again.');
+        _notice((l10n, _) => l10n.liveOrderTermsOpenFailed);
       }
     } catch (_) {
-      _notice('Couldn’t open the issuer’s terms. Try again.');
+      _notice((l10n, _) => l10n.liveOrderTermsOpenFailed);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final status = _order?['status'];
     final terminal =
         status == 'confirmed' || status == 'failed' || status == 'expired';
     final name =
-        _orderAsset?.name ?? _asset?.name ?? widget.company?.name ?? 'Trade';
+        _orderAsset?.name ??
+        _asset?.name ??
+        widget.company?.name ??
+        l10n.liveOrderTitleFallback;
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
@@ -854,7 +882,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           leading: IconButton(
-            tooltip: 'Back',
+            tooltip: l10n.commonBack,
             onPressed: _busy ? null : widget.onBack,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
@@ -870,8 +898,8 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 if (!_client.current)
                   ..._unavailable(
                     context,
-                    'Your account changed',
-                    'Reopen trading after signing in.',
+                    l10n.liveOrderAccountChangedTitle,
+                    l10n.liveOrderAccountChangedBody,
                     retry: false,
                   )
                 else if (_pending || terminal)
@@ -885,25 +913,29 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                   ..._unavailable(
                     context,
                     _recoveryFailed
-                        ? 'Let’s check your last order'
-                        : 'Trading couldn’t connect',
-                    'Try again when you’re connected.',
+                        ? l10n.liveOrderCheckLastOrderTitle
+                        : l10n.liveOrderConnectFailedTitle,
+                    l10n.liveOrderConnectedRetryBody,
                     retry: true,
                   )
                 else if (_capabilities?.enabled != true)
                   ..._unavailable(
                     context,
-                    'Trading is temporarily paused',
-                    'Your wallet and holdings are still here.',
+                    l10n.liveOrderPausedTitle,
+                    l10n.liveOrderPausedBody,
                     retry: true,
                   )
                 else if (_asset == null)
                   ..._unavailable(
                     context,
-                    'This token isn’t tradable here yet',
+                    l10n.liveOrderNotTradableTitle,
                     widget.variantMint == null
-                        ? 'Choose another stock to trade.'
-                        : _capabilities!.reasonFor(widget.variantMint!),
+                        ? l10n.liveOrderChooseAnother
+                        : _capabilities!.reasonFor(
+                            widget.variantMint!,
+                            l10n,
+                            context.formats,
+                          ),
                     retry: false,
                   )
                 else if (status == 'reviewed' &&
@@ -917,7 +949,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                     padding: const EdgeInsets.only(top: 16),
                     child: ProductNotice(
                       key: const ValueKey('live-order-notice'),
-                      message: _error!,
+                      message: _error!(l10n, context.formats),
                       onDismiss: () => setState(() => _error = null),
                     ),
                   ),
@@ -942,19 +974,23 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     const SizedBox(height: 24),
     ProductButton(
       key: const ValueKey('live-order-unavailable-action'),
-      label: retry ? 'Try again' : 'Back to stocks',
+      label: retry
+          ? context.l10n.commonTryAgain
+          : context.l10n.liveOrderBackToStocks,
       onPressed: retry ? _restore : widget.onBack,
     ),
   ];
 
   List<Widget> _entry(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n, formats = context.formats;
     final asset = _asset!, issuer = _issuer!;
     final balance = _balanceRaw;
     final available = balance == null
-        ? 'Checking balance…'
-        : '${_amountLabel(balance)} available';
-    final limit = _amountLabel(_limitRaw);
+        ? l10n.liveOrderCheckingBalance
+        : l10n.liveOrderAvailable(_amountLabel(balance, formats));
+    final limit = _amountLabel(_limitRaw, formats);
+    final capped = _cappedPercent;
     final accepted = _termsAccepted;
     final identity = Row(
       children: [
@@ -970,7 +1006,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${_sell ? 'Sell' : 'Buy'} $_symbol',
+                _sell
+                    ? l10n.liveOrderSellTitle(_symbol)
+                    : l10n.liveOrderBuyTitle(_symbol),
                 style: type.headlineMedium,
               ),
               Text('Solana', style: type.bodySmall),
@@ -981,7 +1019,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
     );
     final switcher = TextButton(
       onPressed: _busy ? null : _switchSide,
-      child: Text(_sell ? 'Buy instead' : 'Sell instead'),
+      child: Text(_sell ? l10n.liveOrderBuyInstead : l10n.liveOrderSellInstead),
     );
     // Large text stacks the switch under the title instead of squeezing it.
     final large = MediaQuery.textScalerOf(context).scale(14) > 20;
@@ -1011,7 +1049,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_sell ? 'You sell' : 'You pay', style: type.bodyMedium),
+            Text(
+              _sell ? l10n.liveOrderYouSell : l10n.liveOrderYouPay,
+              style: type.bodyMedium,
+            ),
             TextField(
               key: const ValueKey('live-order-amount'),
               controller: _amount,
@@ -1021,7 +1062,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 decimal: true,
               ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                FilteringTextInputFormatter.allow(
+                  formats.decimalInputCharacters,
+                ),
                 LengthLimitingTextInputFormatter(40),
               ],
               style: type.displayLarge?.copyWith(fontSize: 40),
@@ -1031,7 +1074,9 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 focusedBorder: InputBorder.none,
                 filled: false,
                 hintText: '0',
-                prefixText: _sell ? null : r'$ ',
+                prefixText: _sell || !formats.dollarFirst
+                    ? null
+                    : '${formats.dollarSymbol} ',
                 suffixText: _sell ? _symbol : 'USDC',
                 suffixStyle: type.bodyMedium,
               ),
@@ -1050,7 +1095,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                   onPressed: _busy || _maxRaw == null || _maxRaw == BigInt.zero
                       ? null
                       : () => _selectPercent(100),
-                  child: const Text('Max'),
+                  child: Text(l10n.commonMax),
                 ),
               ],
             ),
@@ -1066,7 +1111,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
             for (final percent in [25, 50, 75])
               ActionChip(
                 key: ValueKey('live-order-percent-$percent'),
-                label: Text('$percent%'),
+                label: Text(formats.percent('$percent')),
                 side: BorderSide.none,
                 backgroundColor: ProductColor.paperRaised,
                 onPressed: _busy || _maxRaw == null
@@ -1076,7 +1121,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
           else
             for (final amount in [5, 10, 25, 50])
               ActionChip(
-                label: Text('\$$amount'),
+                label: Text(formats.usd('$amount')),
                 side: BorderSide.none,
                 backgroundColor: ProductColor.paperRaised,
                 onPressed: _busy
@@ -1084,7 +1129,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                     : () => setState(() {
                         _initialAmountSet = true;
                         _preset = null;
-                        _cappedPreset = null;
+                        _cappedPercent = null;
                         _amount.text = '$amount';
                       }),
               ),
@@ -1093,9 +1138,14 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       const SizedBox(height: 12),
       if (_limitRaw < liveUncappedRaw)
         Text(
-          _cappedPreset == null
-              ? 'Order limit: $limit'
-              : '$_cappedPreset capped at the order limit of $limit.',
+          capped == null
+              ? l10n.liveOrderLimit(limit)
+              : capped == 100
+              ? l10n.liveOrderLimitCappedMax(limit)
+              : l10n.liveOrderLimitCappedPercent(
+                  formats.percent('$capped'),
+                  limit,
+                ),
           key: const ValueKey('live-order-limit'),
           style: type.bodySmall,
         ),
@@ -1112,14 +1162,10 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       ProductButton(
         key: const ValueKey('live-order-review'),
         label: _busy
-            ? 'Checking price and fees…'
+            ? l10n.liveOrderCheckingPrice
             : asset.marketOpen
-            ? 'Review ${_sell ? 'sell' : 'buy'}'
-            : asset.market!.label(
-                DateTime.now(),
-                context.l10n,
-                context.formats,
-              ),
+            ? (_sell ? l10n.liveOrderReviewSell : l10n.liveOrderReviewBuy)
+            : asset.market!.label(DateTime.now(), l10n, formats),
         onPressed: _busy || !accepted || !asset.marketOpen ? null : _preview,
       ),
       if (_fundingNeeded ||
@@ -1127,7 +1173,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         const SizedBox(height: 10),
         TextButton(
           onPressed: _busy ? null : widget.onAddMoney,
-          child: const Text('Add money'),
+          child: Text(l10n.commonAddMoney),
         ),
       ],
     ];
@@ -1144,11 +1190,12 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       asset.decimals,
       terms['stockUiMultiplier'],
     );
-    String usdc(Object? raw) => '${_usdc(raw as String)} USDC';
+    final l10n = context.l10n, formats = context.formats;
+    String usdc(Object? raw) => '${formats.number(_usdc(raw as String))} USDC';
     String quoted(Object? raw) =>
-        '${scale.approx(raw as String)} ${asset.symbol}';
+        '${formats.number(scale.approx(raw as String))} ${asset.symbol}';
     String least(Object? raw) =>
-        '${scale.label(raw as String)} ${asset.symbol}';
+        '${formats.number(scale.label(raw as String))} ${asset.symbol}';
     // An issuer fee comes out of every transfer, so for those tokens the
     // simulated delivery is closer to what arrives than the swap quote.
     final delivered = terms['simulatedOutputReceivedRaw'];
@@ -1160,7 +1207,7 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         : terms['quotedOutputAmountRaw'];
     return [
       Text(
-        'Review your ${buying ? 'buy' : 'sell'}',
+        buying ? l10n.liveOrderReviewBuyTitle : l10n.liveOrderReviewSellTitle,
         style: Theme.of(context).textTheme.headlineLarge,
       ),
       const SizedBox(height: 22),
@@ -1169,35 +1216,48 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
         child: Column(
           children: [
             _line(
-              'You pay',
+              l10n.liveOrderYouPay,
               buying
                   ? usdc(terms['inputAmountRaw'])
                   : quoted(terms['inputAmountRaw']),
             ),
-            _line('You receive ≈', buying ? quoted(received) : usdc(received)),
             _line(
-              'Minimum received',
+              l10n.liveOrderYouReceive,
+              buying ? quoted(received) : usdc(received),
+            ),
+            _line(
+              l10n.liveOrderMinimumReceived,
               buying
                   ? least(terms['minimumOutputAmountRaw'])
                   : usdc(terms['minimumOutputAmountRaw']),
             ),
             _line(
-              'Network + account fees',
-              '≤ ${liveDecimal(terms['totalLamportsUpperBound'] as String, 9)} SOL',
+              l10n.liveOrderNetworkFees,
+              '≤ ${formats.number(liveDecimal(terms['totalLamportsUpperBound'] as String, 9))} SOL',
             ),
-            _line('Swap fee', livePercent(terms['platformFeeBps'] as int)),
+            _line(
+              l10n.liveOrderSwapFee,
+              livePercent(terms['platformFeeBps'] as int, formats),
+            ),
             if (terms['route'] == 'rfq')
-              _line('Price', 'Fixed quote from a market maker'),
-            _line('Issuer', issuer.name),
+              _line(l10n.liveOrderPrice, l10n.liveOrderFixedQuote),
+            _line(l10n.liveOrderIssuer, issuer.name),
             if (asset.transferFeeBps > 0)
-              _line('Issuer fee', livePercent(asset.transferFeeBps)),
+              _line(
+                l10n.liveOrderIssuerFee,
+                livePercent(asset.transferFeeBps, formats),
+              ),
           ],
         ),
       ),
       const SizedBox(height: 22),
       ProductButton(
         key: const ValueKey('live-order-confirm'),
-        label: _busy ? 'Confirming…' : 'Confirm ${buying ? 'buy' : 'sell'}',
+        label: _busy
+            ? l10n.commonConfirming
+            : buying
+            ? l10n.liveOrderConfirmBuy
+            : l10n.liveOrderConfirmSell,
         onPressed: _busy ? null : _confirm,
       ),
       TextButton(
@@ -1207,12 +1267,13 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 _quoteTimer?.cancel();
                 setState(() => _order = null);
               },
-        child: const Text('Edit amount'),
+        child: Text(l10n.liveOrderEditAmount),
       ),
     ];
   }
 
   List<Widget> _result(BuildContext context) {
+    final l10n = context.l10n;
     final done = _order?['status'] == 'confirmed';
     final expired = _order?['status'] == 'expired';
     return [
@@ -1231,24 +1292,24 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
       const SizedBox(height: 22),
       Text(
         done
-            ? 'Trade confirmed'
+            ? l10n.liveOrderTradeConfirmed
             : _pending
-            ? 'Confirming your trade'
+            ? l10n.liveOrderConfirmingTrade
             : expired
-            ? 'Quote expired'
-            : 'Trade didn’t complete',
+            ? l10n.liveOrderQuoteExpired
+            : l10n.liveOrderTradeIncomplete,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.headlineMedium,
       ),
       const SizedBox(height: 12),
       Text(
         done
-            ? 'Your order is confirmed on Solana.'
+            ? l10n.liveOrderConfirmedBody
             : _pending
-            ? 'You can close this. Reopen the trade to check its status.'
+            ? l10n.liveOrderPendingBody
             : expired
-            ? 'Get a fresh price to continue.'
-            : 'Your order wasn’t filled.',
+            ? l10n.liveOrderExpiredBody
+            : l10n.liveOrderFailedBody,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodyMedium,
       ),
@@ -1268,20 +1329,20 @@ class _LiveOrderFlowState extends State<LiveOrderFlow>
                 mode: LaunchMode.externalApplication,
               );
             } catch (_) {
-              _notice('Couldn’t open the transaction. Try again.');
+              _notice((l10n, _) => l10n.liveOrderTransactionOpenFailed);
             }
           },
           child: Text(
             (_order?['terms'] as Map?)?['route'] == 'rfq'
-                ? 'View wallet activity ↗'
-                : 'View transaction ↗',
+                ? l10n.liveOrderViewWalletActivity
+                : l10n.liveOrderViewTransaction,
           ),
         ),
       if (done)
-        ProductButton(label: 'Done', onPressed: widget.onBack)
+        ProductButton(label: l10n.commonDone, onPressed: widget.onBack)
       else if (!_pending)
         ProductButton(
-          label: expired ? 'Get fresh price' : 'Try again',
+          label: expired ? l10n.liveOrderGetFreshPrice : l10n.commonTryAgain,
           onPressed: () {
             setState(() {
               _order = null;
@@ -1338,12 +1399,21 @@ class _IssuerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n;
     final facts = [
       if (issuer.productType.isNotEmpty) issuer.productType,
       if (issuer.holderRights.isNotEmpty) issuer.holderRights,
       if (issuer.excludedRegions.isNotEmpty)
-        'Not for residents of ${issuer.excludedRegions.join(', ')}',
+        l10n.liveOrderIssuerExcluded(issuer.excludedRegions.join(', ')),
     ];
+    // The built-in statement for servers that send no issuer section is
+    // Trimmy's own copy; an issuer's statement is shown as the server wrote it.
+    final legacy = LiveTradingIssuer.legacyXStocks.attestation;
+    final attestation =
+        issuer.attestation.version == legacy.version &&
+            issuer.attestation.text == legacy.text
+        ? l10n.liveOrderLegacyAttestation
+        : issuer.attestation.text;
     return Material(
       color: const Color(0xFFEDE7FB),
       shape: productSquircle(26),
@@ -1372,7 +1442,9 @@ class _IssuerCard extends StatelessWidget {
                     if (transferFeeBps > 0) ...[
                       const SizedBox(height: 6),
                       Text(
-                        'Issuer fee: ${livePercent(transferFeeBps)} on every buy and sell',
+                        l10n.liveOrderIssuerFeeNote(
+                          livePercent(transferFeeBps, context.formats),
+                        ),
                         key: const ValueKey('live-order-issuer-fee'),
                         style: type.bodySmall?.copyWith(
                           color: ProductColor.loss,
@@ -1418,7 +1490,7 @@ class _IssuerCard extends StatelessWidget {
                 : (value) => onAccepted!(value ?? false),
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: const EdgeInsets.fromLTRB(8, 4, 14, 0),
-            title: Text(issuer.attestation.text, style: type.bodyMedium),
+            title: Text(attestation, style: type.bodyMedium),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
@@ -1427,7 +1499,7 @@ class _IssuerCard extends StatelessWidget {
               child: TextButton(
                 key: const ValueKey('live-order-issuer-terms'),
                 onPressed: onOpenTerms,
-                child: const Text('Issuer terms ↗'),
+                child: Text(l10n.liveOrderIssuerTerms),
               ),
             ),
           ),

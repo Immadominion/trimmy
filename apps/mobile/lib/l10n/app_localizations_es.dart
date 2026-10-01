@@ -2422,7 +2422,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo abrir la transacción. Intenta de nuevo.';
 
   @override
-  String get liveOrderTitleFallback => 'Operar';
+  String get liveOrderTitleFallback => 'Operación';
 
   @override
   String get liveOrderAccountChangedTitle => 'Tu cuenta cambió';
@@ -2495,12 +2495,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String liveOrderLimitCappedMax(String amount) {
-    return 'El máximo se ajustó al límite por orden de $amount.';
+    return 'El máximo se ajustó al límite de $amount por orden.';
   }
 
   @override
   String liveOrderLimitCappedPercent(String percent, String amount) {
-    return 'El $percent se ajustó al límite por orden de $amount.';
+    return 'El $percent se ajustó al límite de $amount por orden.';
   }
 
   @override

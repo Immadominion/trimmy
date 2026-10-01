@@ -1947,7 +1947,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível abrir esta ação. Tente de novo.';
 
   @override
-  String get fastBuyConnectFailed => 'Não foi possível conectar para negociar.';
+  String get fastBuyConnectFailed => 'Não foi possível conectar para operar.';
 
   @override
   String get fastBuyNoneAvailable =>
@@ -2310,7 +2310,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveOrderErrorAppUpdate =>
-      'Atualize o Trimmy para ver os termos do emissor antes de negociar.';
+      'Atualize o Trimmy para ver os termos do emissor antes de operar.';
 
   @override
   String get liveOrderErrorTermsRequired =>
@@ -2362,7 +2362,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveOrderErrorUnavailable =>
-      'Não foi possível conectar para negociar. Tente de novo.';
+      'Não foi possível conectar para operar. Tente de novo.';
 
   @override
   String get liveOrderErrorGeneric =>
@@ -2417,7 +2417,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível abrir a transação. Tente de novo.';
 
   @override
-  String get liveOrderTitleFallback => 'Negociar';
+  String get liveOrderTitleFallback => 'Operação';
 
   @override
   String get liveOrderAccountChangedTitle => 'Sua conta mudou';
@@ -2431,15 +2431,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveOrderConnectFailedTitle =>
-      'Não foi possível conectar para negociar';
+      'Não foi possível conectar para operar';
 
   @override
   String get liveOrderConnectedRetryBody =>
       'Tente de novo quando tiver conexão.';
 
   @override
-  String get liveOrderPausedTitle =>
-      'As negociações estão pausadas por enquanto';
+  String get liveOrderPausedTitle => 'As operações estão pausadas por enquanto';
 
   @override
   String get liveOrderPausedBody =>
@@ -2450,7 +2449,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Este token ainda não pode ser negociado aqui';
 
   @override
-  String get liveOrderChooseAnother => 'Escolha outra ação para negociar.';
+  String get liveOrderChooseAnother => 'Escolha outra ação para operar.';
 
   @override
   String get liveOrderBackToStocks => 'Voltar às ações';
@@ -2492,12 +2491,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String liveOrderLimitCappedMax(String amount) {
-    return 'O máximo foi reduzido ao limite por ordem de $amount.';
+    return 'O máximo foi limitado a $amount, o limite por ordem.';
   }
 
   @override
   String liveOrderLimitCappedPercent(String percent, String amount) {
-    return '$percent reduzido ao limite por ordem de $amount.';
+    return '$percent foi limitado a $amount, o limite por ordem.';
   }
 
   @override
@@ -2820,7 +2819,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveTradingReasonAwaitingReview =>
-      'O mercado está aberto. O Trimmy está verificando antes de você poder negociar.';
+      'O mercado está aberto. O Trimmy está verificando antes de você poder operar.';
 
   @override
   String get liveTradingReasonNoMarketMaker =>

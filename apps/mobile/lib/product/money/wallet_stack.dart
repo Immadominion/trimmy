@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../design/paper_format.dart';
 import '../desk/desk_models.dart';
@@ -56,6 +57,7 @@ class _WalletStackState extends State<WalletStack>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final tall = MediaQuery.textScalerOf(context).scale(14) > 20;
     final cardHeight = tall ? 500.0 : 284.0;
     return Stack(
@@ -131,7 +133,7 @@ class _WalletStackState extends State<WalletStack>
                     style: _actionStyle(),
                     onPressed: widget.onBuy,
                     icon: const Icon(Icons.add_rounded, size: 21),
-                    label: const _ActionLabel('Fast buy'),
+                    label: _ActionLabel(l10n.walletFastBuy),
                   ),
                 ),
                 if (widget.real) ...[
@@ -140,7 +142,7 @@ class _WalletStackState extends State<WalletStack>
                       style: _actionStyle(),
                       onPressed: widget.onAddMoney,
                       icon: const Icon(Icons.south_west_rounded, size: 20),
-                      label: const _ActionLabel('Add money'),
+                      label: _ActionLabel(l10n.commonAddMoney),
                     ),
                   ),
                   if (widget.onSend != null)
@@ -150,7 +152,7 @@ class _WalletStackState extends State<WalletStack>
                         style: _actionStyle(),
                         onPressed: widget.onSend,
                         icon: const Icon(Icons.north_east_rounded, size: 20),
-                        label: const _ActionLabel('Send'),
+                        label: _ActionLabel(l10n.walletSend),
                       ),
                     ),
                 ] else
@@ -159,7 +161,7 @@ class _WalletStackState extends State<WalletStack>
                       style: _actionStyle(),
                       onPressed: widget.onHistory,
                       icon: const Icon(Icons.history_rounded, size: 20),
-                      label: const _ActionLabel('History'),
+                      label: _ActionLabel(l10n.commonHistory),
                     ),
                   ),
               ],
@@ -179,6 +181,7 @@ class _WalletStackState extends State<WalletStack>
 
   Widget _card(bool real) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n, formats = context.formats;
     final latest = widget.paper.holdings.take(3).toList();
     return Container(
       key: ValueKey(real ? 'real-wallet-card' : 'paper-wallet-card'),
@@ -217,11 +220,14 @@ class _WalletStackState extends State<WalletStack>
                       : FlexFit.tight,
                   child: Text(
                     real
-                        ? widget.balanceLabel ?? 'Cash balance'
+                        ? widget.balanceLabel ?? l10n.walletCashBalance
                         : switch (widget.paper.paperValueState) {
-                            DeskPaperValueState.complete => 'Account balance',
-                            DeskPaperValueState.partial => 'Known value',
-                            DeskPaperValueState.unavailable => 'Cash balance',
+                            DeskPaperValueState.complete =>
+                              l10n.walletAccountBalance,
+                            DeskPaperValueState.partial =>
+                              l10n.walletKnownValue,
+                            DeskPaperValueState.unavailable =>
+                              l10n.walletCashBalance,
                           },
                     style: type.bodyMedium?.copyWith(color: Colors.white),
                   ),
@@ -229,15 +235,15 @@ class _WalletStackState extends State<WalletStack>
                 Semantics(
                   button: true,
                   label: real
-                      ? 'Switch to paper mode'
-                      : 'Switch to real money mode',
+                      ? l10n.walletSwitchToPaper
+                      : l10n.walletSwitchToReal,
                   child: TextButton.icon(
                     key: real == widget.real
                         ? const ValueKey('money-mode-switch')
                         : null,
                     onPressed: widget.onSwitch,
                     icon: const Icon(Icons.swap_horiz_rounded, size: 20),
-                    label: Text(real ? 'Real' : 'Paper'),
+                    label: Text(real ? l10n.modeReal : l10n.modePaper),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.white.withValues(alpha: .13),
@@ -254,7 +260,9 @@ class _WalletStackState extends State<WalletStack>
               child: Text(
                 real
                     ? widget.balance ?? '—'
-                    : '\$${formatPaperForDisplay(widget.paper.paperValue)}',
+                    : formats.usd(
+                        formatPaperForDisplay(widget.paper.paperValue),
+                      ),
                 key: real ? const ValueKey('real-cash-balance') : null,
                 style: type.displayLarge?.copyWith(
                   color: Colors.white,
@@ -272,13 +280,18 @@ class _WalletStackState extends State<WalletStack>
                     children: [
                       Text(
                         real
-                            ? widget.balanceNote ?? 'USDC available'
+                            ? widget.balanceNote ?? l10n.walletUsdcAvailable
                             : (widget.paper.paperValueIsComplete
-                                  ? '${widget.paper.holdings.length} positions'
+                                  ? l10n.walletPositions(
+                                      widget.paper.holdings.length,
+                                      formats.integer(
+                                        widget.paper.holdings.length,
+                                      ),
+                                    )
                                   : widget.paper.paperValueState ==
                                         DeskPaperValueState.partial
-                                  ? 'Some prices unavailable'
-                                  : 'Position prices unavailable'),
+                                  ? l10n.walletSomePricesUnavailable
+                                  : l10n.walletPositionPricesUnavailable),
                         style: type.bodySmall?.copyWith(
                           color: Colors.white.withValues(alpha: .85),
                         ),
@@ -287,8 +300,8 @@ class _WalletStackState extends State<WalletStack>
                         const SizedBox(height: 4),
                         Text(
                           widget.solBalance == null
-                              ? 'Checking SOL…'
-                              : '${widget.solBalance} SOL for fees',
+                              ? l10n.walletCheckingSol
+                              : l10n.walletSolForFees(widget.solBalance!),
                           key: const ValueKey('real-sol-balance'),
                           style: type.bodySmall?.copyWith(
                             color: Colors.white.withValues(alpha: .85),
@@ -342,7 +355,7 @@ class CashAssetMarks extends StatelessWidget {
   const CashAssetMarks({super.key});
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'USDC and SOL',
+    label: context.l10n.walletCashMarks,
     image: true,
     child: ExcludeSemantics(
       child: SizedBox(

@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trimmy/account/account_controller.dart';
 import 'package:trimmy/account/account_data.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/markets/discovery.dart';
 import 'package:trimmy/practice_sync/http_transport.dart';
 import 'package:trimmy/product/design/product_components.dart';
@@ -15,6 +16,7 @@ import 'package:trimmy/product/market/live_order_flow.dart';
 import 'package:trimmy/product/market/live_trading.dart';
 import 'package:trimmy/product/market/market_models.dart';
 import '../../support/account_data_fixtures.dart' as fixtures;
+import '../../support/l10n_harness.dart';
 import 'live_trading_test_support.dart';
 
 const _appleMint = 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
@@ -310,21 +312,22 @@ void main() {
     MarketCompany? company,
     String? variantMint,
     bool sell = false,
+    Locale? locale,
   }) async {
+    final flow = LiveOrderFlow(
+      account: account,
+      origin: _origin,
+      company: company ?? _company('nvidia'),
+      variantMint: variantMint,
+      initialSell: sell,
+      httpClient: MockClient(handler),
+      onBack: () {},
+      onAddMoney: () async {},
+    );
     await tester.pumpWidget(
-      MaterialApp(
-        theme: productTheme(),
-        home: LiveOrderFlow(
-          account: account,
-          origin: _origin,
-          company: company ?? _company('nvidia'),
-          variantMint: variantMint,
-          initialSell: sell,
-          httpClient: MockClient(handler),
-          onBack: () {},
-          onAddMoney: () async {},
-        ),
-      ),
+      locale == null
+          ? MaterialApp(theme: productTheme(), home: flow)
+          : localizedTestApp(locale: locale, home: flow),
     );
     await pump(tester);
   }
@@ -464,6 +467,46 @@ void main() {
       await clean(tester);
     },
   );
+
+  testWidgets('a French buy takes a comma decimal and reads in French', (
+    tester,
+  ) async {
+    Map<String, dynamic>? preview;
+    var quotes = 0;
+    await mount(tester, (request) async {
+      if (request.url.path.endsWith('preview')) {
+        quotes++;
+        preview = jsonDecode(request.body) as Map<String, dynamic>;
+        return _reply({
+          'order': _order('reviewed', raw: preview!['amountRaw'] as String),
+        });
+      }
+      return defaults(request);
+    }, locale: const Locale('fr'));
+    expect(find.text('Acheter NVDAx'), findsOneWidget);
+    expect(find.text('Disponible\u00a0: 80 USDC'), findsOneWidget);
+    expect(find.text('5\u00a0\$US'), findsOneWidget);
+    expect(find.text('Vérifier l’achat'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('live-order-amount')),
+      '1,0000001',
+    );
+    await tap(tester, 'live-order-review');
+    expect(find.text('Saisis un montant valide en USDC.'), findsOneWidget);
+    expect(quotes, 0);
+    await tester.enterText(
+      find.byKey(const ValueKey('live-order-amount')),
+      '2,5',
+    );
+    await tap(tester, 'live-order-review');
+    expect(preview!['amountRaw'], '2500000');
+    expect(find.text('Vérifie ton achat'), findsOneWidget);
+    expect(find.text('2,5 USDC'), findsOneWidget);
+    expect(find.text('Frais de réseau et de compte'), findsOneWidget);
+    expect(find.text('Confirmer l’achat'), findsOneWidget);
+    expect(account.signatures, 0);
+    await clean(tester);
+  });
 
   testWidgets('newly bought token fills sell Max when holdings arrive late', (
     tester,
@@ -700,11 +743,11 @@ void main() {
 
   test('trade-cap and terms rejections have actionable copy', () {
     expect(
-      const LiveOrderFailure('TRADE_LIMIT').message,
+      const LiveOrderFailure('TRADE_LIMIT').message(englishLocalizations),
       'This order is above the current trade limit.',
     );
     expect(
-      const LiveOrderFailure('TERMS_REQUIRED').message,
+      const LiveOrderFailure('TERMS_REQUIRED').message(englishLocalizations),
       'Confirm the issuer terms to continue.',
     );
     portfolio.dispose();
@@ -1288,6 +1331,43 @@ void main() {
       await tap(tester, 'live-order-max');
       await tap(tester, 'live-order-review');
       expect(preview!['amountRaw'], '500000000');
+      await clean(tester);
+    });
+
+    testWidgets('the order limit note reads in Brazilian Portuguese', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        _termsKey: [_accepted('ondo')],
+      });
+      reader.holdOndo();
+      await mount(
+        tester,
+        (request) async {
+          if (request.url.path.endsWith('capabilities')) {
+            return _reply(_caps(ondoSellLimit: '500000000'));
+          }
+          return _reply({'order': null});
+        },
+        company: _nvidia(),
+        variantMint: ondoNvidiaMint,
+        sell: true,
+        locale: const Locale('pt', 'BR'),
+      );
+      expect(find.text('Disponível: 1,5 NVDAon'), findsOneWidget);
+      await tap(tester, 'live-order-percent-25');
+      expect(field(tester), '0,375');
+      expect(find.text('Limite por ordem: 0,75 NVDAon'), findsOneWidget);
+      await tap(tester, 'live-order-percent-75');
+      expect(
+        find.text('75% foi limitado a 0,75 NVDAon, o limite por ordem.'),
+        findsOneWidget,
+      );
+      await tap(tester, 'live-order-max');
+      expect(
+        find.text('O máximo foi limitado a 0,75 NVDAon, o limite por ordem.'),
+        findsOneWidget,
+      );
       await clean(tester);
     });
 

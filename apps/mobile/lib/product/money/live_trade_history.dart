@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../account/account_amounts.dart';
 import '../../account/account_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../ui_review/review_animated_splash.dart';
 import '../design/product_components.dart';
 import '../design/product_motion_icon.dart';
@@ -74,33 +75,44 @@ class LiveTradeRecord {
   );
 
   /// USDC, or shares of the token. Shares use [scale] when the wallet's
-  /// multiplier is known and plain token units otherwise.
-  String _label(String raw, bool usdc, LiveShareScale? scale) => usdc
-      ? '${formatRawUnits(raw, 6) ?? liveDecimal(raw, 6)} USDC'
-      : '${(scale ?? LiveShareScale.plain(decimals)).exact(raw)} $symbol';
-  String inputLabelWith([LiveShareScale? scale]) =>
-      _label(inputAmountRaw, buy, scale);
-  String quotedOutputLabelWith([LiveShareScale? scale]) =>
-      _label(quotedOutputAmountRaw, !buy, scale);
-  String minimumOutputLabelWith([LiveShareScale? scale]) =>
-      _label(minimumOutputAmountRaw, !buy, scale);
+  /// multiplier is known and plain token units otherwise. The figure reads
+  /// in [formats]' language (English when left out); the amount is exact
+  /// either way.
+  String _label(
+    String raw,
+    bool usdc,
+    LiveShareScale? scale,
+    AppFormats? formats,
+  ) {
+    final format = formats ?? AppFormats.english;
+    return usdc
+        ? '${format.number(formatRawUnits(raw, 6) ?? liveDecimal(raw, 6))} USDC'
+        : '${format.number((scale ?? LiveShareScale.plain(decimals)).exact(raw))} $symbol';
+  }
+
+  String inputLabelWith([LiveShareScale? scale, AppFormats? formats]) =>
+      _label(inputAmountRaw, buy, scale, formats);
+  String quotedOutputLabelWith([LiveShareScale? scale, AppFormats? formats]) =>
+      _label(quotedOutputAmountRaw, !buy, scale, formats);
+  String minimumOutputLabelWith([LiveShareScale? scale, AppFormats? formats]) =>
+      _label(minimumOutputAmountRaw, !buy, scale, formats);
 
   /// The filled input when known, else what the order was reviewed to spend.
-  String paidLabelWith([LiveShareScale? scale]) =>
-      _label(filledInputRaw ?? inputAmountRaw, buy, scale);
-  String filledOutputLabelWith([LiveShareScale? scale]) =>
-      _label(filledOutputRaw ?? quotedOutputAmountRaw, !buy, scale);
+  String paidLabelWith([LiveShareScale? scale, AppFormats? formats]) =>
+      _label(filledInputRaw ?? inputAmountRaw, buy, scale, formats);
+  String filledOutputLabelWith([LiveShareScale? scale, AppFormats? formats]) =>
+      _label(filledOutputRaw ?? quotedOutputAmountRaw, !buy, scale, formats);
   String get inputLabel => inputLabelWith();
   String get quotedOutputLabel => quotedOutputLabelWith();
   String get minimumOutputLabel => minimumOutputLabelWith();
   Uri get explorer => rfq
       ? Uri.https('solscan.io', '/account/$wallet')
       : Uri.https('solscan.io', '/tx/$signature');
-  String get statusLabel => switch (status) {
-    LiveTradeStatus.pending => 'Confirming',
-    LiveTradeStatus.confirmed => 'Confirmed',
-    LiveTradeStatus.failed => 'Not completed',
-    LiveTradeStatus.expired => 'Expired',
+  String statusLabel(AppLocalizations l10n) => switch (status) {
+    LiveTradeStatus.pending => l10n.liveHistoryStatusConfirming,
+    LiveTradeStatus.confirmed => l10n.liveHistoryStatusConfirmed,
+    LiveTradeStatus.failed => l10n.liveHistoryStatusFailed,
+    LiveTradeStatus.expired => l10n.liveHistoryStatusExpired,
   };
 
   factory LiveTradeRecord.fromJson(Object? value) {
@@ -236,10 +248,14 @@ class LiveTradeHistoryPage {
 class LiveTradeHistoryFailure implements Exception {
   const LiveTradeHistoryFailure(this.code);
   final String code;
-  String get message => code == 'ACCOUNT_REQUIRED'
-      ? 'Sign in again to see your trades.'
-      : 'Couldn’t load your trades. Try again.';
+  String message(AppLocalizations l10n) => code == 'ACCOUNT_REQUIRED'
+      ? l10n.liveHistoryErrorSignIn
+      : l10n.liveHistoryErrorLoad;
 }
+
+/// An error line on the history screen, written when it is shown so it
+/// follows the current language.
+typedef _HistoryNotice = String Function(AppLocalizations l10n);
 
 class LiveTradeHistoryClient {
   LiveTradeHistoryClient({
@@ -376,7 +392,8 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
   late LiveTradeHistoryClient _client;
   final _expanded = <String>{};
   List<LiveTradeRecord> _orders = [];
-  String? _cursor, _error;
+  String? _cursor;
+  _HistoryNotice? _error;
   bool _loading = true, _more = false, _foreground = true, _polling = false;
   bool _hasOlderPages = false;
   int _generation = 0;
@@ -494,7 +511,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
         if (!silent) {
           _error = error is LiveTradeHistoryFailure
               ? error.message
-              : 'Couldn’t load your trades. Try again.';
+              : (l10n) => l10n.liveHistoryErrorLoad;
         }
       });
     }
@@ -585,7 +602,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
         }
         _error = error is LiveTradeHistoryFailure
             ? error.message
-            : 'Couldn’t load more trades. Try again.';
+            : (l10n) => l10n.liveHistoryErrorLoadMore;
       });
     }
     _schedulePoll();
@@ -599,7 +616,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
       if (!opened) throw StateError('Unavailable browser');
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Couldn’t open the transaction. Try again.');
+        setState(() => _error = (l10n) => l10n.liveOrderTransactionOpenFailed);
       }
     }
   }
@@ -613,85 +630,93 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
       }
     } catch (_) {
       if (mounted && identical(client, _client) && client.current) {
-        setState(() => _error = 'Couldn’t open this stock. Try again.');
+        setState(() => _error = (l10n) => l10n.liveHistoryErrorOpenStock);
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
-    appBar: AppBar(
-      title: const Text('Your trades'),
-      leading: IconButton(
-        tooltip: 'Back',
-        onPressed: widget.onBack,
-        icon: const Icon(Icons.arrow_back_rounded),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(l10n.liveHistoryTitle),
+        leading: IconButton(
+          tooltip: l10n.commonBack,
+          onPressed: widget.onBack,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
       ),
-    ),
-    body: RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-        children: [
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 80),
-              child: Center(child: TrimmyLiquidMark(size: 72)),
-            ),
-          if (!_loading && _orders.isEmpty && _error == null) ...[
-            const SizedBox(height: 64),
-            const Center(
-              child: ProductMotionIcon(file: 'state-empty.png', size: 88),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Your first trade starts here',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Your orders will appear here.',
-              textAlign: TextAlign.center,
-            ),
-          ],
-          for (final order in _orders) _row(context, order),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
-                  if (_orders.isEmpty && _client.current) ...[
-                    const SizedBox(height: 12),
-                    ProductButton(label: 'Try again', onPressed: _refresh),
-                  ] else if (_client.current) ...[
-                    TextButton(
-                      onPressed: _refresh,
-                      child: const Text('Try again'),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          children: [
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 80),
+                child: Center(child: TrimmyLiquidMark(size: 72)),
+              ),
+            if (!_loading && _orders.isEmpty && _error == null) ...[
+              const SizedBox(height: 64),
+              const Center(
+                child: ProductMotionIcon(file: 'state-empty.png', size: 88),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                l10n.liveHistoryEmptyTitle,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(l10n.liveHistoryEmptyBody, textAlign: TextAlign.center),
+            ],
+            for (final order in _orders) _row(context, order),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _error!(l10n),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    if (_orders.isEmpty && _client.current) ...[
+                      const SizedBox(height: 12),
+                      ProductButton(
+                        label: l10n.commonTryAgain,
+                        onPressed: _refresh,
+                      ),
+                    ] else if (_client.current) ...[
+                      TextButton(
+                        onPressed: _refresh,
+                        child: Text(l10n.commonTryAgain),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          if (_cursor != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: ProductButton(
-                label: _more ? 'Loading…' : 'More trades',
-                secondary: true,
-                onPressed: _more ? null : _loadMore,
+            if (_cursor != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: ProductButton(
+                  label: _more ? l10n.commonLoading : l10n.liveHistoryMore,
+                  secondary: true,
+                  onPressed: _more ? null : _loadMore,
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+
   Widget _row(BuildContext context, LiveTradeRecord order) {
     final type = Theme.of(context).textTheme;
+    final l10n = context.l10n, formats = context.formats;
     final expanded = _expanded.contains(order.id);
     final color = switch (order.status) {
       LiveTradeStatus.confirmed => ProductColor.gain,
@@ -699,8 +724,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
       _ => ProductColor.muted,
     };
     final date = order.createdAt.toLocal();
-    final dateLabel =
-        '${date.day}/${date.month}/${date.year} · ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    final dateLabel = '${formats.numericDate(date)} · ${formats.time24(date)}';
     final scale = widget.shareScale?.call(order.mint, order.decimals);
     return Padding(
       key: ValueKey('trade-${order.id}'),
@@ -730,11 +754,16 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${order.buy ? 'Buy' : 'Sell'} ${order.symbol}',
+                        order.buy
+                            ? l10n.liveHistoryRowBuy(order.symbol)
+                            : l10n.liveHistoryRowSell(order.symbol),
                         style: type.titleMedium,
                       ),
                       const SizedBox(height: 4),
-                      Text(order.paidLabelWith(scale), style: type.bodyMedium),
+                      Text(
+                        order.paidLabelWith(scale, formats),
+                        style: type.bodyMedium,
+                      ),
                     ],
                   ),
                 ),
@@ -755,7 +784,7 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
               runSpacing: 4,
               children: [
                 Text(
-                  order.statusLabel,
+                  order.statusLabel(l10n),
                   style: type.labelLarge?.copyWith(color: color),
                 ),
                 Text(dateLabel, style: type.bodySmall),
@@ -763,28 +792,37 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
             ),
             if (expanded && order.filled) ...[
               const SizedBox(height: 18),
-              Text(order.buy ? 'You paid' : 'You sold', style: type.bodySmall),
-              Text(order.paidLabelWith(scale), style: type.titleMedium),
-              const SizedBox(height: 10),
-              Text('You received', style: type.bodySmall),
-              Text(order.filledOutputLabelWith(scale), style: type.titleMedium),
-              const SizedBox(height: 10),
               Text(
-                'Final amounts from the confirmed transaction.',
+                order.buy ? l10n.liveHistoryYouPaid : l10n.liveHistoryYouSold,
                 style: type.bodySmall,
               ),
+              Text(
+                order.paidLabelWith(scale, formats),
+                style: type.titleMedium,
+              ),
+              const SizedBox(height: 10),
+              Text(l10n.liveHistoryYouReceived, style: type.bodySmall),
+              Text(
+                order.filledOutputLabelWith(scale, formats),
+                style: type.titleMedium,
+              ),
+              const SizedBox(height: 10),
+              Text(l10n.liveHistoryFinalAmounts, style: type.bodySmall),
             ] else if (expanded) ...[
               const SizedBox(height: 18),
-              Text('Quoted output', style: type.bodySmall),
-              Text(order.quotedOutputLabelWith(scale), style: type.titleMedium),
-              const SizedBox(height: 10),
-              Text('Minimum output', style: type.bodySmall),
-              Text(order.minimumOutputLabelWith(scale), style: type.bodyMedium),
-              const SizedBox(height: 10),
+              Text(l10n.liveHistoryQuotedOutput, style: type.bodySmall),
               Text(
-                'Order estimates. See the transaction for the final amounts.',
-                style: type.bodySmall,
+                order.quotedOutputLabelWith(scale, formats),
+                style: type.titleMedium,
               ),
+              const SizedBox(height: 10),
+              Text(l10n.liveHistoryMinimumOutput, style: type.bodySmall),
+              Text(
+                order.minimumOutputLabelWith(scale, formats),
+                style: type.bodyMedium,
+              ),
+              const SizedBox(height: 10),
+              Text(l10n.liveHistoryEstimates, style: type.bodySmall),
             ],
             if (expanded) ...[
               const SizedBox(height: 8),
@@ -793,12 +831,12 @@ class _LiveTradeHistoryScreenState extends State<LiveTradeHistoryScreen>
                 children: [
                   TextButton(
                     onPressed: () => _open(order),
-                    child: const Text('View transaction'),
+                    child: Text(l10n.liveHistoryViewTransaction),
                   ),
                   if (widget.onOpenAsset != null)
                     TextButton(
                       onPressed: () => _openAsset(order),
-                      child: const Text('Open stock'),
+                      child: Text(l10n.liveHistoryOpenStock),
                     ),
                 ],
               ),

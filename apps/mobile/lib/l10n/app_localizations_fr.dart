@@ -2302,7 +2302,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveOrderErrorInsufficientHoldings =>
-      'Tu n’as pas assez de ce jeton pour vendre.';
+      'Tu n’as pas assez de ce token pour vendre.';
 
   @override
   String get liveOrderErrorTradeLimit =>
@@ -2310,7 +2310,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveOrderErrorAppUpdate =>
-      'Mets à jour Trimmy pour lire les conditions de l’émetteur avant de négocier.';
+      'Mets à jour Trimmy pour lire les conditions de l’émetteur avant d’investir.';
 
   @override
   String get liveOrderErrorTermsRequired =>
@@ -2362,7 +2362,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveOrderErrorUnavailable =>
-      'Impossible de se connecter pour négocier. Réessaie.';
+      'Impossible de se connecter pour passer des ordres. Réessaie.';
 
   @override
   String get liveOrderErrorGeneric =>
@@ -2385,7 +2385,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String liveOrderMinimum(String amount) {
-    return 'Les ordres sur ce jeton commencent à $amount.';
+    return 'Les ordres sur ce token commencent à $amount.';
   }
 
   @override
@@ -2417,7 +2417,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible d’ouvrir la transaction. Réessaie.';
 
   @override
-  String get liveOrderTitleFallback => 'Négocier';
+  String get liveOrderTitleFallback => 'Opération';
 
   @override
   String get liveOrderAccountChangedTitle => 'Ton compte a changé';
@@ -2431,14 +2431,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveOrderConnectFailedTitle =>
-      'Impossible de se connecter pour négocier';
+      'Impossible de se connecter pour passer des ordres';
 
   @override
   String get liveOrderConnectedRetryBody =>
       'Réessaie une fois la connexion rétablie.';
 
   @override
-  String get liveOrderPausedTitle => 'Le trading est temporairement suspendu';
+  String get liveOrderPausedTitle =>
+      'Les opérations sont en pause pour le moment';
 
   @override
   String get liveOrderPausedBody =>
@@ -2446,10 +2447,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveOrderNotTradableTitle =>
-      'Ce jeton n’est pas encore négociable ici';
+      'Ce token n’est pas encore négociable ici';
 
   @override
-  String get liveOrderChooseAnother => 'Choisis une autre action à négocier.';
+  String get liveOrderChooseAnother => 'Choisis une autre action.';
 
   @override
   String get liveOrderBackToStocks => 'Retour aux actions';
@@ -2491,12 +2492,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String liveOrderLimitCappedMax(String amount) {
-    return 'Le maximum est plafonné à la limite par ordre de $amount.';
+    return 'Le maximum est ramené à $amount, la limite par ordre.';
   }
 
   @override
   String liveOrderLimitCappedPercent(String percent, String amount) {
-    return '$percent plafonné à la limite par ordre de $amount.';
+    return '$percent ramené à $amount, la limite par ordre.';
   }
 
   @override
@@ -2579,7 +2580,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveOrderViewTransaction => 'Voir la transaction ↗';
 
   @override
-  String get liveOrderGetFreshPrice => 'Nouveau prix';
+  String get liveOrderGetFreshPrice => 'Obtenir un nouveau prix';
 
   @override
   String liveOrderIssuerExcluded(String regions) {
@@ -2599,7 +2600,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveOrderIssuerTerms => 'Conditions de l’émetteur ↗';
 
   @override
-  String get liveHistoryStatusConfirming => 'En confirmation';
+  String get liveHistoryStatusConfirming => 'Confirmation en cours';
 
   @override
   String get liveHistoryStatusConfirmed => 'Confirmée';
@@ -2662,7 +2663,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Montants finaux de la transaction confirmée.';
 
   @override
-  String get liveHistoryQuotedOutput => 'Montant coté';
+  String get liveHistoryQuotedOutput => 'Montant de la cotation';
 
   @override
   String get liveHistoryMinimumOutput => 'Montant minimum';
@@ -2778,11 +2779,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveTradingReasonIdentity =>
-      'Trimmy n’a pas pu confirmer qui a émis ce jeton.';
+      'Trimmy n’a pas pu confirmer qui a émis ce token.';
 
   @override
   String get liveTradingReasonRestricted =>
-      'L’émetteur impose sur ce jeton des restrictions que Trimmy ne peut pas accepter.';
+      'L’émetteur impose sur ce token des restrictions que Trimmy ne peut pas accepter.';
 
   @override
   String get liveTradingReasonLowLiquidity =>
@@ -2798,7 +2799,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveTradingReasonHeldBack =>
-      'En pause pendant que Trimmy vérifie ce jeton.';
+      'En pause pendant que Trimmy vérifie ce token.';
 
   @override
   String get liveTradingReasonNotChecked => 'Pas encore vérifié.';
@@ -2814,7 +2815,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveTradingReasonAwaitingReview =>
-      'Son marché est ouvert. Trimmy le vérifie avant que tu puisses le négocier.';
+      'Son marché est ouvert. Trimmy le vérifie avant de te le proposer.';
 
   @override
   String get liveTradingReasonNoMarketMaker =>
