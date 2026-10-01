@@ -276,6 +276,41 @@ void main() {
     },
   );
 
+  testWidgets(
+    'the note limit shows near the end, and swipe-back waits only for unsaved work',
+    (tester) async {
+      final data = fixture(step: 2);
+      final c = controller((_) => response(data))
+        ..journey = WorkJourney.fromJson(data);
+      addTearDown(c.dispose);
+      await tester.pumpWidget(
+        app(
+          WorkdayScreen(
+            controller: c,
+            assignmentId: 'morning-brief',
+            onCompleted: () async {},
+          ),
+        ),
+      );
+      await tester.pump();
+      bool canPop() => tester
+          .widgetList<PopScope<Object?>>(
+            find.byWidgetPredicate((widget) => widget is PopScope),
+          )
+          .any((scope) => scope.canPop);
+      expect(canPop(), isTrue, reason: 'nothing unsaved: iOS swipe-back works');
+      final note = find.byType(TextField).last;
+      await tester.enterText(note, 'Short note');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('workday-note-count')), findsNothing);
+      expect(canPop(), isFalse, reason: 'an unsaved note saves first, or asks');
+      await tester.enterText(note, 'a' * 250);
+      await tester.pump();
+      expect(find.text('250 / 280'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   test('a conflicting draft refreshes before an explicit retry', () async {
     final revisions = <int>[];
     var reads = 0;

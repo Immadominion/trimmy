@@ -218,6 +218,7 @@ class _FastBuySheetState extends State<FastBuySheet> {
                 controller: _query,
                 textInputAction: TextInputAction.search,
                 autocorrect: false,
+                enableSuggestions: false,
                 onChanged: _search,
                 onSubmitted: _search,
                 decoration: InputDecoration(

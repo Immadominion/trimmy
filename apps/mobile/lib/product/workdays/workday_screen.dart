@@ -203,7 +203,11 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
         : _selected.length ==
               (work.step == 0 ? work.evidence['count'] : work.file['count']);
     return PopScope(
-      canPop: _canLeave,
+      // iOS swipe-back works when nothing is unsaved; an unsaved note still
+      // saves first, or asks.
+      canPop:
+          _canLeave ||
+          (!_busy && !(_work.step == 2 && _note.text != _work.draft)),
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) unawaited(_leave());
       },
@@ -504,11 +508,29 @@ class _WorkdayScreenState extends State<WorkdayScreen> {
                                 minLines: 2,
                                 maxLines: 4,
                                 maxLength: 280,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
                                 onChanged: _draftChanged,
+                                // The limit shows only as it comes near.
+                                buildCounter:
+                                    (
+                                      context, {
+                                      required currentLength,
+                                      required isFocused,
+                                      maxLength,
+                                    }) =>
+                                        maxLength != null &&
+                                            currentLength > maxLength - 40
+                                        ? Text(
+                                            '${formats.integer(currentLength)} / ${formats.integer(maxLength)}',
+                                            key: const ValueKey(
+                                              'workday-note-count',
+                                            ),
+                                          )
+                                        : null,
                                 decoration: InputDecoration(
                                   border: InputBorder.none,
                                   hintText: l10n.workdayNoteHint,
-                                  counterText: '',
                                 ),
                               ),
                             ),

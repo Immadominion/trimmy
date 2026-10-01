@@ -531,6 +531,9 @@ class _CrossmintOnrampFormState extends State<CrossmintOnrampForm>
           enabled: !_busy && _walletToken == null && _challenge == null,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
+          autocorrect: false,
+          enableSuggestions: false,
+          textCapitalization: TextCapitalization.none,
           decoration: InputDecoration(
             labelText: l10n.onrampReceiptEmail,
             filled: true,

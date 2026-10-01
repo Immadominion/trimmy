@@ -457,7 +457,8 @@ class _ProductSignInScreenState extends State<ProductSignInScreen> {
                     onChanged: codeStep
                         ? (value) {
                             if (!waiting &&
-                                normalizePracticeEmailCode(value)?.length == 6) {
+                                normalizePracticeEmailCode(value)?.length ==
+                                    6) {
                               unawaited(_verifyCode());
                             }
                           }
