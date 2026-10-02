@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
@@ -78,6 +80,37 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
 
   double get _maximum => (_balance ?? 1).clamp(1, 10000).toDouble();
   bool get _ready => widget.repository != null && _balance != null;
+
+  bool _asking = false;
+
+  /// The × and Back. Before the first order they ask first: one stray tap
+  /// must not end the guided first trade. After it they just continue.
+  Future<void> _close() async {
+    if (_leaving || _asking) return;
+    if (_receipt != null) return _leave();
+    _asking = true;
+    final skip = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.firstTradeSkipConfirmTitle),
+        content: Text(dialogContext.l10n.firstTradeSkipConfirmBody),
+        actions: [
+          TextButton(
+            key: const ValueKey('first-trade-keep-going'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(dialogContext.l10n.firstTradeSkipConfirmStay),
+          ),
+          TextButton(
+            key: const ValueKey('first-trade-skip-confirm'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(dialogContext.l10n.firstTradeSkip),
+          ),
+        ],
+      ),
+    );
+    _asking = false;
+    if (skip == true && mounted) await _leave();
+  }
 
   Future<void> _leave() async {
     if (_leaving) return;
@@ -225,7 +258,7 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
     return PopScope<void>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _leave();
+        if (!didPop) unawaited(_close());
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -254,7 +287,7 @@ class _FirstPaperTradePageState extends State<FirstPaperTradePage> {
                         child: ReviewIconButton(
                           icon: Icons.close_rounded,
                           label: l10n.firstTradeSkip,
-                          onPressed: _leave,
+                          onPressed: () => unawaited(_close()),
                         ),
                       ),
                     ),

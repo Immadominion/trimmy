@@ -7779,6 +7779,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clock out'**
   String get deskStoryClockOut;
+
+  /// Question shown when the player taps the close button (or Back) on the guided first practice trade, before skipping the whole introduction.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip your first trade?'**
+  String get firstTradeSkipConfirmTitle;
+
+  /// Explains what skipping does. Nothing is bought.
+  ///
+  /// In en, this message translates to:
+  /// **'You’ll go straight to your desk without your first practice trade.'**
+  String get firstTradeSkipConfirmBody;
+
+  /// Button that closes the question and stays on the first trade.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep going'**
+  String get firstTradeSkipConfirmStay;
 }
 
 class _AppLocalizationsDelegate

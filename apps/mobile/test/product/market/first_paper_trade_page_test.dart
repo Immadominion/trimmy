@@ -59,7 +59,23 @@ void main() {
         },
       ),
     );
+    // The × asks first; Keep going and Back stay on the first trade.
     await tester.tap(find.byTooltip('Skip first trade'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skip your first trade?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('first-trade-keep-going')));
+    await tester.pumpAndSettle();
+    expect(find.text('Skip your first trade?'), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Skip your first trade?'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Skip your first trade?'), findsNothing);
+    expect(exits, 0);
+    await tester.tap(find.byTooltip('Skip first trade'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('first-trade-skip-confirm')));
     await tester.pumpAndSettle();
     expect(exits, 1);
     expect(repository.intents, isEmpty);

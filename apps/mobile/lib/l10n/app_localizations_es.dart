@@ -4845,4 +4845,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deskStoryClockOut => 'Marcar salida';
+
+  @override
+  String get firstTradeSkipConfirmTitle => '¿Saltar tu primera operación?';
+
+  @override
+  String get firstTradeSkipConfirmBody =>
+      'Irás directo a tu escritorio, sin tu primera operación de práctica.';
+
+  @override
+  String get firstTradeSkipConfirmStay => 'Seguir';
 }

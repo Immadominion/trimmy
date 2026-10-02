@@ -6373,5 +6373,17 @@
   "deskStoryClockOut": "Clock out",
   "@deskStoryClockOut": {
     "description": "Button that saves the chosen option and ends the story, like clocking out of work."
+  },
+  "firstTradeSkipConfirmTitle": "Skip your first trade?",
+  "@firstTradeSkipConfirmTitle": {
+    "description": "Question shown when the player taps the close button (or Back) on the guided first practice trade, before skipping the whole introduction."
+  },
+  "firstTradeSkipConfirmBody": "You’ll go straight to your desk without your first practice trade.",
+  "@firstTradeSkipConfirmBody": {
+    "description": "Explains what skipping does. Nothing is bought."
+  },
+  "firstTradeSkipConfirmStay": "Keep going",
+  "@firstTradeSkipConfirmStay": {
+    "description": "Button that closes the question and stays on the first trade."
   }
 }

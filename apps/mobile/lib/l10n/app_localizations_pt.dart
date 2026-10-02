@@ -4834,4 +4834,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get deskStoryClockOut => 'Registrar saída';
+
+  @override
+  String get firstTradeSkipConfirmTitle => 'Pular sua primeira operação?';
+
+  @override
+  String get firstTradeSkipConfirmBody =>
+      'Você vai direto para sua mesa, sem sua primeira operação de treino.';
+
+  @override
+  String get firstTradeSkipConfirmStay => 'Continuar';
 }

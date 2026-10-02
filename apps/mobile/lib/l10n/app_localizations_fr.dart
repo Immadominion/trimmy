@@ -4805,7 +4805,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deskStorySeeYou => 'À demain.';
 
   @override
-  String get deskStoryQuestion => 'Que décides-tu ?';
+  String get deskStoryQuestion => 'Que décides-tu ?';
 
   @override
   String deskStoryReward(String trims) {
@@ -4814,7 +4814,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String deskStoryYouChose(String choice) {
-    return 'Ton choix : $choice';
+    return 'Ton choix : $choice';
   }
 
   @override
@@ -4835,4 +4835,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deskStoryClockOut => 'Pointer la sortie';
+
+  @override
+  String get firstTradeSkipConfirmTitle => 'Passer ta première opération ?';
+
+  @override
+  String get firstTradeSkipConfirmBody =>
+      'Tu iras directement à ton bureau, sans ta première opération d’entraînement.';
+
+  @override
+  String get firstTradeSkipConfirmStay => 'Continuer';
 }

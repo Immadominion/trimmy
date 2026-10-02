@@ -1277,5 +1277,8 @@
   "deskStoryAlreadySaved": "O dia de hoje já estava salvo.",
   "deskStoryClockOutFailed": "Não foi possível registrar a saída. Tente de novo.",
   "deskStoryBackToDesk": "Voltar para minha mesa",
-  "deskStoryClockOut": "Registrar saída"
+  "deskStoryClockOut": "Registrar saída",
+  "firstTradeSkipConfirmTitle": "Pular sua primeira operação?",
+  "firstTradeSkipConfirmBody": "Você vai direto para sua mesa, sem sua primeira operação de treino.",
+  "firstTradeSkipConfirmStay": "Continuar"
 }

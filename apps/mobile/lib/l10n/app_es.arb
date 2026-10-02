@@ -1277,5 +1277,8 @@
   "deskStoryAlreadySaved": "El día de hoy ya estaba guardado.",
   "deskStoryClockOutFailed": "No se pudo marcar la salida. Inténtalo de nuevo.",
   "deskStoryBackToDesk": "Volver a mi escritorio",
-  "deskStoryClockOut": "Marcar salida"
+  "deskStoryClockOut": "Marcar salida",
+  "firstTradeSkipConfirmTitle": "¿Saltar tu primera operación?",
+  "firstTradeSkipConfirmBody": "Irás directo a tu escritorio, sin tu primera operación de práctica.",
+  "firstTradeSkipConfirmStay": "Seguir"
 }

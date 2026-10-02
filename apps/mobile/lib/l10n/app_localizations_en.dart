@@ -4702,4 +4702,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deskStoryClockOut => 'Clock out';
+
+  @override
+  String get firstTradeSkipConfirmTitle => 'Skip your first trade?';
+
+  @override
+  String get firstTradeSkipConfirmBody =>
+      'You’ll go straight to your desk without your first practice trade.';
+
+  @override
+  String get firstTradeSkipConfirmStay => 'Keep going';
 }

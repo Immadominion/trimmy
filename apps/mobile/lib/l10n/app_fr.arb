@@ -1269,13 +1269,16 @@
   "deskStoryHeader": "Histoire du bureau · fictive",
   "deskStoryHeaderSaved": "Journée enregistrée",
   "deskStorySeeYou": "À demain.",
-  "deskStoryQuestion": "Que décides-tu ?",
+  "deskStoryQuestion": "Que décides-tu ?",
   "deskStoryReward": "+{trims} Trims · Journée enregistrée",
-  "deskStoryYouChose": "Ton choix : {choice}",
+  "deskStoryYouChose": "Ton choix : {choice}",
   "deskStoryThinkAgain": "Y réfléchir encore",
   "deskStoryNewDay": "Une nouvelle journée t’attend.",
   "deskStoryAlreadySaved": "La journée était déjà enregistrée.",
   "deskStoryClockOutFailed": "Impossible de pointer la sortie. Réessaie.",
   "deskStoryBackToDesk": "Retour à mon bureau",
-  "deskStoryClockOut": "Pointer la sortie"
+  "deskStoryClockOut": "Pointer la sortie",
+  "firstTradeSkipConfirmTitle": "Passer ta première opération ?",
+  "firstTradeSkipConfirmBody": "Tu iras directement à ton bureau, sans ta première opération d’entraînement.",
+  "firstTradeSkipConfirmStay": "Continuer"
 }
