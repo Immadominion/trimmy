@@ -17,6 +17,13 @@ export const CHECKS = {
     ['npm', ['run', 'test:mobile-sync']],
     ['npm', ['run', 'test:migration-db']],
     ['npm', ['run', 'test:deployment']],
+    // Every other PostgreSQL suite runs too: suites left out of this list
+    // went stale unnoticed (red-day dates, reason sharing's schema).
+    ['bash', ['infra/tests/run-daily-desk-postgres.sh']],
+    ['bash', ['infra/tests/run-community-postgres.sh']],
+    ['npm', ['run', 'test:career-red-day-db']],
+    ['npm', ['run', 'test:paper-reset-db']],
+    ['npm', ['run', 'test:career-reason-sharing-db']],
   ],
   mobile: [
     ['dart', ['format', '--output=none', '--set-exit-if-changed', 'lib', 'test'], 'apps/mobile'],
