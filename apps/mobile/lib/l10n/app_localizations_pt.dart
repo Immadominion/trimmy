@@ -304,7 +304,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get appTradingCouldNotConnect =>
-      'Não foi possível conectar para operar.';
+      'Não foi possível conectar para negociar.';
 
   @override
   String get appTradingChecking => 'Verificando operações…';
@@ -314,7 +314,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get appTradingNotTradeable =>
-      'Ainda não é possível operar com dinheiro real.';
+      'Ainda não é possível negociar com dinheiro real.';
 
   @override
   String get appVersionIssuerUnavailable => 'Emissor indisponível';
@@ -859,7 +859,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingNotificationsAsk =>
-      'Eu te aviso quando Wall Street abrir e fechar. Aqui você pode operar a qualquer hora.';
+      'Eu te aviso quando Wall Street abrir e fechar. Aqui você pode negociar a qualquer hora.';
 
   @override
   String get onboardingNotificationsSoon => 'Os alertas estão quase prontos.';
@@ -1548,7 +1548,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stockVersionsTitle => 'Versões';
 
   @override
-  String get stockVersionNotTradeable => 'Indisponível para operar.';
+  String get stockVersionNotTradeable => 'Indisponível para negociação.';
 
   @override
   String get reasonWriteTitle => 'Escreva seu motivo';
@@ -1947,7 +1947,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível abrir esta ação. Tente de novo.';
 
   @override
-  String get fastBuyConnectFailed => 'Não foi possível conectar para operar.';
+  String get fastBuyConnectFailed => 'Não foi possível conectar para negociar.';
 
   @override
   String get fastBuyNoneAvailable =>
@@ -2310,7 +2310,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveOrderErrorAppUpdate =>
-      'Atualize o Trimmy para ver os termos do emissor antes de operar.';
+      'Atualize o Trimmy para ver os termos do emissor antes de negociar.';
 
   @override
   String get liveOrderErrorTermsRequired =>
@@ -2362,7 +2362,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveOrderErrorUnavailable =>
-      'Não foi possível conectar para operar. Tente de novo.';
+      'Não foi possível conectar para negociar. Tente de novo.';
 
   @override
   String get liveOrderErrorGeneric =>
@@ -2431,7 +2431,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveOrderConnectFailedTitle =>
-      'Não foi possível conectar para operar';
+      'Não foi possível conectar para negociar';
 
   @override
   String get liveOrderConnectedRetryBody =>
@@ -2449,7 +2449,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Este token ainda não pode ser negociado aqui';
 
   @override
-  String get liveOrderChooseAnother => 'Escolha outra ação para operar.';
+  String get liveOrderChooseAnother => 'Escolha outra ação para negociar.';
 
   @override
   String get liveOrderBackToStocks => 'Voltar às ações';
@@ -2779,7 +2779,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveTradingReasonNotYet =>
-      'Ainda não está disponível para operar no Trimmy.';
+      'Ainda não está disponível para negociação no Trimmy.';
 
   @override
   String get liveTradingReasonIdentity =>
@@ -2819,7 +2819,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveTradingReasonAwaitingReview =>
-      'O mercado está aberto. O Trimmy está verificando antes de você poder operar.';
+      'O mercado está aberto. O Trimmy está verificando antes de você poder negociar.';
 
   @override
   String get liveTradingReasonNoMarketMaker =>
@@ -2827,7 +2827,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveTradingReasonUnavailable =>
-      'Não está disponível para operar no Trimmy.';
+      'Não está disponível para negociação no Trimmy.';
 
   @override
   String get liveTradingOtherIssuer => 'Outro emissor';
@@ -2968,7 +2968,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guestDeskExpiredMessage =>
-      'Seus registros de convidado estão guardados. Esta mesa não pode mais operar nem ser salva em uma conta.';
+      'Seus registros de convidado estão guardados. Esta mesa não pode mais negociar nem ser salva em uma conta.';
 
   @override
   String get guestDeskEndedMessage =>
@@ -3003,7 +3003,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guestDeskPreservedExpiredDetail =>
-      'Sua mesa de convidado expirada fica guardada à parte. Ela não pode mais operar nem ser mesclada.';
+      'Sua mesa de convidado expirada fica guardada à parte. Ela não pode mais negociar nem ser mesclada.';
 
   @override
   String get guestDeskPreservedDetail =>

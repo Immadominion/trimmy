@@ -94,7 +94,7 @@ const messages: Translation<typeof en> = {
   'shell.guestRecovery.label': 'Recuperação da mesa de convidado',
   'shell.guestRecovery.expiredTitle': 'Sua sessão de convidado expirou',
   'shell.guestRecovery.endedTitle': 'Sua sessão de convidado terminou',
-  'shell.guestRecovery.expiredBody': 'Seus registros de convidado estão preservados. Esta mesa não pode mais operar nem ser salva em uma conta.',
+  'shell.guestRecovery.expiredBody': 'Seus registros de convidado estão preservados. Esta mesa não pode mais negociar nem ser salva em uma conta.',
   'shell.guestRecovery.endedBody': 'Seus registros de convidado estão preservados, mas este navegador não consegue mais abrir a mesa.',
   'shell.guestRecovery.signInNote': 'Entre para abrir sua conta salva. Sua mesa de convidado continua intacta.',
   'shell.guestRecovery.signInUnavailable': 'Não é possível entrar agora.',

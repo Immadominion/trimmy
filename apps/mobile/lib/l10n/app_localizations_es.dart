@@ -678,7 +678,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Tu operación está a salvo. Intenta continuar de nuevo.';
 
   @override
-  String get amountPickerErrorEmpty => 'Escribe un monto.';
+  String get amountPickerErrorEmpty => 'Ingresa un monto.';
 
   @override
   String get amountPickerErrorDecimals => 'Usa como máximo 2 decimales.';
@@ -3032,7 +3032,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String onrampErrorAmount(String min, String max) {
-    return 'Escribe un monto de $min a $max.';
+    return 'Ingresa un monto de $min a $max.';
   }
 
   @override
@@ -3047,7 +3047,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get onrampErrorStep => 'Este paso no se completó. Inténtalo de nuevo.';
 
   @override
-  String get onrampErrorEmail => 'Escribe un correo para tu comprobante.';
+  String get onrampErrorEmail => 'Ingresa un correo para tu comprobante.';
 
   @override
   String get onrampErrorRefresh =>
@@ -3178,7 +3178,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get signInErrorEmailInvalid =>
-      'Escribe un correo electrónico completo.';
+      'Ingresa un correo electrónico completo.';
 
   @override
   String get signInErrorSendCode =>
@@ -3186,7 +3186,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get signInErrorCodeMissing =>
-      'Escribe el código que te enviamos por correo.';
+      'Ingresa el código que te enviamos por correo.';
 
   @override
   String get signInCloseTooltip => 'Cerrar inicio de sesión';
@@ -4536,7 +4536,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get sendErrorReviewExpired =>
-      'Esta revisión venció. Revísalo de nuevo.';
+      'Esta revisión venció. Vuelve a revisar el envío.';
 
   @override
   String get sendErrorPrevious =>

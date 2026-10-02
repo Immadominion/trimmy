@@ -99,7 +99,7 @@ const messages: Translation<typeof en> = {
   'market.stock.paperQuote': 'Sua ordem de treino recebe sua própria cotação atual.',
   'market.stock.selectedToken': 'Token selecionado: {mint}',
   'market.stock.realBadge': 'Dinheiro real',
-  'market.stock.realUnavailableTitle': 'Ainda não é possível operar com dinheiro real.',
+  'market.stock.realUnavailableTitle': 'Ainda não é possível negociar com dinheiro real.',
   'market.stock.realUnavailableBody': 'Nenhum dos tokens desta empresa pode ser negociado no Trimmy agora.',
   'market.stock.practiceInPaper': 'Testar no modo Treino',
   'market.stock.noTokenTitle': 'Treine uma jogada.',

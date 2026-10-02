@@ -861,7 +861,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingNotificationsAsk =>
-      'Je te préviens à l’ouverture et à la fermeture de Wall Street. Ici, tu peux investir à toute heure.';
+      'Je te préviens à l’ouverture et à la fermeture de Wall Street. Ici, tu peux passer des ordres à toute heure.';
 
   @override
   String get onboardingNotificationsSoon => 'Les alertes sont presque prêtes.';
@@ -2310,7 +2310,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveOrderErrorAppUpdate =>
-      'Mets à jour Trimmy pour lire les conditions de l’émetteur avant d’investir.';
+      'Mets à jour Trimmy pour lire les conditions de l’émetteur avant de passer des ordres.';
 
   @override
   String get liveOrderErrorTermsRequired =>
@@ -4523,7 +4523,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sendErrorCheckFailed =>
-      'Cet envoi n’a pas passé la vérification. Rien n’a été envoyé.';
+      'Cet envoi n’a pas réussi la vérification. Rien n’a été envoyé.';
 
   @override
   String get sendErrorReviewExpired =>
@@ -4618,7 +4618,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sendMaxKeepsSol(String amount) {
-    return 'Max garde $amount SOL pour que tu puisses encore payer les frais de réseau.';
+    return 'Le maximum garde $amount SOL pour que tu puisses encore payer les frais de réseau.';
   }
 
   @override
