@@ -73,6 +73,8 @@ test('Skip from the note reaches the account choice, which survives reload until
   const h = await harness();
   try {
     await h.app(); await h.click('Start my first day'); await h.click('Skip first day');
+    const confirm = h.dom.window.document.querySelector<HTMLButtonElement>('.workday-leave-dialog .text-button'); assert.ok(confirm, 'the × asks first');
+    await act(async () => {confirm.click();}); await h.flush();
     assert.deepEqual(h.api.state.launches, ['introduction-skipped']);
     assert.match(h.text(), /Your desk awaits\./);
     await h.reload(); assert.match(h.text(), /Your desk awaits\./);

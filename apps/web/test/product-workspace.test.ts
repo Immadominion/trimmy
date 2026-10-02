@@ -177,6 +177,12 @@ async function harness(options: {storage?: MemoryStorage; reply?: Reply; hash?: 
   return {dom, f, root, storage, session, practice, market, calls, flush, render, app, stock, text, button, click, close, journeyStore, choice, pick, markCommitted};
 }
 
+/** The × asks first; this answers it with Skip first day. */
+async function confirmSkip(h: Awaited<ReturnType<typeof harness>>) {
+  const skip = h.dom.window.document.querySelector<HTMLButtonElement>('.workday-leave-dialog .text-button');
+  assert.ok(skip, 'the skip question is open'); await act(async () => {skip.click();}); await h.flush();
+}
+
 async function firstDayPractice(h: Awaited<ReturnType<typeof harness>>) {
   await h.app(); await h.click('Start my first day'); await h.click('Continue');
   assert.ok(h.button('Choose Apple'), 'the real starter company choices are shown');
@@ -275,7 +281,8 @@ test('Skip waits for its saved app checkpoint, asks for the account choice, then
   const h = await harness({profileMissing: true, reply: call => call.path === '/v1/product/launch' ? pending.promise : undefined});
   try {
     await h.app(); await h.click('Start my first day');
-    const skip = h.button('Skip first day'); assert.ok(skip);
+    await h.click('Skip first day');
+    const skip = h.dom.window.document.querySelector<HTMLButtonElement>('.workday-leave-dialog .text-button'); assert.ok(skip);
     await act(async () => {skip.click(); skip.click();}); await h.flush();
     assert.match(h.text(), /Welcome to the floor\./);
     assert.equal(h.dom.window.document.querySelector('.balance-card'), null);
@@ -408,11 +415,26 @@ test('a failed receipt Continue keeps the confirmed order and replays the exact 
   } finally {await h.close();}
 });
 
-test('practice Back exits the entire introduction without sending an order', async () => {
+test('Back steps back one screen; only a confirmed × skips the first day, without an order', async () => {
   const h = await harness({profileMissing: true});
+  const back = async () => {await act(async () => {h.dom.window.dispatchEvent(new h.dom.window.PopStateEvent('popstate'));}); await h.flush();};
+  const launches = () => h.calls.filter(call => call.path === '/v1/product/launch').length;
   try {
     await firstDayPractice(h); await h.click('Choose Apple'); await h.click('50');
-    await act(async () => {h.dom.window.dispatchEvent(new h.dom.window.PopStateEvent('popstate'));}); await h.flush();
+    await back();
+    assert.ok(h.button('Continue'), 'Back from practice returns to the note');
+    assert.equal(h.button('Choose Apple'), undefined); assert.equal(launches(), 0);
+    await h.click('Continue'); assert.ok(h.button('Choose Apple'), 'and forward again');
+    // The × asks; Keep going, Escape and Back all stay in the first day.
+    await h.click('Skip first day'); assert.match(h.text(), /Skip your first day\?/);
+    await h.click('Keep going'); assert.doesNotMatch(h.text(), /Skip your first day\?/);
+    await h.click('Skip first day');
+    await act(async () => {h.dom.window.dispatchEvent(new h.dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));}); await h.flush();
+    assert.doesNotMatch(h.text(), /Skip your first day\?/); assert.ok(h.button('Choose Apple'), 'Escape closes only the question');
+    await h.click('Skip first day'); await back();
+    assert.doesNotMatch(h.text(), /Skip your first day\?/); assert.ok(h.button('Choose Apple'), 'Back closes only the question');
+    assert.equal(launches(), 0);
+    await h.click('Skip first day'); await confirmSkip(h);
     assert.match(h.text(), /Your desk awaits\./, 'Skip reaches the explicit account choice');
     await h.click('Continue as guest');
     assert.match(h.text(), /Your desk\./);
@@ -429,7 +451,7 @@ test('an interrupted Skip keeps the note and reload replays the same exit before
     return undefined;
   }});
   try {
-    await h.app(); await h.click('Start my first day'); await h.click('Skip first day');
+    await h.app(); await h.click('Start my first day'); await h.click('Skip first day'); await confirmSkip(h);
     assert.match(h.text(), /Welcome to the floor\./); assert.equal(h.dom.window.document.querySelector('.balance-card'), null);
     const first = h.calls.find(call => call.path === '/v1/product/launch')!.body;
     await h.render(createElement('div', null, 'Reloading')); await h.app();

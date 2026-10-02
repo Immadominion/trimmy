@@ -79,6 +79,8 @@ test('a new install records each first-day step once, and a skip with its step',
     await h.click('Start my first day'); await h.flush(40);
     await h.click('Skip the first day').catch(async () => {
       const skip = h.dom.window.document.querySelector<HTMLButtonElement>('.intro-close'); assert.ok(skip, 'the skip button'); skip.click(); await h.flush(40);
+      // The × asks first.
+      const confirm = h.dom.window.document.querySelector<HTMLButtonElement>('.workday-leave-dialog .text-button'); assert.ok(confirm, 'the skip question'); confirm.click(); await h.flush(40);
     });
     await usage.flush();
     const steps = sent.filter(event => event.name === 'onboarding_step').map(event => event.props['step']);

@@ -14,6 +14,9 @@ export default {
   'firstDay.screen.label': 'Your first day',
   /** The × button (accessible name). */
   'firstDay.skip': 'Skip first day',
+  'firstDay.skipConfirm.title': 'Skip your first day?',
+  'firstDay.skipConfirm.body': 'You’ll go straight to your desk without your first practice trade.',
+  'firstDay.skipConfirm.stay': 'Keep going',
 
   // Welcome.
   'firstDay.welcome.eyebrow': 'Sal’s saved you a seat.',

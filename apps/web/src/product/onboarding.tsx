@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useId, useRef, useState} from 'react';
 import type {ProductMarketClient, StockDiscoveryAsset} from './market-client';
 import type {CareerSummary, PaperPortfolio, PaperPreview, PaperReceipt, ProductProfile} from './practice-client';
 import type {PracticeSession} from './practice-session';
@@ -7,6 +7,7 @@ import {FirstOrderCelebration} from './first-day-followup';
 import {useT} from '../i18n/react';
 import * as fmt from '../i18n/format';
 import {onboardingStep, useUsage} from './usage';
+import {useModalFocus} from './use-modal-focus';
 
 type Phase = 'welcome' | 'note' | 'practice' | 'review' | 'receipt';
 /** A null symbol shows the "Stock token" fallback, written at render time in the page's language. */
@@ -57,6 +58,8 @@ export function FirstDay(props: FirstDayProps) {
   const [ready, setReady] = useState(false), [reload, setReload] = useState(0);
   const [error, setError] = useState<unknown>(null), [marketError, setMarketError] = useState<unknown>(null);
   const [notice, setNotice] = useState(false), [clock, setClock] = useState(Date.now);
+  // The × asks before skipping: one stray tap must not end the first day.
+  const [confirmSkip, setConfirmSkip] = useState(false);
   const tr = useT();
   const locked = useRef(false), mounted = useRef(true), initialCheck = useRef(false);
   const callbacks = useRef(props); callbacks.current = props;
@@ -106,11 +109,21 @@ export function FirstDay(props: FirstDayProps) {
   function edit() {if (locked.current) return; setPreview(null); go('practice', false);}
   backAction.current = () => {
     if (locked.current) return;
-    if (phase === 'review') edit();
+    // Back closes the skip question first; it never skips by itself.
+    if (confirmSkip) setConfirmSkip(false);
+    else if (phase === 'review') edit();
     else if (phase === 'welcome') callbacks.current.onExplore();
+    // Back steps back one screen, as on mobile. Only the × skips the first day.
+    else if (phase === 'practice') go('note', false);
+    else if (phase === 'note') go('welcome', false);
     // The celebration owns Back: it continues, as on mobile. It never skips.
-    else if (phase !== 'receipt') void exit(false);
   };
+  function skip() {
+    setConfirmSkip(false);
+    const step = onboardingStep({journey: null, intro: phase, home: false});
+    if (step) usage.track({name: 'onboarding_skip', props: {step}});
+    void exit(false);
+  }
   function completedProfile(profile: ProductProfile | null): boolean {
     return profile?.launchCheckpoint === 'app' || profile?.hasConfirmedPaperTrade === true;
   }
@@ -169,8 +182,9 @@ export function FirstDay(props: FirstDayProps) {
     name={selected?.name ?? null} logoUrl={tokenArt(receipt.symbol)}
     career={career} loading={false} onRetry={() => {}} onContinue={() => callbacks.current.onReceiptContinue(receipt.id)}/>;
   return <section className={`first-day first-day-${phase}`} data-motion={props.motion} aria-label={tr('firstDay.screen.label')}>
-    {phase !== 'welcome' && <button className="intro-close" aria-label={tr('firstDay.skip')} disabled={busy}
-      onClick={() => {const step = onboardingStep({journey: null, intro: phase, home: false}); if (step) usage.track({name: 'onboarding_skip', props: {step}}); void exit(false);}}>×</button>}
+    {phase !== 'welcome' && <button className="intro-close" aria-label={tr('firstDay.skip')} aria-haspopup="dialog" disabled={busy}
+      onClick={() => setConfirmSkip(true)}>×</button>}
+    {confirmSkip && <SkipConfirm busy={busy} onStay={() => setConfirmSkip(false)} onSkip={skip}/>}
     {phase === 'welcome' && <div className="intro-welcome"><div className="intro-art"><SalArt motion={props.motion}/></div><div className="intro-copy">
       <p className="intro-eyebrow">{tr('firstDay.welcome.eyebrow')}</p><h1 ref={heading} tabIndex={-1}>{tr('firstDay.welcome.title')}</h1>
       <p>{tr.rich('firstDay.welcome.lede')}</p><div className="intro-actions"><button className="primary" onClick={() => go('note')}>{tr('firstDay.welcome.start')}</button>
@@ -217,4 +231,18 @@ export function MobileAppPrompt() {
   return <aside className="intro-mobile-prompt"><div><strong>{tr('firstDay.mobile.title')}</strong><p>{tr('firstDay.mobile.body')}</p></div>
     <div>{url ? <><a className="secondary" href={url} target="_blank" rel="noopener noreferrer">{tr('firstDay.mobile.download')}</a><small>{tr('firstDay.mobile.apk')}</small></> : <small>{tr('firstDay.mobile.soon')}</small>}
     <a className="text-button" href="https://x.com/trimmyhq" target="_blank" rel="noopener noreferrer">{tr('firstDay.mobile.updates')}</a></div></aside>;
+}
+
+/** Asks before the × ends the first day. Focus stays inside; Escape keeps going. */
+function SkipConfirm({busy, onStay, onSkip}: {busy: boolean; onStay: () => void; onSkip: () => void}) {
+  const tr = useT(), title = useId();
+  const panel = useRef<HTMLDivElement>(null), stay = useRef<HTMLButtonElement>(null);
+  useModalFocus(panel);
+  useEffect(() => {stay.current?.focus();}, []);
+  return <div className="workday-dialog-backdrop"><div ref={panel} className="workday-leave-dialog" role="alertdialog" aria-modal="true" aria-labelledby={title}
+    onKeyDown={event => {if (event.key === 'Escape') {event.preventDefault(); event.stopPropagation(); onStay();}}}>
+    <h2 id={title}>{tr('firstDay.skipConfirm.title')}</h2><p>{tr('firstDay.skipConfirm.body')}</p>
+    <div><button className="primary" ref={stay} disabled={busy} onClick={onStay}>{tr('firstDay.skipConfirm.stay')}</button>
+      <button className="text-button" disabled={busy} onClick={onSkip}>{tr('firstDay.skip')}</button></div>
+  </div></div>;
 }

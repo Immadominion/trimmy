@@ -6,6 +6,9 @@ const messages: Translation<typeof en> = {
 
   'firstDay.screen.label': 'Seu primeiro dia',
   'firstDay.skip': 'Pular o primeiro dia',
+  'firstDay.skipConfirm.title': 'Pular seu primeiro dia?',
+  'firstDay.skipConfirm.body': 'Você vai direto para sua mesa, sem sua primeira operação de treino.',
+  'firstDay.skipConfirm.stay': 'Continuar',
 
   'firstDay.welcome.eyebrow': 'O Sal guardou um lugar para você.',
   'firstDay.welcome.title': 'Seu primeiro dia começa aqui.',
