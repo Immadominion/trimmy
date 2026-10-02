@@ -6295,5 +6295,83 @@
   "infoPrivacyUsageBody": "Trimmy counts which screens open and which steps finish. Each count carries a random install number (tied to your desk, so a return visit counts once), the app version, the language and the time. It never records names, email addresses, amounts or anything you write. Counts are kept for up to 400 days. Turn off Share usage data in Settings to stop counting and forget anything not yet sent.",
   "@infoPrivacyUsageBody": {
     "description": "Privacy page text: what usage counting records, what it never records, how long it is kept, and how to turn it off. \"Share usage data\" is the Settings switch (settingsUsage); use the same words."
+  },
+  "deskStoryCardLabel": "No workday today. A short story instead.",
+  "@deskStoryCardLabel": {
+    "description": "Small label on the Career card offered on weekends and market holidays, when no workday opens. Explains why a story is offered instead."
+  },
+  "deskStoryStepInside": "Step inside",
+  "@deskStoryStepInside": {
+    "description": "Link on the weekend story card that opens the story."
+  },
+  "deskStoryLoadFailed": "Today’s story couldn’t load.",
+  "@deskStoryLoadFailed": {
+    "description": "Shown on the weekend story card when the story could not be read."
+  },
+  "deskStoryRefresh": "Refresh today’s story",
+  "@deskStoryRefresh": {
+    "description": "Button under the story card when a refresh failed."
+  },
+  "deskStoryLeave": "Leave desk story",
+  "@deskStoryLeave": {
+    "description": "Tooltip on the close button of the story screen."
+  },
+  "deskStoryHeader": "Desk story · fictional",
+  "@deskStoryHeader": {
+    "description": "Small header on the story screen. The story is made up, not real market news."
+  },
+  "deskStoryHeaderSaved": "Day saved",
+  "@deskStoryHeaderSaved": {
+    "description": "Small header on the story screen once the choice is saved."
+  },
+  "deskStorySeeYou": "See you tomorrow.",
+  "@deskStorySeeYou": {
+    "description": "Heading after the story is finished."
+  },
+  "deskStoryQuestion": "What’s your call?",
+  "@deskStoryQuestion": {
+    "description": "Heading above the three choices in the story."
+  },
+  "deskStoryReward": "+{trims} Trims · Day recorded",
+  "@deskStoryReward": {
+    "description": "After finishing the story: the points earned. Trims is the game's points, kept as a name.",
+    "placeholders": {
+      "trims": {
+        "type": "String"
+      }
+    }
+  },
+  "deskStoryYouChose": "You chose: {choice}",
+  "@deskStoryYouChose": {
+    "description": "Above the outcome of the chosen option. {choice} is the option's text.",
+    "placeholders": {
+      "choice": {
+        "type": "String"
+      }
+    }
+  },
+  "deskStoryThinkAgain": "Think it over",
+  "@deskStoryThinkAgain": {
+    "description": "Button to go back and pick another choice before saving."
+  },
+  "deskStoryNewDay": "A new day is ready.",
+  "@deskStoryNewDay": {
+    "description": "The date changed while the story was open; a new story was loaded."
+  },
+  "deskStoryAlreadySaved": "Today was already saved.",
+  "@deskStoryAlreadySaved": {
+    "description": "The story for today was already finished, for example on another device."
+  },
+  "deskStoryClockOutFailed": "Couldn’t clock out. Try again.",
+  "@deskStoryClockOutFailed": {
+    "description": "Saving the choice failed."
+  },
+  "deskStoryBackToDesk": "Back to my desk",
+  "@deskStoryBackToDesk": {
+    "description": "Button that closes the finished story."
+  },
+  "deskStoryClockOut": "Clock out",
+  "@deskStoryClockOut": {
+    "description": "Button that saves the chosen option and ends the story, like clocking out of work."
   }
 }

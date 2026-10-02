@@ -1,27 +1,36 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../l10n/l10n.dart';
 import '../design/product_theme.dart';
 import '../design/product_success_mark.dart';
 import '../../ui_review/review_animated_splash.dart';
 import 'daily_desk.dart';
 
+/// The Career card for a day with no workday (a weekend or market holiday):
+/// a short desk story instead. It hides once today's story is done.
 class DailyDeskEntry extends StatelessWidget {
   const DailyDeskEntry({
     super.key,
     required this.controller,
     required this.onOpen,
+    this.spacing = 24,
   });
   final DailyDeskController controller;
   final VoidCallback onOpen;
+
+  /// Space above the card.
+  final double spacing;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: controller,
     builder: (context, _) {
       final shift = controller.shift;
       if (shift?.complete == true) return const SizedBox.shrink();
+      final l10n = context.l10n;
       if (shift == null) {
         return Container(
-          margin: const EdgeInsets.only(top: 24),
+          key: const ValueKey('desk-story-unavailable'),
+          margin: EdgeInsets.only(top: spacing),
           padding: const EdgeInsets.all(20),
           decoration: ShapeDecoration(
             color: const Color(0xFFF7F5FB),
@@ -31,12 +40,10 @@ class DailyDeskEntry extends StatelessWidget {
               ? const Center(child: TrimmyLiquidMark(size: 38))
               : Row(
                   children: [
-                    const Expanded(
-                      child: Text('Today’s desk is taking a moment.'),
-                    ),
+                    Expanded(child: Text(l10n.deskStoryLoadFailed)),
                     TextButton(
                       onPressed: controller.refresh,
-                      child: const Text('Retry'),
+                      child: Text(l10n.commonTryAgain),
                     ),
                   ],
                 ),
@@ -45,12 +52,13 @@ class DailyDeskEntry extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 24),
+          SizedBox(height: spacing),
           Material(
             color: const Color(0xFFF2EDF9),
             shape: productSquircle(28),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
+              key: const ValueKey('desk-story-open'),
               onTap: onOpen,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
@@ -61,7 +69,7 @@ class DailyDeskEntry extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Today at your desk',
+                            l10n.deskStoryCardLabel,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: const Color(0xFF6A55A6)),
                           ),
@@ -75,7 +83,7 @@ class DailyDeskEntry extends StatelessWidget {
                             children: [
                               Flexible(
                                 child: Text(
-                                  'Step inside',
+                                  l10n.deskStoryStepInside,
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(
                                         color: const Color(0xFF6850B0),
@@ -93,26 +101,29 @@ class DailyDeskEntry extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    ExcludeSemantics(
-                      child: _DeskFloat(
-                        child: Image.asset(
-                          shift.portrait,
-                          width: 80,
-                          height: 96,
-                          fit: BoxFit.contain,
+                    // Large text needs the width more than the portrait.
+                    if (MediaQuery.textScalerOf(context).scale(1) <= 1.3) ...[
+                      const SizedBox(width: 8),
+                      ExcludeSemantics(
+                        child: _DeskFloat(
+                          child: Image.asset(
+                            shift.portrait,
+                            width: 80,
+                            height: 96,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
             ),
           ),
-          if (controller.error != null)
+          if (controller.failed)
             TextButton(
               onPressed: controller.refresh,
-              child: const Text('Refresh today’s story'),
+              child: Text(l10n.deskStoryRefresh),
             ),
         ],
       );
@@ -120,325 +131,6 @@ class DailyDeskEntry extends StatelessWidget {
   );
 }
 
-/// The week is the main Career surface. Progress details live in the header sheet.
-class DailyDeskJourney extends StatelessWidget {
-  const DailyDeskJourney({
-    super.key,
-    required this.controller,
-    required this.onOpen,
-  });
-  final DailyDeskController controller;
-  final VoidCallback onOpen;
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final shift = controller.shift;
-      if (shift == null) {
-        return Center(
-          child: controller.loading
-              ? const TrimmyLiquidMark(size: 62)
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Your week couldn’t load.'),
-                    TextButton(
-                      onPressed: controller.refresh,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-        );
-      }
-      final today = DateTime.parse('${shift.date}T12:00:00Z');
-      final monday = today.subtract(Duration(days: today.weekday - 1));
-      final sunday = monday.add(const Duration(days: 6));
-      final range = monday.month == sunday.month
-          ? '${monday.day}–${sunday.day} ${_months[sunday.month - 1]}'
-          : '${monday.day} ${_months[monday.month - 1]} – ${sunday.day} ${_months[sunday.month - 1]}';
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-            child: Text(range, style: Theme.of(context).textTheme.bodySmall),
-          ),
-          if (controller.error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  const Expanded(child: Text('Showing your saved week.')),
-                  TextButton(
-                    onPressed: controller.refresh,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-                final height = (630.0 * scale.clamp(1.0, 2.0)).clamp(
-                  constraints.maxHeight,
-                  double.infinity,
-                );
-                return SingleChildScrollView(
-                  key: const PageStorageKey('career-working-week'),
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: SizedBox(
-                    height: height.toDouble(),
-                    child: LayoutBuilder(
-                      builder: (context, box) {
-                        final points = [
-                          for (var i = 0; i < 7; i++)
-                            Offset(i.isEven ? .22 : .78, (i + .5) / 7),
-                        ];
-                        return Stack(
-                          key: const ValueKey('daily-week-map'),
-                          children: [
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: _WorkingWeekPath(points),
-                              ),
-                            ),
-                            for (var i = 0; i < 7; i++)
-                              _day(
-                                context,
-                                box,
-                                points[i],
-                                monday.add(Duration(days: i)),
-                                shift,
-                                i,
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 10, 22, 16),
-            child: FilledButton(
-              key: const ValueKey('career-current-day'),
-              onPressed: onOpen,
-              style: FilledButton.styleFrom(
-                backgroundColor: ProductColor.violet,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 17,
-                ),
-                shape: productSquircle(24),
-              ),
-              child: Text(
-                shift.complete ? 'Review today' : 'Open today’s desk',
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-
-  Widget _day(
-    BuildContext context,
-    BoxConstraints box,
-    Offset p,
-    DateTime day,
-    DailyShift shift,
-    int index,
-  ) {
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-    final date = day.toIso8601String().substring(0, 10);
-    final active = date == shift.date,
-        done = shift.history.contains(date),
-        left = index.isEven;
-    final center = Offset(p.dx * box.maxWidth, p.dy * box.maxHeight);
-    final labelWidth = box.maxWidth * .51;
-    final labelX = left ? center.dx + 47 : center.dx - 47 - labelWidth;
-    return Positioned(
-      left: 0,
-      right: 0,
-      top: center.dy - box.maxHeight / 14,
-      height: box.maxHeight / 7,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: center.dx - 34,
-            top: box.maxHeight / 14 - 32,
-            child: Semantics(
-              label:
-                  '${weekdays[index]} ${day.day}, ${done
-                      ? 'completed'
-                      : active
-                      ? 'today'
-                      : day.isBefore(DateTime.parse(shift.date))
-                      ? 'not played'
-                      : 'upcoming'}',
-              button: active,
-              child: ExcludeSemantics(
-                child: GestureDetector(
-                  onTap: active ? onOpen : null,
-                  child: _DeskFloat(
-                    enabled: active && !done,
-                    child: Container(
-                      width: 68,
-                      height: 64,
-                      padding: const EdgeInsets.fromLTRB(3, 2, 3, 7),
-                      decoration: ShapeDecoration(
-                        color: done
-                            ? const Color(0xFF8ECBA7)
-                            : active
-                            ? const Color(0xFF9478D8)
-                            : const Color(0xFFE7E2EF),
-                        shape: productSquircle(23),
-                      ),
-                      child: Container(
-                        decoration: ShapeDecoration(
-                          color: done
-                              ? const Color(0xFFE4F4E9)
-                              : active
-                              ? const Color(0xFFE2D7FC)
-                              : const Color(0xFFFAF9FC),
-                          shape: productSquircle(20),
-                        ),
-                        child: done
-                            ? const ProductSuccessMark(size: 38)
-                            : active
-                            ? Padding(
-                                padding: const EdgeInsets.all(3),
-                                child: Image.asset(
-                                  shift.portrait,
-                                  fit: BoxFit.contain,
-                                ),
-                              )
-                            : Center(
-                                child: Text(
-                                  '${day.day}',
-                                  textScaler: TextScaler.noScaling,
-                                  style: const TextStyle(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFFAAA0B9),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: labelX,
-            width: labelWidth,
-            top: 0,
-            bottom: 0,
-            child: Align(
-              alignment: left ? Alignment.centerLeft : Alignment.centerRight,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: left
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    active ? 'Today' : weekdays[index],
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: active ? ProductColor.violet : ProductColor.muted,
-                    ),
-                  ),
-                  if (active) ...[
-                    const SizedBox(height: 5),
-                    Text(
-                      shift.title,
-                      textAlign: left ? TextAlign.left : TextAlign.right,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ] else if (done)
-                    Text(
-                      'Filed',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: ProductColor.gain),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WorkingWeekPath extends CustomPainter {
-  const _WorkingWeekPath(this.points);
-  final List<Offset> points;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = points
-        .map((p) => Offset(p.dx * size.width, p.dy * size.height))
-        .toList();
-    final path = Path()..moveTo(p.first.dx, p.first.dy);
-    for (var i = 1; i < p.length; i++) {
-      final middle = (p[i - 1].dy + p[i].dy) / 2;
-      path.cubicTo(p[i - 1].dx, middle, p[i].dx, middle, p[i].dx, p[i].dy);
-    }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFF6F2FC)
-        ..strokeWidth = 23
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFEDE5F8)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_WorkingWeekPath old) => false;
-}
-
-/// Gentle breathing motion runs only while visible and respects reduced motion.
 class _DeskFloat extends StatefulWidget {
   const _DeskFloat({required this.child, this.enabled = true});
   final Widget child;
@@ -509,7 +201,9 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
   late DailyShift _shift = widget.controller.shift!;
   late DeskChoice? _choice = _shift.result;
   bool _saving = false;
-  String? _error;
+
+  /// Why the last save did not go as planned. The text is built when shown.
+  _StoryNotice? _error;
   Future<void> _clockOut() async {
     if (_saving || _choice == null) return;
     setState(() {
@@ -524,7 +218,7 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
         setState(() {
           _shift = next;
           _choice = next.result;
-          _error = 'A new day is ready.';
+          _error = _StoryNotice.newDay;
         });
       } else {
         setState(() => _shift = next);
@@ -537,18 +231,25 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
             _shift = widget.controller.shift!;
             _choice = _shift.result;
             _error = e.code == 'DAY_CHANGED'
-                ? 'A new day is ready.'
-                : 'Today was already saved.';
+                ? _StoryNotice.newDay
+                : _StoryNotice.alreadySaved;
           });
         }
       } else {
-        if (mounted) setState(() => _error = 'Couldn’t clock out. Try again.');
+        if (mounted) setState(() => _error = _StoryNotice.failed);
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Couldn’t clock out. Try again.');
+      if (mounted) setState(() => _error = _StoryNotice.failed);
     }
     if (mounted) setState(() => _saving = false);
   }
+
+  String _notice(AppLocalizations l10n, _StoryNotice notice) =>
+      switch (notice) {
+        _StoryNotice.newDay => l10n.deskStoryNewDay,
+        _StoryNotice.alreadySaved => l10n.deskStoryAlreadySaved,
+        _StoryNotice.failed => l10n.deskStoryClockOutFailed,
+      };
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -561,14 +262,16 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Leave desk story',
+                  tooltip: context.l10n.deskStoryLeave,
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close_rounded),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _shift.complete ? 'Day saved' : 'Desk story · fictional',
+                    _shift.complete
+                        ? context.l10n.deskStoryHeaderSaved
+                        : context.l10n.deskStoryHeader,
                     textAlign: TextAlign.right,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -620,7 +323,9 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _shift.complete ? 'See you tomorrow.' : _shift.title,
+                    _shift.complete
+                        ? context.l10n.deskStorySeeYou
+                        : _shift.title,
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 14),
@@ -633,7 +338,7 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
                     ),
                     const SizedBox(height: 26),
                     Text(
-                      'What’s your call?',
+                      context.l10n.deskStoryQuestion,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
@@ -677,14 +382,16 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
                   ] else ...[
                     if (_shift.complete) ...[
                       Text(
-                        '+10 Trims · Day recorded',
+                        context.l10n.deskStoryReward(
+                          context.formats.integer(10),
+                        ),
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(color: ProductColor.gain),
                       ),
                       const SizedBox(height: 18),
                     ],
                     Text(
-                      'You chose: ${_choice!.label}',
+                      context.l10n.deskStoryYouChose(_choice!.label),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 16),
@@ -713,7 +420,7 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
                         onPressed: _saving
                             ? null
                             : () => setState(() => _choice = null),
-                        child: const Text('Think it over'),
+                        child: Text(context.l10n.deskStoryThinkAgain),
                       ),
                   ],
                   if (_error != null)
@@ -722,7 +429,7 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
                       child: Semantics(
                         liveRegion: true,
                         child: Text(
-                          _error!,
+                          _notice(context.l10n, _error!),
                           style: const TextStyle(color: ProductColor.loss),
                         ),
                       ),
@@ -753,10 +460,10 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
                       : _clockOut,
                   child: Text(
                     _saving
-                        ? 'Saving…'
+                        ? context.l10n.commonSaving
                         : _shift.complete
-                        ? 'Back to my desk'
-                        : 'Clock out',
+                        ? context.l10n.deskStoryBackToDesk
+                        : context.l10n.deskStoryClockOut,
                   ),
                 ),
               ),
@@ -766,3 +473,5 @@ class _DailyDeskScreenState extends State<DailyDeskScreen> {
     ),
   );
 }
+
+enum _StoryNotice { newDay, alreadySaved, failed }

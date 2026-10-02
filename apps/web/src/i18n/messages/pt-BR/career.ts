@@ -212,6 +212,7 @@ const messages: Translation<typeof en> = {
   // The daily desk story and the desk week.
   'career.daily.loading': 'Abrindo a mesa de hoje…',
   'career.daily.loadFailed': 'Não foi possível carregar a mesa de hoje.',
+  'career.daily.noWorkday': 'Hoje não tem expediente. Em vez disso, uma história curta.',
   'career.daily.today': 'Hoje na sua mesa',
   'career.daily.checkClockOut': 'Confira sua saída',
   'career.daily.reviewToday': 'Revisar o dia',

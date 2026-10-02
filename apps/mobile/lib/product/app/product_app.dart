@@ -7,6 +7,8 @@ import '../money/real_holdings.dart';
 import '../money/live_trade_history.dart';
 import '../onboarding/first_stock_followup.dart';
 import '../notifications/notification_permission.dart';
+import '../daily_desk/daily_desk.dart';
+import '../daily_desk/daily_desk_widgets.dart';
 import '../workdays/workdays.dart';
 import '../workdays/workday_screen.dart';
 import '../workdays/career_world.dart';
@@ -206,6 +208,11 @@ class _ProductExperienceState extends State<ProductExperience>
     with WidgetsBindingObserver {
   CommunityRepository? _community;
   WorkdayController? _dailyDesk;
+
+  /// The short desk story offered on days with no workday (weekends and
+  /// market holidays). Created only on those days.
+  DailyDeskController? _deskStory;
+  bool _deskStoryOpening = false;
   int _communityEpoch = 0;
   static const guestChoiceKey = 'trimmy.entry.guest-chosen.v1';
   late bool _guestAccessApproved =
@@ -639,11 +646,16 @@ class _ProductExperienceState extends State<ProductExperience>
     final workdayLanguage = _workdayLanguageFor(
       Localizations.maybeLocaleOf(context),
     );
-    final desk = _dailyDesk;
+    final desk = _dailyDesk, story = _deskStory;
     if (_workdayLanguageSeen &&
         workdayLanguage != _workdayLanguage &&
         desk != null) {
       scheduleMicrotask(desk.refresh);
+    }
+    if (_workdayLanguageSeen &&
+        workdayLanguage != _workdayLanguage &&
+        story != null) {
+      scheduleMicrotask(story.refresh);
     }
     // Trade alerts are written by the server in the language last registered.
     if (_workdayLanguageSeen && workdayLanguage != _workdayLanguage) {
@@ -756,6 +768,8 @@ class _ProductExperienceState extends State<ProductExperience>
     _httpProductProfile?.close();
     _dailyDesk?.dispose();
     _dailyDesk = null;
+    _deskStory?.dispose();
+    _deskStory = null;
     _community?.close();
     _community = null;
     _httpReasonSharing?.close();
@@ -1452,6 +1466,8 @@ class _ProductExperienceState extends State<ProductExperience>
     _httpProductProfile?.close();
     _dailyDesk?.dispose();
     _dailyDesk = null;
+    _deskStory?.dispose();
+    _deskStory = null;
     _community?.close();
     _community = null;
     _httpReasonSharing?.close();
@@ -1513,6 +1529,8 @@ class _ProductExperienceState extends State<ProductExperience>
     _httpProductProfile?.close();
     _dailyDesk?.dispose();
     _dailyDesk = null;
+    _deskStory?.dispose();
+    _deskStory = null;
     _community?.close();
     _community = null;
     _httpReasonSharing?.close();
@@ -1778,7 +1796,57 @@ class _ProductExperienceState extends State<ProductExperience>
     );
     _dailyDesk = controller;
     controller.addListener(_syncReminder);
+    controller.addListener(_syncDeskStory);
     scheduleMicrotask(controller.refresh);
+  }
+
+  /// A day with no workday offers the short desk story instead; any other
+  /// day lets it go.
+  void _syncDeskStory() {
+    final closed = _dailyDesk?.journey?.scheduleState == 'closed';
+    if (!closed) {
+      final story = _deskStory;
+      if (story == null) return;
+      _deskStory = null;
+      story.dispose();
+      if (mounted) setState(() {});
+      return;
+    }
+    final account = widget.account;
+    final api = PracticeAccountConfig.fromEnvironment().apiUri;
+    if (_deskStory != null || account == null || api == null) return;
+    final story = DailyDeskController(
+      DailyDeskRepository(
+        api,
+        account.paperAuthorization,
+        language: () => _workdayLanguage,
+      ),
+    );
+    _deskStory = story;
+    scheduleMicrotask(story.refresh);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openDeskStory() async {
+    final story = _deskStory;
+    if (story?.shift == null || _deskStoryOpening) return;
+    _deskStoryOpening = true;
+    final generation = _portfolioGeneration;
+    try {
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => DailyDeskScreen(
+            controller: story!,
+            onCompleted: () async {
+              if (!mounted || generation != _portfolioGeneration) return;
+              await _career.refresh();
+            },
+          ),
+        ),
+      );
+    } finally {
+      _deskStoryOpening = false;
+    }
   }
 
   Future<void> _openDailyDesk(String assignmentId) async {
@@ -1939,6 +2007,13 @@ class _ProductExperienceState extends State<ProductExperience>
         dailyDesk: _dailyDesk == null
             ? null
             : CareerWorld(controller: _dailyDesk!, onOpen: _openDailyDesk),
+        banner: _deskStory == null
+            ? null
+            : DailyDeskEntry(
+                controller: _deskStory!,
+                onOpen: _openDeskStory,
+                spacing: 0,
+              ),
         personaId: profile.persona?.id,
         principalKey: _career.principalKey,
         activityWeekLoader: _career.activityWeek,

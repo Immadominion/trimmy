@@ -19,6 +19,7 @@ class FloorScreen extends StatefulWidget {
     this.career,
     this.personaId,
     this.dailyDesk,
+    this.banner,
     this.activityWeekLoader,
     this.principalKey,
     this.careerLoading = false,
@@ -38,6 +39,9 @@ class FloorScreen extends StatefulWidget {
   final VoidCallback onSignIn, onOpenMarket;
   final CareerSummary? career;
   final Widget? dailyDesk;
+
+  /// Shown above the street, such as the weekend desk story.
+  final Widget? banner;
   final String? personaId, principalKey;
   final Future<CareerActivityWeek?> Function()? activityWeekLoader;
   final bool careerLoading;
@@ -207,7 +211,34 @@ class _FloorScreenState extends State<FloorScreen> {
                     ),
                   ),
                 ),
-                Expanded(child: widget.dailyDesk!),
+                Expanded(
+                  child: widget.banner == null
+                      ? widget.dailyDesk!
+                      : LayoutBuilder(
+                          // The banner never takes more than 40% of the
+                          // height: with large text it scrolls inside that,
+                          // and the street keeps the rest.
+                          builder: (context, constraints) => Column(
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: constraints.maxHeight * .4,
+                                ),
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    22,
+                                    0,
+                                    22,
+                                    12,
+                                  ),
+                                  child: widget.banner,
+                                ),
+                              ),
+                              Expanded(child: widget.dailyDesk!),
+                            ],
+                          ),
+                        ),
+                ),
               ],
             ),
     ),

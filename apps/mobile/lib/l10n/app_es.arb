@@ -1260,5 +1260,22 @@
   "settingsUsage": "Compartir datos de uso",
   "settingsUsageDetail": "Conteos de qué pantallas se abren y qué pasos se completan, para mejorar Trimmy. Sin nombres, montos ni mensajes.",
   "infoPrivacyUsageTitle": "Conteos de uso",
-  "infoPrivacyUsageBody": "Trimmy cuenta qué pantallas se abren y qué pasos se completan. Cada conteo lleva un número de instalación aleatorio (vinculado a tu escritorio, para que cada regreso cuente una sola vez), la versión de la app, el idioma y la hora. Nunca registra nombres, correos electrónicos, montos ni nada de lo que escribes. Los conteos se guardan hasta 400 días. Desactiva Compartir datos de uso en Configuración para dejar de contar y borrar lo que aún no se envió."
+  "infoPrivacyUsageBody": "Trimmy cuenta qué pantallas se abren y qué pasos se completan. Cada conteo lleva un número de instalación aleatorio (vinculado a tu escritorio, para que cada regreso cuente una sola vez), la versión de la app, el idioma y la hora. Nunca registra nombres, correos electrónicos, montos ni nada de lo que escribes. Los conteos se guardan hasta 400 días. Desactiva Compartir datos de uso en Configuración para dejar de contar y borrar lo que aún no se envió.",
+  "deskStoryCardLabel": "Hoy no hay jornada. En su lugar, una historia corta.",
+  "deskStoryStepInside": "Entrar",
+  "deskStoryLoadFailed": "No se pudo cargar la historia de hoy.",
+  "deskStoryRefresh": "Actualizar la historia de hoy",
+  "deskStoryLeave": "Salir de la historia",
+  "deskStoryHeader": "Historia de escritorio · ficticia",
+  "deskStoryHeaderSaved": "Día guardado",
+  "deskStorySeeYou": "Hasta mañana.",
+  "deskStoryQuestion": "¿Qué decides?",
+  "deskStoryReward": "+{trims} Trims · Día registrado",
+  "deskStoryYouChose": "Elegiste: {choice}",
+  "deskStoryThinkAgain": "Pensarlo de nuevo",
+  "deskStoryNewDay": "Hay un día nuevo listo.",
+  "deskStoryAlreadySaved": "El día de hoy ya estaba guardado.",
+  "deskStoryClockOutFailed": "No se pudo marcar la salida. Inténtalo de nuevo.",
+  "deskStoryBackToDesk": "Volver a mi escritorio",
+  "deskStoryClockOut": "Marcar salida"
 }

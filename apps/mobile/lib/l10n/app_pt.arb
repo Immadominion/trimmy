@@ -1260,5 +1260,22 @@
   "settingsUsage": "Compartilhar dados de uso",
   "settingsUsageDetail": "Contagens de quais telas abrem e quais etapas são concluídas, para melhorar o Trimmy. Sem nomes, valores nem mensagens.",
   "infoPrivacyUsageTitle": "Contagens de uso",
-  "infoPrivacyUsageBody": "O Trimmy conta quais telas abrem e quais etapas são concluídas. Cada contagem leva um número de instalação aleatório (vinculado à sua mesa, para que cada retorno conte uma só vez), a versão do app, o idioma e o horário. Nunca registra nomes, e-mails, valores nem nada do que você escreve. As contagens ficam guardadas por até 400 dias. Desative Compartilhar dados de uso em Configurações para parar a contagem e apagar o que ainda não foi enviado."
+  "infoPrivacyUsageBody": "O Trimmy conta quais telas abrem e quais etapas são concluídas. Cada contagem leva um número de instalação aleatório (vinculado à sua mesa, para que cada retorno conte uma só vez), a versão do app, o idioma e o horário. Nunca registra nomes, e-mails, valores nem nada do que você escreve. As contagens ficam guardadas por até 400 dias. Desative Compartilhar dados de uso em Configurações para parar a contagem e apagar o que ainda não foi enviado.",
+  "deskStoryCardLabel": "Hoje não tem expediente. Em vez disso, uma história curta.",
+  "deskStoryStepInside": "Entrar",
+  "deskStoryLoadFailed": "Não foi possível carregar a história de hoje.",
+  "deskStoryRefresh": "Atualizar a história de hoje",
+  "deskStoryLeave": "Sair da história",
+  "deskStoryHeader": "História da mesa · fictícia",
+  "deskStoryHeaderSaved": "Dia salvo",
+  "deskStorySeeYou": "Até amanhã.",
+  "deskStoryQuestion": "Qual é a sua decisão?",
+  "deskStoryReward": "+{trims} Trims · Dia registrado",
+  "deskStoryYouChose": "Você escolheu: {choice}",
+  "deskStoryThinkAgain": "Pensar de novo",
+  "deskStoryNewDay": "Um novo dia está pronto.",
+  "deskStoryAlreadySaved": "O dia de hoje já estava salvo.",
+  "deskStoryClockOutFailed": "Não foi possível registrar a saída. Tente de novo.",
+  "deskStoryBackToDesk": "Voltar para minha mesa",
+  "deskStoryClockOut": "Registrar saída"
 }

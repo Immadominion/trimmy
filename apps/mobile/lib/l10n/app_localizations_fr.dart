@@ -4777,4 +4777,61 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get infoPrivacyUsageBody =>
       'Trimmy compte les écrans ouverts et les étapes terminées. Chaque comptage porte un numéro d’installation aléatoire (lié à ton bureau, pour qu’un retour ne compte qu’une fois), la version de l’app, la langue et l’heure. Il n’enregistre jamais de nom, d’adresse e-mail, de montant ni rien de ce que tu écris. Ces statistiques sont conservées jusqu’à 400 jours. Désactive Partager les données d’utilisation dans les Réglages pour arrêter le comptage et effacer ce qui n’a pas encore été envoyé.';
+
+  @override
+  String get deskStoryCardLabel =>
+      'Pas de journée de travail aujourd’hui. Une courte histoire à la place.';
+
+  @override
+  String get deskStoryStepInside => 'Entrer';
+
+  @override
+  String get deskStoryLoadFailed => 'Impossible de charger l’histoire du jour.';
+
+  @override
+  String get deskStoryRefresh => 'Actualiser l’histoire du jour';
+
+  @override
+  String get deskStoryLeave => 'Quitter l’histoire';
+
+  @override
+  String get deskStoryHeader => 'Histoire du bureau · fictive';
+
+  @override
+  String get deskStoryHeaderSaved => 'Journée enregistrée';
+
+  @override
+  String get deskStorySeeYou => 'À demain.';
+
+  @override
+  String get deskStoryQuestion => 'Que décides-tu ?';
+
+  @override
+  String deskStoryReward(String trims) {
+    return '+$trims Trims · Journée enregistrée';
+  }
+
+  @override
+  String deskStoryYouChose(String choice) {
+    return 'Ton choix : $choice';
+  }
+
+  @override
+  String get deskStoryThinkAgain => 'Y réfléchir encore';
+
+  @override
+  String get deskStoryNewDay => 'Une nouvelle journée t’attend.';
+
+  @override
+  String get deskStoryAlreadySaved => 'La journée était déjà enregistrée.';
+
+  @override
+  String get deskStoryClockOutFailed =>
+      'Impossible de pointer la sortie. Réessaie.';
+
+  @override
+  String get deskStoryBackToDesk => 'Retour à mon bureau';
+
+  @override
+  String get deskStoryClockOut => 'Pointer la sortie';
 }

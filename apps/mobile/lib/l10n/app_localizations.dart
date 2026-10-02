@@ -7677,6 +7677,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trimmy counts which screens open and which steps finish. Each count carries a random install number (tied to your desk, so a return visit counts once), the app version, the language and the time. It never records names, email addresses, amounts or anything you write. Counts are kept for up to 400 days. Turn off Share usage data in Settings to stop counting and forget anything not yet sent.'**
   String get infoPrivacyUsageBody;
+
+  /// Small label on the Career card offered on weekends and market holidays, when no workday opens. Explains why a story is offered instead.
+  ///
+  /// In en, this message translates to:
+  /// **'No workday today. A short story instead.'**
+  String get deskStoryCardLabel;
+
+  /// Link on the weekend story card that opens the story.
+  ///
+  /// In en, this message translates to:
+  /// **'Step inside'**
+  String get deskStoryStepInside;
+
+  /// Shown on the weekend story card when the story could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Today’s story couldn’t load.'**
+  String get deskStoryLoadFailed;
+
+  /// Button under the story card when a refresh failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh today’s story'**
+  String get deskStoryRefresh;
+
+  /// Tooltip on the close button of the story screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave desk story'**
+  String get deskStoryLeave;
+
+  /// Small header on the story screen. The story is made up, not real market news.
+  ///
+  /// In en, this message translates to:
+  /// **'Desk story · fictional'**
+  String get deskStoryHeader;
+
+  /// Small header on the story screen once the choice is saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Day saved'**
+  String get deskStoryHeaderSaved;
+
+  /// Heading after the story is finished.
+  ///
+  /// In en, this message translates to:
+  /// **'See you tomorrow.'**
+  String get deskStorySeeYou;
+
+  /// Heading above the three choices in the story.
+  ///
+  /// In en, this message translates to:
+  /// **'What’s your call?'**
+  String get deskStoryQuestion;
+
+  /// After finishing the story: the points earned. Trims is the game's points, kept as a name.
+  ///
+  /// In en, this message translates to:
+  /// **'+{trims} Trims · Day recorded'**
+  String deskStoryReward(String trims);
+
+  /// Above the outcome of the chosen option. {choice} is the option's text.
+  ///
+  /// In en, this message translates to:
+  /// **'You chose: {choice}'**
+  String deskStoryYouChose(String choice);
+
+  /// Button to go back and pick another choice before saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Think it over'**
+  String get deskStoryThinkAgain;
+
+  /// The date changed while the story was open; a new story was loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'A new day is ready.'**
+  String get deskStoryNewDay;
+
+  /// The story for today was already finished, for example on another device.
+  ///
+  /// In en, this message translates to:
+  /// **'Today was already saved.'**
+  String get deskStoryAlreadySaved;
+
+  /// Saving the choice failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t clock out. Try again.'**
+  String get deskStoryClockOutFailed;
+
+  /// Button that closes the finished story.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to my desk'**
+  String get deskStoryBackToDesk;
+
+  /// Button that saves the chosen option and ends the story, like clocking out of work.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock out'**
+  String get deskStoryClockOut;
 }
 
 class _AppLocalizationsDelegate

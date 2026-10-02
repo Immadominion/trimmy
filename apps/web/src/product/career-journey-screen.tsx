@@ -3,7 +3,8 @@ import type {CareerActivityWeek, CareerMissionBoard, CareerSummary, WorkdayAssig
 import type {WorkdaysState} from './use-workdays';
 import {CareerWorld} from './career-world';
 import {art, Loading} from './ui';
-import {storyWeek, storyPortrait, activityDate} from './progress-screens';
+import {DailyEntry, storyWeek, storyPortrait, activityDate} from './progress-screens';
+import type {ProgressState} from './use-progress';
 import {PromotionMoment, ReasonComposer, missionText, rankLabel, rankName} from './career-milestones';
 import type {CareerMilestones} from './career-milestones';
 import {scheduleNotice, streakLine} from './workday-schedule';
@@ -25,7 +26,7 @@ export function WorkdayEntry({workdays, onOpen}: {workdays: WorkdaysState; onOpe
   return <section className="daily-entry workday-entry"><div><p className="daily-label">{tr('career.dayWith', {day: current.ordinal, name: current.district})}</p><h2>{current.title}</h2><p className="workday-entry-brief">{current.brief}</p><button className="text-button" onClick={() => onOpen(current.id)}>{current.step > 0 ? tr('career.assignments.continue') : tr('career.assignments.start')}</button></div><img src={storyPortrait(current.speaker)} alt=""/></section>;
 }
 
-export function CareerJourneyScreen({workdays, career, missions, week, progressError, onRetry, onOpen, onMarket, motion, sound, onSound, milestones, top = 0}: {
+export function CareerJourneyScreen({workdays, career, missions, week, progressError, onRetry, onOpen, onMarket, motion, sound, onSound, milestones, top = 0, story = null}: {
   workdays: WorkdaysState; career: CareerSummary | null; missions: CareerMissionBoard | null; week: CareerActivityWeek | null;
   progressError: boolean; onRetry: () => void; onOpen: (id: string) => void; onMarket: () => void;
   motion: boolean; sound: boolean; onSound: () => void;
@@ -33,6 +34,8 @@ export function CareerJourneyScreen({workdays, career, missions, week, progressE
   milestones?: CareerMilestones;
   /** Counts taps on the open Career tab; the street goes back to today. */
   top?: number;
+  /** On a day with no workday: the short desk story offered instead. */
+  story?: {progress: ProgressState; onOpen: () => void} | null;
 }) {
   const tr = useT();
   const [showRank, setShowRank] = useState(false);
@@ -46,6 +49,7 @@ export function CareerJourneyScreen({workdays, career, missions, week, progressE
     <header className="page-intro"><h1>{tr('career.title')}</h1><div className="career-header-actions"><button className="career-sound" aria-label={sound ? tr('career.sound.mute') : tr('career.sound.enable')} aria-pressed={sound} onClick={onSound}><img src={art('icons/settings-sound.png')} alt=""/><span>{sound ? tr('career.sound.on') : tr('career.sound.off')}</span></button><button ref={rankButton} className="career-rank-link" onClick={() => setShowRank(true)} aria-haspopup="dialog"><img src={art('icons/nav-plumpy-career.png')} alt=""/>{career ? rankName(career.rank) : tr('career.progress.title')}</button></div></header>
     {workdays.pending && <div className="work-recovery" role="status"><span>{tr('career.assignments.pendingSave')}</span><button className="text-button" disabled={workdays.working} onClick={() => void workdays.recover()}>{workdays.working ? tr('common.checking') : tr('career.assignments.checkSaved')}</button></div>}
     {workdays.readError != null && workdays.journey && !workdays.pending && <div className="work-recovery" role="status"><span>{tr('career.assignments.refreshFailed')}</span><button className="text-button" onClick={() => void workdays.refresh()}>{tr('common.tryAgain')}</button></div>}
+    {story && <DailyEntry progress={story.progress} onOpen={story.onOpen} label={tr('career.daily.noWorkday')}/>}
     <div className="career-journey-layout"><CareerWorld assignments={workdays.journey?.assignments ?? null} upcoming={next} loading={workdays.loading} error={workdays.readError ? tr('career.assignments.loadFailed') : null} motion={motion} onOpen={onOpen} onRetry={() => void workdays.refresh()} top={top}/>
       <aside className="career-current" aria-label={tr('career.next.label')}>{current ? <><img className="career-current-art" src={art(`career-world/${current.art}.png`)} alt=""/><p className="daily-label">{tr('career.dayWith', {day: current.ordinal, name: current.district})}</p><h2>{current.title}</h2><p>{current.brief}</p><ol className="work-stage-list">{STAGES.map((label, index) => <li key={label} className={index < current.step ? 'done' : index === current.step ? 'active' : ''}><span aria-hidden="true">{index < current.step ? '✓' : index + 1}</span>{tr(label)}{index < current.step && <span className="sr-only">{tr('career.next.stageSaved')}</span>}</li>)}</ol><button className="primary" onClick={() => onOpen(current.id)}>{current.step > 0 ? tr('career.assignments.continue') : tr('career.assignments.start')}</button></> : notice && next ? <><img className="career-current-art" src={art(`career-world/${next.art}.png`)} alt=""/><p className="daily-label">{tr('career.dayWith', {day: next.ordinal, name: next.district})}</p><h2>{notice.title}</h2><p>{notice.body}</p></> : workdays.journey ? <><img className="career-current-art" src={art('career-world/trophy.png')} alt=""/><h2>{tr('career.next.allFiled')}</h2><p>{tr('career.next.allFiledBody', {count: workdays.journey.completedCount})}</p></> : <Loading>{tr('career.next.loading')}</Loading>}
       {workdays.journey && <p className="career-filed-count">{tr('career.next.filedCount', {done: workdays.journey.completedCount, total: workdays.journey.total ?? workdays.journey.assignments.length})}</p>}</aside>

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:trimmy/account/guest_session.dart';
+import 'package:trimmy/l10n/l10n.dart';
 import 'package:trimmy/product/daily_desk/daily_desk.dart';
 import 'package:trimmy/product/daily_desk/daily_desk_widgets.dart';
 import 'package:trimmy/product/design/product_theme.dart';
@@ -27,12 +28,14 @@ Map<String, dynamic> fixture({String? choice, String date = '2026-09-24'}) => {
   'trimsEarned': choice == null ? 0 : 10,
 };
 DailyDeskController makeController(
-  FutureOr<http.Response> Function(http.Request) callback,
-) => DailyDeskController(
+  FutureOr<http.Response> Function(http.Request) callback, {
+  String? Function()? language,
+}) => DailyDeskController(
   DailyDeskRepository(
     Uri.parse('https://api.trimmy.test'),
     () async => const GuestPaperAuthorization('tg1_test'),
     client: MockClient((r) async => await callback(r)),
+    language: language,
   ),
 );
 http.Response response(Map<String, dynamic> shift) => http.Response(
@@ -40,8 +43,11 @@ http.Response response(Map<String, dynamic> shift) => http.Response(
   200,
   headers: {'content-type': 'application/json'},
 );
-Widget app(Widget child, {double scale = 1}) => MaterialApp(
+Widget app(Widget child, {double scale = 1, Locale? locale}) => MaterialApp(
   theme: productTheme(),
+  locale: locale,
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
   home: MediaQuery(
     data: MediaQueryData(
       textScaler: TextScaler.linear(scale),
@@ -127,6 +133,78 @@ void main() {
       controller.dispose();
     },
   );
+  test('asks in the app language; an older API that refuses it gets English '
+      'and is not asked again', () async {
+    final asked = <String?>[];
+    final controller = makeController((r) {
+      asked.add(r.url.queryParameters['lang']);
+      if (r.url.queryParameters.containsKey('lang')) {
+        return http.Response('{"code":"INVALID_REQUEST"}', 400);
+      }
+      return response(fixture());
+    }, language: () => 'es');
+    await controller.refresh();
+    expect(controller.shift, isNotNull);
+    expect(controller.failed, isFalse);
+    await controller.complete(controller.shift!, 'compare');
+    expect(asked, ['es', null, null]);
+    controller.dispose();
+  });
+  test('a story in the app language is asked for by its code', () async {
+    final asked = <Uri>[];
+    final controller = makeController((r) {
+      asked.add(r.url);
+      return response(fixture());
+    }, language: () => 'fr');
+    await controller.refresh();
+    expect(asked.single.path, '/v1/career/daily-desk');
+    expect(asked.single.queryParameters, {'lang': 'fr'});
+    controller.dispose();
+  });
+  test('a failed read is a flag, worded where it shows', () async {
+    final controller = makeController((_) => http.Response('{}', 503));
+    await controller.refresh();
+    expect(controller.failed, isTrue);
+    expect(controller.shift, isNull);
+    controller.dispose();
+  });
+  testWidgets('the story and its card read in Spanish', (tester) async {
+    final controller = makeController((_) => response(fixture()));
+    await tester.runAsync(controller.refresh);
+    await tester.pumpWidget(
+      app(
+        Scaffold(
+          body: DailyDeskEntry(controller: controller, onOpen: () {}),
+        ),
+        locale: const Locale('es'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Hoy no hay jornada. En su lugar, una historia corta.'),
+      findsOneWidget,
+    );
+    expect(find.text('Entrar'), findsOneWidget);
+    await tester.pumpWidget(
+      app(
+        DailyDeskScreen(controller: controller, onCompleted: () async {}),
+        locale: const Locale('es'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Historia de escritorio · ficticia'), findsOneWidget);
+    expect(find.text('¿Qué decides?'), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('daily-choice-compare')),
+    );
+    await tester.tap(find.byKey(const ValueKey('daily-choice-compare')));
+    await tester.pumpAndSettle();
+    expect(find.text('Marcar salida'), findsOneWidget);
+    expect(find.text('Pensarlo de nuevo'), findsOneWidget);
+    expect(find.textContaining('Clock out'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
   test('closed principal never accepts a delayed response', () async {
     final held = Completer<http.Response>();
     final controller = makeController((r) => held.future);
@@ -295,7 +373,12 @@ void main() {
             signedIn: false,
             onSignIn: () {},
             onOpenMarket: () {},
-            dailyDesk: DailyDeskJourney(controller: controller, onOpen: () {}),
+            banner: DailyDeskEntry(
+              controller: controller,
+              onOpen: () {},
+              spacing: 0,
+            ),
+            dailyDesk: const SizedBox.expand(),
           ),
           scale: scale,
         ),

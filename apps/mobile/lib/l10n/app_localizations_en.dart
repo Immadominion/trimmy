@@ -4647,4 +4647,59 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get infoPrivacyUsageBody =>
       'Trimmy counts which screens open and which steps finish. Each count carries a random install number (tied to your desk, so a return visit counts once), the app version, the language and the time. It never records names, email addresses, amounts or anything you write. Counts are kept for up to 400 days. Turn off Share usage data in Settings to stop counting and forget anything not yet sent.';
+
+  @override
+  String get deskStoryCardLabel => 'No workday today. A short story instead.';
+
+  @override
+  String get deskStoryStepInside => 'Step inside';
+
+  @override
+  String get deskStoryLoadFailed => 'Today’s story couldn’t load.';
+
+  @override
+  String get deskStoryRefresh => 'Refresh today’s story';
+
+  @override
+  String get deskStoryLeave => 'Leave desk story';
+
+  @override
+  String get deskStoryHeader => 'Desk story · fictional';
+
+  @override
+  String get deskStoryHeaderSaved => 'Day saved';
+
+  @override
+  String get deskStorySeeYou => 'See you tomorrow.';
+
+  @override
+  String get deskStoryQuestion => 'What’s your call?';
+
+  @override
+  String deskStoryReward(String trims) {
+    return '+$trims Trims · Day recorded';
+  }
+
+  @override
+  String deskStoryYouChose(String choice) {
+    return 'You chose: $choice';
+  }
+
+  @override
+  String get deskStoryThinkAgain => 'Think it over';
+
+  @override
+  String get deskStoryNewDay => 'A new day is ready.';
+
+  @override
+  String get deskStoryAlreadySaved => 'Today was already saved.';
+
+  @override
+  String get deskStoryClockOutFailed => 'Couldn’t clock out. Try again.';
+
+  @override
+  String get deskStoryBackToDesk => 'Back to my desk';
+
+  @override
+  String get deskStoryClockOut => 'Clock out';
 }

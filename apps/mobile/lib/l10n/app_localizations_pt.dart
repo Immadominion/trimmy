@@ -4776,4 +4776,62 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get infoPrivacyUsageBody =>
       'O Trimmy conta quais telas abrem e quais etapas são concluídas. Cada contagem leva um número de instalação aleatório (vinculado à sua mesa, para que cada retorno conte uma só vez), a versão do app, o idioma e o horário. Nunca registra nomes, e-mails, valores nem nada do que você escreve. As contagens ficam guardadas por até 400 dias. Desative Compartilhar dados de uso em Configurações para parar a contagem e apagar o que ainda não foi enviado.';
+
+  @override
+  String get deskStoryCardLabel =>
+      'Hoje não tem expediente. Em vez disso, uma história curta.';
+
+  @override
+  String get deskStoryStepInside => 'Entrar';
+
+  @override
+  String get deskStoryLoadFailed =>
+      'Não foi possível carregar a história de hoje.';
+
+  @override
+  String get deskStoryRefresh => 'Atualizar a história de hoje';
+
+  @override
+  String get deskStoryLeave => 'Sair da história';
+
+  @override
+  String get deskStoryHeader => 'História da mesa · fictícia';
+
+  @override
+  String get deskStoryHeaderSaved => 'Dia salvo';
+
+  @override
+  String get deskStorySeeYou => 'Até amanhã.';
+
+  @override
+  String get deskStoryQuestion => 'Qual é a sua decisão?';
+
+  @override
+  String deskStoryReward(String trims) {
+    return '+$trims Trims · Dia registrado';
+  }
+
+  @override
+  String deskStoryYouChose(String choice) {
+    return 'Você escolheu: $choice';
+  }
+
+  @override
+  String get deskStoryThinkAgain => 'Pensar de novo';
+
+  @override
+  String get deskStoryNewDay => 'Um novo dia está pronto.';
+
+  @override
+  String get deskStoryAlreadySaved => 'O dia de hoje já estava salvo.';
+
+  @override
+  String get deskStoryClockOutFailed =>
+      'Não foi possível registrar a saída. Tente de novo.';
+
+  @override
+  String get deskStoryBackToDesk => 'Voltar para minha mesa';
+
+  @override
+  String get deskStoryClockOut => 'Registrar saída';
 }

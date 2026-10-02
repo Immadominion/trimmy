@@ -1260,5 +1260,22 @@
   "settingsUsage": "Partager les données d’utilisation",
   "settingsUsageDetail": "Le nombre d’écrans ouverts et d’étapes terminées, pour améliorer Trimmy. Aucun nom, montant ni message.",
   "infoPrivacyUsageTitle": "Statistiques d’utilisation",
-  "infoPrivacyUsageBody": "Trimmy compte les écrans ouverts et les étapes terminées. Chaque comptage porte un numéro d’installation aléatoire (lié à ton bureau, pour qu’un retour ne compte qu’une fois), la version de l’app, la langue et l’heure. Il n’enregistre jamais de nom, d’adresse e-mail, de montant ni rien de ce que tu écris. Ces statistiques sont conservées jusqu’à 400 jours. Désactive Partager les données d’utilisation dans les Réglages pour arrêter le comptage et effacer ce qui n’a pas encore été envoyé."
+  "infoPrivacyUsageBody": "Trimmy compte les écrans ouverts et les étapes terminées. Chaque comptage porte un numéro d’installation aléatoire (lié à ton bureau, pour qu’un retour ne compte qu’une fois), la version de l’app, la langue et l’heure. Il n’enregistre jamais de nom, d’adresse e-mail, de montant ni rien de ce que tu écris. Ces statistiques sont conservées jusqu’à 400 jours. Désactive Partager les données d’utilisation dans les Réglages pour arrêter le comptage et effacer ce qui n’a pas encore été envoyé.",
+  "deskStoryCardLabel": "Pas de journée de travail aujourd’hui. Une courte histoire à la place.",
+  "deskStoryStepInside": "Entrer",
+  "deskStoryLoadFailed": "Impossible de charger l’histoire du jour.",
+  "deskStoryRefresh": "Actualiser l’histoire du jour",
+  "deskStoryLeave": "Quitter l’histoire",
+  "deskStoryHeader": "Histoire du bureau · fictive",
+  "deskStoryHeaderSaved": "Journée enregistrée",
+  "deskStorySeeYou": "À demain.",
+  "deskStoryQuestion": "Que décides-tu ?",
+  "deskStoryReward": "+{trims} Trims · Journée enregistrée",
+  "deskStoryYouChose": "Ton choix : {choice}",
+  "deskStoryThinkAgain": "Y réfléchir encore",
+  "deskStoryNewDay": "Une nouvelle journée t’attend.",
+  "deskStoryAlreadySaved": "La journée était déjà enregistrée.",
+  "deskStoryClockOutFailed": "Impossible de pointer la sortie. Réessaie.",
+  "deskStoryBackToDesk": "Retour à mon bureau",
+  "deskStoryClockOut": "Pointer la sortie"
 }

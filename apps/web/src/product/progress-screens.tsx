@@ -20,12 +20,12 @@ export function activityDate(date: string): string {
   return fmt.isEnglish() ? date : fmt.date(dayDate(date), undefined, {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'});
 }
 
-export function DailyEntry({progress, onOpen}: {progress: ProgressState; onOpen: () => void}) {
+export function DailyEntry({progress, onOpen, label}: {progress: ProgressState; onOpen: () => void; label?: string}) {
   const tr = useT();
   if (progress.shift?.completedChoice && !progress.error && !progress.pending) return null;
   if (!progress.shift) return <section className="daily-entry daily-entry-loading">{progress.loading ? <Loading>{tr('career.daily.loading')}</Loading> : <><p>{tr('career.daily.loadFailed')}</p><button className="text-button" onClick={() => void progress.refresh()}>{tr('career.retry')}</button></>}</section>;
   const {shift} = progress;
-  return <section className="daily-entry"><div><p className="daily-label">{tr('career.daily.today')}</p><h2>{shift.story.title}</h2><button className="text-button" onClick={onOpen}>{progress.pending ? tr('career.daily.checkClockOut') : shift.completedChoice ? tr('career.daily.reviewToday') : tr('career.daily.stepInside')}<span aria-hidden="true">↗</span></button>{progress.error != null && <p className="progress-stale">{tr('career.daily.storyStale')}</p>}</div><img src={storyPortrait(shift.story.speaker)} alt=""/></section>;
+  return <section className="daily-entry"><div><p className="daily-label">{label ?? tr('career.daily.today')}</p><h2>{shift.story.title}</h2><button className="text-button" onClick={onOpen}>{progress.pending ? tr('career.daily.checkClockOut') : shift.completedChoice ? tr('career.daily.reviewToday') : tr('career.daily.stepInside')}<span aria-hidden="true">↗</span></button>{progress.error != null && <p className="progress-stale">{tr('career.daily.storyStale')}</p>}</div><img src={storyPortrait(shift.story.speaker)} alt=""/></section>;
 }
 
 export function CareerScreen({career, missions, progress, error, onRetry, onMarket, onDaily}: {

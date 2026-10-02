@@ -52,8 +52,12 @@ class DailyDeskException implements Exception {
 }
 
 class DailyDeskRepository {
-  DailyDeskRepository(this.origin, this.authorization, {http.Client? client})
-    : _client = client ?? http.Client() {
+  DailyDeskRepository(
+    this.origin,
+    this.authorization, {
+    http.Client? client,
+    this.language,
+  }) : _client = client ?? http.Client() {
     if (origin.scheme != 'https' || origin.userInfo.isNotEmpty) {
       throw ArgumentError('HTTPS required');
     }
@@ -61,7 +65,13 @@ class DailyDeskRepository {
   final Uri origin;
   final Future<PaperAuthorization> Function() authorization;
   final http.Client _client;
+
+  /// The story language to ask for: es, pt or fr, or null for English.
+  final String? Function()? language;
   bool _closed = false;
+
+  /// Set once an API from before story languages has refused `lang`.
+  bool _languageRefused = false;
   void close() {
     _closed = true;
     _client.close();
@@ -71,15 +81,35 @@ class DailyDeskRepository {
   Future<DailyShift> complete(DailyShift shift, String choice) => _request(
     body: {'date': shift.date, 'caseId': shift.caseId, 'choiceId': choice},
   );
+
+  /// A story request in the reader's language. An API from before story
+  /// languages refuses `lang` while checking the request, before anything is
+  /// read or saved, so the same request is sent again without it.
   Future<DailyShift> _request({Map<String, String>? body}) async {
+    final lang = _languageRefused ? null : language?.call();
+    if (lang == null) return _send(body, null);
+    try {
+      return await _send(body, lang);
+    } on DailyDeskException catch (error) {
+      if (error.code != 'INVALID_REQUEST') rethrow;
+      final shift = await _send(body, null);
+      _languageRefused = true;
+      return shift;
+    }
+  }
+
+  Future<DailyShift> _send(Map<String, String>? body, String? lang) async {
     final auth = await authorization();
     if (_closed) throw const DailyDeskException('SESSION_CHANGED');
+    final target = origin.resolve(
+      '/v1/career/daily-desk${body == null ? '' : '/complete'}',
+    );
     final request =
         http.Request(
             body == null ? 'GET' : 'POST',
-            origin.resolve(
-              '/v1/career/daily-desk${body == null ? '' : '/complete'}',
-            ),
+            lang == null
+                ? target
+                : target.replace(queryParameters: {'lang': lang}),
           )
           ..followRedirects = false
           ..headers.addAll({
@@ -123,7 +153,10 @@ class DailyDeskController extends ChangeNotifier {
   final DailyDeskRepository repository;
   DailyShift? shift;
   bool loading = false, closed = false;
-  String? error;
+
+  /// The last read failed. The text is chosen where it shows, in the app's
+  /// language.
+  bool failed = false;
   int _epoch = 0;
   Future<void>? _refresh;
   Future<void> refresh() =>
@@ -132,13 +165,13 @@ class DailyDeskController extends ChangeNotifier {
     if (closed) return;
     final epoch = _epoch;
     loading = true;
-    error = null;
+    failed = false;
     notifyListeners();
     try {
       final next = await repository.read();
       if (!closed && epoch == _epoch) shift = next;
     } catch (_) {
-      if (!closed && epoch == _epoch) error = 'Your desk story couldn’t load.';
+      if (!closed && epoch == _epoch) failed = true;
     }
     if (!closed) {
       loading = false;
@@ -154,7 +187,7 @@ class DailyDeskController extends ChangeNotifier {
     if (closed) throw const DailyDeskException('SESSION_CHANGED');
     _epoch++;
     shift = next;
-    error = null;
+    failed = false;
     notifyListeners();
     return next;
   }

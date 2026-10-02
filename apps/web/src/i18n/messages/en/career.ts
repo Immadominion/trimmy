@@ -238,6 +238,7 @@ export default {
   // The daily desk story and the desk week.
   'career.daily.loading': 'Opening today’s desk…',
   'career.daily.loadFailed': 'Today’s desk couldn’t load.',
+  'career.daily.noWorkday': 'No workday today. A short story instead.',
   'career.daily.today': 'Today at your desk',
   'career.daily.checkClockOut': 'Check your clock-out',
   'career.daily.reviewToday': 'Review today',
