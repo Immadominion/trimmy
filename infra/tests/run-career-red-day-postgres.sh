@@ -46,7 +46,14 @@ psql_args=(-X -v ON_ERROR_STOP=1 -h "$runtime_dir/socket" -p 65447 \
 for migration in "$infra_dir"/migrations/000{1..9}_*.sql "$infra_dir"/migrations/001{0..7}_*.sql; do
   "$postgres_bin/psql" "${psql_args[@]}" -f "$migration" >/dev/null
 done
-"$postgres_bin/psql" "${psql_args[@]}" -f "$infra_dir/tests/career-red-day-fixtures.sql" >/dev/null
+# The fixtures were written for the week of 14 September 2026, and the
+# database accepts a session's observation only within 14 days of its close.
+# They move by whole weeks to the latest week whose Friday ended (17:00 New
+# York, at most 22:00Z) more than five minutes ago; every fixed time keeps its
+# New York wall-clock time, across daylight saving.
+red_day_shift_days="$(node -e 'const base = Date.parse("2026-09-18T22:05:00Z"); console.log(7 * Math.max(0, Math.floor((Date.now() - base) / 604800000)))')"
+"$postgres_bin/psql" "${psql_args[@]}" -v red_day_shift_days="$red_day_shift_days" \
+  -f "$infra_dir/tests/career-red-day-fixtures.sql" >/dev/null
 "$postgres_bin/psql" "${psql_args[@]}" -f "$infra_dir/migrations/0018_career_missions_and_promotions.sql" >/dev/null
 "$postgres_bin/psql" "${psql_args[@]}" -f "$infra_dir/migrations/0019_career_local_day.sql" >/dev/null
 "$postgres_bin/psql" "${psql_args[@]}" -f "$infra_dir/migrations/0020_guest_creation_abuse_and_retention.sql" >/dev/null
@@ -79,6 +86,7 @@ SELECT trimmy.career_red_day_activate();
 SQL
 
 export TRIMMY_RED_DAY_TEST_SOCKET="$runtime_dir/socket"
+export TRIMMY_RED_DAY_TEST_SHIFT_DAYS="$red_day_shift_days"
 export TRIMMY_RED_DAY_TEST_PORT=65447
 cd "$project_dir"
 npm run build:backend

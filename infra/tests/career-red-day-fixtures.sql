@@ -148,87 +148,95 @@ BEGIN
 END;
 $$;
 
--- New York regular session on 18 September 2026 is 13:30Z through 20:00Z.
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000001', '2026-09-17T12:00:00Z');
+-- Every time below was written for the week of 14 September 2026 and moves
+-- to the test week (the runner passes how many days), keeping its New York
+-- wall-clock time. The New York regular session on the written Friday, 18
+-- September 2026, is 13:30Z through 20:00Z.
+SELECT set_config('trimmy.red_day_shift_days', :'red_day_shift_days', false);
+CREATE FUNCTION pg_temp.red_day_at(written timestamptz) RETURNS timestamptz LANGUAGE sql STABLE AS $$
+  SELECT ((written AT TIME ZONE 'America/New_York')
+    + current_setting('trimmy.red_day_shift_days')::integer * interval '1 day') AT TIME ZONE 'America/New_York'
+$$;
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000001', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000001',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000001',
-  'alpha', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:01Z');
+  'alpha', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:01Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000001',
-  'beta', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:02Z');
+  'beta', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:02Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000001',
-  'gamma', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:03Z');
+  'gamma', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:03Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000001',
-  'delta', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:04Z');
+  'delta', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:04Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000001',
-  'omega', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:05Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000001', '2026-09-17T12:05:00Z');
+  'omega', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:05Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000001', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000002', '2026-09-18T13:30:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000002', pg_temp.red_day_at('2026-09-18T13:30:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000002',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-18T13:30:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000002', '2026-09-18T13:31:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-18T13:30:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000002', pg_temp.red_day_at('2026-09-18T13:31:00Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000003', '2026-09-18T14:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000003', pg_temp.red_day_at('2026-09-18T14:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000003',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-18T14:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000003', '2026-09-18T14:01:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-18T14:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000003', pg_temp.red_day_at('2026-09-18T14:01:00Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000004', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000004', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000004',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000004', '2026-09-17T12:05:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000004', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000004',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 500000, '2026-09-18T15:00:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 500000, pg_temp.red_day_at('2026-09-18T15:00:00Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000005', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000005', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000005',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000005', '2026-09-17T12:05:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000005', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000005',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, '2026-09-18T15:00:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, pg_temp.red_day_at('2026-09-18T15:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000005',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-18T15:01:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-18T15:01:00Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000006', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000006', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000006',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000006', '2026-09-17T12:05:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000006', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000006',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, '2026-09-18T20:00:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, pg_temp.red_day_at('2026-09-18T20:00:00Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000007', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000007', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000007',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000007', '2026-09-17T12:05:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000007', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000007',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, '2026-09-18T20:00:00.001Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, pg_temp.red_day_at('2026-09-18T20:00:00.001Z'));
 
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000008', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000008', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000008',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000008', '2026-09-17T12:05:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000008', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000008',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, '2026-09-18T13:00:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000, pg_temp.red_day_at('2026-09-18T13:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000008',
-  'apple', '123mYEnRLM2LLYsJW3K6oyYh8uP1fngj732iG638ondo', 'buy', 1000000, '2026-09-18T14:00:00Z');
+  'apple', '123mYEnRLM2LLYsJW3K6oyYh8uP1fngj732iG638ondo', 'buy', 1000000, pg_temp.red_day_at('2026-09-18T14:00:00Z'));
 
 -- A broad-cursor user without a reason, used to prove prerequisites are
 -- rechecked under the Career lock rather than filtered before it.
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000010', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000010', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000010',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 
 -- The verifier race user receives an uncommitted sell from the Node test.
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000011', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000011', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000011',
-  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000011', '2026-09-17T12:05:00Z');
+  'apple', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000011', pg_temp.red_day_at('2026-09-17T12:05:00Z'));
 
 -- The account-closure race user holds omega so its verifier session can be
 -- isolated after the main Apple session has completed without adding another
 -- scheduler candidate to the fairness fixture.
-SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000012', '2026-09-17T12:00:00Z');
+SELECT pg_temp.red_day_make_user('92100000-0000-4000-8000-000000000012', pg_temp.red_day_at('2026-09-17T12:00:00Z'));
 SELECT public.red_day_test_order('92100000-0000-4000-8000-000000000012',
-  'omega', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, '2026-09-17T12:00:00Z');
-SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000012', '2026-09-17T12:05:00Z');
+  'omega', 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'buy', 1000000, pg_temp.red_day_at('2026-09-17T12:00:00Z'));
+SELECT pg_temp.red_day_reason('92100000-0000-4000-8000-000000000012', pg_temp.red_day_at('2026-09-17T12:05:00Z'));

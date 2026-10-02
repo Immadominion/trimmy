@@ -5,6 +5,31 @@ import {Pool} from 'pg';
 import type {CanonicalRedDaySession, RedDayRequestAudit} from '../../src/career-red-day-market.js';
 import {PostgresCareerRedDayRepository} from '../../src/career-red-day-repository.js';
 
+// The fixtures were written for the week of 14 September 2026. The database
+// accepts a session's observation only within 14 days of its close, so the
+// runner moves the seed data by whole weeks (run-career-red-day-postgres.sh)
+// and every date here moves with it, keeping its New York wall-clock time.
+const SHIFT_DAYS = Number(process.env['TRIMMY_RED_DAY_TEST_SHIFT_DAYS'] ?? '0');
+const DAY_MS = 86_400_000;
+const NEW_YORK = new Intl.DateTimeFormat('en-US', {timeZone: 'America/New_York', hourCycle: 'h23',
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+/** New York's offset from UTC at an instant, in milliseconds. */
+function newYorkOffset(ms: number): number {
+  const part = Object.fromEntries(NEW_YORK.formatToParts(new Date(ms)).map(item => [item.type, Number(item.value)]));
+  return Date.UTC(part['year']!, part['month']! - 1, part['day']!, part['hour']!, part['minute']!, part['second']!) - Math.floor(ms / 1000) * 1000;
+}
+/** A written market date, moved to the test week. */
+function day(written: string): string {
+  return new Date(Date.parse(`${written}T12:00:00Z`) + SHIFT_DAYS * DAY_MS).toISOString().slice(0, 10);
+}
+/** A written instant, moved to the test week at the same New York wall-clock time. */
+function at(written: string): string {
+  const original = Date.parse(written);
+  const wall = original + newYorkOffset(original) + SHIFT_DAYS * DAY_MS;
+  const guess = wall - newYorkOffset(wall);
+  return new Date(wall - newYorkOffset(guess)).toISOString();
+}
+
 const socket = process.env['TRIMMY_RED_DAY_TEST_SOCKET'];
 assert.ok(socket?.endsWith('/infra/.red-day-runtime/socket'),
   'Use the private red-day PostgreSQL runner; never attach to another database.');
@@ -39,7 +64,7 @@ function observation(input: {assetId?: string; symbol?: string; previousDate: st
     marketDate: input.date, previousCloseText: input.previousClose,
     currentCloseText: input.close,
     outcome: Number(input.close) < Number(input.previousClose) ? 'verified-red' : 'verified-not-red',
-    providerAsOf: '2026-09-18T21:00:00.000Z',
+    providerAsOf: at('2026-09-18T21:00:00.000Z'),
     providerLastFetchedAt: new Date(observedAt - 5_000).toISOString(),
     observedAt: new Date(observedAt).toISOString(), audit: audit(input.assetId ?? 'apple', observedAt)});
 }
@@ -172,7 +197,7 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
       'provider-auth-failed'))).outcome, 'recorded');
     assert.deepEqual(await repository.candidates(20), []);
     await repository.record({observationId: randomUUID(), session: observation({
-      assetId: 'delta', symbol: 'DELTA', previousDate: '2026-09-16', date: '2026-09-17',
+      assetId: 'delta', symbol: 'DELTA', previousDate: day('2026-09-16'), date: day('2026-09-17'),
       previousClose: '100', close: '101',
     })});
     assert.deepEqual(await repository.candidates(20), [
@@ -182,7 +207,7 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
       'provider-rate-limited'))).outcome, 'recorded');
     assert.deepEqual(await repository.candidates(20), []);
     await repository.record({observationId: randomUUID(), session: observation({
-      assetId: 'gamma', symbol: 'GAMMA', previousDate: '2026-09-16', date: '2026-09-17',
+      assetId: 'gamma', symbol: 'GAMMA', previousDate: day('2026-09-16'), date: day('2026-09-17'),
       previousClose: '100', close: '101',
     })});
     assert.deepEqual(await repository.candidates(20), [{assetId: 'omega', afterMarketDate: null}]);
@@ -192,7 +217,7 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
     const cashBefore = (await owner.query(`SELECT user_id::text, cash_micros::text
       FROM trimmy.paper_accounts WHERE user_id::text LIKE '92100000-%' ORDER BY user_id`)).rows;
     const result = await repository.record({observationId: randomUUID(), session: observation({
-      previousDate: '2026-09-16', date: '2026-09-17', previousClose: '330', close: '337',
+      previousDate: day('2026-09-16'), date: day('2026-09-17'), previousClose: '330', close: '337',
     })});
     assert.deepEqual(result, {outcome: 'recorded', observationId: result.observationId,
       evidenceCount: 0, completedCount: 0});
@@ -213,12 +238,12 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
     const cashBefore = (await owner.query(`SELECT user_id::text, cash_micros::text
       FROM trimmy.paper_accounts WHERE user_id::text = ANY($1::text[]) ORDER BY user_id`, [heldUsers])).rows;
     const observationId = randomUUID();
-    const red = observation({previousDate: '2026-09-17', date: '2026-09-18',
+    const red = observation({previousDate: day('2026-09-17'), date: day('2026-09-18'),
       previousClose: '337', close: '334.79'});
     const result = await repository.record({observationId, session: red});
     assert.deepEqual(result, {outcome: 'recorded', observationId, evidenceCount: 0, completedCount: 0});
     assert.deepEqual(await repository.pendingSessions(20), [
-      {observationId, assetId: 'apple', marketDate: '2026-09-18'},
+      {observationId, assetId: 'apple', marketDate: day('2026-09-18')},
     ]);
     const firstBatch = await repository.processSession(observationId, 3);
     const secondBatch = await repository.processSession(observationId, 3);
@@ -230,7 +255,7 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
       await seller.query(`SELECT public.red_day_test_order(
         '92100000-0000-4000-8000-000000000011'::uuid, 'apple',
         'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp', 'sell', 1000000,
-        '2026-09-18T15:00:00Z'::timestamptz)`);
+        '${at('2026-09-18T15:00:00Z')}'::timestamptz)`);
       const fourthPromise = repository.processSession(observationId, 3)
         .then(value => { fourthSettled = true; return value; });
       await new Promise(resolve => setTimeout(resolve, 150));
@@ -256,8 +281,8 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
     assert.deepEqual(qualified.map(row => row.user_id), heldUsers);
     assert.deepEqual(qualified.map(row => [row.opening, row.minimum]),
       [['1000000', '1000000'], ['1000000', '500000'], ['1000000', '1000000']]);
-    assert.ok(qualified.every(row => row.session_open_at.toISOString() === '2026-09-18T13:30:00.000Z'));
-    assert.ok(qualified.every(row => row.session_close_at.toISOString() === '2026-09-18T20:00:00.000Z'));
+    assert.ok(qualified.every(row => row.session_open_at.toISOString() === at('2026-09-18T13:30:00.000Z')));
+    assert.ok(qualified.every(row => row.session_close_at.toISOString() === at('2026-09-18T20:00:00.000Z')));
     const rejected = (await owner.query(`SELECT user_id::text AS user_id, reason_code, count(*)::integer AS count
       FROM trimmy.career_red_day_user_evidence WHERE evidence_outcome='not-held-throughout'
       GROUP BY user_id, reason_code ORDER BY user_id, reason_code`)).rows;
@@ -293,7 +318,7 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
       evidenceCount: 0, completedCount: 0});
     assert.equal((await owner.query(`SELECT count(*)::integer AS count
       FROM trimmy.career_red_day_provider_observations
-      WHERE asset_id='apple' AND market_date='2026-09-18'`)).rows[0]?.count, 1);
+      WHERE asset_id='apple' AND market_date='${day('2026-09-18')}'`)).rows[0]?.count, 1);
 
     const greenCorrectionId = randomUUID();
     const greenCorrection = await repository.record({observationId: greenCorrectionId,
@@ -306,7 +331,7 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
     assert.equal(repeatedGreen.outcome, 'already-reviewed');
     assert.equal((await owner.query(`SELECT count(*)::integer AS count
       FROM trimmy.career_red_day_provider_observations
-      WHERE asset_id='apple' AND market_date='2026-09-18'`)).rows[0]?.count, 2);
+      WHERE asset_id='apple' AND market_date='${day('2026-09-18')}'`)).rows[0]?.count, 2);
     assert.equal((await owner.query(`SELECT count(*)::integer AS count
       FROM trimmy.career_red_day_correction_reviews
       WHERE canonical_observation_id=$1`, [observationId])).rows[0]?.count, 1);
@@ -334,12 +359,12 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
     }
     assert.equal((await owner.query(`SELECT count(*)::integer AS count
       FROM trimmy.career_red_day_sessions
-      WHERE asset_id='apple' AND market_date='2026-09-18'`)).rows[0]?.count, 1);
+      WHERE asset_id='apple' AND market_date='${day('2026-09-18')}'`)).rows[0]?.count, 1);
   });
 
   it('serializes concurrent canonical sessions without growing unchanged recheck rows', async () => {
     const shared = observation({assetId: 'microsoft', symbol: 'MSFT',
-      previousDate: '2026-09-17', date: '2026-09-18', previousClose: '100', close: '101'});
+      previousDate: day('2026-09-17'), date: day('2026-09-18'), previousClose: '100', close: '101'});
     const first = randomUUID(), second = randomUUID();
     const results = await Promise.all([
       repository.record({observationId: first, session: shared}),
@@ -392,8 +417,8 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
   it('waits for an in-flight account closure and records no evidence for the closed user', async () => {
     const observationId = randomUUID();
     const result = await repository.record({observationId, session: observation({
-      assetId: 'omega', symbol: 'OMEGA', previousDate: '2026-09-17',
-      date: '2026-09-18', previousClose: '100', close: '99',
+      assetId: 'omega', symbol: 'OMEGA', previousDate: day('2026-09-17'),
+      date: day('2026-09-18'), previousClose: '100', close: '99',
     })});
     assert.equal(result.outcome, 'recorded');
     const closer = await owner.connect();
@@ -430,11 +455,11 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
     try {
       await blocker.query('BEGIN');
       await blocker.query(`SELECT pg_advisory_xact_lock(hashtextextended(
-        'trimmy.red-day:session:tokens-xyz-v1:queue-test:2026-09-18:tokens-canonical-red-day-v1', 0))`);
+        'trimmy.red-day:session:tokens-xyz-v1:queue-test:${day('2026-09-18')}:tokens-canonical-red-day-v1', 0))`);
       const startedAt = Date.now() - 119_500;
       const pending = repository.record({observationId: randomUUID(), session: observation({
-        assetId: 'queue-test', symbol: 'QUEUE', previousDate: '2026-09-17',
-        date: '2026-09-18', previousClose: '100', close: '99', observedAt: startedAt,
+        assetId: 'queue-test', symbol: 'QUEUE', previousDate: day('2026-09-17'),
+        date: day('2026-09-18'), previousClose: '100', close: '99', observedAt: startedAt,
       })}).then(value => { settled = true; return value; }, error => { settled = true; throw error; });
       await new Promise(resolve => setTimeout(resolve, 1_200));
       assert.equal(settled, false);
@@ -447,10 +472,10 @@ if (process.env['TRIMMY_RED_DAY_TEST_RECOVERY'] === '1') {
   });
 
   it('rejects stale clocks, noncanonical paths and an observation UUID rebound', async () => {
-    const base = observation({assetId: 'nvidia', symbol: 'NVDA', previousDate: '2026-09-17',
-      date: '2026-09-18', previousClose: '100', close: '99'});
+    const base = observation({assetId: 'nvidia', symbol: 'NVDA', previousDate: day('2026-09-17'),
+      date: day('2026-09-18'), previousClose: '100', close: '99'});
     await assert.rejects(repository.record({observationId: randomUUID(), session: {
-      ...base, observedAt: '2026-09-18T21:00:00.000Z',
+      ...base, observedAt: at('2026-09-18T21:00:00.000Z'),
     }}), {code: '22023'});
     const missingProviderSymbol = unavailable('symbol-check', randomUUID(), 'provider-auth-failed');
     await assert.rejects(repository.record({...missingProviderSymbol, listedSymbol: null}), {code: '22023'});

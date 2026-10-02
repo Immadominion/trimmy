@@ -60,6 +60,12 @@ done
   >/dev/null
 "${owner_psql[@]}" -f "$infra_dir/migrations/0024_career_reason_sharing.sql" >/dev/null
 "${owner_psql[@]}" -f "$infra_dir/tests/paper-reset-fixtures.sql" >/dev/null
+# The repository is written for the current schema (0025 added the viewer's
+# social id to the reason list), so every later migration applies too.
+for migration in "$infra_dir"/migrations/*.sql; do
+  [[ "$(basename "$migration")" > '0024_career_reason_sharing.sql' ]] || continue
+  "${owner_psql[@]}" -f "$migration" >/dev/null
+done
 
 "${owner_psql[@]}" <<'SQL' >/dev/null
 CREATE ROLE trimmy_reason_share_test_runtime
