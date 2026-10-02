@@ -154,7 +154,7 @@ const messages: Translation<typeof en> = {
   'firstDay.money.label': 'Ton prochain coup',
   'firstDay.money.title': 'Ton prochain coup.',
   'firstDay.money.lede': 'Continue à prendre tes marques ou alimente ton portefeuille.',
-  'firstDay.money.keepFree': 'Garder l’argent d’entraînement',
+  'firstDay.money.keepFree': 'Continuer avec l’argent d’entraînement',
   'firstDay.money.keepFreeCaption': 'Prends confiance sur ton bureau.',
   'firstDay.money.add': 'Ajouter de l’argent',
   'firstDay.money.addCaption': 'Vois tes options de dépôt.',

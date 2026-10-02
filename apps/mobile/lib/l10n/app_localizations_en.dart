@@ -622,7 +622,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get firstTradeKeepFreeMoney => 'Keep using free money';
+  String get firstTradeKeepFreeMoney => 'Keep using paper money';
 
   @override
   String get firstTradeKeepFreeMoneyDetail =>
@@ -640,7 +640,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String firstTradeFreeMoneyAmount(String amount) {
-    return '$amount free money';
+    return '$amount paper';
   }
 
   @override

@@ -200,7 +200,7 @@ export default {
   'firstDay.money.title': 'Your next move.',
   'firstDay.money.lede': 'Keep finding your feet, or fund your wallet.',
   /** The choice, and the accessible name of the × button that makes it. */
-  'firstDay.money.keepFree': 'Keep using free money',
+  'firstDay.money.keepFree': 'Keep using paper money',
   'firstDay.money.keepFreeCaption': 'Build your confidence on the desk.',
   'firstDay.money.add': 'Add money',
   'firstDay.money.addCaption': 'See your deposit options.',

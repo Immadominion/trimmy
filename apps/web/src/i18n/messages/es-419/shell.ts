@@ -26,7 +26,7 @@ const messages: Translation<typeof en> = {
   'shell.recovered': 'Tu orden está confirmada. Recuperamos el mismo comprobante y tu escritorio actualizado.',
   'shell.workPending.title': 'Tu tarea tiene un guardado sin confirmar.',
   'shell.workPending.check': 'Revisar lo guardado',
-  'shell.fundingUnavailable': 'Todavía no puedes agregar dinero en la web. Puedes seguir practicando con dinero gratis.',
+  'shell.fundingUnavailable': 'Todavía no puedes agregar dinero en la web. Puedes seguir con el dinero de práctica.',
   'shell.dailyPending.title': 'La historia de tu jornada anterior necesita confirmación.',
   'shell.dailyPending.check': 'Revisar tu salida',
 

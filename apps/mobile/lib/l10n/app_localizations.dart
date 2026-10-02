@@ -1167,10 +1167,10 @@ abstract class AppLocalizations {
   /// Option (and tooltip) to keep playing with practice money instead of adding real money, right after the first trade.
   ///
   /// In en, this message translates to:
-  /// **'Keep using free money'**
+  /// **'Keep using paper money'**
   String get firstTradeKeepFreeMoney;
 
-  /// Caption under "Keep using free money".
+  /// Caption under "Keep using paper money".
   ///
   /// In en, this message translates to:
   /// **'Build your confidence on the desk.'**
@@ -1185,7 +1185,7 @@ abstract class AppLocalizations {
   /// The practice money spent on the first buy, on the celebration card. {amount} is a formatted number such as 100.00.
   ///
   /// In en, this message translates to:
-  /// **'{amount} free money'**
+  /// **'{amount} paper'**
   String firstTradeFreeMoneyAmount(String amount);
 
   /// Headline of the step after the first trade where the player chooses between practice money and adding real money.

@@ -26,7 +26,7 @@ const messages: Translation<typeof en> = {
   'shell.recovered': 'Ton ordre est confirmé. Le même reçu et ton bureau à jour sont restaurés.',
   'shell.workPending.title': 'Ta mission a une sauvegarde non confirmée.',
   'shell.workPending.check': 'Vérifier la sauvegarde',
-  'shell.fundingUnavailable': 'Tu ne peux pas encore ajouter de l’argent sur le web. Tu peux continuer à t’entraîner avec de l’argent gratuit.',
+  'shell.fundingUnavailable': 'Tu ne peux pas encore ajouter de l’argent sur le web. Tu peux continuer avec l’argent d’entraînement.',
   'shell.dailyPending.title': 'L’histoire de ta journée précédente doit être confirmée.',
   'shell.dailyPending.check': 'Vérifier ton pointage',
 

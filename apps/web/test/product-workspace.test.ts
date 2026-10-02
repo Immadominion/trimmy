@@ -351,7 +351,7 @@ test('first-day receipt celebrates the confirmed order, then asks for an account
     assert.match(h.text(), /A little nudge\?/);
     await h.pick('Keep it quiet'); await h.click('Continue');
     assert.match(h.text(), /Your next move\./); assert.match(h.text(), /Keep finding your feet, or fund your wallet\./);
-    await h.pick('Keep using free money');
+    await h.pick('Keep using paper money');
     const launches = h.calls.filter(call => call.path === '/v1/product/launch').map(call => call.body?.['action']);
     assert.deepEqual(launches, ['paper-trade-confirmed', 'introduction-completed']);
     assert.match(h.text(), /Your desk\./);

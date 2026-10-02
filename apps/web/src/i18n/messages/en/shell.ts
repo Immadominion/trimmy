@@ -39,7 +39,7 @@ export default {
   /** A workday answer was sent but its save was never confirmed. */
   'shell.workPending.title': 'Your assignment has an unconfirmed save.',
   'shell.workPending.check': 'Check saved work',
-  'shell.fundingUnavailable': 'Adding money isn’t available on the web yet. You can keep practicing with free money.',
+  'shell.fundingUnavailable': 'Adding money isn’t available on the web yet. You can keep practicing with paper money.',
   /** The end-of-day story (clock-out) from an earlier day still needs to be confirmed. */
   'shell.dailyPending.title': 'Your earlier desk story needs confirmation.',
   'shell.dailyPending.check': 'Check clock-out',

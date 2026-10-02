@@ -188,7 +188,7 @@ test('the first day reads in French from welcome to the money choice, and a comm
 
     await h.click('Continuer');
     assert.match(h.text(), /Ton prochain coup\./);
-    assert.ok(h.button('Garder l’argent d’entraînement'));
+    assert.ok(h.button('Continuer avec l’argent d’entraînement'));
     assertNoLeaks(doc().querySelector('.money-choice'), fragments);
   } finally {await h.close(); await setLocale('en');}
 });

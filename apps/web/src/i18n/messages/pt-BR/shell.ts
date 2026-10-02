@@ -26,7 +26,7 @@ const messages: Translation<typeof en> = {
   'shell.recovered': 'Sua ordem está confirmada. O mesmo comprovante e sua mesa atualizada foram restaurados.',
   'shell.workPending.title': 'Sua tarefa tem um salvamento não confirmado.',
   'shell.workPending.check': 'Verificar o que foi salvo',
-  'shell.fundingUnavailable': 'Ainda não dá para adicionar dinheiro na web. Você pode continuar treinando com dinheiro grátis.',
+  'shell.fundingUnavailable': 'Ainda não dá para adicionar dinheiro na web. Você pode continuar com o dinheiro de treino.',
   'shell.dailyPending.title': 'A história do seu expediente anterior precisa de confirmação.',
   'shell.dailyPending.check': 'Verificar seu ponto',
 

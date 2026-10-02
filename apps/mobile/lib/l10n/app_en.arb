@@ -788,13 +788,13 @@
       }
     }
   },
-  "firstTradeKeepFreeMoney": "Keep using free money",
+  "firstTradeKeepFreeMoney": "Keep using paper money",
   "@firstTradeKeepFreeMoney": {
     "description": "Option (and tooltip) to keep playing with practice money instead of adding real money, right after the first trade."
   },
   "firstTradeKeepFreeMoneyDetail": "Build your confidence on the desk.",
   "@firstTradeKeepFreeMoneyDetail": {
-    "description": "Caption under \"Keep using free money\"."
+    "description": "Caption under \"Keep using paper money\"."
   },
   "firstTradeSharesCount": "{count, plural, other{{shares} shares}}",
   "@firstTradeSharesCount": {
@@ -810,7 +810,7 @@
       }
     }
   },
-  "firstTradeFreeMoneyAmount": "{amount} free money",
+  "firstTradeFreeMoneyAmount": "{amount} paper",
   "@firstTradeFreeMoneyAmount": {
     "description": "The practice money spent on the first buy, on the celebration card. {amount} is a formatted number such as 100.00.",
     "placeholders": {

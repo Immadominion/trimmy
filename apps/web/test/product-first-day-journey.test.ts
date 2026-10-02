@@ -52,7 +52,7 @@ test('reminder and money steps survive reload, finish once and never request a n
     await h.reload();
     assert.match(h.text(), /Your next move\./, 'the money choice survives reload');
     await h.escape();
-    assert.deepEqual(h.api.state.launches, ['paper-trade-confirmed', 'introduction-completed'], 'Back keeps free money and finishes once');
+    assert.deepEqual(h.api.state.launches, ['paper-trade-confirmed', 'introduction-completed'], 'Back keeps paper money and finishes once');
     assert.match(h.text(), /Your desk\./);
     await h.reload();
     assert.match(h.text(), /Your desk\./); assert.deepEqual(h.api.state.launches, ['paper-trade-confirmed', 'introduction-completed']);
@@ -121,7 +121,7 @@ test('a signed-in account opens Add money, or says plainly that deposits are not
       await h.pick('Keep it quiet'); await h.click('Continue'); await h.pick('Add money');
       assert.match(h.text(), /Your desk\./);
       if (wired) assert.deepEqual(opened, ['first-day']);
-      else assert.match(h.text(), /Adding money isn’t available on the web yet\. You can keep practicing with free money\./);
+      else assert.match(h.text(), /Adding money isn’t available on the web yet\. You can keep practicing with paper money\./);
     } finally {release(); await h.close();}
   }
 });

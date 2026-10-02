@@ -637,7 +637,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get firstTradeKeepFreeMoney => 'Continuar com dinheiro grátis';
+  String get firstTradeKeepFreeMoney => 'Continuar com dinheiro de treino';
 
   @override
   String get firstTradeKeepFreeMoneyDetail => 'Ganhe confiança na sua mesa.';
@@ -655,7 +655,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String firstTradeFreeMoneyAmount(String amount) {
-    return '$amount em dinheiro grátis';
+    return '$amount em dinheiro de treino';
   }
 
   @override
