@@ -53,6 +53,25 @@ The optional `TRIMMY_WALLET_RECOVERY_URL` stays empty until browser recovery is 
 
 The recovery page needs a **web** Privy client under the same app, with its exact HTTPS origin allowed. Do not reuse or relax the native-only client, create another wallet, or put a server secret in either app. Configure `VITE_PRIVY_APP_CLIENT_ID` on the web service, rebuild, verify sign-in and wallet matching, then enable the native URL. See [web recovery](../apps/web/README.md).
 
+### Android wallet funding
+
+**Add money → Crypto → Transfer from wallet** uses the official Android Mobile Wallet Adapter client SDK, pinned to `com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.7`. A compatible external wallet signs and broadcasts a reviewed SOL or USDC transfer on Solana mainnet. The recipient remains the signed-in user's Privy embedded wallet: this does not change Trimmy authentication, the account wallet or the stock-trade signer. iOS and web do not expose this adapter flow.
+
+Funding is disabled by default. In addition to the existing authenticated Solana adapters and `TRIMMY_LIVE_STOCKS=solana_mainnet`, configure the API environment:
+
+```dotenv
+TRIMMY_MWA_FUNDING=enabled
+# Inject TRIMMY_WALLET_REVIEW_KEY from the server's secret store.
+```
+
+`TRIMMY_WALLET_REVIEW_KEY` must be an independent, cryptographically random 32-byte key encoded as exactly **64 hexadecimal characters**. It is required when funding is enabled. Keep it server-only; never reuse a provider credential or put it in Dart defines, source, logs or the example environment file. Preserve the same key across replicas and restarts: rotating it invalidates outstanding review receipts and prevents their recovery.
+
+The app checks `/v1/wallet/funding/capabilities` before offering new transfers. Signing reviews expire after 90 seconds; exact-transaction status checks remain available afterward. Confirmation updates the balance automatically. An interrupted wallet handoff retains a pending record rather than automatically sending again. Disabling new funding keeps status reconciliation available while the adapters and review key remain configured.
+
+The production Digital Asset Links certificate mapping for `com.trimmy.trimmy` is maintained in the marketing site's branch and must be served at `https://trimmy.xyz/.well-known/assetlinks.json`. Verify that it matches the submitted APK's signing certificate; building this mobile branch does not publish that mapping.
+
+Local tests and the APK build do not prove a physical transfer. Before enabling this flow for users, verify connection, review, approval, return-to-app, cancellation/reconnect and interrupted-transfer recovery on a compatible Android wallet. Separately verify an explicitly authorized transfer's onchain recipient, amount and automatic balance update. No completed physical-wallet transfer is claimed here.
+
 ### Android signing and the development Seeker
 
 For a local release-mode update to a Seeker already using your debug certificate, explicitly retain that certificate:
