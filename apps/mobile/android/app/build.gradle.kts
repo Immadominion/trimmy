@@ -96,3 +96,10 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.7")
+    implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
+    testImplementation("junit:junit:4.13.2")
+}

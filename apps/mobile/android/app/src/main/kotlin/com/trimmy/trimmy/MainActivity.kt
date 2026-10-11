@@ -23,6 +23,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MobileWalletBridge.CHANNEL)
+            .setMethodCallHandler { call, result -> MobileWalletBridge.handle(this, call, result) }
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel("trimmy_trade_updates", "Trade updates", NotificationManager.IMPORTANCE_DEFAULT),
         )

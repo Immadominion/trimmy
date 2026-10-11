@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trimmy/account/account_controller.dart';
 import 'package:trimmy/account/account_data.dart';
@@ -42,7 +43,11 @@ class _Account extends ChangeNotifier implements AccountController {
   @override
   final AccountPortfolioRepository portfolioRepository;
   int refreshes = 0;
-  bool setupThrows = false;
+  bool setupThrows = false, fundingEnabled = false, pendingFunding = false;
+  @override
+  Future<bool> externalFundingAvailable() async => fundingEnabled;
+  @override
+  Future<bool> hasPendingIncomingFunding() async => pendingFunding;
   @override
   AccountPhase get phase => AccountPhase.active;
   @override
@@ -93,7 +98,36 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     repository.dispose();
     account.dispose();
+    debugDefaultTargetPlatformOverride = null;
   }
+
+  testWidgets(
+    'Android hides new transfers when unavailable but keeps pending recovery',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      await mount(tester);
+      expect(find.text('Transfer from wallet'), findsNothing);
+      expect(find.text('Check wallet transfer'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      account.pendingFunding = true;
+      await mount(tester);
+      expect(find.text('Check wallet transfer'), findsOneWidget);
+      expect(find.byKey(const ValueKey('wallet-deposit-qr')), findsOneWidget);
+      await clean(tester);
+    },
+  );
+  testWidgets('iOS never exposes the Android wallet adapter entry', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    account.fundingEnabled = true;
+    await mount(tester);
+    expect(find.text('Transfer from wallet'), findsNothing);
+    expect(find.byKey(const ValueKey('wallet-deposit-qr')), findsOneWidget);
+    await clean(tester);
+  });
 
   testWidgets(
     'failed wallet read offers retry and recovers to deposit address',

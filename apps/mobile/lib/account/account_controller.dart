@@ -29,6 +29,11 @@ import 'wallet_possession_client.dart';
 import 'wallet_possession_controller.dart';
 import 'wallet_possession_signer.dart';
 import 'wallet_setup.dart';
+import 'incoming_funding_client.dart';
+import 'incoming_funding_controller.dart';
+import 'incoming_funding_models.dart';
+import 'incoming_funding_store.dart';
+import 'mobile_wallet_service.dart';
 
 enum AccountPhase { initializing, guest, connecting, active, error }
 
@@ -236,6 +241,87 @@ class AccountController extends ChangeNotifier {
       throw const PracticeSyncException('PRACTICE_ACCOUNT_MISMATCH');
     }
     return PracticeAccessToken(accountId: account, token: token);
+  }
+
+  Future<bool> externalFundingAvailable() async {
+    final subject = _subject, account = _accountId, generation = _generation;
+    if (subject == null ||
+        account == null ||
+        !_portfolioIdentityCurrent(subject, account, generation)) {
+      return false;
+    }
+    final enabled = await HttpIncomingFundingClient.available(
+      _httpClient,
+      _baseUri,
+    );
+    return enabled && _portfolioIdentityCurrent(subject, account, generation);
+  }
+
+  Future<bool> hasPendingIncomingFunding() async {
+    final subject = _subject, account = _accountId, generation = _generation;
+    if (subject == null || account == null) return false;
+    try {
+      final pending = await SharedFundingIntentStore().read();
+      return _portfolioIdentityCurrent(subject, account, generation) &&
+          pending?.accountId == account &&
+          pending?.subject == subject &&
+          pending?.recipient ==
+              portfolioState?.context?.embeddedSolanaWallet.address;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// An external wallet may fund this fixed recipient; it never becomes the
+  /// account signer, a linked identity, or the app's embedded wallet.
+  IncomingFundingController createIncomingFunding({
+    bool allowNew = true,
+    MobileWalletService? wallet,
+    FundingIntentStore? store,
+  }) {
+    final subject = _subject, account = _accountId, generation = _generation;
+    final embedded = portfolioState?.context?.embeddedSolanaWallet;
+    final recipient = embedded?.isCandidate == true ? embedded!.address : null;
+    if (subject == null ||
+        account == null ||
+        recipient == null ||
+        !_portfolioIdentityCurrent(subject, account, generation)) {
+      throw const FundingFailure('ACCOUNT_CHANGED');
+    }
+    bool current() =>
+        _phase == AccountPhase.active &&
+        _portfolioIdentityCurrent(subject, account, generation) &&
+        portfolioState?.context?.embeddedSolanaWallet.isCandidate == true &&
+        portfolioState?.context?.embeddedSolanaWallet.address == recipient;
+    Future<PracticeAccessToken> token() async {
+      if (!current()) throw const FundingFailure('ACCOUNT_CHANGED');
+      final access = await freshAccessToken();
+      if (!current() || access.accountId != account) {
+        throw const FundingFailure('ACCOUNT_CHANGED');
+      }
+      return access;
+    }
+
+    return IncomingFundingController(
+      allowNew: allowNew,
+      client: HttpIncomingFundingClient(
+        client: _httpClient,
+        origin: _baseUri,
+        accountId: account,
+        accessToken: token,
+        isCurrent: current,
+        allowLoopbackForTests: _allowLoopback,
+      ),
+      wallet: wallet ?? MethodChannelMobileWalletService(),
+      store: store ?? SharedFundingIntentStore(),
+      accountId: account,
+      subject: subject,
+      recipient: recipient,
+      isCurrent: current,
+      refreshPortfolio: () async {
+        if (current()) await refreshPortfolio();
+      },
+    );
   }
 
   Future<String> signReviewedStockTransaction({
