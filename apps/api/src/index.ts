@@ -9,6 +9,7 @@ import {jupiterSharePrices} from './stock-share-prices.js';
 import {JupiterTokenPrices} from './stock-token-prices.js';
 import {readOpsAlerts} from './ops-alerts.js';
 import {WalletTransfers} from './wallet-transfers.js';
+import {readWalletFundingConfig} from './wallet-funding-config.js';
 import {readCrossmintOnramp} from './crossmint-onramp.js';
 import {PublicTokenHolders} from './public-token-holders.js';
 import { buildApp } from './app.js';
@@ -40,6 +41,7 @@ const levels = ['debug', 'info', 'warn', 'error', 'fatal', 'silent'] as const;
 type LogLevel = typeof levels[number];
 if (!levels.includes(rawLogLevel as LogLevel)) throw new Error('LOG_LEVEL is not supported.');
 const relationshipSafetyEnabled = readRelationshipSafetyEnabled(process.env);
+const walletFundingConfig = readWalletFundingConfig(process.env);
 
 // One reader owns the provider pace across SOL/USDC and pinned stock estimates.
 const jupiterQuoteReader = readJupiterQuoteReader(process.env);
@@ -126,7 +128,8 @@ const liveStocks = liveRpc &&
 // Sending money out of the user's wallet, under the same live switch as trading.
 const walletTransfers = liveRpc && practice.authenticateContext && linkedIdentities
   ? {authenticate: practice.authenticateContext, identities: linkedIdentities,
-      executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet', service: new WalletTransfers({rpcUrl: liveRpc})}
+      executionEnabled: process.env['TRIMMY_LIVE_STOCKS'] === 'solana_mainnet', fundingEnabled: walletFundingConfig.enabled,
+      service: new WalletTransfers({rpcUrl: liveRpc, ...(walletFundingConfig.reviewKey ? {key: walletFundingConfig.reviewKey} : {})})}
   : undefined;
 const paperAuthenticate = practice.authenticate && practice.guestSessionRepository
   ? createGuestPaperAuthenticator(practice.authenticate, practice.guestSessionRepository) : practice.authenticate;

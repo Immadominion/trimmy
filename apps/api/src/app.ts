@@ -32,7 +32,7 @@ import { registerStockDiscoveryRoutes } from './stock-discovery-routes.js';
 import { registerStockFactsRoutes } from './stock-facts-routes.js';
 import { registerStockPriceRoutes } from './stock-price-routes.js';
 import type { OpsAlerts } from './ops-alerts.js';
-import { WALLET_TRANSFER_ROUTES, registerWalletTransferRoutes } from './wallet-transfers.js';
+import { WALLET_FUNDING_ROUTES, WALLET_TRANSFER_ROUTES, registerWalletTransferRoutes } from './wallet-transfers.js';
 import type { WalletTransferAdapters } from './wallet-transfers.js';
 import type { StockPriceReader } from './stock-price-routes.js';
 import type { StockFactsReader } from './stock-facts.js';
@@ -243,7 +243,8 @@ export function buildApp(options: ApiOptions = {}): FastifyInstance {
     // promotion. They cannot place an order or reach a wallet.
     const dailyDeskWrite = request.method === 'POST' && request.routeOptions.url === '/v1/career/daily-desk/complete';
     const liveWrite = request.method === 'POST' && ['/v1/trading/preview','/v1/trading/execute',
-      WALLET_TRANSFER_ROUTES.preview, WALLET_TRANSFER_ROUTES.execute].includes(request.routeOptions.url ?? '');
+      WALLET_TRANSFER_ROUTES.preview, WALLET_TRANSFER_ROUTES.execute,
+      WALLET_FUNDING_ROUTES.preview, WALLET_FUNDING_ROUTES.status].includes(request.routeOptions.url ?? '');
     // These routes link an owned wallet and prepare/read a Crossmint checkout.
     // The cardholder completes payment at Crossmint; no charge endpoint exists here.
     const onrampWrite = request.method === 'POST' && ['/v1/funding/wallet', '/v1/funding/verify', '/v1/funding/orders', '/v1/funding/status'].includes(request.routeOptions.url ?? '');

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.trimmy.trimmy",
+      "sha256_cert_fingerprints": [
+        "99:73:D6:10:87:0C:67:F7:98:C0:11:DF:6A:8A:A9:1A:BE:19:63:FA:A7:C7:33:44:C1:A4:D9:C7:0C:E1:DD:62"
+      ]
+    }
+  }
+]

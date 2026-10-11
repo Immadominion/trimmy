@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../account/account_controller.dart';
@@ -11,6 +12,8 @@ import '../../account/config.dart';
 import '../design/product_theme.dart';
 import '../../ui_review/review_animated_splash.dart';
 import 'crossmint_onramp.dart';
+import 'incoming_funding_sheet.dart';
+import '../design/product_components.dart';
 
 class FundWalletSheet extends StatefulWidget {
   const FundWalletSheet({super.key, required this.account});
@@ -24,6 +27,9 @@ class _FundWalletSheetState extends State<FundWalletSheet>
   bool _busy = false, _copied = false, _foreground = true, _refreshing = false;
   String? _message;
   bool _card = false;
+  bool _externalFunding = false,
+      _pendingFunding = false,
+      _openingFunding = false;
   bool _checked = false, _refreshFailed = false;
   Timer? _poll, _copyTimer;
   @override
@@ -31,11 +37,54 @@ class _FundWalletSheetState extends State<FundWalletSheet>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_refresh());
+    unawaited(_checkFunding());
     _poll = Timer.periodic(const Duration(seconds: 8), (_) => _refresh());
+  }
+
+  Future<void> _checkFunding() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final results = await Future.wait([
+        widget.account.externalFundingAvailable(),
+        widget.account.hasPendingIncomingFunding(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _externalFunding = results[0];
+          _pendingFunding = results[1];
+        });
+      }
+    } catch (_) {
+      /* Unsupported server keeps the QR flow available. */
+    }
+  }
+
+  Future<void> _transferFromWallet() async {
+    if (_openingFunding || (!_externalFunding && !_pendingFunding)) return;
+    setState(() => _openingFunding = true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: ProductColor.paper,
+        builder: (_) => IncomingFundingSheet(
+          account: widget.account,
+          allowNew: _externalFunding,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _openingFunding = false);
+        unawaited(_refresh());
+        unawaited(_checkFunding());
+      }
+    }
   }
 
   Future<void> _refresh() async {
     if (!_foreground ||
+        _openingFunding ||
         _refreshing ||
         widget.account.phase != AccountPhase.active) {
       return;
@@ -285,14 +334,40 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                   style: type.bodySmall,
                 ),
                 const SizedBox(height: 22),
-                FilledButton.icon(
-                  key: const ValueKey('copy-deposit-address'),
-                  onPressed: () => _copy(address),
-                  icon: Icon(
-                    _copied ? Icons.done_rounded : Icons.copy_rounded,
-                    size: 18,
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_externalFunding || _pendingFunding) ...[
+                        Expanded(
+                          child: ProductButton(
+                            key: const ValueKey('transfer-from-wallet'),
+                            label: _pendingFunding
+                                ? 'Check wallet transfer'
+                                : 'Transfer from wallet',
+                            icon: Icons.account_balance_wallet_outlined,
+                            compact: true,
+                            onPressed: _openingFunding
+                                ? null
+                                : _transferFromWallet,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: ProductButton(
+                          key: const ValueKey('copy-deposit-address'),
+                          label: _copied ? 'Copied' : 'Copy address',
+                          icon: _copied
+                              ? Icons.done_rounded
+                              : Icons.copy_rounded,
+                          compact: true,
+                          secondary: _externalFunding || _pendingFunding,
+                          onPressed: () => _copy(address),
+                        ),
+                      ),
+                    ],
                   ),
-                  label: Text(_copied ? 'Copied' : 'Copy address'),
                 ),
               ],
               if (_message != null)

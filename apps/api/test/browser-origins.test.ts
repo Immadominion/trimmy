@@ -115,6 +115,7 @@ describe('explicit browser origin configuration and preflight', () => {
         ['/v1/markets/stocks/prices?mints=x', 'GET'],
         ['/v1/wallet/transfers/preview', 'POST'], ['/v1/wallet/transfers/execute', 'POST'],
         ['/v1/wallet/transfers/status?signature=x', 'GET'],
+        ['/v1/wallet/funding/capabilities', 'GET'], ['/v1/wallet/funding/preview', 'POST'], ['/v1/wallet/funding/status', 'POST'],
       ]) {
         const response = await app.inject({method: 'OPTIONS', url: url!, headers: {
           origin, 'access-control-request-method': method!, 'access-control-request-headers': 'Authorization, Content-Type',
@@ -126,6 +127,7 @@ describe('explicit browser origin configuration and preflight', () => {
         ['/v1/trading/preview', 'GET'], ['/v1/trading/execute', 'PUT'], ['/v1/trading/capabilities', 'POST'],
         ['/v1/trading/preview?side=buy', 'POST'], ['/v1/trading/execute?id=x', 'POST'], ['/v1/trading/order?id=x', 'GET'],
         ['/v1/account/wallet/challenge?wallet=x', 'POST'], ['/v1/markets/prestocks?x=1', 'GET'],
+        ['/v1/wallet/funding/status?signature=x', 'POST'], ['/v1/wallet/funding/preview', 'GET'], ['/v1/wallet/funding/status', 'GET'],
       ]) {
         const response = await app.inject({method: 'OPTIONS', url: url!, headers: {origin, 'access-control-request-method': method!}});
         assert.equal(response.statusCode, 403, `${url} ${method}`);
