@@ -83,10 +83,16 @@ void main() {
     );
     account = _Account(repository);
   });
-  Future<void> mount(WidgetTester tester) async {
+  Future<void> mount(WidgetTester tester, {double textScale = 1}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: productTheme(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         home: Scaffold(body: FundWalletSheet(account: account)),
       ),
     );
@@ -117,6 +123,36 @@ void main() {
       await clean(tester);
     },
   );
+  for (final width in [320.0, 390.0]) {
+    testWidgets('wallet actions share a row at width $width', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      account.fundingEnabled = true;
+      for (final scale in [1.0, 1.6]) {
+        await mount(tester, textScale: scale);
+        final transfer = tester.getRect(
+          find.byKey(const ValueKey('transfer-from-wallet')),
+        );
+        final copy = tester.getRect(
+          find.byKey(const ValueKey('copy-deposit-address')),
+        );
+        final qr = tester.getRect(
+          find.byKey(const ValueKey('wallet-deposit-qr')),
+        );
+        expect(transfer.right, lessThan(copy.left));
+        expect(transfer.top, copy.top);
+        expect(transfer.height, copy.height);
+        expect(transfer.top, greaterThan(qr.bottom));
+        expect(copy.right, lessThanOrEqualTo(width - 24));
+        expect(tester.takeException(), isNull);
+      }
+      await clean(tester);
+    });
+  }
   testWidgets('iOS never exposes the Android wallet adapter entry', (
     tester,
   ) async {

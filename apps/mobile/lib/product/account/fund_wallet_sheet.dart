@@ -284,16 +284,6 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                 )
               else ...[
                 const SizedBox(height: 24),
-                if (_externalFunding || _pendingFunding) ...[
-                  ProductButton(
-                    label: _pendingFunding
-                        ? 'Check wallet transfer'
-                        : 'Transfer from wallet',
-                    icon: Icons.account_balance_wallet_outlined,
-                    onPressed: _openingFunding ? null : _transferFromWallet,
-                  ),
-                  const SizedBox(height: 22),
-                ],
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(14),
@@ -344,14 +334,40 @@ class _FundWalletSheetState extends State<FundWalletSheet>
                   style: type.bodySmall,
                 ),
                 const SizedBox(height: 22),
-                FilledButton.icon(
-                  key: const ValueKey('copy-deposit-address'),
-                  onPressed: () => _copy(address),
-                  icon: Icon(
-                    _copied ? Icons.done_rounded : Icons.copy_rounded,
-                    size: 18,
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_externalFunding || _pendingFunding) ...[
+                        Expanded(
+                          child: ProductButton(
+                            key: const ValueKey('transfer-from-wallet'),
+                            label: _pendingFunding
+                                ? 'Check wallet transfer'
+                                : 'Transfer from wallet',
+                            icon: Icons.account_balance_wallet_outlined,
+                            compact: true,
+                            onPressed: _openingFunding
+                                ? null
+                                : _transferFromWallet,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: ProductButton(
+                          key: const ValueKey('copy-deposit-address'),
+                          label: _copied ? 'Copied' : 'Copy address',
+                          icon: _copied
+                              ? Icons.done_rounded
+                              : Icons.copy_rounded,
+                          compact: true,
+                          secondary: _externalFunding || _pendingFunding,
+                          onPressed: () => _copy(address),
+                        ),
+                      ),
+                    ],
                   ),
-                  label: Text(_copied ? 'Copied' : 'Copy address'),
                 ),
               ],
               if (_message != null)
