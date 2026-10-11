@@ -1,7 +1,7 @@
 import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify } from 'node:crypto';
 import {
   address, appendTransactionMessageInstructions, compileTransaction, createNoopSigner, createTransactionMessage,
-  getAddressEncoder, getBase58Decoder, getBase64EncodedWireTransaction, getTransactionDecoder, getTransactionEncoder, pipe,
+  getAddressEncoder, getBase58Decoder, getBase58Encoder, getBase64EncodedWireTransaction, getTransactionDecoder, getTransactionEncoder, isOffCurveAddress, pipe,
   setTransactionMessageFeePayerSigner, setTransactionMessageLifetimeUsingBlockhash,
 } from '@solana/kit';
 import type { Address, Blockhash } from '@solana/kit';
@@ -102,22 +102,27 @@ const RPC_ERRORS = Object.freeze({
   unavailable: () => new TransferRpcError('unavailable'), responseInvalid: () => new TransferRpcError('response'),
   methodNotAllowed: () => new TransferRpcError('method'),
 });
-type Method = 'getMultipleAccounts' | 'getLatestBlockhash' | 'simulateTransaction' | 'sendTransaction' | 'getBlockHeight' | 'getSignatureStatuses';
+type Method = 'getMultipleAccounts' | 'getLatestBlockhash' | 'simulateTransaction' | 'sendTransaction' | 'getBlockHeight' | 'getSignatureStatuses' | 'getTransaction';
 
 export class WalletTransfers {
   readonly #rpc: BoundedSolanaRpc<Method, TransferRpcError>;
   readonly #now: () => number;
   readonly #key: Buffer;
+  readonly fundingReceiptsAvailable: boolean;
   readonly #inFlight = new Set<string>();
 
   constructor(options: {rpcUrl: string; fetch?: typeof globalThis.fetch; now?: () => number; key?: Buffer}) {
     this.#rpc = new BoundedSolanaRpc({rpcUrl: options.rpcUrl, errors: RPC_ERRORS, maxBodyBytes: 2_097_152,
-      methods: ['getMultipleAccounts', 'getLatestBlockhash', 'simulateTransaction', 'sendTransaction', 'getBlockHeight', 'getSignatureStatuses'],
+      methods: ['getMultipleAccounts', 'getLatestBlockhash', 'simulateTransaction', 'sendTransaction', 'getBlockHeight', 'getSignatureStatuses', 'getTransaction'],
       ...(options.fetch ? {fetch: options.fetch} : {})});
     this.#now = options.now ?? Date.now;
-    // Reviews last 90 seconds, so a key held only in memory is enough: a restart
-    // only means reviewing again.
-    this.#key = options.key ?? randomBytes(32);
+    // Supply a persistent private key when receipts must survive a restart.
+    // An unverifiable receipt never becomes a reported successful transfer.
+    if (options.key !== undefined && (!Buffer.isBuffer(options.key) || options.key.length !== 32)) {
+      throw new Error('Wallet transfer review key must contain exactly 32 bytes.');
+    }
+    this.fundingReceiptsAvailable = options.key !== undefined;
+    this.#key = options.key ? Buffer.from(options.key) : randomBytes(32);
   }
 
   async #call(method: Method, params: readonly unknown[]): Promise<unknown> {
@@ -137,6 +142,20 @@ export class WalletTransfers {
   }
 
   async preview(input: {userId: string; wallet: string; asset: TransferAsset; destination: string; amountRaw: string}): Promise<TransferPreview> {
+    return this.#preview(input);
+  }
+
+  /** Incoming MWA funding: the destination is supplied by authentication, never by the client. */
+  async previewFunding(input: {userId: string; wallet: string; from: string; asset: 'SOL' | 'USDC'; amountRaw: string}): Promise<TransferPreview> {
+    if (input.asset !== 'SOL' && input.asset !== 'USDC') return fail('ASSET_UNSUPPORTED');
+    try {
+      if (!ADDRESS.test(input.from) || isOffCurveAddress(address(input.from))) return fail('SOURCE_INVALID');
+    } catch { return fail('SOURCE_INVALID'); }
+    return this.#preview({userId: input.userId, wallet: input.from, destination: input.wallet,
+      asset: input.asset, amountRaw: input.amountRaw}, input.wallet);
+  }
+
+  async #preview(input: {userId: string; wallet: string; asset: TransferAsset; destination: string; amountRaw: string}, fundingRecipient?: string): Promise<TransferPreview> {
     const {userId, wallet} = input;
     if (!ADDRESS.test(input.destination) || !/^[1-9][0-9]{0,19}$/.test(input.amountRaw) || BigInt(input.amountRaw) > U64_MAX) fail('TRANSFER_INPUT_INVALID');
     let destination: Address;
@@ -152,8 +171,8 @@ export class WalletTransfers {
     this.#inFlight.add(userId);
     try {
       return mint === null
-        ? await this.#previewSol(userId, address(wallet), destination, amount)
-        : await this.#previewToken(userId, address(wallet), destination, amount, address(mint), mint === USDC_MINT ? 'USDC' : stock!.symbol);
+        ? await this.#previewSol(userId, address(wallet), destination, amount, fundingRecipient)
+        : await this.#previewToken(userId, address(wallet), destination, amount, address(mint), mint === USDC_MINT ? 'USDC' : stock!.symbol, fundingRecipient);
     } finally {
       this.#inFlight.delete(userId);
     }
@@ -165,8 +184,19 @@ export class WalletTransfers {
     if (account.executable || account.owner !== SYSTEM_PROGRAM) fail('DESTINATION_NOT_WALLET');
   }
 
-  async #previewSol(userId: string, wallet: Address, destination: Address, amount: bigint): Promise<TransferPreview> {
+  static #checkFundingSource(account: Parsed | null | undefined): void {
+    if (account && (account.executable || account.owner !== SYSTEM_PROGRAM)) fail('SOURCE_INVALID');
+  }
+
+  async #checkFundingBlockhash(lastValidBlockHeight: number): Promise<void> {
+    const height = await this.#call('getBlockHeight', [{commitment: 'confirmed'}]);
+    if (typeof height !== 'number' || !Number.isSafeInteger(height) || height < 0) fail('TRANSFER_UNAVAILABLE');
+    if ((height as number) > lastValidBlockHeight) fail('REVIEW_EXPIRED');
+  }
+
+  async #previewSol(userId: string, wallet: Address, destination: Address, amount: bigint, fundingRecipient?: string): Promise<TransferPreview> {
     const [source, target] = await this.#accounts([wallet, destination]);
+    if (fundingRecipient) WalletTransfers.#checkFundingSource(source);
     WalletTransfers.#checkDestination(target!);
     const units = 2_000n;
     const fee = BASE_FEE_LAMPORTS + (units * PRIORITY_MICRO_LAMPORTS + 999_999n) / 1_000_000n;
@@ -184,15 +214,17 @@ export class WalletTransfers {
     const after = await this.#simulate(built.wire, [wallet, destination]);
     const received = (after[1]?.lamports ?? 0n) - (target?.lamports ?? 0n);
     if (received !== amount) fail('SIMULATION_MISMATCH');
+    if (fundingRecipient) await this.#checkFundingBlockhash(built.lastValidBlockHeight);
     return this.#finish(userId, wallet, built, {kind: 'sol', mint: null, symbol: 'SOL', decimals: 9, uiMultiplier: '1'},
-      destination, amount, received, false, 0n, fee);
+      destination, amount, received, false, 0n, fee, fundingRecipient);
   }
 
-  async #previewToken(userId: string, wallet: Address, destination: Address, amount: bigint, mint: Address, symbol: string): Promise<TransferPreview> {
+  async #previewToken(userId: string, wallet: Address, destination: Address, amount: bigint, mint: Address, symbol: string, fundingRecipient?: string): Promise<TransferPreview> {
     const [mintAccount] = await this.#accounts([mint]);
     if (!mintAccount || !TOKEN_PROGRAMS.has(mintAccount.owner) || mintAccount.info?.['isInitialized'] !== true) fail('ASSET_UNSUPPORTED');
     const tokenProgram = address(mintAccount!.owner);
     const decimals = mintAccount!.info?.['decimals'];
+    if (fundingRecipient && (mint !== USDC_MINT || mintAccount!.owner !== token.TOKEN_PROGRAM_ADDRESS || decimals !== 6)) fail('ASSET_UNSUPPORTED');
     if (typeof decimals !== 'number' || !Number.isInteger(decimals) || decimals < 0 || decimals > 18) return fail('ASSET_UNSUPPORTED');
     // A transfer hook needs accounts this simple transfer does not carry, and a
     // non-transferable token cannot move at all.
@@ -208,6 +240,7 @@ export class WalletTransfers {
     const [sourceAta] = await program.findAssociatedTokenPda({owner: wallet, mint, tokenProgram});
     const [targetAta] = await program.findAssociatedTokenPda({owner: destination, mint, tokenProgram});
     const [owner, source, target, targetToken] = await this.#accounts([wallet, sourceAta, destination, targetAta]);
+    if (fundingRecipient) WalletTransfers.#checkFundingSource(owner);
     WalletTransfers.#checkDestination(target!);
     if (!source || source.owner !== tokenProgram || source.info?.['mint'] !== mint || source.info?.['owner'] !== wallet) fail('INSUFFICIENT_BALANCE');
     if (source!.info?.['state'] === 'frozen') fail('ASSET_FROZEN');
@@ -238,8 +271,9 @@ export class WalletTransfers {
     if (balance < fee + rent) fail('ADD_SOL');
     const left = balance - fee - rent;
     if (left > 0n && left < RENT_EXEMPT_WALLET_LAMPORTS) fail('ADD_SOL');
+    if (fundingRecipient) await this.#checkFundingBlockhash(built.lastValidBlockHeight);
     return this.#finish(userId, wallet, built, {kind: 'token', mint, symbol, decimals: decimals as number, uiMultiplier: String(multiplier)},
-      destination, amount, received, createsAccount, rent, fee);
+      destination, amount, received, createsAccount, rent, fee, fundingRecipient);
   }
 
   async #build(signer: ReturnType<typeof createNoopSigner>, instructions: Parameters<typeof appendTransactionMessageInstructions>[0]) {
@@ -271,12 +305,14 @@ export class WalletTransfers {
 
   #finish(userId: string, wallet: Address, built: {wire: string; messageBytes: Buffer; lastValidBlockHeight: number},
     asset: TransferReview['asset'], destination: Address, amount: bigint, received: bigint, createsAccount: boolean,
-    rent: bigint, fee: bigint): TransferPreview {
-    const expiresAt = new Date(this.#now() + REVIEW_TTL_MS).toISOString();
+    rent: bigint, fee: bigint, fundingRecipient?: string): TransferPreview {
+    const issuedAt = this.#now();
+    const expiresAt = new Date(issuedAt + REVIEW_TTL_MS).toISOString();
     const review: TransferReview = Object.freeze({asset: Object.freeze(asset), from: wallet, destination, amountRaw: String(amount),
       receivedRaw: String(received), createsAccount, accountRentLamports: String(rent), networkFeeLamports: String(fee), expiresAt});
-    const payload = Buffer.from(JSON.stringify({v: 1, u: userId, w: wallet, h: messageHash(built.messageBytes),
-      b: built.lastValidBlockHeight, e: expiresAt})).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({v: fundingRecipient ? 2 : 1, u: userId, w: wallet, h: messageHash(built.messageBytes),
+      b: built.lastValidBlockHeight, e: expiresAt,
+      ...(fundingRecipient ? {p: 'funding', d: fundingRecipient, i: issuedAt} : {})})).toString('base64url');
     return Object.freeze({review, unsignedTransaction: built.wire, reviewToken: `${payload}.${this.#mac(payload)}`});
   }
 
@@ -315,6 +351,39 @@ export class WalletTransfers {
     if (entry['err'] !== null && entry['err'] !== undefined) return {status: 'failed', slot};
     return ['confirmed', 'finalized'].includes(String(entry['confirmationStatus'])) ? {status: 'confirmed', slot} : {status: 'pending', slot};
   }
+
+  /** The wallet broadcasts. This only reconciles its exact, account-bound reviewed message. */
+  async fundingStatus(input: {userId: string; wallet: string; from: string; reviewToken: string; signature: string}): Promise<{status: 'pending' | 'confirmed' | 'failed'; slot: number | null}> {
+    const parts = input.reviewToken.split('.');
+    const [payload, mac] = parts;
+    if (parts.length !== 2 || !payload || !mac || payload.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(payload)) return fail('INVALID_REVIEW');
+    const expected = Buffer.from(this.#mac(payload)), given = Buffer.from(mac);
+    if (expected.length !== given.length || !timingSafeEqual(expected, given)) return fail('INVALID_REVIEW');
+    let claims: Record<string, unknown> | null;
+    try { claims = record(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))); } catch { return fail('INVALID_REVIEW'); }
+    const issuedAt = claims?.['i'], height = claims?.['b'], hash = claims?.['h'];
+    if (!claims || claims['v'] !== 2 || claims['p'] !== 'funding' || claims['u'] !== input.userId ||
+        claims['w'] !== input.from || claims['d'] !== input.wallet ||
+        typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash) ||
+        typeof issuedAt !== 'number' || !Number.isSafeInteger(issuedAt) || issuedAt > this.#now() ||
+        typeof height !== 'number' || !Number.isSafeInteger(height) || height < 0 ||
+        claims['e'] !== new Date(issuedAt + REVIEW_TTL_MS).toISOString()) return fail('INVALID_REVIEW');
+    // This receipt authorizes only a scoped immutable read, never another send.
+    // Expiring it on age would strand a next-day return with a known signature.
+    try {
+      if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(input.signature) || getBase58Encoder().encode(input.signature).length !== 64) return fail('TRANSFER_INPUT_INVALID');
+    } catch { return fail('TRANSFER_INPUT_INVALID'); }
+    const raw = await this.#call('getTransaction', [input.signature, {encoding: 'base64', commitment: 'confirmed', maxSupportedTransactionVersion: 0}]);
+    // Absence is not failure, even after lastValidBlockHeight. An RPC can lag or
+    // omit older records; that must never trigger an automatic second payment.
+    if (raw === null) return {status: 'pending', slot: null};
+    const result = record(raw), meta = record(result?.['meta']);
+    const wire = result?.['transaction'], slot = result?.['slot'];
+    if (!meta || !Object.hasOwn(meta, 'err') || !Array.isArray(wire) || wire.length !== 2 || wire[1] !== 'base64' ||
+        typeof wire[0] !== 'string' || typeof slot !== 'number' || !Number.isSafeInteger(slot) || slot < 0) return fail('TRANSFER_UNAVAILABLE');
+    if (verifySignedTransfer(wire[0], input.from, hash) !== input.signature) return fail('INVALID_SIGNATURE');
+    return {status: meta['err'] === null ? 'confirmed' : 'failed', slot};
+  }
 }
 
 const messageHash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -344,6 +413,8 @@ export function verifySignedTransfer(encoded: string, wallet: string, expectedHa
 export interface WalletTransferAdapters {
   /** Off: no new transfer is reviewed or sent; a sent one can still be looked up. */
   readonly executionEnabled?: boolean;
+  /** Separate rollout, off by default. Requires a persistent receipt key. */
+  readonly fundingEnabled?: boolean;
   authenticate(request: FastifyRequest): Promise<ExistingPracticeAccountAuthentication | null>;
   identities: {resolveFresh(identity: PracticeIdentity): Promise<PrivyLinkedIdentityResolution>};
   service: WalletTransfers;
@@ -352,18 +423,40 @@ export interface WalletTransferAdapters {
 export const WALLET_TRANSFER_ROUTES = Object.freeze({
   preview: '/v1/wallet/transfers/preview', execute: '/v1/wallet/transfers/execute', status: '/v1/wallet/transfers/status',
 });
+export const WALLET_FUNDING_ROUTES = Object.freeze({
+  capabilities: '/v1/wallet/funding/capabilities', preview: '/v1/wallet/funding/preview', status: '/v1/wallet/funding/status',
+});
 const KNOWN = new Set(['ACCOUNT_REQUIRED', 'WALLET_REQUIRED', 'TRANSFER_INPUT_INVALID', 'DESTINATION_INVALID', 'DESTINATION_SELF',
   'DESTINATION_NOT_WALLET', 'DESTINATION_FROZEN', 'ASSET_UNSUPPORTED', 'ASSET_NOT_TRANSFERABLE', 'ASSET_PAUSED', 'ASSET_FROZEN',
   'INSUFFICIENT_BALANCE', 'ADD_SOL', 'LEAVES_TOO_LITTLE_SOL', 'AMOUNT_TOO_SMALL', 'SIMULATION_FAILED', 'SIMULATION_MISMATCH',
-  'INVALID_REVIEW', 'INVALID_SIGNATURE', 'REVIEW_EXPIRED', 'TRANSFER_NOT_SENT', 'TRANSFER_BUSY']);
+  'INVALID_REVIEW', 'INVALID_SIGNATURE', 'REVIEW_EXPIRED', 'TRANSFER_NOT_SENT', 'TRANSFER_BUSY', 'SOURCE_INVALID']);
 
 export function registerWalletTransferRoutes(app: FastifyInstance, adapters?: WalletTransferAdapters): void {
+  const fundingEnabled = () => !!adapters && adapters.executionEnabled !== false &&
+    adapters.fundingEnabled === true && adapters.service.fundingReceiptsAvailable;
+  // Bounded per-account and global budgets, before fresh Privy/RPC work. The
+  // status budget permits foreground polling while containing arbitrary probes.
+  const budgets = new Map<string, {startedAt: number; count: number}>();
+  const globalBudgets = {preview: {startedAt: 0, count: 0}, status: {startedAt: 0, count: 0}};
+  function fundingBudget(userId: string, kind: 'preview' | 'status'): void {
+    const now = Date.now();
+    for (const [key, value] of budgets) if (now - value.startedAt >= 60_000) budgets.delete(key);
+    const key = `${kind}:${userId}`, value = budgets.get(key) ?? {startedAt: now, count: 0};
+    const global = globalBudgets[kind];
+    if (now - global.startedAt >= 60_000) { global.startedAt = now; global.count = 0; }
+    if ((!budgets.has(key) && budgets.size >= 2048) || value.count >= (kind === 'preview' ? 6 : 30) ||
+        global.count >= (kind === 'preview' ? 120 : 600)) fail('TRANSFER_BUSY');
+    value.count++; global.count++; budgets.set(key, value);
+  }
   async function run<T>(request: FastifyRequest, reply: FastifyReply, operation: (user: string, wallet: string) => Promise<T>, financial: boolean) {
     reply.header('cache-control', 'no-store');
     if (!adapters || financial && adapters.executionEnabled === false) return reply.code(503).send({code: 'TRANSFER_UNAVAILABLE'});
+    if (request.routeOptions.url === WALLET_FUNDING_ROUTES.preview && !fundingEnabled()) return reply.code(503).send({code: 'TRANSFER_UNAVAILABLE'});
     try {
       const account = await adapters.authenticate(request);
       if (!account) return reply.code(401).send({code: 'ACCOUNT_REQUIRED'});
+      if (request.routeOptions.url === WALLET_FUNDING_ROUTES.preview) fundingBudget(account.userId, 'preview');
+      if (request.routeOptions.url === WALLET_FUNDING_ROUTES.status) fundingBudget(account.userId, 'status');
       const identity = await adapters.identities.resolveFresh(account.identity);
       if (identity.subject !== account.identity.subject || identity.embeddedSolanaWallet.status !== 'candidate') return fail('WALLET_REQUIRED');
       return await operation(account.userId, identity.embeddedSolanaWallet.address);
@@ -373,11 +466,26 @@ export function registerWalletTransferRoutes(app: FastifyInstance, adapters?: Wa
       // Codes only: never an address, an amount or a transaction.
       request.log.warn({transferFailure: code}, 'Wallet transfer request failed');
       if (code === 'TRANSFER_BUSY') reply.header('retry-after', '3');
-      return reply.code(code === 'TRANSFER_INPUT_INVALID' || code === 'DESTINATION_INVALID' ? 400 : code === 'TRANSFER_BUSY' ? 429
+      return reply.code(code === 'TRANSFER_INPUT_INVALID' || code === 'DESTINATION_INVALID' || code === 'SOURCE_INVALID' ? 400 : code === 'TRANSFER_BUSY' ? 429
         : code === 'TRANSFER_UNAVAILABLE' ? 503 : 409).send({code});
     }
   }
   const noQuery = {type: 'object', additionalProperties: false, properties: {}} as const;
+  app.get(WALLET_FUNDING_ROUTES.capabilities, {schema: {querystring: noQuery}}, async (_request, reply) => {
+    reply.header('cache-control', 'no-store');
+    return {enabled: fundingEnabled(), chain: 'solana:mainnet', assets: ['SOL', 'USDC']};
+  });
+  app.post<{Body: {from: string; asset: 'SOL' | 'USDC'; amountRaw: string}}>(WALLET_FUNDING_ROUTES.preview, {bodyLimit: 1024,
+    schema: {querystring: noQuery, body: {type: 'object', additionalProperties: false, required: ['from', 'asset', 'amountRaw'], properties: {
+      from: {type: 'string', pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'}, asset: {type: 'string', enum: ['SOL', 'USDC']},
+      amountRaw: {type: 'string', pattern: '^[1-9][0-9]{0,19}$'}}}}},
+  (request, reply) => run(request, reply, (userId, wallet) => adapters!.service.previewFunding({userId, wallet, ...request.body}), true));
+  app.post<{Body: {from: string; reviewToken: string; signature: string}}>(WALLET_FUNDING_ROUTES.status, {bodyLimit: 2048,
+    schema: {querystring: noQuery, body: {type: 'object', additionalProperties: false, required: ['from', 'reviewToken', 'signature'], properties: {
+      from: {type: 'string', pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'},
+      reviewToken: {type: 'string', minLength: 10, maxLength: 1200, pattern: '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$'},
+      signature: {type: 'string', pattern: '^[1-9A-HJ-NP-Za-km-z]{64,88}$'}}}}},
+  (request, reply) => run(request, reply, (userId, wallet) => adapters!.service.fundingStatus({userId, wallet, ...request.body}), false));
   app.post<{Body: {asset: string; destination: string; amountRaw: string}}>(WALLET_TRANSFER_ROUTES.preview, {bodyLimit: 1024,
     schema: {querystring: noQuery, body: {type: 'object', additionalProperties: false, required: ['asset', 'destination', 'amountRaw'], properties: {
       asset: {type: 'string', pattern: '^(SOL|USDC|[1-9A-HJ-NP-Za-km-z]{32,44})$'},
